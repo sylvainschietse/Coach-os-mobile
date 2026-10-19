@@ -13,7 +13,7 @@ import {
   type FicheContact,
   type ModeleMessage,
 } from '@/domain/crm';
-import { LIBELLES_QUESTIONS } from '@/domain/questionnaire';
+import { reponsesParSection } from '@/domain/questionnaire';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, Puce, Puces, SousTitre, Texte, Titre } from '../composants';
@@ -117,16 +117,22 @@ export function FicheContactVue({ id, onVoirClient }: { id: string; onVoirClient
       {questionnaires.map((q) => (
         <View key={q.id} style={{ gap: espace(3) }}>
           <TitreSection>{`Questionnaire reçu le ${dateCourte(q.recuLe)}`}</TitreSection>
-          <Carte>
-            {Object.entries(q.reponses)
-              .filter(([cle, v]) => v && !['prenom', 'nom', 'telephone', 'email'].includes(cle))
-              .map(([cle, v]) => (
-                <View key={cle} style={{ gap: 2 }}>
-                  <Texte doux style={{ fontSize: 13 }}>{LIBELLES_QUESTIONS[cle] ?? cle}</Texte>
-                  <Texte style={{ fontSize: 15 }}>{v}</Texte>
+          {reponsesParSection(q.reponses, ['prenom', 'nom', 'telephone', 'email']).map((s) => (
+            <Carte key={s.titre}>
+              <Text style={{ fontFamily: polices.texteGras, fontSize: 15, color: couleurs.noir }}>{s.titre}</Text>
+              {s.lignes.map((l, i) => (
+                <View key={l.id} style={{ gap: 2 }}>
+                  {l.rubrique && l.rubrique !== s.lignes[i - 1]?.rubrique && (
+                    <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: couleurs.rouge, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      {l.rubrique}
+                    </Text>
+                  )}
+                  <Texte doux style={{ fontSize: 13 }}>{l.libelle}</Texte>
+                  <Texte style={{ fontSize: 15 }}>{l.valeur}</Texte>
                 </View>
               ))}
-          </Carte>
+            </Carte>
+          ))}
         </View>
       ))}
       {questionnaires.length === 0 && contact.statut !== 'client' && (

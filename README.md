@@ -8,7 +8,7 @@ Ce prototype couvre deux parcours de bout en bout.
 **Accueil des clients (CRM)**, qui remplace Tally → Make → Airtable :
 
 1. le coach crée un contact avec un simple numéro de téléphone (doublons détectés à la saisie, numéro normalisé) ;
-2. le prospect remplit le questionnaire d'accueil par un lien, sans compte : ses réponses arrivent sur la bonne fiche (rapprochement par téléphone puis e-mail, jamais par le nom ; les différences sont signalées, pas écrasées) ;
+2. le prospect remplit le bilan « Forme & objectifs » (repris du Tally de Sylvain, page par page) par un lien, sans compte : ses réponses arrivent sur la bonne fiche (rapprochement par téléphone puis e-mail, jamais par le nom ; les différences sont signalées, pas écrasées) ;
 3. le coach planifie la séance Booster, puis saisit tests, observations et 3 priorités ;
 4. les relances du jour (questionnaire, proposition de Booster, rappel la veille, suivi après Booster) s'affichent sur l'accueil du coach, avec le message déjà écrit qui s'ouvre dans SMS, WhatsApp ou e-mail ;
 5. « Passer en client » ouvre l'espace client ; les contacts peuvent être archivés puis réactivés, sans rien effacer.
