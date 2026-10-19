@@ -8,7 +8,12 @@ export default function EcranBooster() {
   return (
     <Ecran>
       <Stack.Screen options={{ title: 'Séance Booster' }} />
-      <SeanceBooster boosterId={id} contactId={contact} onFermer={() => router.back()} />
+      <SeanceBooster
+        boosterId={id}
+        contactId={contact}
+        onFermer={() => router.back()}
+        onTermine={() => router.replace({ pathname: '/coach/compte-rendu/[id]', params: { id, contact } })}
+      />
     </Ecran>
   );
 }

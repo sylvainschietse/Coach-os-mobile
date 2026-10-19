@@ -329,11 +329,16 @@ function CompteRenduBooster({ booster }: { booster: Booster }) {
         ))}
         {booster.compteRendu && (
           <View style={{ gap: 2 }}>
-            <Texte doux style={{ fontSize: 13 }}>Observations</Texte>
+            <Texte doux style={{ fontSize: 13 }}>Mot du coach (compte rendu)</Texte>
             <Texte style={{ fontSize: 15 }}>{booster.compteRendu}</Texte>
           </View>
         )}
         <Texte doux style={{ fontSize: 13 }}>{booster.paye ? 'Séance payée' : 'Paiement non noté'}</Texte>
+        <Bouton
+          libelle={booster.planEnvoyeLe ? `Compte rendu envoyé le ${dateCourte(booster.planEnvoyeLe)}` : 'Voir le compte rendu'}
+          variante={booster.planEnvoyeLe ? 'secondaire' : 'primaire'}
+          onPress={() => router.push({ pathname: '/coach/compte-rendu/[id]', params: { id: booster.id, contact: booster.contactId } })}
+        />
         <Bouton variante="discret" libelle="Compléter la séance" onPress={() => ouvrirSeance(booster)} />
       </Carte>
     </View>

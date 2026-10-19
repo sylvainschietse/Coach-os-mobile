@@ -1,0 +1,55 @@
+import { describe, expect, it } from 'vitest';
+
+import { compteRenduHtml, construireCompteRendu } from '../src/domain/compte-rendu';
+import type { Booster, Contact } from '../src/domain/crm';
+
+const contact: Contact = { id: 'c', prenom: 'Karim', nom: 'Benali', statut: 'booster_fait', creeLe: '2026-10-10T10:00:00Z' };
+const booster: Booster = {
+  id: 'b',
+  contactId: 'c',
+  date: '2026-10-20T16:30:00Z',
+  statut: 'fait',
+  priorites: ['Renforcer les épaules', 'Bouger 3 fois par semaine', 'Dormir 7 h'],
+  compteRendu: 'Super première séance <3',
+  entretien: { projection: 'Retrouver mon niveau', freins: 'Horaires de travail' },
+  evaluation: {
+    tests: {
+      poussee: { resultat: 'Correct', observations: ['Asymétrie'] },
+      cardio: { resultat: 'Bonne aisance', observations: [], rpe: 6 },
+      tirage: { observations: ['Asymétrie'] },
+    },
+    douleur: 'Non',
+  },
+};
+
+describe('compte rendu du Booster', () => {
+  it('assemble bilan, évaluation, entretien et priorités', () => {
+    const cr = construireCompteRendu(contact, booster, { objectif: 'Prendre du muscle', stress: '8', obstacle: 'Manque de temps' }, 'Sylvain');
+    const section = (t: string) => cr.sections.find((s) => s.titre === t)?.lignes;
+    expect(cr.sections[0].titre).toBe('Le mot de ton coach');
+    expect(section('Ton point de départ')).toEqual(['Objectif : Prendre du muscle', 'Dans six mois : Retrouver mon niveau']);
+    // Un test sans résultat n'apparaît pas chez le client.
+    expect(section('Ton évaluation physique')).toEqual(['Poussée : Correct (Asymétrie)', 'Cardio : Bonne aisance (effort ressenti 6/10)']);
+    expect(section('Tes habitudes à travailler')).toEqual(['Stress : 8/10']);
+    expect(section('Ce qui peut te freiner')).toEqual(['Horaires de travail', 'Principal obstacle : manque de temps']);
+    expect(cr.sections.at(-1)).toMatchObject({ titre: 'Tes 3 priorités', numerotee: true });
+    expect(cr.conclusion.at(-1)).toBe('Sylvain');
+  });
+
+  it('échappe le texte saisi dans le PDF', () => {
+    const html = compteRenduHtml(construireCompteRendu(contact, booster, undefined, 'Sylvain'));
+    expect(html).toContain('Super première séance &lt;3');
+    expect(html).toContain('<ol><li>Renforcer les épaules</li>');
+  });
+});
+
+describe('compte rendu de démonstration', () => {
+  it('se construit pour Sophie à partir des contacts fictifs', async () => {
+    const { carnetDemo } = await import('../src/data/crm-demo');
+    const c = carnetDemo(new Date());
+    const b = c.boosters.find((x) => x.id === 'b-sophie')!;
+    const sophie = c.contacts.find((x) => x.id === b.contactId)!;
+    const cr = construireCompteRendu(sophie, b, c.questionnaires.find((q) => q.contactId === sophie.id)?.reponses, 'Sylvain');
+    expect(cr.sections.find((s) => s.titre === 'Ton évaluation physique')?.lignes).toHaveLength(6);
+  });
+});

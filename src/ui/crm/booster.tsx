@@ -23,7 +23,17 @@ import { couleurs, espace, polices } from '../theme';
 import { dateHeure, nomComplet, TitreSection } from './commun';
 
 /** La séance Booster côté coach : tests en quelques touches, entretien, priorités. Tout s'enregistre au fil de la saisie. */
-export function SeanceBooster({ contactId, boosterId, onFermer }: { contactId: string; boosterId: string; onFermer: () => void }) {
+export function SeanceBooster({
+  contactId,
+  boosterId,
+  onFermer,
+  onTermine,
+}: {
+  contactId: string;
+  boosterId: string;
+  onFermer: () => void;
+  onTermine: () => void;
+}) {
   const { donnee: fiche, erreur } = useCharger(() => crm.fiche(contactId), contactId);
 
   if (erreur) return <Erreur message={erreur} />;
@@ -32,12 +42,24 @@ export function SeanceBooster({ contactId, boosterId, onFermer }: { contactId: s
   if (!booster) return <Erreur message="Ce Booster n’existe plus." />;
   const sante = fiche.questionnaires[0] ? preparerSeance(fiche.questionnaires[0].reponses).sante : [];
   // La clé fige l'état initial sur ce Booster : les rechargements ne remplacent pas la saisie en cours.
-  return <Saisie key={booster.id} booster={booster} contact={fiche.contact} sante={sante} onFermer={onFermer} />;
+  return <Saisie key={booster.id} booster={booster} contact={fiche.contact} sante={sante} onFermer={onFermer} onTermine={onTermine} />;
 }
 
 type Etat = 'enregistre' | 'en_cours' | 'erreur';
 
-function Saisie({ booster, contact, sante, onFermer }: { booster: Booster; contact: Contact; sante: string[]; onFermer: () => void }) {
+function Saisie({
+  booster,
+  contact,
+  sante,
+  onFermer,
+  onTermine,
+}: {
+  booster: Booster;
+  contact: Contact;
+  sante: string[];
+  onFermer: () => void;
+  onTermine: () => void;
+}) {
   const [evaluation, setEvaluation] = useState<Evaluation>(booster.evaluation ?? evaluationVide());
   const [entretien, setEntretien] = useState<Record<string, string>>(booster.entretien ?? {});
   const [priorites, setPriorites] = useState<string[]>([0, 1, 2].map((i) => booster.priorites[i] ?? ''));
@@ -76,7 +98,7 @@ function Saisie({ booster, contact, sante, onFermer }: { booster: Booster; conta
     await envoi.current;
     try {
       await crm.terminerBooster(booster.id, { evaluation, entretien, priorites, paye });
-      onFermer();
+      onTermine();
     } catch {
       setEtat('erreur');
       setFin(false);
@@ -173,9 +195,12 @@ function Saisie({ booster, contact, sante, onFermer }: { booster: Booster; conta
       </Carte>
 
       {booster.statut === 'prevu' ? (
-        <Bouton libelle="Terminer le Booster" onPress={terminer} chargement={fin} />
+        <Bouton libelle="Terminer et voir le compte rendu" onPress={terminer} chargement={fin} />
       ) : (
-        <Bouton variante="secondaire" libelle="Retour à la fiche" onPress={onFermer} />
+        <>
+          <Bouton libelle="Voir le compte rendu" onPress={onTermine} />
+          <Bouton variante="discret" libelle="Retour à la fiche" onPress={onFermer} />
+        </>
       )}
     </View>
   );

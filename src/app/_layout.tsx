@@ -41,6 +41,7 @@ function Navigation() {
       <Stack.Screen name="coach/client/[id]" options={{ title: 'Suivi' }} />
       <Stack.Screen name="coach/contact/[id]" options={{ title: 'Fiche contact' }} />
       <Stack.Screen name="coach/booster/[id]" options={{ title: 'Séance Booster' }} />
+      <Stack.Screen name="coach/compte-rendu/[id]" options={{ title: 'Compte rendu' }} />
       <Stack.Screen name="questionnaire/[lien]" options={{ title: 'Questionnaire d’accueil' }} />
     </Stack>
   );

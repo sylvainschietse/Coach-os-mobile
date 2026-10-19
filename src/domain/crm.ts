@@ -53,9 +53,11 @@ export interface Booster {
   evaluation?: Evaluation;
   /** Réponses de l'entretien, par identifiant de ENTRETIEN. */
   entretien?: Record<string, string>;
+  /** Date du dernier envoi du compte rendu au client. */
+  planEnvoyeLe?: string;
 }
 
-export type SaisieBooster = Partial<Pick<Booster, 'evaluation' | 'entretien' | 'priorites' | 'paye' | 'compteRendu'>>;
+export type SaisieBooster = Partial<Pick<Booster, 'evaluation' | 'entretien' | 'priorites' | 'paye' | 'compteRendu' | 'planEnvoyeLe'>>;
 
 export type ModeleMessage = 'questionnaire' | 'booster' | 'rappel_booster' | 'suivi_booster' | 'libre';
 

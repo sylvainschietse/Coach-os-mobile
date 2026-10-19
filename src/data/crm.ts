@@ -174,7 +174,7 @@ const versLigne = {
   questionnaires: (q: Questionnaire): Ligne => ({ id: q.id, contact_id: q.contactId, recu_le: q.recuLe, reponses: q.reponses, alertes: q.alertes }),
   boosters: (b: Booster): Ligne => ({
     id: b.id, contact_id: b.contactId, date: b.date, statut: b.statut, tests: n(b.tests), compte_rendu: n(b.compteRendu),
-    priorites: b.priorites, paye: b.paye ?? false, evaluation: b.evaluation ?? null, entretien: b.entretien ?? null,
+    priorites: b.priorites, paye: b.paye ?? false, evaluation: b.evaluation ?? null, entretien: b.entretien ?? null, plan_envoye_le: n(b.planEnvoyeLe),
   }),
   relances: (r: Relance): Ligne => ({
     id: r.id, contact_id: r.contactId, echeance: r.echeance, modele: r.modele, note: n(r.note), faite_le: n(r.faiteLe), auto: r.auto ?? false,
@@ -190,7 +190,7 @@ const depuisLigne = {
   questionnaires: (l: any): Questionnaire => ({ id: l.id, contactId: l.contact_id, recuLe: l.recu_le, reponses: l.reponses, alertes: l.alertes }),
   boosters: (l: any): Booster => ({
     id: l.id, contactId: l.contact_id, date: l.date, statut: l.statut, tests: u(l.tests), compteRendu: u(l.compte_rendu),
-    priorites: l.priorites, paye: l.paye, evaluation: u(l.evaluation), entretien: u(l.entretien),
+    priorites: l.priorites, paye: l.paye, evaluation: u(l.evaluation), entretien: u(l.entretien), planEnvoyeLe: u(l.plan_envoye_le),
   }),
   relances: (l: any): Relance => ({
     id: l.id, contactId: l.contact_id, echeance: l.echeance, modele: l.modele, note: u(l.note), faiteLe: u(l.faite_le), auto: l.auto,
