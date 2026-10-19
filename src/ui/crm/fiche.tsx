@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 
@@ -14,6 +15,7 @@ import {
   type ModeleMessage,
 } from '@/domain/crm';
 import { preparerSeance } from '@/domain/briefing';
+import { ENTRETIEN } from '@/domain/evaluation';
 import { reponsesParSection } from '@/domain/questionnaire';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
@@ -228,7 +230,6 @@ function ProchaineEtape({
   onVoirClient: (clientId: string, prenom: string) => void;
 }) {
   const { contact } = fiche;
-  const [compteRendu, setCompteRendu] = useState(false);
   const [autreBooster, setAutreBooster] = useState(false);
 
   if (contact.statut === 'archive') {
@@ -248,18 +249,10 @@ function ProchaineEtape({
     );
   }
   if (prevu) {
-    return compteRendu ? (
-      <FormulaireCompteRendu
-        onAnnuler={() => setCompteRendu(false)}
-        onValider={(cr) => agir(async () => {
-          await crm.terminerBooster(prevu.id, cr);
-          setCompteRendu(false);
-        })}
-      />
-    ) : (
+    return (
       <Carte>
         <SousTitre>{`Booster ${dateHeure(prevu.date)}`}</SousTitre>
-        <Bouton libelle="Faire le compte rendu" onPress={() => setCompteRendu(true)} />
+        <Bouton libelle="Ouvrir la séance Booster" onPress={() => ouvrirSeance(prevu)} />
         <Bouton variante="discret" libelle="Annuler ce Booster" onPress={() => agir(() => crm.annulerBooster(prevu.id))} />
       </Carte>
     );
@@ -305,42 +298,7 @@ function PlanifierBooster({ onValider }: { onValider: (dateIso: string) => void 
   );
 }
 
-function FormulaireCompteRendu({
-  onValider,
-  onAnnuler,
-}: {
-  onValider: (cr: { tests?: string; compteRendu?: string; priorites: string[]; paye?: boolean }) => void;
-  onAnnuler: () => void;
-}) {
-  const [tests, setTests] = useState('');
-  const [compteRendu, setCompteRendu] = useState('');
-  const [priorites, setPriorites] = useState(['', '', '']);
-  const [paye, setPaye] = useState(false);
-  return (
-    <Carte>
-      <SousTitre>Compte rendu du Booster</SousTitre>
-      <ChampTexte libelle="Tests et évaluations" multiligne valeur={tests} onChange={setTests} placeholder="Squat, gainage, cardio…" />
-      <ChampTexte libelle="Ce que tu as observé" multiligne valeur={compteRendu} onChange={setCompteRendu} />
-      {priorites.map((p, i) => (
-        <ChampTexte
-          key={i}
-          libelle={`Priorité ${i + 1}`}
-          valeur={p}
-          onChange={(v) => setPriorites(priorites.map((x, j) => (j === i ? v : x)))}
-        />
-      ))}
-      <Puces>
-        <Puce libelle={paye ? '✓ Séance payée' : 'Séance payée ?'} actif={paye} onPress={() => setPaye(!paye)} />
-      </Puces>
-      <Bouton
-        libelle="Enregistrer le compte rendu"
-        desactive={!priorites.some((p) => p.trim())}
-        onPress={() => onValider({ tests: tests.trim() || undefined, compteRendu: compteRendu.trim() || undefined, priorites, paye })}
-      />
-      <Bouton variante="discret" libelle="Annuler" onPress={onAnnuler} />
-    </Carte>
-  );
-}
+const ouvrirSeance = (b: Booster) => router.push({ pathname: '/coach/booster/[id]', params: { id: b.id, contact: b.contactId } });
 
 function CompteRenduBooster({ booster }: { booster: Booster }) {
   return (
@@ -359,10 +317,16 @@ function CompteRenduBooster({ booster }: { booster: Booster }) {
         )}
         {booster.tests && (
           <View style={{ gap: 2 }}>
-            <Texte doux style={{ fontSize: 13 }}>Tests</Texte>
-            <Texte style={{ fontSize: 15 }}>{booster.tests}</Texte>
+            <Texte doux style={{ fontSize: 13 }}>Évaluation physique</Texte>
+            <Texte style={{ fontSize: 14, lineHeight: 21 }}>{booster.tests}</Texte>
           </View>
         )}
+        {ENTRETIEN.filter((q) => booster.entretien?.[q.id]?.trim()).map((q) => (
+          <View key={q.id} style={{ gap: 2 }}>
+            <Texte doux style={{ fontSize: 13 }}>{q.libelle}</Texte>
+            <Texte style={{ fontSize: 15 }}>{booster.entretien![q.id]}</Texte>
+          </View>
+        ))}
         {booster.compteRendu && (
           <View style={{ gap: 2 }}>
             <Texte doux style={{ fontSize: 13 }}>Observations</Texte>
@@ -370,6 +334,7 @@ function CompteRenduBooster({ booster }: { booster: Booster }) {
           </View>
         )}
         <Texte doux style={{ fontSize: 13 }}>{booster.paye ? 'Séance payée' : 'Paiement non noté'}</Texte>
+        <Bouton variante="discret" libelle="Compléter la séance" onPress={() => ouvrirSeance(booster)} />
       </Carte>
     </View>
   );

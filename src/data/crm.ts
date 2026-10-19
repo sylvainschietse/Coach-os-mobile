@@ -10,7 +10,7 @@ import { supabase } from './supabase';
 
 export type BoosterAVenir = Booster & { contact: Contact };
 export type SaisieContact = { prenom: string; nom?: string; telephone?: string; email?: string; source?: string };
-export type CompteRendu = { tests?: string; compteRendu?: string; priorites: string[]; paye?: boolean };
+export type CompteRendu = regles.SaisieBooster & { tests?: string; priorites: string[] };
 
 /** L'accueil des clients côté coach, quelle que soit la source (démo locale ou Supabase). */
 export interface DepotCrm {
@@ -20,6 +20,8 @@ export interface DepotCrm {
   creerContact(saisie: SaisieContact): Promise<{ contact: Contact } | { doublon: Doublon }>;
   modifierContact(id: string, patch: Parameters<typeof regles.modifierContact>[2]): Promise<void>;
   planifierBooster(contactId: string, date: string): Promise<void>;
+  /** Enregistre la saisie en cours de séance (évaluation, entretien, priorités) sans clore le Booster. */
+  enregistrerBooster(boosterId: string, saisie: regles.SaisieBooster): Promise<void>;
   terminerBooster(boosterId: string, compteRendu: CompteRendu): Promise<void>;
   annulerBooster(boosterId: string): Promise<void>;
   ajouterRelance(contactId: string, echeance: string, modele: ModeleMessage, note?: string): Promise<void>;
@@ -89,6 +91,7 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
     },
     modifierContact: (id, patch) => appliquer((c) => regles.modifierContact(c, id, patch)),
     planifierBooster: (contactId, date) => appliquer((c, ctx) => regles.planifierBooster(c, contactId, date, ctx)),
+    enregistrerBooster: (id, saisie) => appliquer((c) => regles.enregistrerBooster(c, id, saisie)),
     terminerBooster: (id, cr) => appliquer((c, ctx) => regles.terminerBooster(c, id, cr, ctx)),
     annulerBooster: (id) => appliquer((c, ctx) => regles.annulerBooster(c, id, ctx)),
     ajouterRelance: (contactId, echeance, modele, note) =>
@@ -171,7 +174,7 @@ const versLigne = {
   questionnaires: (q: Questionnaire): Ligne => ({ id: q.id, contact_id: q.contactId, recu_le: q.recuLe, reponses: q.reponses, alertes: q.alertes }),
   boosters: (b: Booster): Ligne => ({
     id: b.id, contact_id: b.contactId, date: b.date, statut: b.statut, tests: n(b.tests), compte_rendu: n(b.compteRendu),
-    priorites: b.priorites, paye: b.paye ?? false,
+    priorites: b.priorites, paye: b.paye ?? false, evaluation: b.evaluation ?? null, entretien: b.entretien ?? null,
   }),
   relances: (r: Relance): Ligne => ({
     id: r.id, contact_id: r.contactId, echeance: r.echeance, modele: r.modele, note: n(r.note), faite_le: n(r.faiteLe), auto: r.auto ?? false,
@@ -187,7 +190,7 @@ const depuisLigne = {
   questionnaires: (l: any): Questionnaire => ({ id: l.id, contactId: l.contact_id, recuLe: l.recu_le, reponses: l.reponses, alertes: l.alertes }),
   boosters: (l: any): Booster => ({
     id: l.id, contactId: l.contact_id, date: l.date, statut: l.statut, tests: u(l.tests), compteRendu: u(l.compte_rendu),
-    priorites: l.priorites, paye: l.paye,
+    priorites: l.priorites, paye: l.paye, evaluation: u(l.evaluation), entretien: u(l.entretien),
   }),
   relances: (l: any): Relance => ({
     id: l.id, contactId: l.contact_id, echeance: l.echeance, modele: l.modele, note: u(l.note), faiteLe: u(l.faite_le), auto: l.auto,

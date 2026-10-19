@@ -39,6 +39,7 @@ beforeAll(async () => {
   `);
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019000000_prototype.sql'), 'utf8'));
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019010000_crm.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019020000_booster_evaluation.sql'), 'utf8'));
   await db.exec(`
     grant usage on schema public to anon;
     insert into auth.users (id) values ('${ids.userCoach1}'), ('${ids.userCoach2}');
@@ -96,5 +97,20 @@ describe('questionnaire d’accueil', () => {
     await soumettre('autre-coach', { prenom: 'Julie', telephone: '0612345678' });
     const autre = await en('authenticated', ids.userCoach2, 'select prenom from public.contacts');
     expect(autre.rows).toEqual([{ prenom: 'Julie' }]);
+  });
+});
+
+describe('évaluation du Booster', () => {
+  it('reste réservée au coach du contact', async () => {
+    const { rows } = await en(
+      'authenticated',
+      ids.userCoach1,
+      `insert into public.boosters (contact_id, date, evaluation, entretien)
+       select id, now(), '{"tests":{"jambes":{"resultat":"Correct","observations":[]}}}', '{"freins":"Horaires"}'
+       from public.contacts where prenom = 'Julie' limit 1 returning evaluation->'tests'->'jambes'->>'resultat' as jambes`,
+    );
+    expect(rows[0].jambes).toBe('Correct');
+    const autre = await en('authenticated', ids.userCoach2, `select count(*)::int as n from public.boosters where evaluation is not null`);
+    expect(autre.rows[0].n).toBe(0);
   });
 });

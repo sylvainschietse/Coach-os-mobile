@@ -1,6 +1,8 @@
 // Accueil des clients : contacts, questionnaire d'accueil, séance Booster et relances.
 // Fonctions pures : la démo et les tests les appellent directement, la base reprend les mêmes règles.
 
+import { syntheseEvaluation, type Evaluation } from './evaluation';
+
 export type Statut = 'prospect' | 'booster_prevu' | 'booster_fait' | 'client' | 'archive';
 
 export const STATUTS: Record<Statut, { libelle: string; couleur: 'gris' | 'bleu' | 'orange' | 'vert' | 'noir' }> = {
@@ -43,11 +45,17 @@ export interface Booster {
   contactId: string;
   date: string;
   statut: 'prevu' | 'fait' | 'annule';
+  /** Synthèse texte de l'évaluation (format du compte rendu), recalculée à chaque enregistrement. */
   tests?: string;
   compteRendu?: string;
   priorites: string[];
   paye?: boolean;
+  evaluation?: Evaluation;
+  /** Réponses de l'entretien, par identifiant de ENTRETIEN. */
+  entretien?: Record<string, string>;
 }
+
+export type SaisieBooster = Partial<Pick<Booster, 'evaluation' | 'entretien' | 'priorites' | 'paye' | 'compteRendu'>>;
 
 export type ModeleMessage = 'questionnaire' | 'booster' | 'rappel_booster' | 'suivi_booster' | 'libre';
 
@@ -276,22 +284,33 @@ export function planifierBooster(c: Carnet, contactId: string, date: string, ctx
   return relancer(carnet, contactId, 'rappel_booster', veille < aujourdhui ? aujourdhui : veille, ctx);
 }
 
+/** Enregistre ce qui a été saisi pendant la séance, sans la clore (le coach peut y revenir). */
+export function enregistrerBooster(c: Carnet, boosterId: string, saisie: SaisieBooster): Carnet {
+  return {
+    ...c,
+    boosters: c.boosters.map((b) => {
+      if (b.id !== boosterId) return b;
+      const suite = { ...b, ...saisie };
+      return suite.evaluation ? { ...suite, tests: syntheseEvaluation(suite.evaluation) } : suite;
+    }),
+  };
+}
+
 export function terminerBooster(
   c: Carnet,
   boosterId: string,
-  compteRendu: { tests?: string; compteRendu?: string; priorites: string[]; paye?: boolean },
+  compteRendu: SaisieBooster & { tests?: string; priorites: string[] },
   ctx: Contexte,
 ): Carnet {
   const booster = c.boosters.find((b) => b.id === boosterId);
   if (!booster) return c;
-  let carnet: Carnet = {
-    ...c,
-    boosters: c.boosters.map((b) =>
-      b.id === boosterId ? { ...b, ...compteRendu, priorites: compteRendu.priorites.filter((p) => p.trim()), statut: 'fait' } : b,
-    ),
-  };
+  let carnet = enregistrerBooster(c, boosterId, { ...compteRendu, priorites: compteRendu.priorites.map((p) => p.trim()).filter(Boolean) });
+  if (compteRendu.tests !== undefined && !compteRendu.evaluation) {
+    carnet = { ...carnet, boosters: carnet.boosters.map((b) => (b.id === boosterId ? { ...b, tests: compteRendu.tests } : b)) };
+  }
+  carnet = { ...carnet, boosters: carnet.boosters.map((b) => (b.id === boosterId ? { ...b, statut: 'fait' } : b)) };
   const contact = c.contacts.find((x) => x.id === booster.contactId);
-  if (contact && contact.statut !== 'client') {
+  if (contact && contact.statut !== 'client' && booster.statut !== 'fait') {
     carnet = majContact(carnet, contact.id, { statut: 'booster_fait' });
     carnet = fermerRelances(carnet, contact.id, ctx, ['rappel_booster']);
     carnet = relancer(carnet, contact.id, 'suivi_booster', ajouterJours(jourLocal(ctx.maintenant), 2), ctx);

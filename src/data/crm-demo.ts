@@ -1,4 +1,5 @@
 // Contacts fictifs du mode démo, datés par rapport à aujourd'hui pour que la journée du coach soit remplie.
+import { syntheseEvaluation, type Evaluation } from '@/domain/evaluation';
 import { ajouterJours, jourLocal, type Carnet } from '@/domain/crm';
 
 export function carnetDemo(maintenant: Date): Carnet {
@@ -75,8 +76,16 @@ export function carnetDemo(maintenant: Date): Carnet {
         date: ilYA(2, 12),
         statut: 'fait',
         paye: true,
-        tests: 'Squat poids du corps : 20 rép. propres. Gainage : 45 s. Test de marche 6 min : 540 m.',
-        compteRendu: 'Bonne motivation, base cardio faible. Mobilité de hanches limitée.',
+        evaluation: EVALUATION_SOPHIE,
+        tests: syntheseEvaluation(EVALUATION_SOPHIE),
+        entretien: {
+          pourquoiMaintenant: 'Fatiguée depuis la naissance de son deuxième, veut reprendre la main avant l’été.',
+          dejaEssaye: 'Une appli de fitness à la maison, abandonnée au bout de 3 semaines.',
+          freins: 'Manque de temps le soir, sommeil court.',
+          attentesCoach: 'Un cadre et un suivi régulier.',
+          projection: 'Courir 30 minutes sans s’arrêter et avoir plus d’énergie.',
+          observationsCoach: 'Bonne motivation, base cardio faible. Mobilité de hanches limitée.',
+        },
         priorites: ['Mobilité des hanches', 'Cardio doux 2 fois par semaine', 'Sommeil et récupération'],
       },
     ],
@@ -87,3 +96,15 @@ export function carnetDemo(maintenant: Date): Carnet {
     ],
   };
 }
+
+const EVALUATION_SOPHIE: Evaluation = {
+  tests: {
+    poussee: { resultat: 'Difficile', observations: ['Gainage perdu'] },
+    tirage: { resultat: 'Correct', observations: ['Contrôle scapulaire limité'] },
+    jambes: { resultat: 'Correct', observations: ['Genoux instables', 'Amplitude limitée'] },
+    cardio: { resultat: 'Essoufflement marqué', observations: ['Récupération lente'], rpe: 8 },
+    mobilite: { resultat: 'Nettement limitée', observations: ['Hanches', 'Chevilles'] },
+    posture: { resultat: 'Légère asymétrie', observations: ['Bassin'] },
+  },
+  douleur: 'Non',
+};
