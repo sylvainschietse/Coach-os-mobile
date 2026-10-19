@@ -1,4 +1,5 @@
 // Vocabulaire métier partagé par l'app client, l'espace coach et la base.
+import type { ConfigMinuteur } from './minuteur';
 
 /** Ce qu'on mesure sur un exercice. Un développé couché n'a ni distance ni allure. */
 export type Mesure =
@@ -32,12 +33,16 @@ export interface LignePrescription {
   rir?: number;
   tempo?: string;
   consignes?: string;
+  /** Chrono réglé par le coach pour cet exercice (fractionné, tabata…). */
+  minuteur?: ConfigMinuteur;
 }
 
 export interface Bloc {
   id: string;
   titre: string;
   lignes: LignePrescription[];
+  /** Chrono réglé par le coach pour tout le bloc, quand c'est un circuit. */
+  minuteur?: ConfigMinuteur;
 }
 
 export interface Seance {

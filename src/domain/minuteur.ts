@@ -63,3 +63,40 @@ export function ecoule(debutMs: number, maintenantMs: number, pausesMs: number, 
   const finMs = pauseDepuisMs ?? maintenantMs;
   return Math.max(0, (finMs - debutMs - pausesMs) / 1000);
 }
+
+const secondes = (s: number) => (s >= 60 && s % 60 === 0 ? `${s / 60} min` : `${s} s`);
+
+/** Résumé lisible d'un chrono, par exemple « 2 exercices · 40 s / 20 s · 3 tours ». */
+export function resumeMinuteur(c: ConfigMinuteur): string {
+  const morceaux = [
+    c.exercices > 1 ? `${c.exercices} exercices` : null,
+    c.reposS > 0 ? `${secondes(c.travailS)} / ${secondes(c.reposS)}` : secondes(c.travailS),
+    c.tours > 1 ? `${c.tours} tours` : null,
+    c.tours > 1 && c.reposEntreToursS > 0 ? `${secondes(c.reposEntreToursS)} entre les tours` : null,
+  ];
+  return morceaux.filter(Boolean).join(' · ');
+}
+
+/** Relit un chrono transmis par la séance (ou stocké en base) ; null s'il est incomplet. */
+export function lireMinuteur(brut: unknown): ConfigMinuteur | null {
+  let o = brut;
+  if (typeof o === 'string') {
+    try {
+      o = JSON.parse(o);
+    } catch {
+      return null;
+    }
+  }
+  if (!o || typeof o !== 'object') return null;
+  const v = o as Record<string, unknown>;
+  const entier = (k: string, min: number) => (Number.isInteger(v[k]) && (v[k] as number) >= min ? (v[k] as number) : null);
+  const config = {
+    exercices: entier('exercices', 1),
+    travailS: entier('travailS', 1),
+    reposS: entier('reposS', 0) ?? 0,
+    tours: entier('tours', 1) ?? 1,
+    reposEntreToursS: entier('reposEntreToursS', 0) ?? 0,
+  };
+  if (config.exercices === null || config.travailS === null) return null;
+  return config as ConfigMinuteur;
+}

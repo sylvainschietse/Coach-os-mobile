@@ -10,7 +10,7 @@ Ce prototype couvre un seul parcours, de bout en bout :
 3. il laisse un commentaire de fin de séance ;
 4. le coach retrouve la séance, série par série, avec le commentaire.
 
-Il contient aussi le minuteur d'intervalles (Tabata, circuit). Pas encore de CRM, Booster, nutrition ni automatisations.
+Il contient aussi le minuteur d'intervalles (Tabata, circuit). Le coach peut en régler un sous un exercice ou sous un circuit de la séance : la cliente le lance d'un appui, déjà configuré. Pas encore de CRM, Booster, nutrition ni automatisations.
 
 ## Essayer sur ton téléphone (gratuit, sans compte Apple ni Google)
 

@@ -18,8 +18,11 @@ it('crée une séance complète pour chaque client de démonstration', async () 
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019000000_prototype.sql'), 'utf8'));
   await db.exec(readFileSync(join(__dirname, '../supabase/seed.sql'), 'utf8'));
   const { rows } = await db.query(
-    'select (select count(*)::int from public.seances) as seances, (select count(*)::int from public.lignes) as lignes',
+    `select (select count(*)::int from public.seances) as seances,
+            (select count(*)::int from public.lignes) as lignes,
+            (select count(*)::int from public.blocs where minuteur is not null)
+              + (select count(*)::int from public.lignes where minuteur is not null) as chronos`,
   );
-  expect(rows[0]).toEqual({ seances: 2, lignes: 16 });
+  expect(rows[0]).toEqual({ seances: 2, lignes: 16, chronos: 4 });
   await db.close();
 }, 60_000);

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { decoderBlocs, decoderCycles, MarqueurInvalide } from '../src/domain/cycles';
 import { ajouterALaFile, viderLaFile } from '../src/domain/file-envoi';
 import { champsPertinents } from '../src/domain/mesures';
-import { dureeTotale, ecoule, etatA, planifier, TABATA } from '../src/domain/minuteur';
+import { dureeTotale, ecoule, etatA, lireMinuteur, planifier, resumeMinuteur, TABATA } from '../src/domain/minuteur';
 import { construireRealisation, modifierSerie, validerSerie } from '../src/domain/realisation';
 import { preparerSeries, suggererValeurs } from '../src/domain/suggestions';
 import type { LignePrescription, Realisation } from '../src/domain/types';
@@ -174,5 +174,22 @@ describe('migration des marqueurs Zite', () => {
     );
     expect(blocs).toEqual(['1 · Mobilité spécifique', '2 · Abdos', '3 · Renforcement']);
     expect(texteLisible).toBe('Bien s’échauffer.');
+  });
+});
+
+describe('chrono dans la séance', () => {
+  const circuit = { exercices: 2, travailS: 40, reposS: 20, tours: 3, reposEntreToursS: 60 };
+
+  it('résume le chrono réglé par le coach', () => {
+    expect(resumeMinuteur(circuit)).toBe('2 exercices · 40 s / 20 s · 3 tours · 1 min entre les tours');
+    expect(resumeMinuteur(TABATA)).toBe('8 exercices · 20 s / 10 s');
+  });
+
+  it('relit le chrono transmis à l’écran minuteur, et refuse un chrono incomplet', () => {
+    expect(lireMinuteur(JSON.stringify(circuit))).toEqual(circuit);
+    expect(lireMinuteur({ exercices: 6, travailS: 30 })).toEqual({ exercices: 6, travailS: 30, reposS: 0, tours: 1, reposEntreToursS: 0 });
+    expect(lireMinuteur({ travailS: 30 })).toBeNull();
+    expect(lireMinuteur('pas du json')).toBeNull();
+    expect(lireMinuteur(null)).toBeNull();
   });
 });

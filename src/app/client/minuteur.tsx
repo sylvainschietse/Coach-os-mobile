@@ -1,8 +1,9 @@
 import { useKeepAwake } from 'expo-keep-awake';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { dureeTotale, ecoule, etatA, planifier, TABATA, type ConfigMinuteur } from '@/domain/minuteur';
+import { dureeTotale, ecoule, etatA, lireMinuteur, planifier, resumeMinuteur, TABATA, type ConfigMinuteur } from '@/domain/minuteur';
 import { annulerAlertes, autoriserNotifications, programmerAlerte } from '@/lib/notifications';
 import { maintenantMs } from '@/lib/temps';
 import { vibrer } from '@/lib/vibrer';
@@ -23,7 +24,10 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.ceil(s % 60) ==
 
 export default function Minuteur() {
   useKeepAwake();
-  const [config, setConfig] = useState<ConfigMinuteur>(TABATA);
+  // Ouvert depuis une séance : le chrono réglé par le coach arrive en paramètre.
+  const params = useLocalSearchParams<{ config?: string; titre?: string }>();
+  const [prevu] = useState(() => lireMinuteur(params.config));
+  const [config, setConfig] = useState<ConfigMinuteur>(prevu ?? TABATA);
   const [marche, setMarche] = useState<Marche | null>(null);
   const [maintenant, setMaintenant] = useState(maintenantMs);
   const phases = useMemo(() => planifier(config), [config]);
@@ -93,7 +97,12 @@ export default function Minuteur() {
   if (!marche || !etat) {
     return (
       <Ecran>
-        <Texte doux>Tabata, circuit ou fractionné : règle le format puis lance.</Texte>
+        {params.titre && <Stack.Screen options={{ title: params.titre }} />}
+        {prevu ? (
+          <Texte doux>Chrono prévu par ton coach : {resumeMinuteur(prevu)}. Tu peux l’ajuster avant de lancer.</Texte>
+        ) : (
+          <Texte doux>Tabata, circuit ou fractionné : règle le format puis lance.</Texte>
+        )}
         <Carte>
           {REGLAGES.map((r) => (
             <View key={r.cle} style={styles.reglage}>
@@ -109,7 +118,11 @@ export default function Minuteur() {
         </Carte>
         <Texte doux style={{ textAlign: 'center' }}>Durée totale {mmss(dureeTotale(phases))}</Texte>
         <Bouton libelle="Démarrer" onPress={demarrer} />
-        <Bouton variante="discret" libelle="Revenir au Tabata (8 × 20 s / 10 s)" onPress={() => setConfig(TABATA)} />
+        {prevu ? (
+          <Bouton variante="discret" libelle="Revenir au réglage du coach" onPress={() => setConfig(prevu)} />
+        ) : (
+          <Bouton variante="discret" libelle="Revenir au Tabata (8 × 20 s / 10 s)" onPress={() => setConfig(TABATA)} />
+        )}
       </Ecran>
     );
   }
@@ -134,7 +147,11 @@ export default function Minuteur() {
         {etat.statut !== 'termine' && (
           <Bouton variante="secondaire" libelle={marche.pauseDepuisMs ? 'Reprendre' : 'Pause'} onPress={basculerPause} />
         )}
-        <Bouton variante="contour" libelle={etat.statut === 'termine' ? 'Nouveau minuteur' : 'Arrêter'} onPress={arreter} />
+        {etat.statut === 'termine' && prevu ? (
+          <Bouton variante="contour" libelle="Retour à la séance" onPress={() => router.back()} />
+        ) : (
+          <Bouton variante="contour" libelle={etat.statut === 'termine' ? 'Nouveau minuteur' : 'Arrêter'} onPress={arreter} />
+        )}
       </View>
     </View>
   );

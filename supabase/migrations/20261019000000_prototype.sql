@@ -51,7 +51,9 @@ create table public.blocs (
   id uuid primary key default gen_random_uuid(),
   seance_id uuid not null references public.seances (id) on delete cascade,
   ordre int not null,
-  titre text not null
+  titre text not null,
+  -- Chrono du circuit : {exercices, travailS, reposS, tours, reposEntreToursS}
+  minuteur jsonb
 );
 
 create table public.lignes (
@@ -67,7 +69,9 @@ create table public.lignes (
   recuperation_s int,
   rir int,
   tempo text,
-  consignes text
+  consignes text,
+  -- Chrono propre à l'exercice (fractionné, tabata…), même format que pour un bloc
+  minuteur jsonb
 );
 
 -- Ce que le client a réellement fait. L'id est créé sur le téléphone :

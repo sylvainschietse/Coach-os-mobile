@@ -39,7 +39,8 @@ function seancePour(clientId: string): Seance {
       },
       {
         id: p('b2'),
-        titre: 'Abdos',
+        titre: 'Abdos en circuit',
+        minuteur: { exercices: 2, travailS: 40, reposS: 20, tours: 3, reposEntreToursS: 60 },
         lignes: [
           { id: p('l2'), exercice: EXERCICES.gainage, series: 3, dureeS: 40, recuperationS: 30 },
           { id: p('l3'), exercice: EXERCICES.crunch, series: 2, repetitionsMin: 15, repetitionsMax: 20, recuperationS: 30 },
@@ -59,7 +60,15 @@ function seancePour(clientId: string): Seance {
         id: p('b4'),
         titre: 'Finisher cardio',
         lignes: [
-          { id: p('l8'), exercice: EXERCICES.rameur, series: 1, dureeS: 300, recuperationS: 0, consignes: 'Allure confortable, note la distance' },
+          {
+            id: p('l8'),
+            exercice: EXERCICES.rameur,
+            series: 1,
+            dureeS: 360,
+            recuperationS: 0,
+            consignes: '6 sprints de 30 s, 30 s tranquille entre chaque. Note la distance totale.',
+            minuteur: { exercices: 6, travailS: 30, reposS: 30, tours: 1, reposEntreToursS: 0 },
+          },
         ],
       },
     ],

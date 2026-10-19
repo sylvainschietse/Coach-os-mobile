@@ -41,7 +41,8 @@ begin
     returning id into s;
 
     insert into public.blocs (seance_id, ordre, titre) values (s, 1, 'Échauffement') returning id into b1;
-    insert into public.blocs (seance_id, ordre, titre) values (s, 2, 'Abdos') returning id into b2;
+    insert into public.blocs (seance_id, ordre, titre, minuteur) values (s, 2, 'Abdos en circuit',
+      '{"exercices":2,"travailS":40,"reposS":20,"tours":3,"reposEntreToursS":60}') returning id into b2;
     insert into public.blocs (seance_id, ordre, titre) values (s, 3, 'Renforcement') returning id into b3;
     insert into public.blocs (seance_id, ordre, titre) values (s, 4, 'Finisher cardio') returning id into b4;
 
@@ -56,7 +57,8 @@ begin
       (b3, 2, '00000000-0000-4000-8000-000000000105', 3, 10, 12, 14, 90, 2, null),
       (b3, 3, '00000000-0000-4000-8000-000000000106', 3, 8, 12, 0, 90, 1, null),
       (b3, 4, '00000000-0000-4000-8000-000000000107', 3, 10, 12, 20, 60, 1, null);
-    insert into public.lignes (bloc_id, ordre, exercice_id, series, duree_s, recuperation_s, consignes) values
-      (b4, 1, '00000000-0000-4000-8000-000000000108', 1, 300, 0, 'Allure confortable, note la distance');
+    insert into public.lignes (bloc_id, ordre, exercice_id, series, duree_s, recuperation_s, consignes, minuteur) values
+      (b4, 1, '00000000-0000-4000-8000-000000000108', 1, 360, 0, '6 sprints de 30 s, 30 s tranquille entre chaque. Note la distance totale.',
+       '{"exercices":6,"travailS":30,"reposS":30,"tours":1,"reposEntreToursS":0}');
   end loop;
 end $$;

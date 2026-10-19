@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { lireMinuteur } from '@/domain/minuteur';
 import type { Mesure, Realisation, RealisationDetail, Seance, Valeurs } from '@/domain/types';
 
 import { derniersParExercice, type Depot, type Profil } from './depot';
@@ -16,6 +17,7 @@ type LigneBase = {
   rir: number | null;
   tempo: string | null;
   consignes: string | null;
+  minuteur: unknown;
   exercices: { id: string; nom: string; mesures: Mesure[]; video_url: string | null };
 };
 
@@ -100,7 +102,7 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
       const s = verifier(
         await db
           .from('seances')
-          .select('id, client_id, titre, date_prevue, consignes, blocs(id, ordre, titre, lignes(*, exercices(*)))')
+          .select('id, client_id, titre, date_prevue, consignes, blocs(id, ordre, titre, minuteur, lignes(*, exercices(*)))')
           .eq('id', id)
           .single(),
       ) as unknown as {
@@ -109,7 +111,7 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
         titre: string;
         date_prevue: string | null;
         consignes: string | null;
-        blocs: { id: string; ordre: number; titre: string; lignes: LigneBase[] }[];
+        blocs: { id: string; ordre: number; titre: string; minuteur: unknown; lignes: LigneBase[] }[];
       };
       const seance: Seance = {
         id: s.id,
@@ -122,6 +124,7 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
           .map((b) => ({
             id: b.id,
             titre: b.titre,
+            minuteur: lireMinuteur(b.minuteur) ?? undefined,
             lignes: b.lignes
               .sort((x, y) => x.ordre - y.ordre)
               .map((l) => ({
@@ -140,6 +143,7 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
                 recuperationS: sansNull(l.recuperation_s),
                 rir: sansNull(l.rir),
                 tempo: sansNull(l.tempo),
+                minuteur: lireMinuteur(l.minuteur) ?? undefined,
                 consignes: sansNull(l.consignes),
               })),
           })),

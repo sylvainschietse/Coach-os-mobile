@@ -7,6 +7,7 @@ import { depot } from '@/data';
 import { enregistrerSeance } from '@/data/file-envoi';
 import { useSession } from '@/data/session';
 import { champsPertinents, LIBELLES } from '@/domain/mesures';
+import { resumeMinuteur, type ConfigMinuteur } from '@/domain/minuteur';
 import { annulerValidation, construireRealisation, modifierSerie, validerSerie } from '@/domain/realisation';
 import { preparerSeries } from '@/domain/suggestions';
 import type { LignePrescription, Seance, SerieSaisie } from '@/domain/types';
@@ -122,6 +123,7 @@ export default function RealiserSeance() {
         {seance.blocs.map((bloc) => (
           <View key={bloc.id} style={{ gap: espace(3) }}>
             <Text style={styles.bloc}>{bloc.titre}</Text>
+            {bloc.minuteur && <LancerChrono config={bloc.minuteur} titre={bloc.titre} />}
             {bloc.lignes.map((ligne) => {
               const champs = champsPertinents(ligne.exercice);
               return (
@@ -129,6 +131,7 @@ export default function RealiserSeance() {
                   <SousTitre>{ligne.exercice.nom}</SousTitre>
                   <Texte doux style={{ fontSize: 14 }}>{prescriptionLisible(ligne)}</Texte>
                   {ligne.consignes && <Texte style={{ fontSize: 14 }}>{ligne.consignes}</Texte>}
+                  {ligne.minuteur && <LancerChrono config={ligne.minuteur} titre={ligne.exercice.nom} />}
                   {series[ligne.id]?.map((serie) => (
                     <View key={serie.index} style={styles.serie}>
                       <Text style={styles.numero}>{serie.index + 1}</Text>
@@ -186,6 +189,25 @@ export default function RealiserSeance() {
       </Ecran>
       {repos && <BandeauRepos repos={repos} onFin={() => setRepos(null)} onPasser={arreterRepos} />}
     </View>
+  );
+}
+
+/** Chrono réglé par le coach, sous un exercice ou un circuit : un appui ouvre le minuteur déjà configuré. */
+function LancerChrono({ config, titre }: { config: ConfigMinuteur; titre: string }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Lancer le chrono : ${resumeMinuteur(config)}`}
+      onPress={() => router.push({ pathname: '/client/minuteur', params: { config: JSON.stringify(config), titre } })}
+      style={({ pressed }) => [styles.chrono, pressed && { opacity: 0.85 }]}
+    >
+      <Text style={styles.chronoIcone}>⏱</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.chronoTitre}>Lancer le chrono</Text>
+        <Text style={styles.chronoDetail}>{resumeMinuteur(config)}</Text>
+      </View>
+      <Text style={styles.chronoFleche}>›</Text>
+    </Pressable>
   );
 }
 
@@ -257,6 +279,19 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     color: couleurs.texte,
   },
+  chrono: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espace(3),
+    backgroundColor: couleurs.noir,
+    borderRadius: 12,
+    paddingHorizontal: espace(4),
+    paddingVertical: espace(3),
+  },
+  chronoIcone: { fontSize: 22, color: '#FFFFFF' },
+  chronoTitre: { color: '#FFFFFF', fontFamily: polices.texteGras, fontSize: 15 },
+  chronoDetail: { color: '#C9C9CF', fontFamily: polices.texte, fontSize: 13 },
+  chronoFleche: { color: couleurs.rouge, fontFamily: polices.texteGras, fontSize: 26 },
   bandeau: {
     position: 'absolute',
     left: espace(3),
