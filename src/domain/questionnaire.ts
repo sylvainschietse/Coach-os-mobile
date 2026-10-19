@@ -343,13 +343,19 @@ export const QUESTIONNAIRE: Section[] = [
         type: 'long',
         condition: { question: 'douleur', egal: 'Oui' },
       },
-      // Dans Tally, la règle « Oui » de cette question n'affiche rien (cible vide).
       {
         id: 'contreIndication',
         libelle: 'As-tu une contre-indication médicale connue à la pratique du sport ?',
         type: 'choix',
         obligatoire: true,
         options: ['Non', 'Oui'],
+      },
+      // Absente du Tally (la règle « Oui » n'y affichait rien) : ajoutée à la demande de Camille.
+      {
+        id: 'contreIndicationDetail',
+        libelle: 'Laquelle ?',
+        type: 'long',
+        condition: { question: 'contreIndication', egal: 'Oui' },
       },
     ],
   },
@@ -374,7 +380,7 @@ export const QUESTIONNAIRE: Section[] = [
           'Autre',
         ],
       },
-      // Dans Tally, la règle sur « Autre » masque « Peux-tu préciser ? » au lieu de l'afficher : ici on l'affiche.
+      // Dans Tally, la règle sur « Autre » masquait « Peux-tu préciser ? » : ici on l'affiche, validé par Camille.
       {
         id: 'attentesAutre',
         libelle: 'Peux-tu préciser ?',

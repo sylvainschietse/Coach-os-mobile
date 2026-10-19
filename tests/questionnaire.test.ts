@@ -32,6 +32,11 @@ describe('bilan forme & objectifs', () => {
     expect(estVisible(question('materielAutre'), { lieu: 'En salle', materiel: 'Autre' })).toBe(false);
   });
 
+  it('demande laquelle quand il y a une contre-indication', () => {
+    expect(estVisible(question('contreIndicationDetail'), { contreIndication: 'Non' })).toBe(false);
+    expect(estVisible(question('contreIndicationDetail'), { contreIndication: 'Oui' })).toBe(true);
+  });
+
   it('n’exige une question cachée que si elle est affichée', () => {
     const base = { typesAimes: 'Cardio', douleur: 'Non', contreIndication: 'Non', anciennete: 'Je débute', seancesActuelles: 'Aucune', seancesPossibles: '2 séances', lieu: 'En salle' };
     expect(verifierReponses({ ...base, activiteReguliere: 'Non' }, normaliser, profil)).toEqual({});
