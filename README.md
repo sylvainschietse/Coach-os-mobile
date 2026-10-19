@@ -3,14 +3,24 @@
 Application iPhone / Android de Coach OS, avec l'espace coach utilisable aussi dans un navigateur.
 Construite avec [Expo](https://expo.dev) (React Native, TypeScript) et [Supabase](https://supabase.com) pour la base.
 
-Ce prototype couvre un seul parcours, de bout en bout :
+Ce prototype couvre deux parcours de bout en bout.
+
+**Accueil des clients (CRM)**, qui remplace Tally → Make → Airtable :
+
+1. le coach crée un contact avec un simple numéro de téléphone (doublons détectés à la saisie, numéro normalisé) ;
+2. le prospect remplit le questionnaire d'accueil par un lien, sans compte : ses réponses arrivent sur la bonne fiche (rapprochement par téléphone puis e-mail, jamais par le nom ; les différences sont signalées, pas écrasées) ;
+3. le coach planifie la séance Booster, puis saisit tests, observations et 3 priorités ;
+4. les relances du jour (questionnaire, proposition de Booster, rappel la veille, suivi après Booster) s'affichent sur l'accueil du coach, avec le message déjà écrit qui s'ouvre dans SMS, WhatsApp ou e-mail ;
+5. « Passer en client » ouvre l'espace client ; les contacts peuvent être archivés puis réactivés, sans rien effacer.
+
+**Séance du client** :
 
 1. un client se connecte et ouvre sa séance du jour ;
 2. il la réalise : charges suggérées grisées, qu'il valide ou corrige série par série, minuteur de récupération qui sonne même téléphone verrouillé ;
 3. il laisse un commentaire de fin de séance ;
 4. le coach retrouve la séance, série par série, avec le commentaire.
 
-Il contient aussi le minuteur d'intervalles (Tabata, circuit). Le coach peut en régler un sous un exercice ou sous un circuit de la séance : la cliente le lance d'un appui, déjà configuré. Pas encore de CRM, Booster, nutrition ni automatisations.
+Il contient aussi le minuteur d'intervalles (Tabata, circuit). Le coach peut en régler un sous un exercice ou sous un circuit de la séance : la cliente le lance d'un appui, déjà configuré. Pas encore de création de programmes par le coach, de compte rendu PDF automatique, de paiements, de suivi des mensurations ni de nutrition.
 
 ## Essayer sur ton téléphone (gratuit, sans compte Apple ni Google)
 
@@ -34,7 +44,7 @@ Sans configuration, l'app démarre en **mode démo** : données fictives (Sylvai
 ## Brancher une vraie base Supabase (offre gratuite)
 
 1. Créer un projet sur [supabase.com](https://supabase.com), région Europe.
-2. Dans *SQL Editor*, exécuter `supabase/migrations/20261019000000_prototype.sql`.
+2. Dans *SQL Editor*, exécuter `supabase/migrations/20261019000000_prototype.sql`, puis `supabase/migrations/20261019010000_crm.sql`.
 3. Dans *Authentication > Users*, créer trois comptes : `coach@demo.coachos.fr`, `lea@demo.coachos.fr`, `thomas@demo.coachos.fr` (ou changer les e-mails dans `supabase/seed.sql`).
 4. Exécuter `supabase/seed.sql`.
 5. Copier `.env.example` en `.env.local` et renseigner l'URL du projet et la clé publique (*Project Settings > API*).
@@ -63,7 +73,7 @@ npm run lint
 | Dossier | Contenu |
 | --- | --- |
 | `src/app/` | Écrans (Expo Router) : `client/`, `coach/` |
-| `src/domain/` | Logique métier pure, testée : suggestions, minuteur, file d'envoi, décodage Zite |
+| `src/domain/` | Logique métier pure, testée : CRM et relances, questionnaire, suggestions, minuteur, file d'envoi, décodage Zite |
 | `src/data/` | Accès aux données : mode démo local ou Supabase |
 | `src/ui/` | Thème Coach OS et composants |
 | `supabase/` | Schéma, règles d'accès et données de démonstration |

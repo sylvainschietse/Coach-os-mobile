@@ -125,6 +125,70 @@ export function ChampNombre({
   );
 }
 
+/** Champ texte avec libellé ; `erreur` s'affiche en rouge sous le champ. */
+export function ChampTexte({
+  libelle,
+  valeur,
+  onChange,
+  placeholder,
+  multiligne,
+  erreur,
+  type = 'texte',
+  aide,
+}: {
+  libelle: string;
+  valeur: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  multiligne?: boolean;
+  erreur?: string;
+  type?: 'texte' | 'telephone' | 'email' | 'nombre';
+  aide?: string;
+}) {
+  return (
+    <View style={{ gap: espace(1) }}>
+      <Text style={styles.champLibelle}>{libelle}</Text>
+      <TextInput
+        accessibilityLabel={libelle}
+        value={valeur}
+        onChangeText={onChange}
+        placeholder={placeholder}
+        placeholderTextColor={couleurs.suggestion}
+        multiline={multiligne}
+        inputMode={type === 'telephone' ? 'tel' : type === 'email' ? 'email' : type === 'nombre' ? 'numeric' : 'text'}
+        keyboardType={type === 'telephone' ? 'phone-pad' : type === 'email' ? 'email-address' : 'default'}
+        autoCapitalize={type === 'email' ? 'none' : 'sentences'}
+        autoCorrect={type === 'texte'}
+        style={[
+          styles.champSaisie,
+          styles.champTexte,
+          multiligne && { minHeight: 88, textAlignVertical: 'top' },
+          erreur !== undefined && { borderColor: couleurs.rouge },
+        ]}
+      />
+      {erreur ? <Text style={styles.champErreur}>{erreur}</Text> : aide ? <Text style={styles.champLibelle}>{aide}</Text> : null}
+    </View>
+  );
+}
+
+/** Choix parmi quelques options (statut, objectif, date rapide). */
+export function Puce({ libelle, actif, onPress }: { libelle: string; actif?: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!actif }}
+      onPress={onPress}
+      style={({ pressed }) => [styles.puce, actif && styles.puceActive, pressed && { opacity: 0.8 }]}
+    >
+      <Text style={[styles.puceTexte, actif && { color: '#FFFFFF' }]}>{libelle}</Text>
+    </Pressable>
+  );
+}
+
+export function Puces({ children }: { children: ReactNode }) {
+  return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>{children}</View>;
+}
+
 export function Chargement() {
   return (
     <View style={{ padding: espace(10), alignItems: 'center' }}>
@@ -173,4 +237,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   champSuggestion: { fontStyle: 'italic' },
+  champTexte: { fontSize: 16, fontFamily: polices.texte },
+  champErreur: { fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.rouge },
+  puce: {
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    paddingHorizontal: espace(3.5),
+    paddingVertical: espace(2),
+  },
+  puceActive: { backgroundColor: couleurs.noir, borderColor: couleurs.noir },
+  puceTexte: { fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.texte },
 });

@@ -5,8 +5,8 @@
 --   lea@demo.coachos.fr     (Léa, cliente)
 --   thomas@demo.coachos.fr  (Thomas, client)
 
-insert into public.coachs (id, user_id, nom)
-select '00000000-0000-4000-8000-000000000001', id, 'Sylvain'
+insert into public.coachs (id, user_id, nom, lien_questionnaire)
+select '00000000-0000-4000-8000-000000000001', id, 'Sylvain', 'sylvain'
 from auth.users where email = 'coach@demo.coachos.fr';
 
 insert into public.clients (id, coach_id, user_id, prenom, nom, email)

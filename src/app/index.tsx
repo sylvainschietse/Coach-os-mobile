@@ -1,4 +1,4 @@
-import { Redirect } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -45,6 +45,11 @@ function ChoixDemo() {
         variante="secondaire"
         libelle={`Je suis ${COACH_DEMO.nom}, coach`}
         onPress={() => choisirProfilDemo({ role: 'coach', coachId: COACH_DEMO.id, nom: COACH_DEMO.nom })}
+      />
+      <Bouton
+        variante="contour"
+        libelle="Je suis un futur client : questionnaire d’accueil"
+        onPress={() => router.push({ pathname: '/questionnaire/[lien]', params: { lien: 'sylvain' } })}
       />
     </View>
   );

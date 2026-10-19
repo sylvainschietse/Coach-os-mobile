@@ -37,8 +37,10 @@ function Navigation() {
       <Stack.Screen name="client/index" options={{ title: 'Mes séances' }} />
       <Stack.Screen name="client/seance/[id]" options={{ title: 'Séance' }} />
       <Stack.Screen name="client/minuteur" options={{ title: 'Minuteur' }} />
-      <Stack.Screen name="coach/index" options={{ title: 'Mes clients' }} />
+      <Stack.Screen name="coach/index" options={{ title: 'Coach OS' }} />
       <Stack.Screen name="coach/client/[id]" options={{ title: 'Suivi' }} />
+      <Stack.Screen name="coach/contact/[id]" options={{ title: 'Fiche contact' }} />
+      <Stack.Screen name="questionnaire/[lien]" options={{ title: 'Questionnaire d’accueil' }} />
     </Stack>
   );
 }

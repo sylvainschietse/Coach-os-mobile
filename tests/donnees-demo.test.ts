@@ -15,7 +15,9 @@ it('crée une séance complète pour chaque client de démonstration', async () 
     create role authenticated;
     insert into auth.users (email) values ('coach@demo.coachos.fr'), ('lea@demo.coachos.fr'), ('thomas@demo.coachos.fr');
   `);
+  await db.exec('create role anon;');
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019000000_prototype.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019010000_crm.sql'), 'utf8'));
   await db.exec(readFileSync(join(__dirname, '../supabase/seed.sql'), 'utf8'));
   const { rows } = await db.query(
     `select (select count(*)::int from public.seances) as seances,

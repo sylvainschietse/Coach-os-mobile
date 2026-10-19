@@ -11,6 +11,9 @@ export const couleurs = {
   carte: '#FFFFFF',
   vert: '#1E8E4E',
   vertClair: '#E7F5EC',
+  bleu: '#2563EB',
+  orange: '#C2410C',
+  orangeClair: '#FFF1E6',
 };
 
 export const polices = {

@@ -24,3 +24,8 @@ export function useCharger<T>(charger: () => Promise<T>, cle: string) {
   const recharger = useCallback(() => setVersion((v) => v + 1), []);
   return { ...etat, recharger };
 }
+
+/** Recharge quand l'écran revient au premier plan et quand une autre partie de l'écran signale un changement. */
+export function useRechargerSur(recharger: () => void, ecouter: (fn: () => void) => () => void) {
+  useEffect(() => ecouter(recharger), [recharger, ecouter]);
+}

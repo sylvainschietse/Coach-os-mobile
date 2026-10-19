@@ -17,6 +17,15 @@ async function lire(): Promise<Realisation[]> {
   }
 }
 
+/** Prospects passés clients depuis l'accueil des clients (voir data/crm.ts). */
+async function clientsAjoutes(): Promise<{ id: string; prenom: string; nom: string }[]> {
+  try {
+    return JSON.parse((await AsyncStorage.getItem('coachos.demo.clients-ajoutes')) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
 async function toutes(): Promise<Realisation[]> {
   return [...HISTORIQUE_DEMO, ...(await lire())];
 }
@@ -65,7 +74,7 @@ export const depotDemo: Depot = {
 
   async clientsDuCoach() {
     const realisations = await toutes();
-    return CLIENTS_DEMO.map((c) => {
+    return [...CLIENTS_DEMO, ...(await clientsAjoutes())].map((c) => {
       const derniere = realisations
         .filter((r) => r.clientId === c.id)
         .sort((a, b) => b.fin.localeCompare(a.fin))
