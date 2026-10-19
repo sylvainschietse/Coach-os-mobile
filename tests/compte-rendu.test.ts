@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { compteRenduHtml, construireCompteRendu } from '../src/domain/compte-rendu';
+import { compteRenduHtml, construireCompteRendu, emailCompteRendu, messageCompteRenduEnvoye } from '../src/domain/compte-rendu';
+import { lienEnvoi } from '../src/domain/crm';
 import type { Booster, Contact } from '../src/domain/crm';
 
 const contact: Contact = { id: 'c', prenom: 'Karim', nom: 'Benali', statut: 'booster_fait', creeLe: '2026-10-10T10:00:00Z' };
@@ -46,6 +47,19 @@ describe('compte rendu du Booster', () => {
     expect(html).toContain('Super première séance &lt;3');
     expect(html).toContain('<div class="num">1</div><div><div class="titre-p">Renforcer les épaules</div>');
     expect(html).not.toContain('Tirage');
+  });
+});
+
+describe('envoi du compte rendu', () => {
+  it('prépare l’e-mail et le message WhatsApp au prénom du client', () => {
+    const cr = construireCompteRendu(contact, booster, undefined, 'Sylvain');
+    const mail = emailCompteRendu(cr);
+    expect(mail.sujet).toContain('plan d’action personnalisé');
+    expect(mail.corps.startsWith('Bonjour Karim,')).toBe(true);
+    expect(mail.corps).toContain('pièce jointe');
+    const message = messageCompteRenduEnvoye(cr);
+    expect(message).toContain('Karim, c’est Sylvain');
+    expect(lienEnvoi('whatsapp', { ...contact, telephone: '33612345678' }, message)).toMatch(/^https:\/\/wa\.me\/33612345678\?text=Bonjour%20Karim/);
   });
 });
 

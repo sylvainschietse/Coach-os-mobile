@@ -327,3 +327,21 @@ ${tests ? `<div class="page">${entete}<div class="contenu">${tests}</div></div>`
 </div>
 </body></html>`;
 }
+
+/** L'e-mail qui accompagne le PDF du compte rendu. */
+export function emailCompteRendu(cr: CompteRendu): { sujet: string; corps: string } {
+  return {
+    sujet: `Ton plan d’action personnalisé · Booster du ${cr.date}`,
+    corps: [
+      `Bonjour ${cr.prenom},`,
+      'Merci pour ta séance Booster ! Tu trouveras en pièce jointe ton plan d’action personnalisé : ce qui ressort de ton bilan et de tes tests, tes 3 priorités et ce que tu peux faire dès cette semaine.',
+      'Prends le temps de le lire, et n’hésite pas à me répondre si tu as la moindre question.',
+      `À très bientôt,\n${cr.coach}`,
+    ].join('\n\n'),
+  };
+}
+
+/** Le message WhatsApp qui prévient le client que le compte rendu est dans sa boîte mail. */
+export function messageCompteRenduEnvoye(cr: CompteRendu): string {
+  return `Bonjour ${cr.prenom}, c’est ${cr.coach} ! Je viens de t’envoyer par e-mail ton plan d’action personnalisé suite à notre séance Booster. Jette un œil (pense à regarder dans tes spams s’il n’arrive pas) et dis-moi si tu as des questions 💪`;
+}

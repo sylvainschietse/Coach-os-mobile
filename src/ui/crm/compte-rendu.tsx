@@ -1,3 +1,5 @@
+import * as Linking from 'expo-linking';
+import * as MailComposer from 'expo-mail-composer';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
@@ -5,14 +7,15 @@ import { Platform, Text, View } from 'react-native';
 
 import { crm } from '@/data/crm';
 import { iaDisponible, redigerCompteRendu } from '@/data/redaction';
-import { compteRenduHtml, construireCompteRendu } from '@/domain/compte-rendu';
+import { compteRenduHtml, construireCompteRendu, emailCompteRendu, messageCompteRenduEnvoye } from '@/domain/compte-rendu';
+import { lienEnvoi } from '@/domain/crm';
 import type { Booster, FicheContact } from '@/domain/crm';
 import { TESTS } from '@/domain/evaluation';
 import { appliquerRedaction, redactionModele, type Redaction } from '@/domain/redaction';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { useCharger } from '@/lib/useCharger';
 
-import { Bouton, Carte, Chargement, ChampTexte, Erreur, Texte } from '../composants';
+import { Bouton, Carte, Chargement, ChampTexte, Erreur, SousTitre, Texte } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { dateCourte, TitreSection, useCoachNom } from './commun';
 
@@ -29,7 +32,7 @@ export function CompteRenduVue({ contactId, boosterId, onModifierSeance }: { con
 function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheContact; booster: Booster; onModifierSeance: () => void; recharger: () => void }) {
   const coach = useCoachNom();
   const [mot, setMot] = useState(booster.compteRendu ?? '');
-  const [envoi, setEnvoi] = useState(false);
+  const [envoi, setEnvoi] = useState<'email' | 'partage'>();
   const [erreur, setErreur] = useState<string>();
   // Textes retouchés ou rédigés par l'IA ; tant qu'il n'y en a pas, le modèle suit les tests et les priorités.
   const [textes, setTextes] = useState<Redaction | undefined>(booster.redaction);
@@ -74,21 +77,36 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
     }
   }
 
-  async function partager() {
-    setEnvoi(true);
+  const contact = fiche.contact;
+
+  /** Le même PDF part par e-mail ou par une autre app ; la date d'envoi reste sur le Booster. */
+  async function envoyer(par: 'email' | 'partage') {
+    setEnvoi(par);
     setErreur(undefined);
     try {
       // A4 en points (72 par pouce).
       const { uri } = await Print.printToFileAsync({ html: compteRenduHtml(cr, { police: BEBAS_NEUE_BASE64 }), width: 595, height: 842 });
-      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: cr.titre });
-      await crm.enregistrerBooster(booster.id, { planEnvoyeLe: new Date().toISOString() });
-      recharger();
+      let envoye = true;
+      if (par === 'email' && contact.email && (await MailComposer.isAvailableAsync())) {
+        const mail = emailCompteRendu(cr);
+        const r = await MailComposer.composeAsync({ recipients: [contact.email], subject: mail.sujet, body: mail.corps, attachments: [uri] });
+        envoye = r.status !== MailComposer.MailComposerStatus.CANCELLED;
+      } else {
+        // Pas de compte mail sur le téléphone : on passe par le partage (Gmail, Outlook, WhatsApp…).
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: cr.titre });
+      }
+      if (envoye) {
+        await crm.enregistrerBooster(booster.id, { planEnvoyeLe: new Date().toISOString() });
+        recharger();
+      }
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Le PDF n’a pas pu être créé.');
     } finally {
-      setEnvoi(false);
+      setEnvoi(undefined);
     }
   }
+
+  const prevenir = () => Linking.openURL(lienEnvoi('whatsapp', contact, messageCompteRenduEnvoye(cr))!).catch(() => undefined);
 
   return (
     <View style={{ gap: espace(3) }}>
@@ -192,15 +210,38 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
         </View>
       </Carte>
 
+      <TitreSection>Envoyer au client</TitreSection>
+      <Carte>
+        <SousTitre>1. Le compte rendu par e-mail</SousTitre>
+        {Platform.OS === 'web' ? (
+          <Texte doux style={{ fontSize: 14 }}>
+            Sur le téléphone, un bouton crée le PDF et ouvre un e-mail prêt à partir vers le client, avec le PDF en pièce jointe.
+          </Texte>
+        ) : contact.email ? (
+          <Bouton
+            libelle={booster.planEnvoyeLe ? 'Renvoyer par e-mail' : `Envoyer par e-mail à ${contact.email}`}
+            onPress={() => envoyer('email')}
+            chargement={envoi === 'email'}
+          />
+        ) : (
+          <Texte style={{ fontSize: 14, color: couleurs.orange }}>Pas d’e-mail sur la fiche : ajoute-le, ou envoie le PDF autrement.</Texte>
+        )}
+        {Platform.OS !== 'web' && (
+          <Bouton variante="discret" libelle="Envoyer le PDF autrement (WhatsApp, Messages…)" onPress={() => envoyer('partage')} chargement={envoi === 'partage'} />
+        )}
+        {booster.planEnvoyeLe && <Texte doux style={{ fontSize: 13 }}>{`Envoyé le ${dateCourte(booster.planEnvoyeLe)}`}</Texte>}
+
+        <SousTitre>2. Le prévenir sur WhatsApp</SousTitre>
+        {contact.telephone ? (
+          <>
+            <Texte doux style={{ fontSize: 14 }}>{messageCompteRenduEnvoye(cr)}</Texte>
+            <Bouton variante={booster.planEnvoyeLe ? undefined : 'discret'} libelle="Prévenir sur WhatsApp" onPress={prevenir} />
+          </>
+        ) : (
+          <Texte style={{ fontSize: 14, color: couleurs.orange }}>Pas de numéro sur la fiche.</Texte>
+        )}
+      </Carte>
       {erreur && <Erreur message={erreur} />}
-      {Platform.OS === 'web' ? (
-        <Texte doux style={{ fontSize: 14, textAlign: 'center' }}>
-          Sur le téléphone, le bouton « Créer le PDF et l’envoyer » ouvre le partage (e-mail, WhatsApp…) avec le PDF joint.
-        </Texte>
-      ) : (
-        <Bouton libelle={booster.planEnvoyeLe ? 'Renvoyer le PDF' : 'Créer le PDF et l’envoyer'} onPress={partager} chargement={envoi} />
-      )}
-      {booster.planEnvoyeLe && <Texte doux style={{ fontSize: 13, textAlign: 'center' }}>{`Déjà envoyé le ${dateCourte(booster.planEnvoyeLe)}`}</Texte>}
     </View>
   );
 }

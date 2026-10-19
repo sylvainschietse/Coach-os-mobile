@@ -40,7 +40,8 @@
           "color": "#D71920"
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-mail-composer"
     ],
     "experiments": {
       "typedRoutes": false,
