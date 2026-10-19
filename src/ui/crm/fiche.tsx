@@ -13,6 +13,7 @@ import {
   type FicheContact,
   type ModeleMessage,
 } from '@/domain/crm';
+import { preparerSeance } from '@/domain/briefing';
 import { reponsesParSection } from '@/domain/questionnaire';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
@@ -88,6 +89,8 @@ export function FicheContactVue({ id, onVoirClient }: { id: string; onVoirClient
 
       <TitreSection>Prochaine étape</TitreSection>
       <ProchaineEtape fiche={fiche} prevu={prevu} agir={agir} onVoirClient={onVoirClient} />
+
+      {questionnaires[0] && <PreparationSeance reponses={questionnaires[0].reponses} />}
 
       <TitreSection compte={ouvertes.length}>Relances</TitreSection>
       {ouvertes.map((r) => (
@@ -440,5 +443,44 @@ function Archivage({ fiche, agir }: { fiche: FicheContact; agir: Agir }) {
       <Bouton libelle="Oui, archiver" onPress={() => agir(() => crm.archiver(fiche.contact.id))} />
       <Bouton variante="discret" libelle="Annuler" onPress={() => setConfirmer(false)} />
     </Carte>
+  );
+}
+
+/** Le résumé du bilan à relire avant la séance : santé d'abord, puis objectif, profil, leviers et motivation. */
+function PreparationSeance({ reponses }: { reponses: Record<string, string> }) {
+  const b = preparerSeance(reponses);
+  const blocs: { titre: string; lignes: string[] }[] = [
+    { titre: 'Objectif', lignes: b.objectif },
+    { titre: 'Profil sportif', lignes: b.profil },
+    { titre: 'Leviers à travailler', lignes: b.leviers },
+    { titre: 'Motivation et attentes', lignes: b.motivation },
+  ];
+  return (
+    <>
+      <TitreSection>Préparer la séance</TitreSection>
+      <Carte>
+        {b.sante.length > 0 ? (
+          <View style={{ backgroundColor: couleurs.rougeClair, borderRadius: 10, padding: espace(3), gap: espace(1) }}>
+            <Text style={{ fontFamily: polices.texteGras, color: couleurs.rouge }}>Santé : à vérifier avant les tests</Text>
+            {b.sante.map((l) => (
+              <Texte key={l} style={{ fontSize: 14 }}>{l}</Texte>
+            ))}
+          </View>
+        ) : (
+          <Texte doux style={{ fontSize: 14 }}>Aucune douleur ni contre-indication déclarée.</Texte>
+        )}
+        {blocs
+          .filter((x) => x.lignes.length > 0)
+          .map((x) => (
+            <View key={x.titre} style={{ gap: 2 }}>
+              <Text style={{ fontFamily: polices.texteGras, fontSize: 15, color: couleurs.noir }}>{x.titre}</Text>
+              {x.lignes.map((l) => (
+                <Texte key={l} style={{ fontSize: 14 }}>{`• ${l}`}</Texte>
+              ))}
+            </View>
+          ))}
+        {b.leviers.length === 0 && <Texte doux style={{ fontSize: 14 }}>Aucune habitude ne ressort comme point faible.</Texte>}
+      </Carte>
+    </>
   );
 }
