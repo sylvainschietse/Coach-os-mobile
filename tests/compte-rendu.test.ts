@@ -39,7 +39,8 @@ describe('compte rendu du Booster', () => {
   it('échappe le texte saisi dans le PDF', () => {
     const html = compteRenduHtml(construireCompteRendu(contact, booster, undefined, 'Sylvain'));
     expect(html).toContain('Super première séance &lt;3');
-    expect(html).toContain('<ol><li>Renforcer les épaules</li>');
+    expect(html).toContain('<div class="num">1</div><div class="texte">Renforcer les épaules</div>');
+    expect(html).not.toContain('Tirage');
   });
 });
 

@@ -6,6 +6,7 @@ import { Platform, Text, View } from 'react-native';
 import { crm } from '@/data/crm';
 import { compteRenduHtml, construireCompteRendu } from '@/domain/compte-rendu';
 import type { Booster, FicheContact } from '@/domain/crm';
+import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, Texte } from '../composants';
@@ -42,7 +43,7 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
     setErreur(undefined);
     try {
       // A4 en points (72 par pouce).
-      const { uri } = await Print.printToFileAsync({ html: compteRenduHtml(cr), width: 595, height: 842 });
+      const { uri } = await Print.printToFileAsync({ html: compteRenduHtml(cr, { police: BEBAS_NEUE_BASE64 }), width: 595, height: 842 });
       await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: cr.titre });
       await crm.enregistrerBooster(booster.id, { planEnvoyeLe: new Date().toISOString() });
       recharger();
