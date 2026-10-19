@@ -21,6 +21,29 @@ const EXERCICES = {
   rameur: ex('ex-rameur', 'Rameur', ['duree', 'distance', 'allure500']),
 };
 
+/** Catalogue proposé au coach quand il construit une séance. */
+export const CATALOGUE_DEMO: Exercice[] = [
+  ...Object.values(EXERCICES),
+  ex('ex-squat', 'Squat barre', ['charge', 'repetitions']),
+  ex('ex-sdt', 'Soulevé de terre', ['charge', 'repetitions']),
+  ex('ex-fentes', 'Fentes haltères', ['charge', 'repetitions']),
+  ex('ex-hip-thrust', 'Hip thrust', ['charge', 'repetitions']),
+  ex('ex-presse', 'Presse à cuisses', ['charge', 'repetitions']),
+  ex('ex-tractions', 'Tractions', ['charge', 'repetitions']),
+  ex('ex-rowing', 'Rowing barre', ['charge', 'repetitions']),
+  ex('ex-tirage', 'Tirage vertical', ['charge', 'repetitions']),
+  ex('ex-dev-mil', 'Développé militaire', ['charge', 'repetitions']),
+  ex('ex-elev-lat', 'Élévations latérales', ['charge', 'repetitions']),
+  ex('ex-pompes', 'Pompes', ['repetitions']),
+  ex('ex-burpees', 'Burpees', ['repetitions']),
+  ex('ex-mountain', 'Mountain climbers', ['duree']),
+  ex('ex-chaise', 'Chaise contre le mur', ['duree']),
+  ex('ex-corde', 'Corde à sauter', ['duree']),
+  ex('ex-velo', 'Vélo', ['duree', 'distance', 'watts']),
+  ex('ex-assault', 'Assault bike', ['duree', 'calories']),
+  ex('ex-course', 'Course à pied', ['duree', 'distance']),
+];
+
 function seancePour(clientId: string): Seance {
   const p = (suffixe: string) => `${clientId}-${suffixe}`;
   return {

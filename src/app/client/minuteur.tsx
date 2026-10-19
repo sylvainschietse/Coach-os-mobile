@@ -1,24 +1,17 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { dureeTotale, ecoule, etatA, lireMinuteur, planifier, resumeMinuteur, TABATA, type ConfigMinuteur } from '@/domain/minuteur';
 import { annulerAlertes, autoriserNotifications, programmerAlerte } from '@/lib/notifications';
 import { maintenantMs } from '@/lib/temps';
 import { vibrer } from '@/lib/vibrer';
 import { Bouton, Carte, Ecran, Texte } from '@/ui/composants';
+import { ReglagesMinuteur } from '@/ui/reglages-minuteur';
 import { couleurs, espace, polices } from '@/ui/theme';
 
 type Marche = { debutMs: number; pausesMs: number; pauseDepuisMs?: number; alertes: (string | null)[] };
-
-const REGLAGES: { cle: keyof ConfigMinuteur; libelle: string; pas: number; min: number; unite: string }[] = [
-  { cle: 'exercices', libelle: 'Exercices', pas: 1, min: 1, unite: '' },
-  { cle: 'travailS', libelle: 'Travail', pas: 5, min: 5, unite: 's' },
-  { cle: 'reposS', libelle: 'Repos', pas: 5, min: 0, unite: 's' },
-  { cle: 'tours', libelle: 'Tours', pas: 1, min: 1, unite: '' },
-  { cle: 'reposEntreToursS', libelle: 'Repos entre tours', pas: 15, min: 0, unite: 's' },
-];
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.ceil(s % 60) === 60 ? 0 : Math.ceil(s % 60)).padStart(2, '0')}`;
 
@@ -104,17 +97,7 @@ export default function Minuteur() {
           <Texte doux>Tabata, circuit ou fractionné : règle le format puis lance.</Texte>
         )}
         <Carte>
-          {REGLAGES.map((r) => (
-            <View key={r.cle} style={styles.reglage}>
-              <Texte style={{ flex: 1 }}>{r.libelle}</Texte>
-              <Pas libelle="−" onPress={() => setConfig((c) => ({ ...c, [r.cle]: Math.max(r.min, c[r.cle] - r.pas) }))} />
-              <Text style={styles.valeur}>
-                {config[r.cle]}
-                {r.unite}
-              </Text>
-              <Pas libelle="+" onPress={() => setConfig((c) => ({ ...c, [r.cle]: c[r.cle] + r.pas }))} />
-            </View>
-          ))}
+          <ReglagesMinuteur config={config} onChange={setConfig} />
         </Carte>
         <Texte doux style={{ textAlign: 'center' }}>Durée totale {mmss(dureeTotale(phases))}</Texte>
         <Bouton libelle="Démarrer" onPress={demarrer} />
@@ -157,19 +140,7 @@ export default function Minuteur() {
   );
 }
 
-function Pas({ libelle, onPress }: { libelle: string; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={styles.pas} accessibilityRole="button">
-      <Text style={styles.pasTexte}>{libelle}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  reglage: { flexDirection: 'row', alignItems: 'center', gap: espace(3), paddingVertical: espace(1) },
-  valeur: { width: 56, textAlign: 'center', fontFamily: polices.texteGras, fontSize: 18, color: couleurs.texte },
-  pas: { width: 40, height: 40, borderRadius: 10, backgroundColor: couleurs.fond, alignItems: 'center', justifyContent: 'center' },
-  pasTexte: { fontSize: 22, fontFamily: polices.texteGras, color: couleurs.texte },
   plein: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: espace(6), gap: espace(2) },
   phase: { fontFamily: polices.titre, fontSize: 48, color: '#FFFFFF', letterSpacing: 2 },
   compte: { fontFamily: polices.titre, fontSize: 140, lineHeight: 150, color: '#FFFFFF' },

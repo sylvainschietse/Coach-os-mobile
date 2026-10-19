@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { lireMinuteur } from '@/domain/minuteur';
-import type { Mesure, Realisation, RealisationDetail, Seance, Valeurs } from '@/domain/types';
+import type { Exercice, Mesure, Realisation, RealisationDetail, Seance, Valeurs } from '@/domain/types';
 
 import { derniersParExercice, type Depot, type Profil } from './depot';
 
@@ -23,7 +23,7 @@ type LigneBase = {
 
 type SerieBase = {
   id: string;
-  ligne_id: string;
+  ligne_id: string | null;
   exercice_id: string;
   index: number;
   valeurs: Valeurs;
@@ -56,7 +56,7 @@ function versRealisation(r: RealisationBase): Realisation {
       .sort((a, b) => a.index - b.index)
       .map((s) => ({
         id: s.id,
-        ligneId: s.ligne_id,
+        ligneId: s.ligne_id ?? '',
         exerciceId: s.exercice_id,
         index: s.index,
         valeurs: s.valeurs,
@@ -81,7 +81,8 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
           .from('seances')
           .select('id, titre, date_prevue, blocs(lignes(id)), realisations(fin)')
           .eq('client_id', clientId)
-          .order('date_prevue', { ascending: false }),
+          .eq('archivee', false)
+          .order('created_at', { ascending: false }),
       ) as unknown as {
         id: string;
         titre: string;
@@ -236,6 +237,33 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
         r.series_realisees.forEach((s) => (exercices[s.exercice_id] = s.exercices?.nom ?? 'Exercice'));
         return { ...versRealisation(r), seanceTitre: r.seances?.titre ?? 'Séance', exercices };
       });
+    },
+
+    async exercices() {
+      const lignes = verifier(await db.from('exercices').select('id, nom, mesures, video_url').order('nom')) as {
+        id: string;
+        nom: string;
+        mesures: Mesure[];
+        video_url: string | null;
+      }[];
+      return lignes.map((e): Exercice => ({ id: e.id, nom: e.nom, mesures: e.mesures, videoUrl: sansNull(e.video_url) }));
+    },
+
+    async creerExercice(coachId, nom, mesures) {
+      const e = verifier(
+        await db.from('exercices').insert({ coach_id: coachId, nom: nom.trim(), mesures }).select('id, nom, mesures').single(),
+      ) as { id: string; nom: string; mesures: Mesure[] };
+      return { id: e.id, nom: e.nom, mesures: e.mesures };
+    },
+
+    async sauverSeance(seance) {
+      const { error } = await db.rpc('enregistrer_seance', { p: seance });
+      if (error) throw new Error(error.message);
+    },
+
+    async archiverSeance(id) {
+      const { error } = await db.from('seances').update({ archivee: true }).eq('id', id);
+      if (error) throw new Error(error.message);
     },
   };
 }

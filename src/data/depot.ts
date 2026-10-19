@@ -1,5 +1,7 @@
 import type {
   ClientResume,
+  Exercice,
+  Mesure,
   HistoriqueExercice,
   Realisation,
   RealisationDetail,
@@ -17,6 +19,13 @@ export interface Depot {
   enregistrer(realisation: Realisation): Promise<void>;
   clientsDuCoach(coachId: string): Promise<ClientResume[]>;
   realisationsDuClient(clientId: string): Promise<RealisationDetail[]>;
+  /** Catalogue commun et exercices propres au coach. */
+  exercices(): Promise<Exercice[]>;
+  creerExercice(coachId: string, nom: string, mesures: Mesure[]): Promise<Exercice>;
+  /** Crée ou remplace la séance entière (blocs, exercices, chronos). */
+  sauverSeance(seance: Seance): Promise<void>;
+  /** Retire la séance du programme du client sans effacer ce qu'il a déjà fait. */
+  archiverSeance(id: string): Promise<void>;
 }
 
 export type Profil =

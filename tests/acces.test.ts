@@ -149,3 +149,78 @@ describe('accès coach', () => {
     ).rejects.toThrow(/row-level security/);
   });
 });
+
+describe('programmes du coach', () => {
+  const exercice = { id: ids.exo, nom: 'Développé couché', mesures: ['charge', 'repetitions'] };
+  const nouvelle = {
+    id: 'a0000000-0000-4000-8000-000000000001',
+    clientId: ids.thomas,
+    titre: 'Jambes',
+    blocs: [
+      {
+        id: 'b0000000-0000-4000-8000-000000000001',
+        titre: 'Circuit',
+        minuteur: { exercices: 2, travailS: 40, reposS: 20, tours: 3, reposEntreToursS: 60 },
+        lignes: [
+          { id: 'c0000000-0000-4000-8000-000000000001', exercice, series: 4, repetitionsMin: 8, repetitionsMax: 10 },
+          { id: 'c0000000-0000-4000-8000-000000000002', exercice, series: 3, chargeIndicative: 22.5 },
+        ],
+      },
+    ],
+  };
+  const enregistrer = (user: string, seance: unknown) =>
+    en(user, 'select public.enregistrer_seance($1::jsonb)', [JSON.stringify(seance)]);
+
+  it('Sylvain crée une séance complète pour Thomas, que Thomas voit', async () => {
+    await enregistrer(ids.userCoach1, nouvelle);
+    const { rows } = await en(
+      ids.userThomas,
+      `select b.titre as bloc, b.minuteur->>'tours' as tours, l.ordre, l.series, l.charge_indicative::float as charge
+       from public.lignes l join public.blocs b on b.id = l.bloc_id
+       where b.seance_id = $1 order by l.ordre`,
+      [nouvelle.id],
+    );
+    expect(rows).toEqual([
+      { bloc: 'Circuit', tours: '3', ordre: 1, series: 4, charge: null },
+      { bloc: 'Circuit', tours: '3', ordre: 2, series: 3, charge: 22.5 },
+    ]);
+  });
+
+  it('modifier la séance met à jour, réordonne et retire sans doublon', async () => {
+    const [l1, l2] = nouvelle.blocs[0].lignes;
+    await enregistrer(ids.userCoach1, {
+      ...nouvelle,
+      titre: 'Jambes v2',
+      blocs: [{ ...nouvelle.blocs[0], minuteur: undefined, lignes: [{ ...l2, series: 5 }] }],
+    });
+    const { rows } = await db.query(
+      `select l.id, l.ordre, l.series, b.minuteur from public.lignes l join public.blocs b on b.id = l.bloc_id
+       where b.seance_id = $1`,
+      [nouvelle.id],
+    );
+    expect(rows).toEqual([{ id: l2.id, ordre: 1, series: 5, minuteur: null }]);
+    expect(rows.find((r) => (r as { id: string }).id === l1.id)).toBeUndefined();
+  });
+
+  it('retirer un exercice déjà fait garde les séries du client', async () => {
+    const lea = { id: ids.seanceLea, clientId: ids.lea, titre: 'Séance Léa', blocs: [
+      { id: ids.blocLea, titre: 'Renforcement', lignes: [{ id: 'c0000000-0000-4000-8000-000000000009', exercice, series: 3 }] },
+    ] };
+    await enregistrer(ids.userCoach1, lea);
+    const { rows } = await db.query(`select ligne_id, valeurs from public.series_realisees`);
+    expect(rows).toEqual([{ ligne_id: null, valeurs: { charge: 40, repetitions: 10 } }]);
+  });
+
+  it("un autre coach ne peut ni modifier la séance de Sylvain ni en créer une pour ses clients", async () => {
+    await expect(enregistrer(ids.userCoach2, { ...nouvelle, titre: 'Piratée' })).rejects.toThrow();
+    await expect(
+      enregistrer(ids.userCoach2, { ...nouvelle, id: 'a0000000-0000-4000-8000-000000000002' }),
+    ).rejects.toThrow(/row-level security/);
+    const { rows } = await db.query('select titre from public.seances where id = $1', [nouvelle.id]);
+    expect(rows).toEqual([{ titre: 'Jambes v2' }]);
+  });
+
+  it('un client ne peut pas écrire son propre programme', async () => {
+    await expect(enregistrer(ids.userThomas, { ...nouvelle, id: 'a0000000-0000-4000-8000-000000000003' })).rejects.toThrow();
+  });
+});

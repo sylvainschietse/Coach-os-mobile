@@ -43,6 +43,8 @@ create table public.seances (
   titre text not null,
   date_prevue date,
   consignes text,
+  -- Une séance retirée par le coach est archivée, pas effacée : l'historique du client reste.
+  archivee boolean not null default false,
   created_at timestamptz not null default now()
 );
 create index on public.seances (client_id);
@@ -91,7 +93,8 @@ create index on public.realisations (client_id, fin desc);
 create table public.series_realisees (
   id uuid primary key,
   realisation_id uuid not null references public.realisations (id) on delete cascade,
-  ligne_id uuid not null references public.lignes (id),
+  -- Si le coach retire l'exercice du programme, la série reste dans l'historique.
+  ligne_id uuid references public.lignes (id) on delete set null,
   exercice_id uuid not null references public.exercices (id),
   index int not null,
   valeurs jsonb not null,
@@ -187,3 +190,57 @@ grant insert, update, delete on public.clients, public.exercices, public.seances
 grant insert on public.realisations, public.series_realisees to authenticated;
 grant execute on function public.mon_coach_id(), public.mon_client_id(), public.coach_de_mon_client()
   to authenticated;
+
+-- Le coach enregistre une séance entière (blocs et exercices) en une fois.
+-- Le paramètre a la forme de la séance dans l'app. « security invoker » : les règles
+-- d'accès ci-dessus s'appliquent, un coach ne peut toucher qu'aux séances de ses clients.
+create function public.enregistrer_seance(p jsonb) returns void
+language plpgsql security invoker set search_path = public as $$
+declare
+  v_seance uuid := (p->>'id')::uuid;
+  b jsonb;
+  l jsonb;
+  ob bigint;
+  ol bigint;
+  blocs_gardes uuid[] := '{}';
+  lignes_gardees uuid[] := '{}';
+begin
+  insert into seances (id, coach_id, client_id, titre, date_prevue, consignes)
+  values (v_seance, mon_coach_id(), (p->>'clientId')::uuid, p->>'titre', (p->>'datePrevue')::date,
+          nullif(p->>'consignes', ''))
+  on conflict (id) do update
+    set titre = excluded.titre, date_prevue = excluded.date_prevue, consignes = excluded.consignes;
+  if not found then
+    raise exception 'Séance introuvable ou non autorisée';
+  end if;
+
+  for b, ob in select * from jsonb_array_elements(p->'blocs') with ordinality loop
+    insert into blocs (id, seance_id, ordre, titre, minuteur)
+    values ((b->>'id')::uuid, v_seance, ob, b->>'titre', b->'minuteur')
+    on conflict (id) do update
+      set ordre = excluded.ordre, titre = excluded.titre, minuteur = excluded.minuteur
+      where blocs.seance_id = excluded.seance_id;
+    blocs_gardes := blocs_gardes || (b->>'id')::uuid;
+
+    for l, ol in select * from jsonb_array_elements(b->'lignes') with ordinality loop
+      insert into lignes (id, bloc_id, ordre, exercice_id, series, repetitions_min, repetitions_max,
+                          charge_indicative, duree_s, recuperation_s, rir, tempo, consignes, minuteur)
+      values ((l->>'id')::uuid, (b->>'id')::uuid, ol, (l->'exercice'->>'id')::uuid, (l->>'series')::int,
+              (l->>'repetitionsMin')::int, (l->>'repetitionsMax')::int, (l->>'chargeIndicative')::numeric,
+              (l->>'dureeS')::int, (l->>'recuperationS')::int, (l->>'rir')::int, nullif(l->>'tempo', ''),
+              nullif(l->>'consignes', ''), l->'minuteur')
+      on conflict (id) do update
+        set bloc_id = excluded.bloc_id, ordre = excluded.ordre, exercice_id = excluded.exercice_id,
+            series = excluded.series, repetitions_min = excluded.repetitions_min,
+            repetitions_max = excluded.repetitions_max, charge_indicative = excluded.charge_indicative,
+            duree_s = excluded.duree_s, recuperation_s = excluded.recuperation_s, rir = excluded.rir,
+            tempo = excluded.tempo, consignes = excluded.consignes, minuteur = excluded.minuteur;
+      lignes_gardees := lignes_gardees || (l->>'id')::uuid;
+    end loop;
+  end loop;
+
+  delete from lignes where bloc_id in (select id from blocs where blocs.seance_id = v_seance)
+    and id <> all (lignes_gardees);
+  delete from blocs where blocs.seance_id = v_seance and id <> all (blocs_gardes);
+end $$;
+grant execute on function public.enregistrer_seance(jsonb) to authenticated;

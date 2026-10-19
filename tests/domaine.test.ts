@@ -6,7 +6,20 @@ import { champsPertinents } from '../src/domain/mesures';
 import { dureeTotale, ecoule, etatA, lireMinuteur, planifier, resumeMinuteur, TABATA } from '../src/domain/minuteur';
 import { construireRealisation, modifierSerie, validerSerie } from '../src/domain/realisation';
 import { preparerSeries, suggererValeurs } from '../src/domain/suggestions';
-import type { LignePrescription, Realisation } from '../src/domain/types';
+import {
+  ajouterBloc,
+  ajouterLigne,
+  chercherExercices,
+  deplacerBloc,
+  deplacerLigne,
+  modifierBloc,
+  modifierLigne,
+  nouvelleSeance,
+  problemes,
+  supprimerBloc,
+  supprimerLigne,
+} from '../src/domain/edition';
+import type { Exercice, LignePrescription, Realisation } from '../src/domain/types';
 
 const developpe: LignePrescription = {
   id: 'l1',
@@ -191,5 +204,53 @@ describe('chrono dans la séance', () => {
     expect(lireMinuteur({ travailS: 30 })).toBeNull();
     expect(lireMinuteur('pas du json')).toBeNull();
     expect(lireMinuteur(null)).toBeNull();
+  });
+});
+
+describe('édition d’une séance par le coach', () => {
+  let n = 0;
+  const id = () => `id-${++n}`;
+  const squat = { id: 'ex-squat', nom: 'Squat barre', mesures: ['charge', 'repetitions'] } as Exercice;
+  const gainage = { id: 'ex-gainage', nom: 'Gainage planche', mesures: ['duree'] } as Exercice;
+
+  it('part d’une séance vide avec un premier bloc, et la refuse tant qu’elle est incomplète', () => {
+    const s = nouvelleSeance('client-lea', id);
+    expect(s.blocs).toHaveLength(1);
+    expect(problemes(s)).toEqual(['Donne un titre à la séance.', 'Le bloc « Échauffement » n’a aucun exercice.']);
+  });
+
+  it('ajoute des exercices avec une prescription adaptée à ce qu’on mesure', () => {
+    let s = nouvelleSeance('client-lea', id);
+    const bloc = s.blocs[0].id;
+    s = ajouterLigne(ajouterLigne(s, bloc, squat, id), bloc, gainage, id);
+    expect(s.blocs[0].lignes.map((l) => [l.exercice.nom, l.repetitionsMin, l.repetitionsMax, l.dureeS])).toEqual([
+      ['Squat barre', 10, 12, undefined],
+      ['Gainage planche', undefined, undefined, 30],
+    ]);
+    s = { ...s, titre: 'Jambes' };
+    expect(problemes(s)).toEqual([]);
+  });
+
+  it('modifie, déplace et retire lignes et blocs', () => {
+    let s = nouvelleSeance('client-lea', id);
+    const b1 = s.blocs[0].id;
+    s = ajouterLigne(ajouterLigne(s, b1, squat, id), b1, gainage, id);
+    const [l1, l2] = s.blocs[0].lignes.map((l) => l.id);
+    s = deplacerLigne(s, l2, -1);
+    expect(s.blocs[0].lignes.map((l) => l.id)).toEqual([l2, l1]);
+    expect(deplacerLigne(s, l2, -1)).toEqual(s);
+    s = modifierLigne(s, l1, { repetitionsMin: 12, repetitionsMax: 8 });
+    expect(problemes({ ...s, titre: 'X' })).toEqual(['Squat barre : le maximum de répétitions est plus petit que le minimum.']);
+    s = ajouterBloc(s, id);
+    const b2 = s.blocs[1].id;
+    s = deplacerBloc(modifierBloc(s, b2, { titre: 'Circuit' }), b2, -1);
+    expect(s.blocs.map((b) => b.titre)).toEqual(['Circuit', 'Échauffement']);
+    s = supprimerLigne(supprimerBloc(s, b2), l1);
+    expect(s.blocs.map((b) => b.lignes.map((l) => l.id))).toEqual([[l2]]);
+  });
+
+  it('cherche un exercice sans tenir compte des accents', () => {
+    expect(chercherExercices([squat, gainage], 'GAINAGE').map((e) => e.id)).toEqual(['ex-gainage']);
+    expect(chercherExercices([squat, { ...gainage, nom: 'Développé' }], 'develop').map((e) => e.nom)).toEqual(['Développé']);
   });
 });
