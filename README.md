@@ -44,11 +44,19 @@ Sans configuration, l'app démarre en **mode démo** : données fictives (Sylvai
 ## Brancher une vraie base Supabase (offre gratuite)
 
 1. Créer un projet sur [supabase.com](https://supabase.com), région Europe.
-2. Dans *SQL Editor*, exécuter `supabase/migrations/20261019000000_prototype.sql`, puis `supabase/migrations/20261019010000_crm.sql`.
+2. Dans *SQL Editor*, exécuter `supabase/migrations/20261019000000_prototype.sql`, puis les autres fichiers de `supabase/migrations/` dans l'ordre de leur nom.
 3. Dans *Authentication > Users*, créer trois comptes : `coach@demo.coachos.fr`, `lea@demo.coachos.fr`, `thomas@demo.coachos.fr` (ou changer les e-mails dans `supabase/seed.sql`).
 4. Exécuter `supabase/seed.sql`.
 5. Copier `.env.example` en `.env.local` et renseigner l'URL du projet et la clé publique (*Project Settings > API*).
 6. Relancer `npx expo start`. L'écran d'accueil demande alors e-mail et mot de passe, et le coach voit sur son ordinateur ce que le client fait sur son téléphone.
+
+### Rédaction du compte rendu par l'IA (Claude)
+
+La clé Claude ne va jamais dans l'appli : elle reste dans les secrets Supabase, lue par la fonction `supabase/functions/rediger-compte-rendu`.
+
+1. Créer un compte sur [console.anthropic.com](https://console.anthropic.com), ajouter un moyen de paiement et créer une clé API.
+2. Avec l'outil Supabase en ligne de commande : `npx supabase login`, `npx supabase link --project-ref <ref du projet>`, puis `npx supabase secrets set ANTHROPIC_API_KEY=<la clé>` et `npx supabase functions deploy rediger-compte-rendu`.
+3. Dans l'appli, l'écran du compte rendu affiche alors « Rédiger avec l'IA ». Sans ça (et en démo), les textes viennent d'un modèle sans IA, modifiables à la main.
 
 L'offre gratuite se met en pause après une semaine sans activité et ne fait pas de sauvegarde : n'y mettre que des données de test.
 

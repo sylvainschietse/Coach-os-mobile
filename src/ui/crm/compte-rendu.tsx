@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 
 import { crm } from '@/data/crm';
+import { iaDisponible, redigerCompteRendu } from '@/data/redaction';
 import { compteRenduHtml, construireCompteRendu } from '@/domain/compte-rendu';
 import type { Booster, FicheContact } from '@/domain/crm';
+import { TESTS } from '@/domain/evaluation';
+import { appliquerRedaction, redactionModele, type Redaction } from '@/domain/redaction';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { useCharger } from '@/lib/useCharger';
 
@@ -28,8 +31,14 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
   const [mot, setMot] = useState(booster.compteRendu ?? '');
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string>();
-  const cr = construireCompteRendu(fiche.contact, { ...booster, compteRendu: mot }, fiche.questionnaires[0]?.reponses, coach);
-  const sansPriorite = booster.priorites.length === 0;
+  // Textes retouchés ou rédigés par l'IA ; tant qu'il n'y en a pas, le modèle suit les tests et les priorités.
+  const [textes, setTextes] = useState<Redaction | undefined>(booster.redaction);
+  const [priorites, setPriorites] = useState(booster.priorites);
+  const [redaction, setRedaction] = useState(false);
+  const reponses = fiche.questionnaires[0]?.reponses;
+  const cr = construireCompteRendu(fiche.contact, { ...booster, compteRendu: mot, redaction: textes, priorites }, reponses, coach);
+  const affiches = textes ?? redactionModele(fiche.contact, { ...booster, priorites }, reponses);
+  const sansPriorite = priorites.length === 0;
 
   // Le mot du coach s'enregistre un instant après la frappe.
   useEffect(() => {
@@ -37,6 +46,33 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
     const minuteur = setTimeout(() => crm.enregistrerBooster(booster.id, { compteRendu: mot.trim() || undefined }).catch(() => undefined), 700);
     return () => clearTimeout(minuteur);
   }, [mot, booster.id, booster.compteRendu]);
+
+  // Les textes retouchés s'enregistrent eux aussi un instant après la frappe.
+  useEffect(() => {
+    if (!textes || textes === booster.redaction) return;
+    const minuteur = setTimeout(() => crm.enregistrerBooster(booster.id, { redaction: textes }).catch(() => undefined), 700);
+    return () => clearTimeout(minuteur);
+  }, [textes, booster.id, booster.redaction]);
+
+  const retoucher = (patch: Partial<Redaction>) => setTextes({ ...affiches, ...patch, source: 'coach' });
+
+  async function rediger() {
+    setRedaction(true);
+    setErreur(undefined);
+    try {
+      const genere = await redigerCompteRendu(fiche.contact, { ...booster, compteRendu: mot, priorites }, reponses);
+      // Les priorités générées vont dans leurs champs, sans remplacer celles choisies par le coach.
+      const r = appliquerRedaction({ ...booster, priorites }, genere);
+      await crm.enregistrerBooster(booster.id, r);
+      setPriorites(r.priorites);
+      setTextes(r.redaction);
+      recharger();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'La rédaction n’a pas abouti.');
+    } finally {
+      setRedaction(false);
+    }
+  }
 
   async function partager() {
     setEnvoi(true);
@@ -66,6 +102,69 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
         />
         {sansPriorite && <Texte style={{ fontSize: 14, color: couleurs.orange }}>Les 3 priorités ne sont pas encore remplies.</Texte>}
         <Bouton variante="discret" libelle="Modifier la séance (tests, priorités)" onPress={onModifierSeance} />
+      </Carte>
+
+      <TitreSection>Textes du compte rendu</TitreSection>
+      <Carte>
+        <Texte doux style={{ fontSize: 14 }}>
+          {textes?.source === 'ia'
+            ? 'Rédigés par l’IA à partir du bilan, des tests et de l’entretien. Relis-les et retouche ce que tu veux.'
+            : textes?.source === 'coach'
+              ? 'Textes retouchés par toi, enregistrés.'
+              : iaDisponible
+                ? 'Textes proposés automatiquement. L’IA peut les rédiger de façon plus personnelle.'
+                : 'Textes proposés automatiquement d’après les tests et le bilan. Avec le compte en ligne, l’IA les rédige de façon plus personnelle.'}
+        </Texte>
+        {iaDisponible && (
+          <Bouton
+            variante={textes?.source === 'ia' ? 'discret' : undefined}
+            libelle={textes?.source === 'ia' ? 'Réécrire avec l’IA' : 'Rédiger avec l’IA'}
+            onPress={rediger}
+            chargement={redaction}
+          />
+        )}
+        <ChampTexte libelle="Le regard du coach" multiligne valeur={affiches.regard ?? ''} onChange={(v) => retoucher({ regard: v })} />
+        {TESTS.filter((t) => booster.evaluation?.tests[t.id]?.resultat).map((t) => (
+          <ChampTexte
+            key={t.id}
+            libelle={`${t.libelle} · ${booster.evaluation!.tests[t.id]!.resultat}`}
+            multiligne
+            valeur={affiches.tests?.[t.id] ?? ''}
+            onChange={(v) => retoucher({ tests: { ...affiches.tests, [t.id]: v } })}
+            placeholder="Ce que dit le résultat, et la suite du travail"
+          />
+        ))}
+        {priorites.map((p, i) => (
+          <ChampTexte
+            key={i}
+            libelle={`Priorité ${i + 1} · ${p}`}
+            multiligne
+            valeur={affiches.priorites?.[i] ?? ''}
+            onChange={(v) => retoucher({ priorites: priorites.map((_, j) => (j === i ? v : (affiches.priorites?.[j] ?? ''))) })}
+          />
+        ))}
+        <ChampTexte
+          libelle="Cette semaine (une action par ligne)"
+          multiligne
+          valeur={(affiches.semaine ?? []).join('\n')}
+          onChange={(v) => retoucher({ semaine: v.split('\n') })}
+        />
+        <ChampTexte
+          libelle="La suite (une étape par ligne)"
+          multiligne
+          valeur={(affiches.suite ?? []).join('\n')}
+          onChange={(v) => retoucher({ suite: v.split('\n') })}
+        />
+        {textes && (
+          <Bouton
+            variante="discret"
+            libelle="Revenir aux textes proposés"
+            onPress={() => {
+              setTextes(undefined);
+              crm.enregistrerBooster(booster.id, { redaction: undefined }).catch(() => undefined);
+            }}
+          />
+        )}
       </Carte>
 
       <TitreSection>Aperçu</TitreSection>

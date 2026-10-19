@@ -2,6 +2,7 @@
 // Fonctions pures : la démo et les tests les appellent directement, la base reprend les mêmes règles.
 
 import { syntheseEvaluation, type Evaluation } from './evaluation';
+import type { Redaction } from './redaction';
 
 export type Statut = 'prospect' | 'booster_prevu' | 'booster_fait' | 'client' | 'archive';
 
@@ -55,9 +56,11 @@ export interface Booster {
   entretien?: Record<string, string>;
   /** Date du dernier envoi du compte rendu au client. */
   planEnvoyeLe?: string;
+  /** Textes développés du compte rendu, une fois rédigés (IA) ou retouchés par le coach. */
+  redaction?: Redaction;
 }
 
-export type SaisieBooster = Partial<Pick<Booster, 'evaluation' | 'entretien' | 'priorites' | 'paye' | 'compteRendu' | 'planEnvoyeLe'>>;
+export type SaisieBooster = Partial<Pick<Booster, 'evaluation' | 'entretien' | 'priorites' | 'paye' | 'compteRendu' | 'planEnvoyeLe' | 'redaction'>>;
 
 export type ModeleMessage = 'questionnaire' | 'booster' | 'rappel_booster' | 'suivi_booster' | 'libre';
 
