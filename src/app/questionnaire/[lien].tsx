@@ -8,6 +8,7 @@ import {
   ACCUEIL,
   estVisible,
   lireChoix,
+  MERCI,
   nettoyerReponses,
   QUESTIONNAIRE,
   SEPARATEUR,
@@ -66,8 +67,10 @@ export default function QuestionnaireAccueil() {
     return (
       <Ecran>
         <Stack.Screen options={{ title: 'Merci !' }} />
-        <Titre>Merci {reponses.prenom} !</Titre>
-        <Texte>Tes réponses sont bien arrivées chez ton coach. Il revient vers toi très vite pour caler ta première séance.</Texte>
+        <Titre>✅ Merci {reponses.prenom} !</Titre>
+        {MERCI.map((p) => (
+          <Texte key={p}>{p}</Texte>
+        ))}
       </Ecran>
     );
   }

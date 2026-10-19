@@ -26,8 +26,14 @@ describe('bilan forme & objectifs', () => {
     expect(estVisible(question('activitesAutre'), { activiteReguliere: 'Non', activites: 'Vélo, Autre' })).toBe(false);
   });
 
+  it('ne demande le matériel que pour un entraînement à la maison', () => {
+    expect(estVisible(question('materiel'), { lieu: 'En salle' })).toBe(false);
+    expect(estVisible(question('materiel'), { lieu: 'En salle et à la maison' })).toBe(true);
+    expect(estVisible(question('materielAutre'), { lieu: 'En salle', materiel: 'Autre' })).toBe(false);
+  });
+
   it('n’exige une question cachée que si elle est affichée', () => {
-    const base = { anciennete: 'Je débute', seancesActuelles: 'Aucune', seancesPossibles: '2 séances', lieu: 'En salle' };
+    const base = { typesAimes: 'Cardio', douleur: 'Non', contreIndication: 'Non', anciennete: 'Je débute', seancesActuelles: 'Aucune', seancesPossibles: '2 séances', lieu: 'En salle' };
     expect(verifierReponses({ ...base, activiteReguliere: 'Non' }, normaliser, profil)).toEqual({});
     expect(verifierReponses({ ...base, activiteReguliere: 'Oui' }, normaliser, profil)).toEqual({ activites: 'Réponse obligatoire' });
   });

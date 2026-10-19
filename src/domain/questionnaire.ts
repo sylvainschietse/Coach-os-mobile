@@ -1,12 +1,13 @@
 // Bilan d'accueil : reprise fidèle du formulaire Tally « Bilan forme & objectifs » de Sylvain.
-// Pages 1 à 5 recopiées depuis les captures de l'éditeur Tally ; la fin de la page 5 et les pages 6-7 restent à recevoir.
+// Recopié depuis les captures de l'éditeur Tally (7 pages : accueil, 5 pages de questions, remerciement).
 
 export type TypeQuestion = 'texte' | 'long' | 'telephone' | 'email' | 'date' | 'choix' | 'choixMultiple' | 'echelle';
 
-/** Question affichée seulement si une réponse précédente vaut (ou contient, pour un choix multiple) cette valeur. */
+/** Question affichée seulement si une réponse précédente vaut cette valeur, l'une de ces valeurs, ou la contient (choix multiple). */
 export interface Condition {
   question: string;
   egal?: string;
+  parmi?: string[];
   contient?: string;
 }
 
@@ -32,6 +33,16 @@ export interface Section {
 export const TITRE_QUESTIONNAIRE = 'Bilan forme & objectifs';
 export const ACCUEIL =
   'Ce bilan va me permettre de mieux comprendre tes objectifs, ton parcours et tes contraintes afin de te proposer la stratégie la plus adaptée.';
+
+/** Page de remerciement du Tally (sans la signature, ajoutée avec le nom du coach). */
+export const MERCI = [
+  'Merci d’avoir pris le temps de compléter ce bilan.',
+  'Tes réponses me permettront de préparer notre séance et de personnaliser mes conseils en fonction de tes objectifs, de ton mode de vie et de tes attentes.',
+  'Lors de notre rencontre, nous prendrons le temps d’échanger ensemble sur ton parcours, d’évaluer ta condition physique et de définir les actions les plus adaptées pour t’aider à progresser.',
+  '🎁 À l’issue de notre séance, tu recevras gratuitement ton Plan d’Action Personnalisé.',
+  'Ce document récapitulera les principaux points abordés ensemble ainsi que des recommandations concrètes que tu pourras commencer à appliquer immédiatement, que tu choisisses ou non de poursuivre un accompagnement.',
+  'À très bientôt !',
+];
 
 /** Les choix multiples sont rangés en texte, séparés par ce séparateur. */
 export const SEPARATEUR = ', ';
@@ -268,6 +279,161 @@ export const QUESTIONNAIRE: Section[] = [
         obligatoire: true,
         options: ['En salle', 'À la maison', 'En salle et à la maison'],
       },
+      {
+        id: 'materiel',
+        libelle: 'Quel matériel as-tu à disposition chez toi ?',
+        type: 'choixMultiple',
+        obligatoire: true,
+        condition: { question: 'lieu', parmi: ['À la maison', 'En salle et à la maison'] },
+        options: [
+          'Aucun matériel',
+          'Tapis',
+          'Élastiques',
+          'Haltères',
+          'Kettlebell',
+          'Barre et disques',
+          'Banc',
+          'Barre de traction',
+          'TRX ou sangles',
+          'Rack à squat',
+          'Machine de musculation',
+          'Vélo d’appartement',
+          'Tapis de course',
+          'Rameur',
+          'Autre',
+        ],
+      },
+      {
+        id: 'materielAutre',
+        libelle: 'Peux-tu préciser le matériel disponible ?',
+        type: 'texte',
+        placeholder: 'Précise ici...',
+        condition: { question: 'materiel', contient: 'Autre' },
+      },
+      {
+        id: 'typesAimes',
+        libelle: 'Quels types d’entraînement apprécies-tu le plus ?',
+        type: 'choixMultiple',
+        obligatoire: true,
+        options: [
+          'Musculation',
+          'Cardio',
+          'Circuit training',
+          'HIIT',
+          'Poids du corps',
+          'Course à pied',
+          'Vélo',
+          'Mobilité',
+          'Activités en extérieur',
+          'Je n’ai pas encore de préférence',
+          'Autre',
+        ],
+      },
+      { id: 'aEviter', libelle: 'Y a-t-il des exercices ou des types d’entraînement que tu n’aimes pas ou que tu préfères éviter ?', type: 'long' },
+      {
+        id: 'douleur',
+        libelle: 'As-tu actuellement une douleur ou une blessure qui pourrait limiter certains exercices ?',
+        type: 'choix',
+        obligatoire: true,
+        options: ['Non', 'Oui'],
+      },
+      {
+        id: 'douleurDetail',
+        libelle: 'Peux-tu préciser la zone concernée, depuis quand, et dans quelles situations la douleur apparaît ?',
+        type: 'long',
+        condition: { question: 'douleur', egal: 'Oui' },
+      },
+      // Dans Tally, la règle « Oui » de cette question n'affiche rien (cible vide).
+      {
+        id: 'contreIndication',
+        libelle: 'As-tu une contre-indication médicale connue à la pratique du sport ?',
+        type: 'choix',
+        obligatoire: true,
+        options: ['Non', 'Oui'],
+      },
+    ],
+  },
+  {
+    titre: '✨ Tes attentes',
+    intro: 'Plus j’en sais sur tes attentes, plus je pourrai te proposer des conseils adaptés à ta situation.',
+    questions: [
+      {
+        id: 'attentes',
+        libelle: 'Qu’attends-tu principalement d’un accompagnement ?',
+        type: 'choixMultiple',
+        obligatoire: true,
+        options: [
+          'Me remettre en forme',
+          'Être motivé(e)',
+          'Avoir un programme clair',
+          'Corriger ma technique',
+          'Apprendre à mieux manger',
+          'Être suivi régulièrement',
+          'Gagner du temps',
+          'Me sentir mieux dans mon corps',
+          'Autre',
+        ],
+      },
+      // Dans Tally, la règle sur « Autre » masque « Peux-tu préciser ? » au lieu de l'afficher : ici on l'affiche.
+      {
+        id: 'attentesAutre',
+        libelle: 'Peux-tu préciser ?',
+        type: 'texte',
+        placeholder: 'Précise ici...',
+        condition: { question: 'attentes', contient: 'Autre' },
+      },
+      {
+        id: 'dejaCoach',
+        libelle: 'As-tu déjà été accompagné(e) par un coach sportif ?',
+        type: 'choix',
+        obligatoire: true,
+        options: ['Oui', 'Non'],
+      },
+      {
+        id: 'coachApprecie',
+        libelle: 'Qu’avais-tu particulièrement apprécié dans cet accompagnement ?',
+        type: 'long',
+        condition: { question: 'dejaCoach', egal: 'Oui' },
+      },
+      {
+        id: 'coachDecu',
+        libelle: 'Y a-t-il des choses qui t’avaient déçu ou que tu ne souhaites pas retrouver ?',
+        type: 'long',
+        condition: { question: 'dejaCoach', egal: 'Oui' },
+      },
+      { id: 'bonCoach', libelle: 'Qu’est-ce qui te ferait dire, dans quelques mois : « J’ai choisi le bon coach. »', type: 'long' },
+      {
+        id: 'motivationNote',
+        libelle: 'Sur une échelle de 1 à 10, à quel point es-tu motivé(e) pour atteindre ton objectif ?',
+        type: 'echelle',
+        obligatoire: true,
+      },
+      { id: 'empeche', libelle: 'Qu’est-ce qui t’empêche aujourd’hui d’être à 10/10 ?', type: 'long' },
+      {
+        id: 'obstacle',
+        libelle: 'À ton avis, quel est aujourd’hui ton principal obstacle ?',
+        type: 'choix',
+        obligatoire: true,
+        options: [
+          'Manque de temps',
+          'Manque de motivation',
+          'Je ne sais pas quoi faire',
+          'Difficulté à être régulier',
+          'Alimentation',
+          'Stress',
+          'Fatigue',
+          'Douleurs / blessures',
+          'Autre',
+        ],
+      },
+      {
+        id: 'obstacleAutre',
+        libelle: 'Peux-tu préciser ?',
+        type: 'texte',
+        placeholder: 'Précise ici...',
+        condition: { question: 'obstacle', egal: 'Autre' },
+      },
+      { id: 'autreChose', libelle: 'Y a-t-il autre chose que tu aimerais que je sache avant notre rencontre ?', type: 'long' },
     ],
   },
 ];
@@ -283,6 +449,7 @@ export function estVisible(q: Question, reponses: Record<string, string>): boole
   if (parent && !estVisible(parent, reponses)) return false;
   const v = reponses[q.condition.question];
   if (q.condition.egal !== undefined) return v === q.condition.egal;
+  if (q.condition.parmi !== undefined) return q.condition.parmi.includes(v);
   if (q.condition.contient !== undefined) return lireChoix(v).includes(q.condition.contient);
   return true;
 }
