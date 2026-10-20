@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CLIENTS_DEMO, COACH_DEMO } from '@/data/demo';
 import { useSession } from '@/data/session';
-import { supabase } from '@/data/supabase';
+import { connexions, supabase, type Fournisseur } from '@/data/supabase';
 import { verifierMotDePasse } from '@/domain/acces-client';
 import { Bouton, Texte } from '@/ui/composants';
 import { couleurs, espace, polices } from '@/ui/theme';
@@ -107,21 +107,50 @@ function ChoixDemo() {
   );
 }
 
+const LIBELLES: Record<Fournisseur, string> = {
+  google: 'Continuer avec Google',
+  azure: 'Continuer avec Microsoft',
+  apple: 'Continuer avec Apple',
+};
+
 function Connexion() {
-  const { connecter } = useSession();
+  const { connecter, connecterAvec, inscrire } = useSession();
+  const [mode, setMode] = useState<'connexion' | 'inscription'>('connexion');
   const [email, setEmail] = useState('');
   const [motDePasse, setMotDePasse] = useState('');
   const [erreur, setErreur] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState(false);
 
   async function valider() {
+    setErreur(null);
+    setInfo(null);
+    if (mode === 'inscription') {
+      const probleme = verifierMotDePasse(motDePasse, motDePasse);
+      if (probleme) return setErreur(probleme);
+      setEnvoi(true);
+      const r = await inscrire(email, motDePasse);
+      setEnvoi(false);
+      if (r.erreur) return setErreur(r.erreur);
+      if (r.aConfirmer) setInfo(`Un e-mail de confirmation est parti à ${email.trim()}. Ouvre le lien qu’il contient, puis connecte-toi.`);
+      return;
+    }
     setEnvoi(true);
     setErreur(await connecter(email, motDePasse));
     setEnvoi(false);
   }
 
+  async function avec(f: Fournisseur) {
+    setErreur(null);
+    setErreur(await connecterAvec(f));
+  }
+
   return (
     <View style={{ gap: espace(3) }}>
+      {connexions.fournisseurs.map((f) => (
+        <Bouton key={f} variante="contour" libelle={LIBELLES[f]} onPress={() => avec(f)} />
+      ))}
+      {connexions.fournisseurs.length > 0 && <Text style={[styles.libelle, { textAlign: 'center' }]}>ou avec ton e-mail</Text>}
       <TextInput
         style={styles.saisie}
         placeholder="E-mail"
@@ -134,16 +163,33 @@ function Connexion() {
       />
       <TextInput
         style={styles.saisie}
-        placeholder="Mot de passe"
+        placeholder={mode === 'inscription' ? 'Choisis un mot de passe (8 caractères ou plus)' : 'Mot de passe'}
         placeholderTextColor="#8A8A92"
         secureTextEntry
-        autoComplete="password"
+        autoComplete={mode === 'inscription' ? 'new-password' : 'password'}
         value={motDePasse}
         onChangeText={setMotDePasse}
         onSubmitEditing={valider}
       />
       {erreur && <Texte style={{ color: '#FF8A8F' }}>{erreur}</Texte>}
-      <Bouton libelle="Se connecter" onPress={valider} chargement={envoi} desactive={!email || !motDePasse} />
+      {info && <Texte style={{ color: '#C9C9CF' }}>{info}</Texte>}
+      <Bouton
+        libelle={mode === 'inscription' ? 'Créer mon compte' : 'Se connecter'}
+        onPress={valider}
+        chargement={envoi}
+        desactive={!email || !motDePasse}
+      />
+      {connexions.inscription && (
+        <Bouton
+          variante="contour"
+          libelle={mode === 'inscription' ? 'J’ai déjà un compte' : 'Première fois ? Crée ton compte'}
+          onPress={() => {
+            setMode(mode === 'inscription' ? 'connexion' : 'inscription');
+            setErreur(null);
+            setInfo(null);
+          }}
+        />
+      )}
     </View>
   );
 }

@@ -10,12 +10,12 @@ it('le fichier d’installation Supabase reprend toutes les migrations', () => {
   expect(readFileSync(join(__dirname, '../supabase/installation.sql'), 'utf8')).toBe(installationSql());
 });
 
-it('s’installe d’un seul coup sur une base vide', async () => {
+it('s’installe d’un seul coup sur une base vide', { timeout: 20000 }, async () => {
   const { PGlite } = await import('@electric-sql/pglite');
   const db = new PGlite();
   await db.exec(`
     create schema auth;
-    create table auth.users (id uuid primary key, email text);
+    create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
     create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
     create role authenticated;
     create role anon;

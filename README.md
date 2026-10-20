@@ -56,6 +56,15 @@ C'est déjà fait pour le projet « Coach OS » (région Europe, offre gratuite)
 
 Sur la fiche d'un client, « Créer son accès » crée son compte avec un mot de passe provisoire, que le coach lui envoie par WhatsApp ou SMS. À sa première connexion, le client choisit son propre mot de passe ; il ne voit que ses séances et son suivi. Le même bouton renouvelle le mot de passe provisoire en cas d'oubli. C'est la fonction `supabase/functions/acces-client` qui crée le compte (`npx supabase functions deploy acces-client`). Pour ajouter un lien d'installation au message, renseigner `EXPO_PUBLIC_LIEN_APPLI`.
 
+### Connexion avec Google, Microsoft, Apple ou inscription libre
+
+Un client peut aussi se connecter avec Google, Microsoft ou Apple, ou créer lui-même son compte avec son e-mail. À la première connexion, `rattacher_mon_compte()` relie son compte à sa fiche client si l'e-mail est **vérifié** (par le fournisseur ou par l'e-mail de confirmation) et correspond à un seul client actif. Laisser activée la confirmation des e-mails dans Supabase (*Authentication > Sign In / Providers > Email*) : sans elle, n'importe qui pourrait s'inscrire avec l'e-mail d'un client.
+
+1. *Authentication > URL Configuration* : ajouter `coachos://**` aux adresses de redirection.
+2. Activer chaque fournisseur dans *Authentication > Sign In / Providers* avec ses identifiants (Google Cloud, Microsoft Entra, Apple Developer). Adresse de retour à déclarer chez eux : `https://<ref>.supabase.co/auth/v1/callback`.
+3. Pour l'inscription libre, brancher un service d'envoi d'e-mails (*Authentication > Emails > SMTP*), par exemple Resend.
+4. Lister les moyens activés dans `EXPO_PUBLIC_CONNEXIONS` (ex. `google,azure,inscription`).
+
 ### Rédaction du compte rendu par l'IA (Claude)
 
 La clé Claude ne va jamais dans l'appli : elle reste dans les secrets Supabase, lue par la fonction `supabase/functions/rediger-compte-rendu`.

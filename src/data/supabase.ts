@@ -13,7 +13,9 @@ export const supabase: SupabaseClient | null =
           storage: AsyncStorage,
           autoRefreshToken: true,
           persistSession: true,
-          detectSessionInUrl: false,
+          // Retour de Google ou Microsoft : sur le web, le code arrive dans l'adresse de la page.
+          detectSessionInUrl: Platform.OS === 'web',
+          flowType: 'pkce',
         },
       })
     : null;
@@ -24,3 +26,12 @@ if (supabase && Platform.OS !== 'web') {
     else supabase.auth.stopAutoRefresh();
   });
 }
+
+export type Fournisseur = 'google' | 'azure' | 'apple';
+
+/** Moyens de connexion activés, d'après EXPO_PUBLIC_CONNEXIONS (ex. « google,azure,apple,inscription »). */
+const actives = (process.env.EXPO_PUBLIC_CONNEXIONS ?? '').split(',').map((x) => x.trim());
+export const connexions = {
+  fournisseurs: (['google', 'azure', 'apple'] as const).filter((f) => actives.includes(f) && (f !== 'apple' || Platform.OS === 'ios')),
+  inscription: actives.includes('inscription'),
+};

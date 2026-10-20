@@ -31,7 +31,7 @@ beforeAll(async () => {
   db = new PGlite();
   await db.exec(`
     create schema auth;
-    create table auth.users (id uuid primary key, email text);
+    create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
     create function auth.uid() returns uuid language sql stable as
       $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
     create role authenticated;
@@ -42,6 +42,8 @@ beforeAll(async () => {
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019020000_booster_evaluation.sql'), 'utf8'));
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019030000_booster_redaction.sql'), 'utf8'));
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261020000000_creer_coach.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261020010000_durcissement.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261020020000_rattacher_compte.sql'), 'utf8'));
   await db.exec(`
     grant usage on schema public to anon;
     insert into auth.users (id) values ('${ids.userCoach1}'), ('${ids.userCoach2}');
@@ -126,5 +128,35 @@ describe('ouverture d’un espace coach', () => {
     expect(coach.rows[0]).toEqual({ nom: 'Nina', lien_questionnaire: 'nina-coach' });
     await expect(db.query(`select public.creer_coach('inconnu@coach.fr', 'X', 'xxx')`)).rejects.toThrow(/Aucun compte/);
     await expect(en('authenticated', ids.userCoach1, `select public.creer_coach('nouveau@coach.fr', 'Pirate', 'pirate')`)).rejects.toThrow(/permission/);
+  });
+});
+
+describe('connexion d’un client avec Google, Microsoft ou son e-mail', () => {
+  const marc = '10000000-0000-4000-8000-000000000010';
+  const pirate = '10000000-0000-4000-8000-000000000011';
+  const rattacher = (uid: string) => en('authenticated', uid, 'select public.rattacher_mon_compte() as id');
+
+  it('relie le compte vérifié à la fiche client du même e-mail, une seule fois', async () => {
+    const c = await db.query<{ id: string }>(
+      `insert into public.clients (coach_id, prenom, email) values ('${ids.coach1}', 'Marc', 'Marc@Exemple.fr') returning id`,
+    );
+    await db.exec(`insert into auth.users (id, email, email_confirmed_at) values ('${pirate}', 'marc@exemple.fr', null)`);
+    expect((await rattacher(pirate)).rows[0].id).toBeNull();
+    await db.exec(`insert into auth.users (id, email, email_confirmed_at) values ('${marc}', 'marc@exemple.fr', now())`);
+    expect((await rattacher(marc)).rows[0].id).toBe(c.rows[0].id);
+    expect((await rattacher(marc)).rows[0].id).toBe(c.rows[0].id);
+    await db.exec(`update auth.users set email_confirmed_at = now() where id = '${pirate}'`);
+    expect((await rattacher(pirate)).rows[0].id).toBeNull();
+  });
+
+  it('ne devine pas quand deux coachs ont un client avec le même e-mail, ni pour un coach', async () => {
+    const lea = '10000000-0000-4000-8000-000000000012';
+    await db.exec(`
+      insert into public.clients (coach_id, prenom, email) values ('${ids.coach1}', 'Léa', 'lea@exemple.fr'), ('${ids.coach2}', 'Léa', 'lea@exemple.fr');
+      insert into auth.users (id, email, email_confirmed_at) values ('${lea}', 'lea@exemple.fr', now());
+    `);
+    expect((await rattacher(lea)).rows[0].id).toBeNull();
+    expect((await rattacher(ids.userCoach1)).rows[0].id).toBeNull();
+    await expect(en('anon', null, 'select public.rattacher_mon_compte()')).rejects.toThrow(/permission/);
   });
 });
