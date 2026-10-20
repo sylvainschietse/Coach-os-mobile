@@ -48,6 +48,9 @@
     "experiments": {
       "typedRoutes": false,
       "reactCompiler": true
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
