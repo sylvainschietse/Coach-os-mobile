@@ -20,20 +20,48 @@ export function rechercherExercices(catalogue: Exercice[], recherche: string, fa
     const texte = sansAccents([e.nom, e.famille, ...(e.materiel ?? []), ...(e.muscles ?? [])].filter(Boolean).join(' '));
     return mots.every((m) => texte.includes(m));
   });
-  const debut = sansAccents(recherche.trim());
-  resultats.sort((a, b) => {
-    const da = debut && sansAccents(a.nom).startsWith(debut) ? 0 : 1;
-    const db = debut && sansAccents(b.nom).startsWith(debut) ? 0 : 1;
-    return da - db || a.nom.localeCompare(b.nom, 'fr');
-  });
+  // D'abord les noms qui commencent par la recherche, puis par son premier mot, puis le reste.
+  const rang = (e: Exercice) => {
+    const nom = sansAccents(e.nom);
+    if (mots.length && nom.startsWith(mots.join(' '))) return 0;
+    if (mots.length && nom.startsWith(mots[0])) return 1;
+    return 2;
+  };
+  resultats.sort((a, b) => rang(a) - rang(b) || a.nom.localeCompare(b.nom, 'fr'));
   return { exercices: resultats.slice(0, limite), total: resultats.length };
 }
 
-/** Familles présentes dans le catalogue, dans l'ordre d'Airtable (du bas du corps au cardio). */
+// L'ordre des familles dans Airtable : du bas du corps au haut, puis tronc, cardio et mobilité.
+const ORDRE_FAMILLES = [
+  'Squat et presse',
+  'Fentes et appuis unilatéraux',
+  'Charnière de hanche',
+  'Hanche',
+  'Isolation des jambes',
+  'Cheville',
+  'Développés et pompes',
+  'Isolation du haut du corps',
+  'Développés épaules',
+  'Isolation des épaules',
+  'Tirages horizontaux',
+  'Tirages verticaux',
+  'Dos et scapulas',
+  'Isolation des bras',
+  'Avant-bras',
+  'Gainage',
+  'Tronc dynamique',
+  'Portés et maintien',
+  'Mouvements fonctionnels',
+  'Sauts et lancers',
+  'Cardio et déplacements',
+  'Mobilité et étirements',
+];
+
+/** Familles présentes dans le catalogue, dans l'ordre d'Airtable. */
 export function familles(catalogue: Exercice[]) {
-  const vues: string[] = [];
-  catalogue.forEach((e) => e.famille && !vues.includes(e.famille) && vues.push(e.famille));
-  return vues;
+  const vues = new Set(catalogue.flatMap((e) => (e.famille ? [e.famille] : [])));
+  const rang = (f: string) => (ORDRE_FAMILLES.includes(f) ? ORDRE_FAMILLES.indexOf(f) : ORDRE_FAMILLES.length);
+  return [...vues].sort((a, b) => rang(a) - rang(b) || a.localeCompare(b, 'fr'));
 }
 
 /** Une prescription de départ raisonnable, que le coach ajuste. */

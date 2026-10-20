@@ -20,7 +20,20 @@ Ce prototype couvre deux parcours de bout en bout.
 3. il laisse un commentaire de fin de séance ;
 4. le coach retrouve la séance, série par série, avec le commentaire.
 
-Il contient aussi le minuteur d'intervalles (Tabata, circuit). Le coach peut en régler un sous un exercice ou sous un circuit de la séance : la cliente le lance d'un appui, déjà configuré. Pas encore de création de programmes par le coach, de compte rendu PDF automatique, de paiements, de suivi des mensurations ni de nutrition.
+Il contient aussi le minuteur d'intervalles (Tabata, circuit). Le coach peut en régler un sous un exercice ou sous un circuit de la séance : la cliente le lance d'un appui, déjà configuré.
+
+**Programmes et séances (coach)** :
+
+1. depuis la fiche d'un client (onglet Séances), le coach crée une séance : blocs, exercices choisis dans le catalogue, séries, répétitions, charge, durée, récupération, RIR, tempo et consignes ; il peut la modifier, la dupliquer ou la masquer ;
+2. onglet Programmes : il crée un programme modèle (ses séances, sa durée, son rythme) et l'attribue à un client avec une date de début ; le client reçoit une copie, datée sur la semaine ;
+3. le catalogue, ce sont les 750 exercices validés de la table Airtable « Exercices » (copiés dans Supabase, Airtable n'est pas modifié), avec recherche par nom, muscle, matériel ou famille, et le lien vidéo affiché au client pendant la séance. Ce que le client note (charge et répétitions, durée, distance) est déduit de la famille et du matériel (`scripts/import-exercices.mjs`) ;
+4. retirer un exercice d'une séance déjà faite ne supprime rien : l'historique du client reste.
+
+**Suivi du client** : le client saisit ses mensurations (poids, masse grasse, tours) et ses records (PR) ; l'appli lui propose ses meilleures charges en séance comme pistes, sans les enregistrer d'elle-même. Le coach voit tout dans la fiche du client.
+
+**Nutrition** : le coach écrit un plan par client (calories, macros, eau, conseils) ; le client le consulte et note sa journée (respect du plan sur 5, eau, repas, ressenti). Le coach voit le journal et la moyenne des 7 derniers jours notés.
+
+Pas encore de compte rendu PDF automatique ni de paiements.
 
 ## Essayer sur ton téléphone (gratuit, sans compte Apple ni Google)
 

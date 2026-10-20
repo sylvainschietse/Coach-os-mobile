@@ -115,3 +115,10 @@ describe('séances', () => {
     );
   });
 });
+
+describe('familles', () => {
+  it('suivent l’ordre d’Airtable', async () => {
+    const { familles } = await import('../src/domain/programmes');
+    expect(familles(catalogue)).toEqual(['Squat et presse', 'Hanche', 'Gainage']);
+  });
+});
