@@ -12,7 +12,8 @@
       "channel": "preview",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://rxkclcytevhtbpcdozdv.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_VYSmGJYR2CbC18vZERjODg_rGjfa54g"
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_VYSmGJYR2CbC18vZERjODg_rGjfa54g",
+        "EXPO_PUBLIC_CONNEXIONS": "google"
       }
     }
   }
