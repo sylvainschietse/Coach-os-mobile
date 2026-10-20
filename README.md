@@ -44,10 +44,10 @@ Sans configuration, l'app démarre en **mode démo** : données fictives (Sylvai
 ## Brancher une vraie base Supabase (offre gratuite)
 
 1. Créer un projet sur [supabase.com](https://supabase.com), région Europe.
-2. Dans *SQL Editor*, exécuter `supabase/migrations/20261019000000_prototype.sql`, puis les autres fichiers de `supabase/migrations/` dans l'ordre de leur nom.
-3. Dans *Authentication > Users*, créer trois comptes : `coach@demo.coachos.fr`, `lea@demo.coachos.fr`, `thomas@demo.coachos.fr` (ou changer les e-mails dans `supabase/seed.sql`).
-4. Exécuter `supabase/seed.sql`.
-5. Copier `.env.example` en `.env.local` et renseigner l'URL du projet et la clé publique (*Project Settings > API*).
+2. Dans *SQL Editor*, coller tout le fichier `supabase/installation.sql` (toutes les migrations, dans l'ordre) puis *Run*. Pour des données d'essai, exécuter ensuite `supabase/seed.sql` après avoir créé ses comptes.
+3. Dans *Authentication > Users*, créer le compte du coach (*Add user*, cocher *Auto Confirm User*).
+4. Dans *SQL Editor* : `select public.creer_coach('e-mail du coach', 'Prénom', 'lien-du-questionnaire');`
+5. Renseigner l'URL du projet et la clé publique (*Project Settings > API Keys*, clé « publishable ») dans `.env` (ou `.env.local` pour un essai local). Ces deux valeurs sont publiques ; ne jamais y mettre la clé secrète.
 6. Relancer `npx expo start`. L'écran d'accueil demande alors e-mail et mot de passe, et le coach voit sur son ordinateur ce que le client fait sur son téléphone.
 
 ### Rédaction du compte rendu par l'IA (Claude)

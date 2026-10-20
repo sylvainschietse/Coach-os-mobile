@@ -41,6 +41,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019010000_crm.sql'), 'utf8'));
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019020000_booster_evaluation.sql'), 'utf8'));
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019030000_booster_redaction.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261020000000_creer_coach.sql'), 'utf8'));
   await db.exec(`
     grant usage on schema public to anon;
     insert into auth.users (id) values ('${ids.userCoach1}'), ('${ids.userCoach2}');
@@ -113,5 +114,17 @@ describe('évaluation du Booster', () => {
     expect(rows[0].jambes).toBe('Correct');
     const autre = await en('authenticated', ids.userCoach2, `select count(*)::int as n from public.boosters where evaluation is not null`);
     expect(autre.rows[0].n).toBe(0);
+  });
+});
+
+describe('ouverture d’un espace coach', () => {
+  it('relie un compte existant à un nouveau coach, réservé à l’administrateur', async () => {
+    const userId = '10000000-0000-4000-8000-000000000003';
+    await db.exec(`insert into auth.users (id, email) values ('${userId}', 'Nouveau@Coach.fr')`);
+    const r = await db.query<{ id: string }>(`select public.creer_coach(' nouveau@coach.fr ', 'Nina', 'Nina-Coach') as id`);
+    const coach = await db.query<{ nom: string; lien_questionnaire: string }>('select nom, lien_questionnaire from public.coachs where id = $1', [r.rows[0].id]);
+    expect(coach.rows[0]).toEqual({ nom: 'Nina', lien_questionnaire: 'nina-coach' });
+    await expect(db.query(`select public.creer_coach('inconnu@coach.fr', 'X', 'xxx')`)).rejects.toThrow(/Aucun compte/);
+    await expect(en('authenticated', ids.userCoach1, `select public.creer_coach('nouveau@coach.fr', 'Pirate', 'pirate')`)).rejects.toThrow(/permission/);
   });
 });
