@@ -11,7 +11,8 @@ import { Bouton, Carte, Chargement, Ecran, Erreur, Pastille, Puce, Puces, SousTi
 import { Contacts } from '@/ui/crm/contacts';
 import { FicheContactVue } from '@/ui/crm/fiche';
 import { Journee } from '@/ui/crm/journee';
-import { DetailClient } from '@/ui/detail-client';
+import { FicheClient } from '@/ui/fiche-client';
+import { Modeles } from '@/ui/programmes/modeles';
 import { couleurs, espace, LARGEUR_LARGE } from '@/ui/theme';
 
 const quand = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
@@ -49,13 +50,14 @@ function ListeClients({
   );
 }
 
-type Onglet = 'journee' | 'contacts' | 'clients';
+type Onglet = 'journee' | 'contacts' | 'clients' | 'programmes';
 type Selection = { type: 'contact' | 'client'; id: string } | undefined;
 
 const ONGLETS: { cle: Onglet; libelle: string }[] = [
   { cle: 'journee', libelle: 'Aujourd’hui' },
   { cle: 'contacts', libelle: 'Contacts' },
   { cle: 'clients', libelle: 'Clients' },
+  { cle: 'programmes', libelle: 'Programmes' },
 ];
 
 export default function EspaceCoach() {
@@ -112,6 +114,7 @@ export default function EspaceCoach() {
           )}
         </>
       )}
+      {onglet === 'programmes' && <Modeles coachId={coachId} />}
       <Bouton variante="discret" libelle="Se déconnecter" onPress={deconnecter} />
     </>
   );
@@ -131,7 +134,7 @@ export default function EspaceCoach() {
         {selection?.type === 'client' && (
           <>
             <Titre>{clientChoisi?.prenom ?? 'Client'}</Titre>
-            <DetailClient key={selection.id} clientId={selection.id} />
+            <FicheClient key={selection.id} clientId={selection.id} coachId={coachId} />
           </>
         )}
         {!selection && <Texte doux>Choisis un contact ou un client pour voir sa fiche.</Texte>}

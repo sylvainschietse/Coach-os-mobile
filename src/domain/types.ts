@@ -18,6 +18,10 @@ export interface Exercice {
   nom: string;
   mesures: Mesure[];
   videoUrl?: string;
+  /** Classement du catalogue de Sylvain (importé d'Airtable) : sert à chercher un exercice. */
+  famille?: string;
+  materiel?: string[];
+  muscles?: string[];
 }
 
 /** Une ligne de prescription : ce que le coach demande pour un exercice. */
@@ -52,11 +56,30 @@ export interface Seance {
   datePrevue?: string;
   consignes?: string;
   blocs: Bloc[];
+  programmeId?: string;
+  ordre?: number;
+}
+
+/** Séance d'un modèle de programme : pas encore attribuée à un client. */
+export type SeanceModele = Omit<Seance, 'clientId' | 'programmeId'>;
+
+export interface Programme {
+  id: string;
+  /** Vide pour un modèle réutilisable. */
+  clientId?: string;
+  titre: string;
+  objectif?: string;
+  dureeSemaines?: number;
+  seancesParSemaine?: number;
+  niveau?: string;
+  notes?: string;
+  seances: SeanceModele[];
 }
 
 export interface SeanceResume {
   id: string;
   titre: string;
+  programmeId?: string;
   datePrevue?: string;
   nbExercices: number;
   derniereRealisation?: string;
@@ -111,4 +134,57 @@ export interface HistoriqueExercice {
   exerciceId: string;
   date: string;
   series: Valeurs[];
+}
+
+/** Mensurations saisies par le client (ou par le coach pendant un bilan). */
+export interface Mensuration {
+  id: string;
+  clientId: string;
+  date: string;
+  poidsKg?: number;
+  masseGrassePct?: number;
+  tourTailleCm?: number;
+  tourHanchesCm?: number;
+  tourPoitrineCm?: number;
+  tourBrasCm?: number;
+  tourCuisseCm?: number;
+  note?: string;
+}
+
+export type UniteRecord = 'kg' | 'reps' | 's' | 'm' | 'cal';
+
+/** Un record personnel (PR) noté par le client. */
+export interface RecordPerso {
+  id: string;
+  clientId: string;
+  exerciceId?: string;
+  libelle: string;
+  valeur: number;
+  unite: UniteRecord;
+  /** Pour une charge : à combien de répétitions (1 = 1RM). */
+  repetitions?: number;
+  date: string;
+  note?: string;
+}
+
+export interface PlanNutrition {
+  clientId: string;
+  calories?: number;
+  proteinesG?: number;
+  glucidesG?: number;
+  lipidesG?: number;
+  eauL?: number;
+  conseils?: string;
+  majLe?: string;
+}
+
+export interface JournalNutrition {
+  id: string;
+  clientId: string;
+  date: string;
+  /** Respect du plan ressenti par le client, de 1 à 5. */
+  respect?: number;
+  eauL?: number;
+  repas?: string;
+  ressenti?: string;
 }

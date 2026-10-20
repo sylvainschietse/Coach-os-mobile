@@ -1,8 +1,14 @@
 import type {
   ClientResume,
+  Exercice,
   HistoriqueExercice,
+  JournalNutrition,
+  Mensuration,
+  PlanNutrition,
+  Programme,
   Realisation,
   RealisationDetail,
+  RecordPerso,
   Seance,
   SeanceResume,
 } from '@/domain/types';
@@ -17,6 +23,35 @@ export interface Depot {
   enregistrer(realisation: Realisation): Promise<void>;
   clientsDuCoach(coachId: string): Promise<ClientResume[]>;
   realisationsDuClient(clientId: string): Promise<RealisationDetail[]>;
+
+  // Création par le coach
+  /** Le catalogue du coach (et le catalogue commun), exercices actifs. */
+  catalogue(): Promise<Exercice[]>;
+  creerExercice(coachId: string, exercice: Pick<Exercice, 'nom' | 'mesures'>): Promise<Exercice>;
+  /** Crée ou remplace la séance (blocs et lignes compris). */
+  enregistrerSeance(seance: Seance): Promise<void>;
+  /** La séance disparaît de l'app du client ; ce qu'il a déjà fait reste dans son historique. */
+  archiverSeance(id: string): Promise<void>;
+  modeles(coachId: string): Promise<Programme[]>;
+  programme(id: string): Promise<Programme>;
+  enregistrerModele(coachId: string, programme: Programme): Promise<void>;
+  archiverModele(id: string): Promise<void>;
+  programmesDuClient(clientId: string): Promise<Programme[]>;
+  /** Copie le modèle chez le client : un programme et ses séances, datées à partir de `debut`. */
+  attribuerModele(coachId: string, modele: Programme, clientId: string, debut?: string): Promise<void>;
+
+  // Suivi du client
+  mensurations(clientId: string): Promise<Mensuration[]>;
+  ajouterMensuration(m: Mensuration): Promise<void>;
+  supprimerMensuration(id: string): Promise<void>;
+  records(clientId: string): Promise<RecordPerso[]>;
+  ajouterRecord(r: RecordPerso): Promise<void>;
+  supprimerRecord(id: string): Promise<void>;
+  planNutrition(clientId: string): Promise<PlanNutrition | null>;
+  enregistrerPlanNutrition(plan: PlanNutrition): Promise<void>;
+  journalNutrition(clientId: string): Promise<JournalNutrition[]>;
+  /** Une entrée par jour : la renvoyer pour la même date la remplace. */
+  enregistrerJournal(j: JournalNutrition): Promise<void>;
 }
 
 export type Profil =

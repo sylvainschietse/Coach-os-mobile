@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useKeepAwake } from 'expo-keep-awake';
 
 import { depot } from '@/data';
@@ -131,6 +131,11 @@ export default function RealiserSeance() {
                   <SousTitre>{ligne.exercice.nom}</SousTitre>
                   <Texte doux style={{ fontSize: 14 }}>{prescriptionLisible(ligne)}</Texte>
                   {ligne.consignes && <Texte style={{ fontSize: 14 }}>{ligne.consignes}</Texte>}
+                  {ligne.exercice.videoUrl && (
+                    <Pressable accessibilityRole="link" onPress={() => Linking.openURL(ligne.exercice.videoUrl!)} hitSlop={8}>
+                      <Texte style={{ fontSize: 14, color: couleurs.rouge }}>▶ Voir la démonstration</Texte>
+                    </Pressable>
+                  )}
                   {ligne.minuteur && <LancerChrono config={ligne.minuteur} titre={ligne.exercice.nom} />}
                   {series[ligne.id]?.map((serie) => (
                     <View key={serie.index} style={styles.serie}>
