@@ -12,6 +12,9 @@ interface ValeurSession {
   pret: boolean;
   choisirProfilDemo: (p: Profil) => Promise<void>;
   connecter: (email: string, motDePasse: string) => Promise<string | null>;
+  /** Le compte a été créé par le coach : le client doit choisir son propre mot de passe. */
+  motDePasseProvisoire: boolean;
+  changerMotDePasse: (nouveau: string) => Promise<string | null>;
   deconnecter: () => Promise<void>;
 }
 
@@ -20,11 +23,21 @@ const Contexte = createContext<ValeurSession | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [profil, setProfil] = useState<Profil | null>(null);
   const [pret, setPret] = useState(false);
+  const [motDePasseProvisoire, setProvisoire] = useState(false);
+
+  const lireProvisoire = useCallback(async () => {
+    if (!supabase) return setProvisoire(false);
+    const { data } = await supabase.auth.getUser();
+    setProvisoire(data.user?.user_metadata?.mot_de_passe_provisoire === true);
+  }, []);
 
   useEffect(() => {
     (async () => {
       try {
-        if (supabase) setProfil(await profilConnecte(supabase));
+        if (supabase) {
+          setProfil(await profilConnecte(supabase));
+          await lireProvisoire();
+        }
         else {
           const brut = await AsyncStorage.getItem(CLE);
           if (brut) setProfil(JSON.parse(brut) as Profil);
@@ -35,7 +48,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setPret(true);
       }
     })();
-  }, []);
+  }, [lireProvisoire]);
 
   const choisirProfilDemo = useCallback(async (p: Profil) => {
     await AsyncStorage.setItem(CLE, JSON.stringify(p));
@@ -51,7 +64,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
       return 'Ce compte n’est rattaché à aucun coach ni client actif.';
     }
+    await lireProvisoire();
     setProfil(p);
+    return null;
+  }, [lireProvisoire]);
+
+  const changerMotDePasse = useCallback(async (nouveau: string) => {
+    if (!supabase) return null;
+    const { error } = await supabase.auth.updateUser({ password: nouveau, data: { mot_de_passe_provisoire: false } });
+    if (error) return 'Le mot de passe n’a pas pu être enregistré. Réessaie.';
+    setProvisoire(false);
     return null;
   }, []);
 
@@ -59,10 +81,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (supabase) await supabase.auth.signOut();
     await AsyncStorage.removeItem(CLE);
     setProfil(null);
+    setProvisoire(false);
   }, []);
 
   return (
-    <Contexte.Provider value={{ profil, pret, choisirProfilDemo, connecter, deconnecter }}>{children}</Contexte.Provider>
+    <Contexte.Provider value={{ profil, pret, choisirProfilDemo, connecter, deconnecter, motDePasseProvisoire, changerMotDePasse }}>{children}</Contexte.Provider>
   );
 }
 

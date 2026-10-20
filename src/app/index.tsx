@@ -1,19 +1,25 @@
 import { Redirect, router } from 'expo-router';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CLIENTS_DEMO, COACH_DEMO } from '@/data/demo';
 import { useSession } from '@/data/session';
 import { supabase } from '@/data/supabase';
+import { verifierMotDePasse } from '@/domain/acces-client';
 import { Bouton, Texte } from '@/ui/composants';
 import { couleurs, espace, polices } from '@/ui/theme';
 
 export default function Accueil() {
-  const { profil } = useSession();
+  const { profil, motDePasseProvisoire } = useSession();
+  if (profil && motDePasseProvisoire) return <Cadre><NouveauMotDePasse /></Cadre>;
   if (profil?.role === 'client') return <Redirect href="/client" />;
   if (profil?.role === 'coach') return <Redirect href="/coach" />;
 
+  return <Cadre>{supabase ? <Connexion /> : <ChoixDemo />}</Cadre>;
+}
+
+function Cadre({ children }: { children: ReactNode }) {
   return (
     <SafeAreaView style={styles.fond}>
       <View style={styles.contenu}>
@@ -23,9 +29,55 @@ export default function Accueil() {
           </Text>
           <Texte style={{ color: '#C9C9CF' }}>Ton programme, ta séance, ta progression.</Texte>
         </View>
-        {supabase ? <Connexion /> : <ChoixDemo />}
+        {children}
       </View>
     </SafeAreaView>
+  );
+}
+
+/** Première connexion d'un client : il remplace le mot de passe provisoire envoyé par son coach. */
+function NouveauMotDePasse() {
+  const { changerMotDePasse, deconnecter } = useSession();
+  const [motDePasse, setMotDePasse] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [envoi, setEnvoi] = useState(false);
+
+  async function valider() {
+    const probleme = verifierMotDePasse(motDePasse, confirmation);
+    if (probleme) return setErreur(probleme);
+    setEnvoi(true);
+    setErreur(await changerMotDePasse(motDePasse));
+    setEnvoi(false);
+  }
+
+  return (
+    <View style={{ gap: espace(3) }}>
+      <Text style={styles.libelle}>Choisis ton mot de passe</Text>
+      <Texte style={{ color: '#C9C9CF' }}>Remplace le mot de passe provisoire par le tien. Toi seul le connaîtras.</Texte>
+      <TextInput
+        style={styles.saisie}
+        placeholder="Nouveau mot de passe (8 caractères ou plus)"
+        placeholderTextColor="#8A8A92"
+        secureTextEntry
+        autoComplete="new-password"
+        value={motDePasse}
+        onChangeText={setMotDePasse}
+      />
+      <TextInput
+        style={styles.saisie}
+        placeholder="Le même, une seconde fois"
+        placeholderTextColor="#8A8A92"
+        secureTextEntry
+        autoComplete="new-password"
+        value={confirmation}
+        onChangeText={setConfirmation}
+        onSubmitEditing={valider}
+      />
+      {erreur && <Texte style={{ color: '#FF8A8F' }}>{erreur}</Texte>}
+      <Bouton libelle="Enregistrer" onPress={valider} chargement={envoi} desactive={!motDePasse || !confirmation} />
+      <Bouton variante="contour" libelle="Se déconnecter" onPress={deconnecter} />
+    </View>
   );
 }
 

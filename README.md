@@ -52,6 +52,10 @@ C'est déjà fait pour le projet « Coach OS » (région Europe, offre gratuite)
 5. Renseigner l'URL du projet et la clé publique (*Project Settings > API Keys*, clé « publishable ») dans `.env` (ou `.env.local` pour un essai local). Ces deux valeurs sont publiques ; ne jamais y mettre la clé secrète.
 6. Relancer `npx expo start`. L'écran d'accueil demande alors e-mail et mot de passe, et le coach voit sur son ordinateur ce que le client fait sur son téléphone.
 
+### Accès des clients à l'appli
+
+Sur la fiche d'un client, « Créer son accès » crée son compte avec un mot de passe provisoire, que le coach lui envoie par WhatsApp ou SMS. À sa première connexion, le client choisit son propre mot de passe ; il ne voit que ses séances et son suivi. Le même bouton renouvelle le mot de passe provisoire en cas d'oubli. C'est la fonction `supabase/functions/acces-client` qui crée le compte (`npx supabase functions deploy acces-client`). Pour ajouter un lien d'installation au message, renseigner `EXPO_PUBLIC_LIEN_APPLI`.
+
 ### Rédaction du compte rendu par l'IA (Claude)
 
 La clé Claude ne va jamais dans l'appli : elle reste dans les secrets Supabase, lue par la fonction `supabase/functions/rediger-compte-rendu`.

@@ -19,6 +19,7 @@ import { ENTRETIEN } from '@/domain/evaluation';
 import { reponsesParSection } from '@/domain/questionnaire';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
+import { AccesAppli } from './acces';
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, Puce, Puces, SousTitre, Texte, Titre } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import {
@@ -91,6 +92,7 @@ export function FicheContactVue({ id, onVoirClient }: { id: string; onVoirClient
 
       <TitreSection>Prochaine étape</TitreSection>
       <ProchaineEtape fiche={fiche} prevu={prevu} agir={agir} onVoirClient={onVoirClient} />
+      {contact.statut === 'client' && contact.clientId && <AccesAppli contact={contact} />}
 
       {questionnaires[0] && <PreparationSeance reponses={questionnaires[0].reponses} />}
 
