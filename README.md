@@ -39,9 +39,11 @@ Pour l'espace coach sur ordinateur : appuie sur `w` dans le terminal, l'app s'ou
 
 ### Mode démo
 
-Sans configuration, l'app démarre en **mode démo** : données fictives (Sylvain coach, Léa et Thomas clients), tout reste sur l'appareil. Sur l'écran d'accueil, choisis « Je suis Léa », fais la séance, déconnecte-toi, puis choisis « Je suis Sylvain » pour voir le résultat. Léa a déjà une séance la semaine précédente (4 × 12 à 45 kg au développé couché) : l'app lui suggère donc 47,5 kg.
+Le fichier `.env` branche l'app sur la base Supabase « Coach OS » (connexion par e-mail et mot de passe). Pour l'essayer sans compte, lance `EXPO_NO_DOTENV=1 npx expo start` : l'app démarre alors en **mode démo** : données fictives (Sylvain coach, Léa et Thomas clients), tout reste sur l'appareil. Sur l'écran d'accueil, choisis « Je suis Léa », fais la séance, déconnecte-toi, puis choisis « Je suis Sylvain » pour voir le résultat. Léa a déjà une séance la semaine précédente (4 × 12 à 45 kg au développé couché) : l'app lui suggère donc 47,5 kg.
 
 ## Brancher une vraie base Supabase (offre gratuite)
+
+C'est déjà fait pour le projet « Coach OS » (région Europe, offre gratuite). Les étapes ci-dessous servent pour un nouveau projet.
 
 1. Créer un projet sur [supabase.com](https://supabase.com), région Europe.
 2. Dans *SQL Editor*, coller tout le fichier `supabase/installation.sql` (toutes les migrations, dans l'ordre) puis *Run*. Pour des données d'essai, exécuter ensuite `supabase/seed.sql` après avoir créé ses comptes.
