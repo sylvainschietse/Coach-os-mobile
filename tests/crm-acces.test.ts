@@ -44,6 +44,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261020000000_creer_coach.sql'), 'utf8'));
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261020010000_durcissement.sql'), 'utf8'));
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261020020000_rattacher_compte.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261020030000_taches.sql'), 'utf8'));
   await db.exec(`
     grant usage on schema public to anon;
     insert into auth.users (id) values ('${ids.userCoach1}'), ('${ids.userCoach2}');

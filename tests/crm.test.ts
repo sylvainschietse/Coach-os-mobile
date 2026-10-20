@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ajouterRelance,
   annulerBooster,
   archiver,
   CARNET_VIDE,
@@ -197,5 +198,17 @@ describe('messages', () => {
     expect(lienEnvoi('whatsapp', { ...julie }, 'Salut')).toBe('https://wa.me/33612345678?text=Salut');
     expect(lienEnvoi('sms', { ...julie }, 'Salut à toi')).toBe('sms:+33612345678?body=Salut%20%C3%A0%20toi');
     expect(lienEnvoi('email', { ...julie, email: undefined }, 'Salut')).toBeNull();
+  });
+});
+
+describe('tâches libres', () => {
+  it('une tâche a un texte, arrive dans la journée et n’a pas de message', () => {
+    const ctx = contexte();
+    const { carnet, contact } = avecJulie(ctx);
+    expect(() => ajouterRelance(carnet, contact.id, '2026-10-19', 'tache', '  ', ctx)).toThrow(/à faire/);
+    const avec = ajouterRelance(carnet, contact.id, '2026-10-19', 'tache', 'Préparer son programme', ctx);
+    const jour = relancesDuJour(avec, ctx.maintenant);
+    expect(jour.map((r) => r.note)).toContain('Préparer son programme');
+    expect(rediger('tache', contact, { coach: 'Sylvain' })).toBe('');
   });
 });

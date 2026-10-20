@@ -62,7 +62,8 @@ export interface Booster {
 
 export type SaisieBooster = Partial<Pick<Booster, 'evaluation' | 'entretien' | 'priorites' | 'paye' | 'compteRendu' | 'planEnvoyeLe' | 'redaction'>>;
 
-export type ModeleMessage = 'questionnaire' | 'booster' | 'rappel_booster' | 'suivi_booster' | 'libre';
+/** « tache » : une chose à faire pour ce contact, sans message à envoyer (le texte est dans la note). */
+export type ModeleMessage = 'questionnaire' | 'booster' | 'rappel_booster' | 'suivi_booster' | 'libre' | 'tache';
 
 export interface Relance {
   id: string;
@@ -338,6 +339,7 @@ export function annulerBooster(c: Carnet, boosterId: string, ctx: Contexte): Car
 }
 
 export function ajouterRelance(c: Carnet, contactId: string, echeance: string, modele: ModeleMessage, note: string | undefined, ctx: Contexte): Carnet {
+  if (modele === 'tache' && !note?.trim()) throw new Error('Écris ce qu’il y a à faire.');
   return { ...c, relances: [...c.relances, { id: ctx.nouvelId(), contactId, echeance, modele, note: note?.trim() || undefined }] };
 }
 
@@ -468,6 +470,7 @@ export const MODELES: Record<ModeleMessage, { libelle: string; texte: string }> 
       'Bonjour {prenom}, merci pour la séance Booster ! Tu as tes 3 priorités pour avancer. Veux-tu qu’on en parle pour la suite de ton accompagnement ?',
   },
   libre: { libelle: 'Relance', texte: 'Bonjour {prenom}, ' },
+  tache: { libelle: 'Tâche', texte: '' },
 };
 
 export function rediger(

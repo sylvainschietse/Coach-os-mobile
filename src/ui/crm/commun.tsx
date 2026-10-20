@@ -84,6 +84,7 @@ export function CarteRelance({
 }) {
   const coach = useCoachNom();
   const message = rediger(relance.modele, contact, { coach, lienQuestionnaire, booster });
+  const tache = relance.modele === 'tache';
   return (
     <View style={[styles.relance, enRetard && { borderColor: couleurs.rouge }]}>
       <Pressable onPress={onOuvrirContact} disabled={!onOuvrirContact} accessibilityRole={onOuvrirContact ? 'link' : undefined}>
@@ -91,14 +92,15 @@ export function CarteRelance({
           <Text style={styles.nom}>{nomComplet(contact)}</Text>
           {enRetard && <Text style={styles.retard}>En retard</Text>}
         </View>
+        {tache && <Text style={styles.message}>{relance.note}</Text>}
         <Text style={styles.motif}>
           {MODELES[relance.modele].libelle}
-          {relance.note ? ` · ${relance.note}` : ''}
+          {relance.note && !tache ? ` · ${relance.note}` : ''}
           {contact.telephone ? ` · ${formaterTelephone(contact.telephone)}` : ''}
         </Text>
       </Pressable>
-      <Text style={styles.message}>{message}</Text>
-      <BoutonsEnvoi contact={contact} message={message} onEnvoye={onFaite} />
+      {!tache && <Text style={styles.message}>{message}</Text>}
+      {!tache && <BoutonsEnvoi contact={contact} message={message} onEnvoye={onFaite} />}
       <View style={styles.actions}>
         <Pressable accessibilityRole="button" onPress={onFaite} style={styles.action}>
           <Text style={styles.actionTexte}>✓ Fait</Text>

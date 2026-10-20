@@ -96,7 +96,7 @@ export function FicheContactVue({ id, onVoirClient }: { id: string; onVoirClient
 
       {questionnaires[0] && <PreparationSeance reponses={questionnaires[0].reponses} />}
 
-      <TitreSection compte={ouvertes.length}>Relances</TitreSection>
+      <TitreSection compte={ouvertes.length}>Relances et tâches</TitreSection>
       {ouvertes.map((r) => (
         <CarteRelance
           key={r.id}
@@ -109,11 +109,11 @@ export function FicheContactVue({ id, onVoirClient }: { id: string; onVoirClient
           onReporter={() => agir(() => crm.reporterRelance(r.id, ajouterJours(jourLocal(new Date()), 1)))}
         />
       ))}
-      {ouvertes.length === 0 && <Texte doux>Aucune relance prévue.</Texte>}
+      {ouvertes.length === 0 && <Texte doux>Aucune relance ni tâche prévue.</Texte>}
       {contact.statut !== 'archive' && <NouvelleRelance contactId={contact.id} agir={agir} />}
       {faites.length > 0 && (
         <Texte doux style={{ fontSize: 13 }}>
-          Déjà faites : {faites.map((r) => `${MODELES[r.modele].libelle.toLowerCase()} (${dateCourte(r.faiteLe!)})`).join(', ')}
+          Déjà faites : {faites.map((r) => `${r.modele === 'tache' ? r.note : MODELES[r.modele].libelle.toLowerCase()} (${dateCourte(r.faiteLe!)})`).join(', ')}
         </Texte>
       )}
 
@@ -359,11 +359,12 @@ function NouvelleRelance({ contactId, agir }: { contactId: string; agir: Agir })
   const [modele, setModele] = useState<ModeleMessage>('libre');
   const [jours, setJours] = useState(3);
   const [note, setNote] = useState('');
-  if (!ouvert) return <Bouton variante="discret" libelle="+ Programmer une relance" onPress={() => setOuvert(true)} />;
+  if (!ouvert) return <Bouton variante="discret" libelle="+ Ajouter une relance ou une tâche" onPress={() => setOuvert(true)} />;
   const echeance = ajouterJours(jourLocal(new Date()), jours);
+  const tache = modele === 'tache';
   return (
     <Carte>
-      <SousTitre>Nouvelle relance</SousTitre>
+      <SousTitre>{tache ? 'Nouvelle tâche' : 'Nouvelle relance'}</SousTitre>
       <Puces>
         {(Object.keys(MODELES) as ModeleMessage[]).map((m) => (
           <Puce key={m} libelle={MODELES[m].libelle} actif={modele === m} onPress={() => setModele(m)} />
@@ -374,9 +375,14 @@ function NouvelleRelance({ contactId, agir }: { contactId: string; agir: Agir })
           <Puce key={d.jours} libelle={d.libelle} actif={jours === d.jours} onPress={() => setJours(d.jours)} />
         ))}
       </Puces>
-      <ChampTexte libelle="Note pour toi (facultatif)" valeur={note} onChange={setNote} placeholder="Ex. rappeler après ses vacances" />
+      {tache ? (
+        <ChampTexte libelle="À faire" valeur={note} onChange={setNote} placeholder="Ex. préparer son programme de reprise" />
+      ) : (
+        <ChampTexte libelle="Note pour toi (facultatif)" valeur={note} onChange={setNote} placeholder="Ex. rappeler après ses vacances" />
+      )}
       <Bouton
         libelle={`Programmer pour ${jourLisible(echeance)}`}
+        desactive={tache && !note.trim()}
         onPress={() =>
           agir(async () => {
             await crm.ajouterRelance(contactId, echeance, modele, note);

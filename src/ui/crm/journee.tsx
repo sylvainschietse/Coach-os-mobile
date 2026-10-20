@@ -36,8 +36,8 @@ export function Journee({
 
   return (
     <View style={{ gap: espace(3) }}>
-      <TitreSection compte={relances.length}>À relancer aujourd’hui</TitreSection>
-      {relances.length === 0 && <Texte doux>Rien à relancer aujourd’hui.</Texte>}
+      <TitreSection compte={relances.length}>À faire aujourd’hui</TitreSection>
+      {relances.length === 0 && <Texte doux>Rien à faire aujourd’hui.</Texte>}
       {relances.map((r) => (
         <CarteRelance
           key={r.id}
