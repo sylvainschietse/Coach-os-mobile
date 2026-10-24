@@ -44,6 +44,7 @@ import { FicheContactModale, type VoletFiche } from '@/ui/crm/fiche-contact';
 import { ConfirmerSuppression } from '@/ui/crm/suppression';
 import { VueEnsemble } from '@/ui/crm/vue-ensemble';
 import { EspaceClient } from '@/ui/espace-client';
+import { SeancesRealisees } from '@/ui/entrainement/bilan';
 import { Bibliotheque } from '@/ui/entrainement/bibliotheque';
 import { CyclesClients } from '@/ui/entrainement/cycles';
 import { DetailProgramme } from '@/ui/entrainement/programme';
@@ -181,7 +182,13 @@ export default function EspaceCoach() {
           {onglet === 'suivis' && (
             <CyclesClients coachId={coachId} onOuvrirProgramme={(id) => router.setParams({ onglet: 'airtable', programme: id, seance: undefined })} />
           )}
-          {onglet === 'bilan' && <NonRepris ecran="Séances réalisées" lot={3} detail="Les séances de chaque client restent visibles dans Cycles clients." />}
+          {onglet === 'bilan' && (
+            <SeancesRealisees
+              coachId={coachId}
+              onOuvrirProgramme={(id) => router.setParams({ onglet: 'airtable', programme: id, seance: undefined })}
+              onOuvrirSuivis={() => naviguer('suivis')}
+            />
+          )}
           {onglet === 'hebdo' && <NonRepris ecran="Bilans hebdo" lot={4} />}
           {onglet === 'nutrition' && (
             <NutritionCoach coachId={coachId} clientId={params.client} onClient={(id) => router.setParams({ onglet: 'nutrition', client: id })} />

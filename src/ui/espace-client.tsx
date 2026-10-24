@@ -1,21 +1,23 @@
 // Espace client repris de coach-os-espace-client/App.tsx : barre du bas Programme / Séances / Suivi /
 // Nutrition / Documents, sous-rubriques Suivi et Nutrition. Sert aussi à l'aperçu « Vue client » du coach.
-import { router, useFocusEffect } from 'expo-router';
-import { ArrowUpRight, Dumbbell, FileText, History, Lock, RefreshCw, TrendingUp, Utensils } from 'lucide-react-native';
+import { useFocusEffect } from 'expo-router';
+import { Dumbbell, FileText, History, TrendingUp, Utensils } from 'lucide-react-native';
 import { useRef, useState, type ComponentRef } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 import { depot } from '@/data';
 import { envoyerEnAttente } from '@/data/file-envoi';
+import { demanderSortie } from '@/lib/brouillon';
 import { useCharger } from '@/lib/useCharger';
 
 import { JournalRepas } from './alimentation/journal-repas';
 import { PlanSemaine } from './alimentation/plan-semaine';
 import { ProfilNutritionCarte } from './alimentation/profil';
 import { RecettesClient } from './alimentation/recettes';
+import { BandeauRepos, EntrainementClient } from './entrainement/espace-entrainement';
 import { MesDocuments } from './mes-documents';
-import { BandeauDemo, BarreClient, BoutonContour, EnTeteRubrique, Hero, NonRepris, Selecteur, SousNav, Vide, type OngletDef } from './coque';
-import { Carte, Chargement, Erreur, Pastille, SousTitre, Texte } from './composants';
+import { BandeauDemo, BarreClient, NonRepris, Selecteur, SousNav, type OngletDef } from './coque';
+import { Carte, Texte } from './composants';
 import { Mensurations } from './suivi/mensurations';
 import { JournalNutritionVue, PlanNutritionCarte } from './suivi/nutrition';
 import { Records } from './suivi/records';
@@ -47,9 +49,6 @@ const NUTRITION: OngletDef<RubriqueNutrition>[] = [
   { cle: 'personnelles', libelle: 'Mes recettes' },
 ];
 
-const datePrevue = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
-const dateCourte = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
-
 export interface Apercu {
   clients: { id: string; prenom: string }[];
   onChoisir: (id: string) => void;
@@ -70,6 +69,7 @@ export function EspaceClient({
   const [onglet, setOnglet] = useState<OngletClient>(ongletInitial);
   const [suivi, setSuivi] = useState<RubriqueSuivi>('hebdo');
   const [nutrition, setNutrition] = useState<RubriqueNutrition>('profil');
+  const [repos, setRepos] = useState<{ fin: number; libelle: string } | null>(null);
   const defilement = useRef<ComponentRef<typeof ScrollView>>(null);
 
   const aller = (o: OngletClient) => {
@@ -89,15 +89,29 @@ export function EspaceClient({
                 libelle="Choisir le client à consulter"
                 options={apercu.clients.map((c) => ({ cle: c.id, libelle: c.prenom }))}
                 valeur={clientId}
-                onChange={apercu.onChoisir}
+                onChange={(id) => demanderSortie(() => apercu.onChoisir(id))}
               />
             </View>
           )}
-          {onglet === 'programme' && <Programme clientId={clientId} prenom={prenom} apercu={!!apercu} onAller={(o) => {
-            if (o === 'suivi') setSuivi('hebdo');
-            aller(o);
-          }} />}
-          {onglet === 'historique' && <NonRepris ecran="Séances (historique)" lot={3} />}
+          {(onglet === 'programme' || onglet === 'historique') && (
+            <>
+              <EnAttente clientId={clientId} apercu={!!apercu} />
+              <EntrainementClient
+                key={`${clientId}:${onglet}`}
+                clientId={clientId}
+                prenom={prenom}
+                apercu={!!apercu}
+                vue={onglet}
+                onRepos={setRepos}
+                onAller={(o) =>
+                  demanderSortie(() => {
+                    if (o === 'suivi') setSuivi('hebdo');
+                    aller(o);
+                  })
+                }
+              />
+            </>
+          )}
           {onglet === 'suivi' && (
             <>
               <SousNav nom="Rubriques du suivi" grille="suivi" onglets={SUIVI} valeur={suivi} onChange={setSuivi} />
@@ -132,78 +146,23 @@ export function EspaceClient({
           )}
         </View>
       </ScrollView>
-      <BarreClient onglets={ONGLETS} valeur={onglet} onChange={aller} />
+      {repos && <BandeauRepos key={repos.fin} fin={repos.fin} libelle={repos.libelle} onFermer={() => setRepos(null)} />}
+      <BarreClient onglets={ONGLETS} valeur={onglet} onChange={(o) => demanderSortie(() => aller(o))} />
     </View>
   );
 }
 
-function Programme({ clientId, prenom, apercu, onAller }: { clientId: string; prenom: string; apercu: boolean; onAller: (o: OngletClient) => void }) {
-  const { donnee: seances, erreur, recharger } = useCharger(() => depot.seancesDuClient(clientId), clientId);
+/** File d'envoi de l'ancienne saisie hors ligne : ce qui attend encore le réseau reste signalé. */
+function EnAttente({ clientId, apercu }: { clientId: string; apercu: boolean }) {
   const attente = useCharger(() => (apercu ? Promise.resolve(0) : envoyerEnAttente()), `attente-${clientId}`);
-  useFocusEffect(recharger);
   useFocusEffect(attente.recharger);
-
+  if (!attente.donnee) return null;
   return (
-    <>
-      <Hero
-        kicker="Votre entraînement"
-        titre={`Bonjour, ${prenom.trim().split(/\s+/)[0]}`}
-        sousTitre="Votre prochaine séance commence ici."
-        droite={<BoutonContour nom="Actualiser mon programme" icone={RefreshCw} onPress={recharger} />}
-      >
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>
-          <BoutonContour libelle="Mon bilan de la semaine" icone={ArrowUpRight} onPress={() => onAller('suivi')} />
-          <BoutonContour libelle="Ma nutrition" icone={ArrowUpRight} onPress={() => onAller('nutrition')} />
-        </View>
-      </Hero>
-      {!!attente.donnee && (
-        <Carte style={{ borderColor: couleurs.rouge }}>
-          <Texte>
-            {attente.donnee === 1 ? '1 séance attend' : `${attente.donnee} séances attendent`} le réseau. Elle sera envoyée à votre coach
-            automatiquement, rien n’est perdu.
-          </Texte>
-        </Carte>
-      )}
-      {erreur && <Erreur message={erreur} />}
-      {!seances && !erreur && <Chargement />}
-      {seances?.length === 0 && (
-        <Vide titre="Votre programme se prépare" texte="Votre coach activera votre prochain cycle ici. Vous pourrez alors consulter vos séances." />
-      )}
-      {!!seances?.length && (
-        <View style={{ gap: espace(3) }}>
-          <View>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: espace(2) }}>
-              <Text style={{ fontSize: 16, fontFamily: polices.texteGras, color: couleurs.texte }}>Mes séances au programme</Text>
-              <Text style={{ fontSize: 12, fontFamily: polices.texte, color: couleurs.texteDoux }}>
-                {seances.length} séance{seances.length > 1 ? 's' : ''}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
-              <Lock size={12} color={couleurs.texteDoux} />
-              <Text style={{ fontSize: 12, fontFamily: polices.texte, color: couleurs.texteDoux }}>
-                {apercu ? 'Aperçu : seul le client peut ouvrir et noter une séance.' : 'Suivez les consignes, puis notez ce que vous avez réalisé.'}
-              </Text>
-            </View>
-          </View>
-          {seances.map((s) => (
-            <Pressable key={s.id} disabled={apercu} onPress={() => router.push(`/client/seance/${s.id}`)}>
-              <Carte>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: espace(2) }}>
-                  <View style={{ flexShrink: 1 }}>
-                    <SousTitre>{s.titre}</SousTitre>
-                  </View>
-                  {s.derniereRealisation ? <Pastille libelle="Faite" couleur={couleurs.vert} /> : <Pastille libelle="À faire" couleur={couleurs.rouge} />}
-                </View>
-                <Texte doux style={{ fontSize: 14 }}>
-                  {s.datePrevue && !s.derniereRealisation ? `Prévue ${datePrevue(s.datePrevue)} · ` : ''}
-                  {s.nbExercices} exercices
-                  {s.derniereRealisation ? ` · dernière fois ${dateCourte(s.derniereRealisation)}` : ''}
-                </Texte>
-              </Carte>
-            </Pressable>
-          ))}
-        </View>
-      )}
-    </>
+    <Carte style={{ borderColor: couleurs.rouge }}>
+      <Texte>
+        {attente.donnee === 1 ? '1 séance attend' : `${attente.donnee} séances attendent`} le réseau. Elle sera envoyée à votre coach automatiquement, rien
+        n’est perdu.
+      </Texte>
+    </Carte>
   );
 }
