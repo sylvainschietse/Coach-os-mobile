@@ -1,7 +1,7 @@
 // ClientView.tsx d'origine (U02) : hero, cycle en cours et avancement, « Mon accompagnement », calendrier, consignes
 // du programme et « Mes séances au programme » à noter sur place. La vue « historique » montre les séances
 // enregistrées (U06). Repos entre les séries : bandeau en bas de l'écran, comme le minuteur actif de l'original.
-import { ArrowUpRight, CalendarRange, Lock, RefreshCw, X } from 'lucide-react-native';
+import { ArrowUpRight, CalendarRange, Lock, RefreshCw } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 
@@ -10,9 +10,7 @@ import { entrainement } from '@/data/entrainement';
 import { titreClient, type Reference } from '@/domain/entrainement';
 import type { EspaceEntrainement } from '@/domain/entrainement-etat';
 import { demanderSortie, enregistrerGarde } from '@/lib/brouillon';
-import { maintenantMs } from '@/lib/temps';
 import { useCharger } from '@/lib/useCharger';
-import { vibrer } from '@/lib/vibrer';
 
 import { BoutonContour, Hero } from '../coque';
 import { Badge, Repliable } from '../crm/dossier';
@@ -82,43 +80,6 @@ function Planning({ espace }: { espace: EspaceEntrainement }) {
   );
 }
 
-/** Monté hors du défilement par l'espace client, juste au-dessus de la barre du bas. */
-export function BandeauRepos({ fin, libelle, onFermer }: { fin: number; libelle: string; onFermer: () => void }) {
-  const [maintenant, setMaintenant] = useState(maintenantMs);
-  useEffect(() => {
-    const t = setInterval(() => setMaintenant(maintenantMs()), 250);
-    return () => clearInterval(t);
-  }, []);
-  // Calculé depuis l'heure de fin : reste juste si l'écran a été verrouillé.
-  const restant = Math.max(0, Math.ceil((fin - maintenant) / 1000));
-  useEffect(() => {
-    if (restant === 0) vibrer();
-  }, [restant]);
-  return (
-    <View
-      accessibilityLabel="Minuteur actif"
-      style={[
-        { position: 'absolute', left: 12, right: 12, bottom: 84, zIndex: 40, maxWidth: 576, marginHorizontal: 'auto' },
-        ts.carte,
-        { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 16, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 16 },
-      ]}
-    >
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text numberOfLines={1} style={ts.doux}>
-          {libelle}
-        </Text>
-        <Text style={[ts.texte, { fontFamily: polices.texteGras }]}>
-          {restant ? 'Repos' : 'Terminé'}{' '}
-          <Text role="timer" style={{ fontFamily: polices.chiffres, fontSize: 22 }}>
-            {Math.floor(restant / 60)}:{String(restant % 60).padStart(2, '0')}
-          </Text>
-        </Text>
-      </View>
-      <Action variante="fantome" icone={X} nom="Arrêter et fermer le minuteur" onPress={onFermer} />
-    </View>
-  );
-}
-
 export function EntrainementClient({
   clientId,
   prenom,
@@ -132,7 +93,7 @@ export function EntrainementClient({
   apercu?: boolean;
   vue: 'programme' | 'historique';
   onAller?: (o: 'suivi' | 'nutrition') => void;
-  onRepos: (r: { fin: number; libelle: string }) => void;
+  onRepos: (secondes: number, libelle: string) => void;
 }) {
   const { donnee: espace, erreur, recharger } = useCharger(() => entrainement.espaceClient(clientId), `espace-${clientId}`);
   const records = useCharger(() => depot.records(clientId), `records-${clientId}`);
@@ -271,7 +232,7 @@ export function EntrainementClient({
                   planificationId={ouverture?.seanceId === s.id ? ouverture.planificationId : undefined}
                   ouverture={ouverture?.seanceId === s.id ? ouverture.jeton : undefined}
                   apercu={apercu}
-                  onRepos={(secondes, libelle) => onRepos({ fin: maintenantMs() + secondes * 1000, libelle })}
+                  onRepos={onRepos}
                   onEnregistre={() => {
                     setOuverture(null);
                     setVersion((v) => v + 1);

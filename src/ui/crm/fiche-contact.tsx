@@ -30,7 +30,8 @@ import { reponsesParSection } from '@/domain/questionnaire';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { NutritionDuClient } from '../alimentation/nutrition-coach';
-import { BoutonContour, NonRepris, SousNav, type OngletDef } from '../coque';
+import { BoutonContour, SousNav, type OngletDef } from '../coque';
+import { Photos } from '../suivi/photos';
 import { Chargement, Erreur } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
@@ -271,7 +272,13 @@ function Editeur({
       )}
       {volet === 'nutrition' && contact && <NutritionContact contact={contact} />}
       {volet === 'photos' && (
-        <NonRepris ecran="Photos de progression" lot={4} detail="Les photos du client seront chargées ici à la demande, sans quitter la fiche." />
+        <View style={{ marginVertical: espace(4), borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 12, padding: espace(4) }}>
+          {contact?.clientId ? (
+            <Photos key={contact.clientId} clientId={contact.clientId} proprietaire={false} />
+          ) : (
+            <Text style={styles.aide}>Photos : aucun espace client rattaché à ce contact.</Text>
+          )}
+        </View>
       )}
     </Modale>
   );

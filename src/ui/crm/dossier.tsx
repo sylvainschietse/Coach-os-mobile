@@ -270,15 +270,20 @@ export function Saisie({
   type,
   erreur,
   aide,
+  max,
+  desactive,
 }: {
   libelle: string;
   valeur: string;
   onChange: (v: string) => void;
   long?: boolean;
   placeholder?: string;
-  type?: 'email' | 'telephone';
+  type?: 'email' | 'telephone' | 'nombre';
   erreur?: string;
   aide?: string;
+  /** maxLength d'origine. */
+  max?: number;
+  desactive?: boolean;
 }) {
   return (
     <View style={{ gap: espace(2) }}>
@@ -290,10 +295,12 @@ export function Saisie({
         placeholder={placeholder}
         placeholderTextColor={couleurs.suggestion}
         multiline={long}
-        inputMode={type === 'telephone' ? 'tel' : type === 'email' ? 'email' : 'text'}
-        keyboardType={type === 'telephone' ? 'phone-pad' : type === 'email' ? 'email-address' : 'default'}
+        maxLength={max}
+        editable={!desactive}
+        inputMode={type === 'telephone' ? 'tel' : type === 'email' ? 'email' : type === 'nombre' ? 'decimal' : 'text'}
+        keyboardType={type === 'telephone' ? 'phone-pad' : type === 'email' ? 'email-address' : type === 'nombre' ? 'decimal-pad' : 'default'}
         autoCapitalize={type === 'email' ? 'none' : 'sentences'}
-        style={[styles.saisie, long && { minHeight: 104, textAlignVertical: 'top' }, !!erreur && { borderColor: couleurs.rouge }]}
+        style={[styles.saisie, long && { minHeight: 104, textAlignVertical: 'top' }, !!erreur && { borderColor: couleurs.rouge }, desactive && { opacity: 0.6 }]}
       />
       {erreur ? <Text style={styles.erreur}>{erreur}</Text> : aide ? <Text style={styles.aide}>{aide}</Text> : null}
     </View>

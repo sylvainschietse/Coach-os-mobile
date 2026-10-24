@@ -43,6 +43,7 @@ import { EditeurBoosterModale } from '@/ui/crm/editeur-booster';
 import { FicheContactModale, type VoletFiche } from '@/ui/crm/fiche-contact';
 import { ConfirmerSuppression } from '@/ui/crm/suppression';
 import { VueEnsemble } from '@/ui/crm/vue-ensemble';
+import { BilansCoach } from '@/ui/suivi/bilans-coach';
 import { EspaceClient } from '@/ui/espace-client';
 import { SeancesRealisees } from '@/ui/entrainement/bilan';
 import { Bibliotheque } from '@/ui/entrainement/bibliotheque';
@@ -74,7 +75,7 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Paiements', libelle: 'Paiements', icone: Wallet },
   { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
 ];
-const LOT: Partial<Record<Rubrique, number>> = { Coachings: 2, Bilans: 4, Taches: 2, Paiements: 2, Automations: 6 };
+const LOT: Partial<Record<Rubrique, number>> = { Coachings: 2, Bilans: 5, Taches: 2, Paiements: 2, Automations: 6 };
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 
@@ -189,7 +190,7 @@ export default function EspaceCoach() {
               onOuvrirSuivis={() => naviguer('suivis')}
             />
           )}
-          {onglet === 'hebdo' && <NonRepris ecran="Bilans hebdo" lot={4} />}
+          {onglet === 'hebdo' && <BilansCoach />}
           {onglet === 'nutrition' && (
             <NutritionCoach coachId={coachId} clientId={params.client} onClient={(id) => router.setParams({ onglet: 'nutrition', client: id })} />
           )}

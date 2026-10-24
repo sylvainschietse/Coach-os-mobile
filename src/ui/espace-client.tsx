@@ -14,12 +14,16 @@ import { JournalRepas } from './alimentation/journal-repas';
 import { PlanSemaine } from './alimentation/plan-semaine';
 import { ProfilNutritionCarte } from './alimentation/profil';
 import { RecettesClient } from './alimentation/recettes';
-import { BandeauRepos, EntrainementClient } from './entrainement/espace-entrainement';
+import { EntrainementClient } from './entrainement/espace-entrainement';
+import { BoutonPanneauMinuteurs, useMinuteurs } from './entrainement/minuteurs';
 import { MesDocuments } from './mes-documents';
 import { BandeauDemo, BarreClient, NonRepris, Selecteur, SousNav, type OngletDef } from './coque';
 import { Carte, Texte } from './composants';
+import { BilanSemaine } from './suivi/bilan-semaine';
 import { Mensurations } from './suivi/mensurations';
 import { JournalNutritionVue, PlanNutritionCarte } from './suivi/nutrition';
+import { Objectifs } from './suivi/objectifs';
+import { Photos } from './suivi/photos';
 import { Records } from './suivi/records';
 import { couleurs, espace, LARGEUR_CLIENT, polices } from './theme';
 
@@ -69,7 +73,7 @@ export function EspaceClient({
   const [onglet, setOnglet] = useState<OngletClient>(ongletInitial);
   const [suivi, setSuivi] = useState<RubriqueSuivi>('hebdo');
   const [nutrition, setNutrition] = useState<RubriqueNutrition>('profil');
-  const [repos, setRepos] = useState<{ fin: number; libelle: string } | null>(null);
+  const minuteurs = useMinuteurs();
   const defilement = useRef<ComponentRef<typeof ScrollView>>(null);
 
   const aller = (o: OngletClient) => {
@@ -79,7 +83,7 @@ export function EspaceClient({
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView ref={defilement} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: espace(4), paddingTop: espace(5), paddingBottom: 128 }} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={defilement} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: espace(4), paddingTop: espace(5), paddingBottom: minuteurs?.actif ? 240 : 128 }} keyboardShouldPersistTaps="handled">
         <View style={{ width: '100%', maxWidth: LARGEUR_CLIENT, alignSelf: 'center', gap: espace(5) }}>
           {depot.mode === 'demo' && <BandeauDemo />}
           {apercu && (
@@ -95,6 +99,7 @@ export function EspaceClient({
           )}
           {(onglet === 'programme' || onglet === 'historique') && (
             <>
+              {onglet === 'programme' && <BoutonPanneauMinuteurs />}
               <EnAttente clientId={clientId} apercu={!!apercu} />
               <EntrainementClient
                 key={`${clientId}:${onglet}`}
@@ -102,7 +107,7 @@ export function EspaceClient({
                 prenom={prenom}
                 apercu={!!apercu}
                 vue={onglet}
-                onRepos={setRepos}
+                onRepos={(secondes, libelle) => minuteurs?.repos(secondes, libelle)}
                 onAller={(o) =>
                   demanderSortie(() => {
                     if (o === 'suivi') setSuivi('hebdo');
@@ -114,12 +119,12 @@ export function EspaceClient({
           )}
           {onglet === 'suivi' && (
             <>
-              <SousNav nom="Rubriques du suivi" grille="suivi" onglets={SUIVI} valeur={suivi} onChange={setSuivi} />
-              {suivi === 'hebdo' && <NonRepris ecran="Bilan semaine" lot={4} />}
+              <SousNav nom="Rubriques du suivi" grille="suivi" onglets={SUIVI} valeur={suivi} onChange={(r) => demanderSortie(() => setSuivi(r))} />
+              {suivi === 'hebdo' && <BilanSemaine key={clientId} clientId={clientId} apercu={!!apercu} />}
               {suivi === 'mesures' && <Mensurations key={clientId} clientId={clientId} />}
               {suivi === 'pr' && <Records key={clientId} clientId={clientId} />}
-              {suivi === 'objectifs' && <NonRepris ecran="Objectifs" lot={4} />}
-              {suivi === 'photos' && <NonRepris ecran="Photos" lot={4} />}
+              {suivi === 'objectifs' && <Objectifs key={clientId} clientId={clientId} apercu={!!apercu} />}
+              {suivi === 'photos' && <Photos key={clientId} clientId={clientId} proprietaire={!apercu} />}
             </>
           )}
           {onglet === 'nutrition' && (
@@ -146,7 +151,6 @@ export function EspaceClient({
           )}
         </View>
       </ScrollView>
-      {repos && <BandeauRepos key={repos.fin} fin={repos.fin} libelle={repos.libelle} onFermer={() => setRepos(null)} />}
       <BarreClient onglets={ONGLETS} valeur={onglet} onChange={(o) => demanderSortie(() => aller(o))} />
     </View>
   );
