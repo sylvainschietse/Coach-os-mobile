@@ -357,7 +357,17 @@ export function Repliable({
 }
 
 /** Barre « Rechercher un dossier… » avec loupe. */
-export function Recherche({ valeur, onChange }: { valeur: string; onChange: (v: string) => void }) {
+export function Recherche({
+  valeur,
+  onChange,
+  placeholder = 'Rechercher un dossier…',
+  libelle = 'Rechercher',
+}: {
+  valeur: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  libelle?: string;
+}) {
   return (
     <View
       style={{
@@ -369,10 +379,10 @@ export function Recherche({ valeur, onChange }: { valeur: string; onChange: (v: 
     >
       <Search size={16} color={couleurs.texteDoux} style={{ position: 'absolute', left: 12, zIndex: 1 }} />
       <TextInput
-        accessibilityLabel="Rechercher"
+        accessibilityLabel={libelle}
         value={valeur}
         onChangeText={onChange}
-        placeholder="Rechercher un dossier…"
+        placeholder={placeholder}
         placeholderTextColor={couleurs.suggestion}
         style={[styles.saisie, { paddingLeft: 36 }]}
       />

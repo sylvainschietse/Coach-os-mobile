@@ -1,6 +1,6 @@
 // Accès aux données d'entraînement du lot 3 (bibliothèque, éditeur, cycles clients, calendrier, réalisations),
 // en démo sur l'appareil ou dans Supabase. Les écrans ne parlent qu'à cette interface.
-import { copierProgramme, LIBELLES_CYCLES, nomCopieClient } from '@/domain/entrainement';
+import { copierProgramme, copierSeance, LIBELLES_CYCLES, nomCopieClient } from '@/domain/entrainement';
 import type {
   CycleStocke,
   DemandeCreneau,
@@ -78,4 +78,84 @@ export async function lierProgramme(
     programmeId = copie.programme.id;
   }
   await entrainement.enregistrerCycle(coachId, { ...cycle, programmeId, mode });
+}
+
+export type ActionCreation = 'programme' | 'seance' | 'copyProgramme' | 'copySeance' | 'editProgramme' | 'editSeance' | 'attachSeance';
+
+export interface SaisieCreation {
+  nom: string;
+  niveau?: string;
+  objectif?: string;
+  frequence?: number;
+  duree?: number;
+  materiel?: string;
+  consignes?: string;
+}
+
+/**
+ * manageProgramme d'origine : création libre (Brouillon, « coachos-free »), séance seule dans son conteneur
+ * « Séance seule · nom », modification, copie indépendante avec le cycle choisi, rattachement d'une séance seule.
+ */
+export async function gererProgramme(
+  coachId: string,
+  action: ActionCreation,
+  f: SaisieCreation,
+  opts: { id?: string; programmeId?: string; cycle?: number } = {},
+): Promise<{ id: string; programmeId: string }> {
+  const nom = f.nom.trim().slice(0, 160);
+  if (!nom) throw new Error('Le nom est obligatoire');
+  const cycle = opts.cycle ?? 1;
+  const criteres = {
+    niveau: f.niveau || undefined,
+    objectif: f.objectif || undefined,
+    seancesParSemaine: f.frequence || undefined,
+    dureeSemaines: f.duree || undefined,
+    materiel: f.materiel || undefined,
+  };
+
+  if (action === 'editProgramme') {
+    const { programme } = await entrainement.programme(opts.id!);
+    await entrainement.enregistrerProgramme(coachId, { ...programme, ...criteres, titre: nom, consignes: f.consignes || undefined });
+    return { id: programme.id, programmeId: programme.id };
+  }
+  if (action === 'editSeance') {
+    const { seance, programme } = await entrainement.seance(opts.id!);
+    await entrainement.enregistrerSeance(coachId, { ...seance, titre: nom, consignes: f.consignes || undefined });
+    return { id: seance.id, programmeId: programme.id };
+  }
+  if (action === 'attachSeance') {
+    const { seance, programme } = await entrainement.seance(opts.id!);
+    if (!programme.seanceSeule) throw new Error('Seules les séances seules peuvent être déplacées');
+    const cible = await entrainement.programme(opts.programmeId!);
+    await entrainement.enregistrerSeance(coachId, { ...seance, programmeId: cible.programme.id, ordre: cible.seances.length + 1 });
+    return { id: seance.id, programmeId: cible.programme.id };
+  }
+  if (action === 'programme' || action === 'copyProgramme') {
+    if (action === 'copyProgramme') {
+      const [{ programme }, seances] = await Promise.all([entrainement.programme(opts.id!), entrainement.seancesDuProgramme(opts.id!)]);
+      const copie = copierProgramme({ ...programme, seances: [] }, seances, { titre: nom, cycle }, nouvelId);
+      await entrainement.enregistrerProgramme(coachId, copie.programme, copie.seances);
+      return { id: copie.programme.id, programmeId: copie.programme.id };
+    }
+    const id = nouvelId();
+    await entrainement.enregistrerProgramme(coachId, { id, titre: nom, statut: 'Brouillon', version: 'coachos-free', ...criteres, consignes: f.consignes || undefined });
+    return { id, programmeId: id };
+  }
+
+  // Séance : dans le programme donné, sinon dans un conteneur « Séance seule » créé avec elle.
+  const source = action === 'copySeance' ? (await entrainement.seance(opts.id!)).seance : undefined;
+  const parent = opts.programmeId ? await entrainement.programme(opts.programmeId) : undefined;
+  const programmeId = parent?.programme.id ?? nouvelId();
+  const ordre = (parent?.seances.length ?? 0) + 1;
+  const seance: Seance = source
+    ? copierSeance(source, { titre: nom, programmeId, ordre, cycle, clientId: parent?.programme.clientId }, nouvelId)
+    : { id: nouvelId(), titre: nom, programmeId, ordre, consignes: f.consignes || undefined, blocs: [], clientId: parent?.programme.clientId };
+  if (parent) await entrainement.enregistrerSeance(coachId, seance);
+  else
+    await entrainement.enregistrerProgramme(
+      coachId,
+      { id: programmeId, titre: `Séance seule · ${nom}`, statut: 'Brouillon', version: 'coachos-single', seanceSeule: true },
+      [seance],
+    );
+  return { id: seance.id, programmeId };
 }

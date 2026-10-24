@@ -1,7 +1,7 @@
 // Briques communes des écrans d'entraînement, reprises de shadcn tel que l'app d'origine les utilisait :
 // boutons (plein, contour, fantôme, destructif), LongText, confirmation (AlertDialog), liste de choix et message
 // d'état (à la place des toasts : un résultat reste lisible tant qu'on ne fait pas autre chose).
-import { Check, type LucideIcon } from 'lucide-react-native';
+import { Check, ChevronDown, type LucideIcon } from 'lucide-react-native';
 import { useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -71,21 +71,22 @@ export function Ligne({ children, style }: { children: ReactNode; style?: StyleP
   return <View style={[{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2), alignItems: 'center' }, style]}>{children}</View>;
 }
 
-/** LongText d'origine : texte libre, replié au-delà de quelques lignes. */
+/** LongText d'origine : « Libellé : texte » replié sur 2 lignes au-delà de 140 caractères ou d'un retour à la ligne. */
 export function TexteLong({ texte, libelle, style }: { texte?: string; libelle?: string; style?: StyleProp<TextStyle> }) {
   const [ouvert, setOuvert] = useState(false);
-  if (!texte?.trim()) return null;
-  const long = texte.length > 320 || texte.split('\n').length > 5;
+  if (!texte) return null;
+  const long = texte.length > 140 || texte.includes('\n');
   return (
-    <View style={{ gap: 4 }}>
-      {libelle && <Text style={styles.libelleLong}>{libelle}</Text>}
-      <Text selectable numberOfLines={long && !ouvert ? 4 : undefined} style={[styles.texte, style]}>
-        {texte.trim()}
+    <View style={{ gap: 2 }}>
+      <Text selectable numberOfLines={long && !ouvert ? 2 : undefined} style={[styles.texte, style]}>
+        {libelle && <Text style={styles.libelleLong}>{libelle} : </Text>}
+        {texte}
       </Text>
       {long && (
-        <Text accessibilityRole="button" onPress={() => setOuvert(!ouvert)} style={styles.lien}>
-          {ouvert ? 'Voir moins' : 'Voir plus'}
-        </Text>
+        <Pressable accessibilityRole="button" accessibilityState={{ expanded: ouvert }} onPress={() => setOuvert(!ouvert)} style={styles.lienLigne}>
+          <Text style={styles.lien}>{ouvert ? 'Replier' : 'Lire la suite'}</Text>
+          <ChevronDown size={12} color={couleurs.rouge} style={ouvert ? { transform: [{ rotate: '180deg' }] } : undefined} />
+        </Pressable>
       )}
     </View>
   );
@@ -241,6 +242,7 @@ export const ts = StyleSheet.create({
   carte: { backgroundColor: couleurs.carte, borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 14, padding: 20, gap: 12 },
   titreSection: { fontFamily: polices.texteGras, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase', color: couleurs.texteDoux },
   titre: { fontFamily: polices.texteGras, fontSize: 16, color: couleurs.texte },
+  titreChamp: { fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.texte },
   texte: { fontFamily: polices.texte, fontSize: 14, lineHeight: 20, color: couleurs.texte },
   doux: { fontFamily: polices.texte, fontSize: 12, lineHeight: 17, color: couleurs.texteDoux },
   mono: { fontFamily: polices.chiffres, fontSize: 12, color: couleurs.texteDoux },
@@ -262,10 +264,11 @@ const styles = StyleSheet.create({
   },
   actionPetite: { minHeight: 36, paddingHorizontal: 12, borderRadius: 9 },
   actionTexte: { fontFamily: polices.texteMoyen, fontSize: 14 },
-  texte: { fontFamily: polices.texte, fontSize: 14, lineHeight: 21, color: couleurs.texte },
+  texte: { fontFamily: polices.texte, fontSize: 14, lineHeight: 20, color: couleurs.texte },
   texteDoux: { fontFamily: polices.texte, fontSize: 14, lineHeight: 20, color: couleurs.texteDoux },
   libelleLong: { fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.texte },
-  lien: { fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.rouge },
+  lien: { fontFamily: polices.texteMoyen, fontSize: 12, color: couleurs.rouge },
+  lienLigne: { flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', minHeight: 24 },
   puce: { borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2, alignSelf: 'flex-start' },
   puceTexte: { fontFamily: polices.texteGras, fontSize: 12, color: couleurs.texte },
   voile: { flex: 1, backgroundColor: 'rgba(17,18,22,0.55)', alignItems: 'center', justifyContent: 'center', padding: 16 },
@@ -276,5 +279,26 @@ const styles = StyleSheet.create({
   liste: { borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 10, overflow: 'hidden' },
   option: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 9, minHeight: 44 },
   optionTexte: { fontFamily: polices.texte, fontSize: 14, color: couleurs.texte },
+  case: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: couleurs.saisie, backgroundColor: couleurs.carte, alignItems: 'center', justifyContent: 'center' },
   optionDetail: { fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux },
 });
+
+/** Case de sélection sans texte visible (sélection pour supprimer), nommée pour les lecteurs d'écran. */
+export function CaseSelection({ nom, valeur, desactive, onChange }: { nom: string; valeur: boolean; desactive?: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityLabel={nom}
+      accessibilityState={{ checked: valeur, disabled: desactive }}
+      disabled={desactive}
+      onPress={() => onChange(!valeur)}
+      style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', opacity: desactive ? 0.4 : 1 }}
+    >
+      <View style={[styles.case, valeur && { backgroundColor: couleurs.rouge, borderColor: couleurs.rouge }]}>{valeur && <Check size={14} color="#FFFFFF" />}</View>
+    </Pressable>
+  );
+}
+
+/** « 24 oct. 2026 » (fmtJour d'origine). */
+export const jourCourt = (s?: string) =>
+  s ? new Date(`${s}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '—';

@@ -13,13 +13,12 @@ import {
   Workflow,
 } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
+import { ScrollView, View, useWindowDimensions } from 'react-native';
 
 import { depot } from '@/data';
 import { crm, ecouterCrm } from '@/data/crm';
 import { useSession } from '@/data/session';
 import type { Booster, Contact } from '@/domain/crm';
-import type { ClientResume } from '@/domain/types';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { NutritionCoach } from '@/ui/alimentation/nutrition-coach';
 import {
@@ -35,7 +34,7 @@ import {
   Vide,
   type OngletDef,
 } from '@/ui/coque';
-import { Carte, Chargement, Erreur, Pastille, SousTitre, Texte } from '@/ui/composants';
+import { Carte, Chargement, Erreur, Texte } from '@/ui/composants';
 import { Boosters } from '@/ui/crm/boosters';
 import { nomComplet } from '@/ui/crm/commun';
 import { Contacts } from '@/ui/crm/contacts';
@@ -45,7 +44,10 @@ import { FicheContactModale, type VoletFiche } from '@/ui/crm/fiche-contact';
 import { ConfirmerSuppression } from '@/ui/crm/suppression';
 import { VueEnsemble } from '@/ui/crm/vue-ensemble';
 import { EspaceClient } from '@/ui/espace-client';
-import { Modeles } from '@/ui/programmes/modeles';
+import { Bibliotheque } from '@/ui/entrainement/bibliotheque';
+import { CyclesClients } from '@/ui/entrainement/cycles';
+import { DetailProgramme } from '@/ui/entrainement/programme';
+import { EditeurSeance } from '@/ui/entrainement/seance';
 import { couleurs, espace, LARGEUR_COACH, LARGEUR_LG } from '@/ui/theme';
 
 type Onglet = 'crm' | 'airtable' | 'suivis' | 'bilan' | 'hebdo' | 'nutrition';
@@ -74,12 +76,11 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
 const LOT: Partial<Record<Rubrique, number>> = { Coachings: 2, Bilans: 4, Taches: 2, Paiements: 2, Automations: 6 };
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
-const quand = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
 
 export default function EspaceCoach() {
   const { profil, email, deconnecter } = useSession();
   const { width } = useWindowDimensions();
-  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; client?: string } & ParamsDossier>();
+  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; client?: string; programme?: string; seance?: string } & ParamsDossier>();
   const onglet = ONGLETS.find((o) => o.cle === params.onglet)?.cle ?? 'crm';
   const rubrique = RUBRIQUES.find((r) => r.cle === params.rubrique)?.cle ?? 'Accueil';
   const [apercu, setApercu] = useState<'coach' | 'client'>('coach');
@@ -92,8 +93,7 @@ export default function EspaceCoach() {
 
   // L'onglet et la rubrique vivent dans l'adresse : Retour et rechargement gardent le contexte.
   const naviguer = (o: Onglet, r?: Rubrique, dossier?: string) =>
-    router.setParams({ onglet: o, rubrique: o === 'crm' ? (r ?? rubrique) : undefined, client: undefined, dossier, ...FERME });
-  const ouvrirClient = (c: ClientResume) => router.push({ pathname: '/coach/client/[id]', params: { id: c.id, prenom: c.prenom } });
+    router.setParams({ onglet: o, rubrique: o === 'crm' ? (r ?? rubrique) : undefined, client: undefined, dossier, programme: undefined, seance: undefined, ...FERME });
 
   const enTete = (
     <EnTete
@@ -159,31 +159,27 @@ export default function EspaceCoach() {
               onCycles={() => naviguer('suivis')}
             />
           )}
-          {onglet === 'airtable' && (
-            <Modeles coachId={coachId} />
-          )}
+          {onglet === 'airtable' &&
+            (params.seance ? (
+              <EditeurSeance
+                key={params.seance}
+                coachId={coachId}
+                id={params.seance}
+                onRetour={() => router.setParams({ seance: undefined })}
+              />
+            ) : params.programme ? (
+              <DetailProgramme
+                key={params.programme}
+                coachId={coachId}
+                id={params.programme}
+                onRetour={() => router.setParams({ programme: undefined })}
+                onOuvrirSeance={(id) => router.setParams({ seance: id })}
+              />
+            ) : (
+              <Bibliotheque coachId={coachId} onOuvrir={(id) => router.setParams({ programme: id })} />
+            ))}
           {onglet === 'suivis' && (
-            <View style={{ gap: espace(3) }}>
-              <EnTeteRubrique kicker="Suivi des clients" titre="Cycles clients" sousTitre="Planification des cycles : lot 3. En attendant, chaque dossier ouvre le suivi existant." />
-              {clients.erreur && <Erreur message={clients.erreur} />}
-              {!clients.donnee && !clients.erreur && <Chargement />}
-              {clients.donnee?.length === 0 && <Vide titre="Aucun client" texte="Un contact devient client depuis sa fiche." />}
-              {clients.donnee?.map((c) => (
-                <Pressable key={c.id} onPress={() => ouvrirClient(c)}>
-                  <Carte>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: espace(2) }}>
-                      <SousTitre>
-                        {c.prenom} {c.nom}
-                      </SousTitre>
-                      {c.derniereSeance && <Pastille libelle={quand(c.derniereSeance.fin)} couleur={couleurs.vert} />}
-                    </View>
-                    <Texte doux style={{ fontSize: 14 }}>
-                      {c.derniereSeance ? `Dernière séance : ${c.derniereSeance.titre}` : 'Pas encore de séance réalisée'}
-                    </Texte>
-                  </Carte>
-                </Pressable>
-              ))}
-            </View>
+            <CyclesClients coachId={coachId} onOuvrirProgramme={(id) => router.setParams({ onglet: 'airtable', programme: id, seance: undefined })} />
           )}
           {onglet === 'bilan' && <NonRepris ecran="Séances réalisées" lot={3} detail="Les séances de chaque client restent visibles dans Cycles clients." />}
           {onglet === 'hebdo' && <NonRepris ecran="Bilans hebdo" lot={4} />}
