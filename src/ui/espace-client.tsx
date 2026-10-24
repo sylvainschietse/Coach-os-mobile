@@ -13,6 +13,7 @@ import { JournalRepas } from './alimentation/journal-repas';
 import { PlanSemaine } from './alimentation/plan-semaine';
 import { ProfilNutritionCarte } from './alimentation/profil';
 import { RecettesClient } from './alimentation/recettes';
+import { MesDocuments } from './mes-documents';
 import { BandeauDemo, BarreClient, BoutonContour, EnTeteRubrique, Hero, NonRepris, Selecteur, SousNav, Vide, type OngletDef } from './coque';
 import { Carte, Chargement, Erreur, Pastille, SousTitre, Texte } from './composants';
 import { Mensurations } from './suivi/mensurations';
@@ -127,10 +128,7 @@ export function EspaceClient({
             </>
           )}
           {onglet === 'documents' && (
-            <>
-              <EnTeteRubrique kicker="Mon suivi" titre="Mes documents" sousTitre="Vos bilans et comptes rendus partagés par votre coach." />
-              <NonRepris ecran="Mes documents" lot={2} detail="Les comptes rendus partagés y seront listés avec le bouton Ouvrir le PDF." />
-            </>
+            <MesDocuments key={clientId} clientId={clientId} />
           )}
         </View>
       </ScrollView>

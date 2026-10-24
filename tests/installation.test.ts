@@ -19,6 +19,10 @@ it('s’installe d’un seul coup sur une base vide', { timeout: 20000 }, async 
     create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
     create role authenticated;
     create role anon;
+    create schema storage;
+    create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+    create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);
+    create function storage.foldername(name text) returns text[] language sql immutable as $$ select array[]::text[] $$;
   `);
   await db.exec(installationSql());
   const tables = await db.query<{ n: number }>(`select count(*)::int as n from pg_tables where schemaname = 'public'`);

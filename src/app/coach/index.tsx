@@ -39,6 +39,7 @@ import { Carte, Chargement, Erreur, Pastille, SousTitre, Texte } from '@/ui/comp
 import { Boosters } from '@/ui/crm/boosters';
 import { nomComplet } from '@/ui/crm/commun';
 import { Contacts } from '@/ui/crm/contacts';
+import { Documents, EditeurDocumentModale } from '@/ui/crm/documents';
 import { EditeurBoosterModale } from '@/ui/crm/editeur-booster';
 import { FicheContactModale, type VoletFiche } from '@/ui/crm/fiche-contact';
 import { ConfirmerSuppression } from '@/ui/crm/suppression';
@@ -70,7 +71,7 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Paiements', libelle: 'Paiements', icone: Wallet },
   { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
 ];
-const LOT: Partial<Record<Rubrique, number>> = { Coachings: 2, Bilans: 4, Documents: 2, Taches: 2, Paiements: 2, Automations: 6 };
+const LOT: Partial<Record<Rubrique, number>> = { Coachings: 2, Bilans: 4, Taches: 2, Paiements: 2, Automations: 6 };
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 const quand = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
@@ -199,8 +200,8 @@ export default function EspaceCoach() {
  * Fiche ou éditeur ouverts : dans l'adresse, pour que le rechargement rouvre le même dossier et que fermer
  * l'éditeur Booster ramène à la fiche d'où il a été ouvert.
  */
-type ParamsDossier = { contact?: string; volet?: string; booster?: string; bc?: string; dossier?: string };
-const FERME = { contact: undefined, volet: undefined, booster: undefined, bc: undefined };
+type ParamsDossier = { contact?: string; volet?: string; booster?: string; bc?: string; dossier?: string; doc?: string };
+const FERME = { contact: undefined, volet: undefined, booster: undefined, bc: undefined, doc: undefined };
 
 function Crm({
   rubrique,
@@ -278,10 +279,25 @@ function Crm({
             onDocuments={(id) => onRubrique('Documents', id)}
           />
         )}
+        {rubrique === 'Documents' && (
+          <Documents
+            contactId={params.dossier}
+            onToutAfficher={() => onRubrique('Documents')}
+            onOuvrir={(id) => router.setParams({ ...FERME, doc: id })}
+            onNouveau={() => router.setParams({ ...FERME, doc: 'nouveau' })}
+          />
+        )}
         {LOT[rubrique] && <NonRepris ecran={titre} lot={LOT[rubrique]!} />}
       </View>
 
-      {params.booster ? (
+      {params.doc ? (
+        <EditeurDocumentModale
+          key={params.doc}
+          id={params.doc === 'nouveau' ? undefined : params.doc}
+          contactId={params.dossier}
+          onFermer={() => router.setParams({ doc: undefined })}
+        />
+      ) : params.booster ? (
         <EditeurBoosterModale
           key={`${params.booster}-${params.bc ?? ''}`}
           boosterId={params.booster === 'nouveau' ? undefined : params.booster}

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 
 import { crm } from '@/data/crm';
+import { depuisBase64, documents, ecouterDocuments, type Fichier } from '@/data/documents';
 import { iaDisponible, redigerCompteRendu } from '@/data/redaction';
 import { compteRenduHtml, construireCompteRendu, emailCompteRendu, messageCompteRenduEnvoye } from '@/domain/compte-rendu';
 import { lienEnvoi } from '@/domain/crm';
@@ -13,9 +14,10 @@ import type { Booster, FicheContact } from '@/domain/crm';
 import { TESTS } from '@/domain/evaluation';
 import { appliquerRedaction, redactionModele, type Redaction } from '@/domain/redaction';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
-import { useCharger } from '@/lib/useCharger';
+import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, SousTitre, Texte } from '../composants';
+import { choisirFichier, copieLocale, ouvrirFichier } from '../fichiers';
 import { couleurs, espace, polices } from '../theme';
 import { dateCourte, TitreSection, useCoachNom } from './commun';
 
@@ -79,28 +81,82 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
 
   const contact = fiche.contact;
 
-  /** Le même PDF part par e-mail ou par une autre app ; la date d'envoi reste sur le Booster. */
+  const docs = useCharger(async () => (await documents.documents()).find((d) => d.boosterId === booster.id) ?? null, `cr-${booster.id}`);
+  useRechargerSur(docs.recharger, ecouterDocuments);
+  const doc = docs.donnee ?? undefined;
+  const [depot, setDepot] = useState(false);
+  const [retour, setRetour] = useState<string>();
+
+  async function deposer(fichier: Fichier) {
+    const d = await documents.deposerCompteRendu(booster.id, contact, fichier);
+    setRetour(`Version ${d.version} enregistrée dans Documents.`);
+    docs.recharger();
+  }
+
+  /** Téléphone : le PDF est créé ici puis déposé ; c'est ce fichier-là, et lui seul, qui partira par e-mail. */
+  async function enregistrerPdf() {
+    setDepot(true);
+    setErreur(undefined);
+    setRetour(undefined);
+    try {
+      if (Platform.OS === 'web') {
+        const f = await choisirFichier();
+        if (!f) return;
+        if (f.type !== 'application/pdf') throw new Error('Déposez le compte rendu au format PDF.');
+        await deposer(f);
+      } else {
+        // A4 en points (72 par pouce).
+        const { base64 } = await Print.printToFileAsync({ html: compteRenduHtml(cr, { police: BEBAS_NEUE_BASE64 }), width: 595, height: 842, base64: true });
+        if (!base64) throw new Error('Le PDF n’a pas pu être créé.');
+        const donnees = depuisBase64(base64);
+        await deposer({ nom: 'compte-rendu-booster.pdf', type: 'application/pdf', taille: donnees.byteLength, donnees });
+      }
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Le PDF n’a pas été enregistré.');
+    } finally {
+      setDepot(false);
+    }
+  }
+
+  /** Web : la fenêtre d'impression du navigateur propose « Enregistrer au format PDF ». */
+  function imprimer() {
+    const cadre = document.createElement('iframe');
+    cadre.style.position = 'fixed';
+    cadre.style.width = '0';
+    cadre.style.height = '0';
+    cadre.style.border = '0';
+    cadre.srcdoc = compteRenduHtml(cr, { police: BEBAS_NEUE_BASE64 });
+    cadre.onload = () => {
+      cadre.contentWindow?.print();
+      setTimeout(() => cadre.remove(), 60000);
+    };
+    document.body.appendChild(cadre);
+  }
+
+  /** La version enregistrée dans Documents part en pièce jointe ; seul « envoyé » rendu par le téléphone compte. */
   async function envoyer(par: 'email' | 'partage') {
+    if (!doc?.chemin) return;
     setEnvoi(par);
     setErreur(undefined);
+    setRetour(undefined);
     try {
-      // A4 en points (72 par pouce).
-      const { uri } = await Print.printToFileAsync({ html: compteRenduHtml(cr, { police: BEBAS_NEUE_BASE64 }), width: 595, height: 842 });
-      let envoye = true;
+      const uri = await copieLocale(await documents.lien(doc.chemin), `compte-rendu-v${doc.version}.pdf`);
       if (par === 'email' && contact.email && (await MailComposer.isAvailableAsync())) {
         const mail = emailCompteRendu(cr);
         const r = await MailComposer.composeAsync({ recipients: [contact.email], subject: mail.sujet, body: mail.corps, attachments: [uri] });
-        envoye = r.status !== MailComposer.MailComposerStatus.CANCELLED;
+        if (r.status === MailComposer.MailComposerStatus.SENT) {
+          await crm.enregistrerBooster(booster.id, { planEnvoyeLe: new Date().toISOString() });
+          await documents.marquerEnvoye(doc.id, doc.version);
+          recharger();
+        } else if (r.status !== MailComposer.MailComposerStatus.CANCELLED) {
+          setRetour('Le téléphone ne confirme pas l’envoi : vérifiez dans votre messagerie, puis cochez « Envoyé » sur le document si besoin.');
+        }
       } else {
-        // Pas de compte mail sur le téléphone : on passe par le partage (Gmail, Outlook, WhatsApp…).
+        // Gmail, Outlook, WhatsApp… : l'app choisie ne dit pas si le message est parti, rien n'est marqué.
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: cr.titre });
       }
-      if (envoye) {
-        await crm.enregistrerBooster(booster.id, { planEnvoyeLe: new Date().toISOString() });
-        recharger();
-      }
     } catch (e) {
-      setErreur(e instanceof Error ? e.message : 'Le PDF n’a pas pu être créé.');
+      setErreur(e instanceof Error ? e.message : 'Le PDF n’a pas pu être joint.');
     } finally {
       setEnvoi(undefined);
     }
@@ -212,26 +268,69 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
         </View>
       </Carte>
 
+      <TitreSection>Dans Documents</TitreSection>
+      <Carte>
+        <Texte doux style={{ fontSize: 14 }}>
+          {Platform.OS === 'web'
+            ? 'Enregistrez le compte rendu en PDF depuis la fenêtre d’impression, puis déposez ce PDF : il devient la version servie dans l’espace client et par e-mail.'
+            : 'Le PDF est créé à partir de l’aperçu ci-dessus. Chaque enregistrement ajoute une version ; c’est la dernière qui est servie au client et jointe à l’e-mail.'}
+        </Texte>
+        {docs.erreur && !docs.donnee && <Erreur message={docs.erreur} />}
+        {doc?.chemin ? (
+          <View style={{ gap: espace(2) }}>
+            <Texte style={{ fontSize: 14 }}>{`${doc.nom} · version ${doc.version} · ${dateCourte(doc.modifieLe)}`}</Texte>
+            <Texte doux style={{ fontSize: 13 }}>
+              {[doc.partageClient ? 'Visible dans l’espace client' : 'Pas encore partagé dans l’espace client', doc.envoye ? 'envoi confirmé' : 'non envoyé'].join(' · ')}
+            </Texte>
+            <Bouton variante="discret" libelle="Ouvrir le PDF" onPress={() => ouvrirFichier(() => documents.lien(doc.chemin!), `compte-rendu-v${doc.version}.pdf`).catch((e) => setErreur(e.message))} />
+            {!doc.partageClient && (
+              <Bouton
+                variante="discret"
+                libelle="Partager dans l’espace client"
+                onPress={() =>
+                  documents
+                    .partager(doc.id, true)
+                    .then(() => setRetour('Document partagé dans l’espace client.'))
+                    .catch((e) => setErreur(e.message))
+                }
+              />
+            )}
+          </View>
+        ) : (
+          docs.donnee !== undefined && <Texte doux style={{ fontSize: 13 }}>Aucune version enregistrée pour ce Booster.</Texte>
+        )}
+        {Platform.OS === 'web' && <Bouton variante="discret" libelle="Imprimer ou enregistrer en PDF" onPress={imprimer} />}
+        <Bouton
+          variante={doc?.chemin ? 'discret' : undefined}
+          libelle={Platform.OS === 'web' ? 'Déposer le PDF dans Documents' : doc?.chemin ? 'Enregistrer une nouvelle version' : 'Enregistrer le PDF dans Documents'}
+          onPress={enregistrerPdf}
+          chargement={depot}
+        />
+        {retour && <Texte style={{ fontSize: 13, color: couleurs.vert }}>{retour}</Texte>}
+      </Carte>
+
       <TitreSection>Envoyer au client</TitreSection>
       <Carte>
         <SousTitre>1. Le compte rendu par e-mail</SousTitre>
         {Platform.OS === 'web' ? (
           <Texte doux style={{ fontSize: 14 }}>
-            Sur le téléphone, un bouton crée le PDF et ouvre un e-mail prêt à partir vers le client, avec le PDF en pièce jointe.
+            Sur le téléphone, un bouton ouvre un e-mail prêt à partir vers le client, avec en pièce jointe la version enregistrée dans Documents.
           </Texte>
+        ) : !doc?.chemin ? (
+          <Texte style={{ fontSize: 14, color: couleurs.orange }}>Enregistrez d’abord le PDF dans Documents : c’est cette version qui sera envoyée.</Texte>
         ) : contact.email ? (
           <Bouton
-            libelle={booster.planEnvoyeLe ? 'Renvoyer par e-mail' : `Envoyer par e-mail à ${contact.email}`}
+            libelle={`${booster.planEnvoyeLe ? 'Renvoyer' : 'Envoyer'} la version ${doc.version} à ${contact.email}`}
             onPress={() => envoyer('email')}
             chargement={envoi === 'email'}
           />
         ) : (
           <Texte style={{ fontSize: 14, color: couleurs.orange }}>Pas d’e-mail sur la fiche : ajoute-le, ou envoie le PDF autrement.</Texte>
         )}
-        {Platform.OS !== 'web' && (
+        {Platform.OS !== 'web' && doc?.chemin && (
           <Bouton variante="discret" libelle="Envoyer le PDF autrement (WhatsApp, Messages…)" onPress={() => envoyer('partage')} chargement={envoi === 'partage'} />
         )}
-        {booster.planEnvoyeLe && <Texte doux style={{ fontSize: 13 }}>{`Envoyé le ${dateCourte(booster.planEnvoyeLe)}`}</Texte>}
+        {booster.planEnvoyeLe && <Texte doux style={{ fontSize: 13 }}>{`Envoi confirmé le ${dateCourte(booster.planEnvoyeLe)}`}</Texte>}
 
         <SousTitre>2. Le prévenir sur WhatsApp</SousTitre>
         {contact.telephone ? (
