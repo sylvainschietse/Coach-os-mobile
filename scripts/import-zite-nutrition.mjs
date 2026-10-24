@@ -163,22 +163,24 @@ function contientIngredient(i) {
 const majuscule = (t) => (t ? t[0].toUpperCase() + t.slice(1) : t);
 
 // Format compact : les champs vides sont omis, l'app les complète à la lecture (lireIngredient).
-function ingredient(i) {
+// L'export donne les quantités pour une portion ; Coach OS les garde pour la recette entière (× portions).
+const ingredient = (portions) => (i) => {
   const ref = i.proteinRef ? refs[i.proteinRef] : undefined;
-  const grammes = ref && i.proteinGrams ? i.proteinGrams : i.amountUnit === 'g' && i.amount ? i.amount : 0;
+  const amount = i.amount === null || i.amount === undefined ? i.amount : i.amount * portions;
+  const grammes = (ref && i.proteinGrams ? i.proteinGrams : i.amountUnit === 'g' && i.amount ? i.amount : 0) * portions;
   const contient = contientIngredient(i);
   return {
     nom: majuscule(i.label.trim()),
     ...(grammes ? { quantiteG: r1(grammes) } : {}),
     // Valeurs pour 100 g connues seulement pour les protéines de référence (Ciqual) : les autres viennent des macros publiées par portion.
     ...(ref ? { kcal: ref.kcal, proteines: ref.protein, glucides: ref.carbs, lipides: ref.fat } : { valeursInconnues: true }),
-    ...(i.amount !== null && i.amount !== undefined && !(i.amountUnit === 'g' && i.amount === grammes) ? { quantite: i.amount } : {}),
+    ...(amount !== null && amount !== undefined && !(i.amountUnit === 'g' && r1(amount) === r1(grammes)) ? { quantite: r1(amount * 100) / 100 } : {}),
     unite: i.amountUnit,
     ...(i.amountApprox ? { approximatif: true } : {}),
     ...(i.optional ? { facultatif: true } : {}),
     ...(contient.length ? { contient } : {}),
   };
-}
+};
 
 const macros = (m) => ({ kcal: r1(m.kcal), proteines: r1(m.protein), glucides: r1(m.carbs), lipides: r1(m.fat) });
 const etapes = (liste) => (liste?.length ? liste.map((s, n) => `${n + 1}. ${s.replace(/\{(\d+)ml\}/g, '$1 ml')}`).join('\n') : undefined);
@@ -186,13 +188,14 @@ const REGIME = { omnivore: 'omnivore', vegetarien: 'vegetarien', vegan: 'vegan' 
 
 const recettes = recettesZite.map((y) => {
   const [origine, ...autres] = [y.variants.find((v) => v.id === 'original') ?? y.variants[0], ...y.variants.filter((v) => v.id !== 'original')];
+  const portions = Math.min(50, Math.max(1, Math.round(y.yield)));
   return {
     id: uuid5(`coachos/recette/zite/${y.id}`),
     titre: y.name,
-    portions: Math.min(50, Math.max(1, Math.round(y.yield))),
+    portions,
     tempsMin: y.minutes || undefined,
     etapes: etapes(y.steps),
-    ingredients: origine.ingredients.map(ingredient),
+    ingredients: origine.ingredients.map(ingredient(portions)),
     macrosPortion: macros(origine.macros),
     regimeSource: REGIME[origine.diet],
     variantes: autres.map((v) => ({
@@ -200,7 +203,7 @@ const recettes = recettesZite.map((y) => {
       libelle: v.label,
       regime: REGIME[v.diet],
       macrosPortion: macros(v.macros),
-      ingredients: v.ingredients.map(ingredient),
+      ingredients: v.ingredients.map(ingredient(portions)),
       ...(v.notes?.length ? { notes: v.notes } : {}),
       ...(v.steps?.length ? { etapes: etapes(v.steps) } : {}),
     })),
