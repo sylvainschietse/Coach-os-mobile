@@ -1,5 +1,21 @@
 // Données fictives du mode démo : aucune donnée réelle de Sylvain ou de ses clients.
-import type { Exercice, JournalNutrition, Mensuration, PlanNutrition, Programme, Realisation, RecordPerso, Seance } from '@/domain/types';
+import type {
+  Aliment,
+  EntreeRepas,
+  Exercice,
+  Ingredient,
+  JournalNutrition,
+  Mensuration,
+  PlanNutrition,
+  ProfilNutrition,
+  Programme,
+  Realisation,
+  Recette,
+  RecordPerso,
+  Seance,
+} from '@/domain/types';
+
+import alimentsBase from './aliments-base.json';
 
 export const COACH_DEMO = { id: 'coach-sylvain', nom: 'Sylvain' };
 
@@ -166,3 +182,94 @@ export const PLANS_DEMO: PlanNutrition[] = [
 export const JOURNAL_DEMO: JournalNutrition[] = [
   { id: 'demo-jn-1', clientId: 'client-lea', date: '2026-10-19', respect: 4, eauL: 1.8, ressenti: 'Bien tenu, un peu faim le soir.' },
 ];
+
+// ——— Alimentation ———
+
+const BASE_ALIMENTS = alimentsBase as Aliment[];
+/** Un ingrédient de démo, pris dans la base d'aliments par son nom exact. */
+function ing(nom: string, quantiteG: number): Ingredient {
+  const a = BASE_ALIMENTS.find((x) => x.nom === nom);
+  if (!a) throw new Error(`Aliment de démo introuvable : ${nom}`);
+  return { alimentId: a.id, nom: a.nom, quantiteG, kcal: a.kcal, proteines: a.proteines, glucides: a.glucides, lipides: a.lipides, contient: a.contient };
+}
+
+export const PROFILS_DEMO: ProfilNutrition[] = [
+  { clientId: 'client-lea', sexe: 'femme', naissance: '1994-03-14', tailleCm: 166, activite: 'modere', objectif: 'perte', regimes: [] },
+];
+
+/** Recettes d'exemple pour essayer la démo : ce ne sont pas des recettes validées par Sylvain. */
+export const RECETTES_DEMO: Recette[] = [
+  {
+    id: 'demo-rec-bowl',
+    titre: 'Bowl poulet, riz et brocoli',
+    description: 'Exemple de démonstration.',
+    portions: 2,
+    tempsMin: 25,
+    etapes: 'Cuire le riz. Saisir le poulet en dés dans l’huile. Cuire le brocoli à la vapeur. Servir en bol.',
+    ingredients: [ing('Blanc de poulet cru', 260), ing('Riz basmati cuit', 300), ing('Brocoli cuit', 300), ing("Huile d'olive", 10)],
+    statut: 'approuvee',
+    regimesConfirmes: ['sans_gluten'],
+  },
+  {
+    id: 'demo-rec-porridge',
+    titre: 'Porridge protéiné aux fruits rouges',
+    description: 'Exemple de démonstration.',
+    portions: 1,
+    tempsMin: 5,
+    etapes: 'Chauffer les flocons dans le lait 3 minutes. Hors du feu, ajouter le skyr et les framboises.',
+    ingredients: [ing("Flocons d'avoine", 50), ing('Lait demi-écrémé', 200), ing('Skyr nature', 100), ing('Framboises', 80)],
+    statut: 'approuvee',
+    regimesConfirmes: [],
+  },
+  {
+    id: 'demo-rec-saumon',
+    titre: 'Saumon, patate douce et haricots verts',
+    description: 'Exemple de démonstration.',
+    portions: 2,
+    tempsMin: 30,
+    etapes: 'Rôtir la patate douce en cubes 25 minutes. Cuire le saumon 12 minutes au four. Haricots verts à la vapeur.',
+    ingredients: [ing('Saumon cuit', 240), ing('Patate douce cuite', 400), ing('Haricots verts cuits', 300), ing("Huile d'olive", 10)],
+    statut: 'approuvee',
+    regimesConfirmes: ['sans_gluten'],
+  },
+  {
+    id: 'demo-rec-chili',
+    titre: 'Chili de lentilles et haricots rouges',
+    description: 'Exemple de démonstration.',
+    portions: 3,
+    tempsMin: 35,
+    etapes: 'Faire revenir l’oignon et le poivron. Ajouter la sauce tomate, les lentilles et les haricots. Mijoter 20 minutes.',
+    ingredients: [
+      ing('Lentilles vertes cuites', 400),
+      ing('Haricots rouges cuits', 300),
+      ing('Sauce tomate cuisinée', 300),
+      ing('Oignon cru', 100),
+      ing('Poivron rouge cru', 150),
+      ing("Huile d'olive", 10),
+    ],
+    statut: 'approuvee',
+    regimesConfirmes: ['sans_gluten'],
+  },
+  {
+    id: 'demo-rec-omelette',
+    titre: 'Omelette au fromage et pain complet',
+    description: 'Exemple de démonstration.',
+    portions: 1,
+    tempsMin: 10,
+    ingredients: [ing('Œuf entier', 180), ing('Emmental', 20), ing('Pain complet', 60), ing('Salade verte', 50)],
+    statut: 'approuvee',
+    regimesConfirmes: [],
+  },
+  {
+    id: 'demo-rec-wrap',
+    titre: 'Wrap dinde, houmous et crudités',
+    description: 'Exemple de démonstration, pas encore approuvé.',
+    portions: 1,
+    tempsMin: 5,
+    ingredients: [ing('Wrap / tortilla de blé', 60), ing('Blanc de dinde (tranches)', 60), ing('Houmous', 30), ing('Tomate', 60), ing('Salade verte', 20)],
+    statut: 'brouillon',
+    regimesConfirmes: [],
+  },
+];
+
+export const REPAS_DEMO: EntreeRepas[] = [];

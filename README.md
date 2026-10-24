@@ -33,6 +33,14 @@ Il contient aussi le minuteur d'intervalles (Tabata, circuit). Le coach peut en 
 
 **Nutrition** : le coach écrit un plan par client (calories, macros, eau, conseils) ; le client le consulte et note sa journée (respect du plan sur 5, eau, repas, ressenti). Le coach voit le journal et la moyenne des 7 derniers jours notés.
 
+**Alimentation** :
+- Le client remplit son profil (sexe, âge, taille, poids ou dernière pesée, activité, objectif, régimes, allergies). Ses besoins (calories, protéines, glucides, lipides, eau) sont calculés avec la formule de Mifflin-St Jeor. Le coach peut reprendre ce calcul dans son plan, qui passe toujours avant.
+- Le client note ce qu'il mange de quatre façons : recherche dans la base d'aliments, scan du code-barres (Open Food Facts, le produit est ensuite gardé dans la base), photo du repas (estimation par Claude, à corriger avant d'enregistrer), ou recette. Les macros du jour se comparent à ses objectifs.
+- La base d'aliments de départ compte 192 aliments courants. Leurs valeurs sont des moyennes indicatives, à remplacer par la table Ciqual officielle ou par la base de Sylvain.
+- Le client crée ses recettes. La banque de recettes du coach n'est visible des clients qu'une fois approuvée. Elle est filtrée selon le régime et les allergies du client, avec des remplacements proposés (par exemple tofu à la place du poulet, à protéines égales), et les quantités s'ajustent à la cible du repas.
+- La photo passe par la fonction `analyser-repas`, qui a besoin du secret `ANTHROPIC_API_KEY` dans Supabase. L'image n'est pas gardée.
+- Le scan et la photo demandent l'appli installée (version 1.1.0), pas la démo web.
+
 Pas encore de compte rendu PDF automatique ni de paiements.
 
 ## Essayer sur ton téléphone (gratuit, sans compte Apple ni Google)

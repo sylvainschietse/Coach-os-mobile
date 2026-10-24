@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { depot } from '@/data';
+import { calculerBesoins } from '@/domain/alimentation';
 import { jourLocal } from '@/domain/crm';
 import { formaterDate } from '@/domain/programmes';
 import { caloriesDesMacros, erreursJournal, erreursPlan, formaterNombre, LIBELLES_RESPECT, lireNombre, resumeJournal } from '@/domain/suivi';
@@ -9,6 +10,7 @@ import type { JournalNutrition, PlanNutrition } from '@/domain/types';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
 
+import { chargerProfil } from '../alimentation/profil';
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, Puce, Puces, SousTitre, Texte } from '../composants';
 import { couleurs, espace } from '../theme';
 
@@ -85,6 +87,16 @@ export function PlanNutritionCarte({ clientId, modifiable }: { clientId: string;
 
   const macros = edition ? caloriesDesMacros(brouillon()) : undefined;
 
+  // Le calcul automatique (profil du client) comme point de départ du plan.
+  async function reprendreCalcul() {
+    const { profil, dernierPoids } = await chargerProfil(clientId);
+    const r = calculerBesoins(profil, jourLocal(new Date()), dernierPoids);
+    if (!r.besoins) return setErreurs([`Profil incomplet pour le calcul : il manque ${r.manque.join(', ')}.`]);
+    const b = r.besoins;
+    setErreurs([]);
+    setValeurs({ calories: String(b.kcal), proteinesG: String(b.proteines), glucidesG: String(b.glucides), lipidesG: String(b.lipides), eauL: String(b.eauL).replace('.', ',') });
+  }
+
   return (
     <Carte>
       <SousTitre>Plan nutrition</SousTitre>
@@ -114,6 +126,7 @@ export function PlanNutritionCarte({ clientId, modifiable }: { clientId: string;
           {macros !== undefined && (
             <Texte doux style={{ fontSize: 13 }}>Les macros font environ {macros} kcal (4/4/9).</Texte>
           )}
+          <Bouton variante="discret" libelle="Reprendre le calcul automatique du profil" onPress={reprendreCalcul} />
           <ChampTexte libelle="Conseils pour le client" valeur={conseils} onChange={setConseils} multiligne />
           {erreurs.length > 0 && <Erreur message={erreurs.join('\n')} />}
           <Bouton libelle="Enregistrer le plan" onPress={enregistrer} chargement={enCours} />

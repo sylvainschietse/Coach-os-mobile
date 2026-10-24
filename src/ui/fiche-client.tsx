@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { Puce, Puces } from './composants';
+import { JournalRepas } from './alimentation/journal-repas';
+import { ProfilNutritionCarte } from './alimentation/profil';
 import { DetailClient } from './detail-client';
 import { SeancesClientCoach } from './programmes/seances-client';
 import { Mensurations } from './suivi/mensurations';
@@ -19,6 +21,33 @@ const ONGLETS: { cle: Onglet; libelle: string }[] = [
 ];
 
 /** Tout ce que le coach suit d'un client, au même endroit. */
+const SOUS_ONGLETS = [
+  { cle: 'repas', libelle: 'Repas' },
+  { cle: 'plan', libelle: 'Plan et ressenti' },
+  { cle: 'profil', libelle: 'Profil et besoins' },
+] as const;
+
+function Nutrition({ clientId, coachId }: { clientId: string; coachId: string }) {
+  const [onglet, setOnglet] = useState<(typeof SOUS_ONGLETS)[number]['cle']>('repas');
+  return (
+    <>
+      <Puces>
+        {SOUS_ONGLETS.map((o) => (
+          <Puce key={o.cle} libelle={o.libelle} actif={onglet === o.cle} onPress={() => setOnglet(o.cle)} />
+        ))}
+      </Puces>
+      {onglet === 'repas' && <JournalRepas clientId={clientId} coachId={coachId} saisie={false} />}
+      {onglet === 'plan' && (
+        <>
+          <PlanNutritionCarte clientId={clientId} modifiable />
+          <JournalNutritionVue clientId={clientId} saisie={false} />
+        </>
+      )}
+      {onglet === 'profil' && <ProfilNutritionCarte clientId={clientId} />}
+    </>
+  );
+}
+
 export function FicheClient({ clientId, coachId }: { clientId: string; coachId: string }) {
   const [onglet, setOnglet] = useState<Onglet>('seances');
   return (
@@ -32,12 +61,7 @@ export function FicheClient({ clientId, coachId }: { clientId: string; coachId: 
       {onglet === 'historique' && <DetailClient clientId={clientId} />}
       {onglet === 'mesures' && <Mensurations clientId={clientId} saisie={false} />}
       {onglet === 'records' && <Records clientId={clientId} saisie={false} />}
-      {onglet === 'nutrition' && (
-        <>
-          <PlanNutritionCarte clientId={clientId} modifiable />
-          <JournalNutritionVue clientId={clientId} saisie={false} />
-        </>
-      )}
+      {onglet === 'nutrition' && <Nutrition clientId={clientId} coachId={coachId} />}
     </View>
   );
 }

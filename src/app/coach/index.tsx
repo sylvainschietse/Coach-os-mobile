@@ -12,6 +12,7 @@ import { Contacts } from '@/ui/crm/contacts';
 import { FicheContactVue } from '@/ui/crm/fiche';
 import { Journee } from '@/ui/crm/journee';
 import { FicheClient } from '@/ui/fiche-client';
+import { BanqueRecettes } from '@/ui/alimentation/recettes';
 import { Modeles } from '@/ui/programmes/modeles';
 import { couleurs, espace, LARGEUR_LARGE } from '@/ui/theme';
 
@@ -50,7 +51,7 @@ function ListeClients({
   );
 }
 
-type Onglet = 'journee' | 'contacts' | 'clients' | 'programmes';
+type Onglet = 'journee' | 'contacts' | 'clients' | 'programmes' | 'recettes';
 type Selection = { type: 'contact' | 'client'; id: string } | undefined;
 
 const ONGLETS: { cle: Onglet; libelle: string }[] = [
@@ -58,6 +59,7 @@ const ONGLETS: { cle: Onglet; libelle: string }[] = [
   { cle: 'contacts', libelle: 'Contacts' },
   { cle: 'clients', libelle: 'Clients' },
   { cle: 'programmes', libelle: 'Programmes' },
+  { cle: 'recettes', libelle: 'Recettes' },
 ];
 
 export default function EspaceCoach() {
@@ -115,6 +117,7 @@ export default function EspaceCoach() {
         </>
       )}
       {onglet === 'programmes' && <Modeles coachId={coachId} />}
+      {onglet === 'recettes' && <BanqueRecettes coachId={coachId} />}
       <Bouton variante="discret" libelle="Se déconnecter" onPress={deconnecter} />
     </>
   );

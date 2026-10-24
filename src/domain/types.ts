@@ -188,3 +188,92 @@ export interface JournalNutrition {
   repas?: string;
   ressenti?: string;
 }
+
+// Alimentation : profil, base d'aliments, recettes et journal des repas.
+export type Sexe = 'femme' | 'homme';
+export type NiveauActivite = 'sedentaire' | 'leger' | 'modere' | 'actif' | 'tres_actif';
+export type ObjectifNutrition = 'perte' | 'maintien' | 'prise';
+export type Regime = 'vegetarien' | 'vegan' | 'pescetarien' | 'sans_gluten' | 'sans_lactose' | 'low_carb' | 'high_protein';
+/** Ce qu'un aliment contient et qui compte pour un régime ou une allergie. */
+export type Contient = 'viande' | 'poisson' | 'fruits_de_mer' | 'oeuf' | 'lait' | 'gluten' | 'miel';
+
+export interface ProfilNutrition {
+  clientId: string;
+  sexe?: Sexe;
+  /** AAAA-MM-JJ */
+  naissance?: string;
+  tailleCm?: number;
+  /** Vide : on prend la dernière pesée des mensurations. */
+  poidsKg?: number;
+  activite?: NiveauActivite;
+  objectif?: ObjectifNutrition;
+  regimes: Regime[];
+  /** Allergies, aliments refusés : texte libre, une virgule entre chaque. */
+  exclusions?: string;
+  majLe?: string;
+}
+
+/** Valeurs pour 100 g. */
+export interface Macros {
+  kcal: number;
+  proteines: number;
+  glucides: number;
+  lipides: number;
+}
+
+export interface Aliment extends Macros {
+  id: string;
+  nom: string;
+  marque?: string;
+  codeBarres?: string;
+  categorie?: string;
+  fibres?: number;
+  portionG?: number;
+  portionLibelle?: string;
+  contient: Contient[];
+  /** base : base commune ; off : Open Food Facts (code-barres) ; coach / client : ajouté à la main. */
+  source: 'base' | 'off' | 'coach' | 'client';
+  /** Aliment personnel d'un client. */
+  clientId?: string;
+}
+
+/** Un ingrédient garde ses valeurs pour 100 g : la recette ne change pas si la base change. */
+export interface Ingredient extends Macros {
+  alimentId?: string;
+  nom: string;
+  quantiteG: number;
+  contient: Contient[];
+}
+
+export interface Recette {
+  id: string;
+  /** Vide : recette personnelle d'un client. */
+  clientId?: string;
+  titre: string;
+  description?: string;
+  portions: number;
+  tempsMin?: number;
+  etapes?: string;
+  ingredients: Ingredient[];
+  /** Le client ne voit dans la banque que les recettes approuvées par le coach. */
+  statut: 'brouillon' | 'approuvee';
+  /** Régimes confirmés à la main (sans gluten notamment), en plus de ce que disent les ingrédients. */
+  regimesConfirmes: Regime[];
+  archive?: boolean;
+}
+
+export type MomentRepas = 'petit_dejeuner' | 'dejeuner' | 'collation' | 'diner';
+
+/** Une ligne du journal des repas, avec ses totaux déjà calculés. */
+export interface EntreeRepas extends Macros {
+  id: string;
+  clientId: string;
+  date: string;
+  moment: MomentRepas;
+  libelle: string;
+  quantiteG?: number;
+  portions?: number;
+  alimentId?: string;
+  recetteId?: string;
+  source: 'saisie' | 'scan' | 'photo' | 'recette';
+}

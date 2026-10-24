@@ -1,0 +1,2797 @@
+[
+{
+"id": "f6c716c2-cd51-582a-9e25-ec3d992014c3",
+"nom": "Blanc de poulet cuit",
+"categorie": "Viandes",
+"kcal": 150,
+"proteines": 31,
+"glucides": 0,
+"lipides": 3,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"portionG": 120,
+"portionLibelle": "1 filet",
+"source": "base"
+},
+{
+"id": "d8f80be8-a529-5d06-ba36-26938a2ba0b8",
+"nom": "Blanc de poulet cru",
+"categorie": "Viandes",
+"kcal": 110,
+"proteines": 23,
+"glucides": 0,
+"lipides": 1.8,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"source": "base"
+},
+{
+"id": "eeb32afd-8985-5e0f-a5c5-9db6bc85a05f",
+"nom": "Cuisse de poulet rôtie, sans peau",
+"categorie": "Viandes",
+"kcal": 190,
+"proteines": 26,
+"glucides": 0,
+"lipides": 9.5,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"source": "base"
+},
+{
+"id": "c2545400-6bd4-5ce3-b1b5-81a7a35a5332",
+"nom": "Escalope de dinde cuite",
+"categorie": "Viandes",
+"kcal": 145,
+"proteines": 30,
+"glucides": 0,
+"lipides": 2.5,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"portionG": 120,
+"portionLibelle": "1 escalope",
+"source": "base"
+},
+{
+"id": "10482697-8ce9-593c-9910-5ae25b4be180",
+"nom": "Steak haché 5 % MG cuit",
+"categorie": "Viandes",
+"kcal": 150,
+"proteines": 26,
+"glucides": 0,
+"lipides": 5,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"portionG": 100,
+"portionLibelle": "1 steak",
+"source": "base"
+},
+{
+"id": "9258f0b7-80e2-5210-9d9e-34d2d227e450",
+"nom": "Steak haché 15 % MG cuit",
+"categorie": "Viandes",
+"kcal": 230,
+"proteines": 25,
+"glucides": 0,
+"lipides": 15,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"portionG": 100,
+"portionLibelle": "1 steak",
+"source": "base"
+},
+{
+"id": "fde3a26d-e580-506f-be04-8859f9fc850d",
+"nom": "Bœuf, rumsteck grillé",
+"categorie": "Viandes",
+"kcal": 165,
+"proteines": 30,
+"glucides": 0,
+"lipides": 5,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"portionG": 150,
+"portionLibelle": "1 pièce",
+"source": "base"
+},
+{
+"id": "b0de2475-81fe-5f9e-9f0f-3535ded1d794",
+"nom": "Bœuf, bavette grillée",
+"categorie": "Viandes",
+"kcal": 190,
+"proteines": 28,
+"glucides": 0,
+"lipides": 8.5,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"portionG": 150,
+"portionLibelle": "1 pièce",
+"source": "base"
+},
+{
+"id": "7bd712f5-32e6-506f-8917-9cdff4b1cea1",
+"nom": "Filet mignon de porc cuit",
+"categorie": "Viandes",
+"kcal": 160,
+"proteines": 29,
+"glucides": 0,
+"lipides": 4.5,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"source": "base"
+},
+{
+"id": "9cfbcb2b-88a2-589a-aa3c-507f6c894393",
+"nom": "Côte de porc grillée",
+"categorie": "Viandes",
+"kcal": 230,
+"proteines": 28,
+"glucides": 0,
+"lipides": 13,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"portionG": 150,
+"portionLibelle": "1 côte",
+"source": "base"
+},
+{
+"id": "c274a26a-ca1b-5b43-badc-0a3fdb20ce93",
+"nom": "Jambon blanc découenné",
+"categorie": "Charcuterie",
+"kcal": 115,
+"proteines": 20,
+"glucides": 1,
+"lipides": 3.5,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"portionG": 40,
+"portionLibelle": "1 tranche",
+"source": "base"
+},
+{
+"id": "8733935f-34ef-5516-bee9-4cee7f22bba2",
+"nom": "Jambon cru",
+"categorie": "Charcuterie",
+"kcal": 240,
+"proteines": 27,
+"glucides": 0.5,
+"lipides": 14,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"portionG": 20,
+"portionLibelle": "1 tranche",
+"source": "base"
+},
+{
+"id": "68a99536-a6ce-5026-91e2-76430cb6b1cf",
+"nom": "Blanc de dinde (tranches)",
+"categorie": "Charcuterie",
+"kcal": 105,
+"proteines": 20,
+"glucides": 1.5,
+"lipides": 2,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"portionG": 30,
+"portionLibelle": "1 tranche",
+"source": "base"
+},
+{
+"id": "5152c068-f21b-585e-a99e-831a626238cd",
+"nom": "Lardons fumés cuits",
+"categorie": "Charcuterie",
+"kcal": 300,
+"proteines": 17,
+"glucides": 0.5,
+"lipides": 26,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"source": "base"
+},
+{
+"id": "d948da8a-70da-5cbf-817e-ea2f68a04fc9",
+"nom": "Saucisse de Toulouse cuite",
+"categorie": "Charcuterie",
+"kcal": 290,
+"proteines": 16,
+"glucides": 1,
+"lipides": 25,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"portionG": 100,
+"portionLibelle": "1 saucisse",
+"source": "base"
+},
+{
+"id": "88d5e724-d8ac-5b9f-b5c3-d409aad25121",
+"nom": "Agneau, gigot rôti",
+"categorie": "Viandes",
+"kcal": 220,
+"proteines": 27,
+"glucides": 0,
+"lipides": 12.5,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"source": "base"
+},
+{
+"id": "0832a114-fdbd-5456-b636-169a01d2ac58",
+"nom": "Veau, escalope cuite",
+"categorie": "Viandes",
+"kcal": 150,
+"proteines": 30,
+"glucides": 0,
+"lipides": 3,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"portionG": 120,
+"portionLibelle": "1 escalope",
+"source": "base"
+},
+{
+"id": "1b93a952-cc1a-5865-bae1-9e332431dafd",
+"nom": "Canard, magret grillé sans peau",
+"categorie": "Viandes",
+"kcal": 175,
+"proteines": 26,
+"glucides": 0,
+"lipides": 8,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"source": "base"
+},
+{
+"id": "e4423435-1490-5e10-9795-70d750d08e1d",
+"nom": "Lapin cuit",
+"categorie": "Viandes",
+"kcal": 175,
+"proteines": 29,
+"glucides": 0,
+"lipides": 6.5,
+"fibres": 0,
+"contient": [
+"viande"
+],
+"source": "base"
+},
+{
+"id": "cf0aa1da-a33e-5880-a685-e266b443d1d6",
+"nom": "Saumon cuit",
+"categorie": "Poissons",
+"kcal": 200,
+"proteines": 24,
+"glucides": 0,
+"lipides": 11.5,
+"fibres": 0,
+"contient": [
+"poisson"
+],
+"portionG": 120,
+"portionLibelle": "1 pavé",
+"source": "base"
+},
+{
+"id": "b7d880b6-239a-5845-bb4c-ef44661610d3",
+"nom": "Saumon fumé",
+"categorie": "Poissons",
+"kcal": 180,
+"proteines": 22,
+"glucides": 0.5,
+"lipides": 10,
+"fibres": 0,
+"contient": [
+"poisson"
+],
+"portionG": 30,
+"portionLibelle": "1 tranche",
+"source": "base"
+},
+{
+"id": "c906d6c5-258c-5527-b1f0-4e0d1462350d",
+"nom": "Thon au naturel, égoutté",
+"categorie": "Poissons",
+"kcal": 110,
+"proteines": 25,
+"glucides": 0,
+"lipides": 1,
+"fibres": 0,
+"contient": [
+"poisson"
+],
+"portionG": 100,
+"portionLibelle": "1 petite boîte égouttée",
+"source": "base"
+},
+{
+"id": "80c4792e-00ca-5260-805c-8a1a52786796",
+"nom": "Thon frais cuit",
+"categorie": "Poissons",
+"kcal": 140,
+"proteines": 30,
+"glucides": 0,
+"lipides": 2,
+"fibres": 0,
+"contient": [
+"poisson"
+],
+"source": "base"
+},
+{
+"id": "5d69ab1e-7cc4-5a79-bf00-0d1a719c3666",
+"nom": "Cabillaud cuit",
+"categorie": "Poissons",
+"kcal": 95,
+"proteines": 21,
+"glucides": 0,
+"lipides": 1,
+"fibres": 0,
+"contient": [
+"poisson"
+],
+"portionG": 150,
+"portionLibelle": "1 filet",
+"source": "base"
+},
+{
+"id": "cc7a380e-3150-534d-89f7-4d63814a455f",
+"nom": "Colin (lieu) cuit",
+"categorie": "Poissons",
+"kcal": 100,
+"proteines": 21,
+"glucides": 0,
+"lipides": 1.5,
+"fibres": 0,
+"contient": [
+"poisson"
+],
+"portionG": 150,
+"portionLibelle": "1 filet",
+"source": "base"
+},
+{
+"id": "f9a5abbc-5e5b-5d95-bcb0-527ce5bd7044",
+"nom": "Sardines à l'huile, égouttées",
+"categorie": "Poissons",
+"kcal": 210,
+"proteines": 25,
+"glucides": 0,
+"lipides": 12,
+"fibres": 0,
+"contient": [
+"poisson"
+],
+"source": "base"
+},
+{
+"id": "67b7f3dc-749b-5bb1-8207-ee70564cf3b8",
+"nom": "Maquereau cuit",
+"categorie": "Poissons",
+"kcal": 230,
+"proteines": 23,
+"glucides": 0,
+"lipides": 15,
+"fibres": 0,
+"contient": [
+"poisson"
+],
+"source": "base"
+},
+{
+"id": "a2e87383-83ed-5fff-b52c-8739e3c65702",
+"nom": "Truite cuite",
+"categorie": "Poissons",
+"kcal": 150,
+"proteines": 23,
+"glucides": 0,
+"lipides": 6.5,
+"fibres": 0,
+"contient": [
+"poisson"
+],
+"source": "base"
+},
+{
+"id": "ec14304d-6a0b-5833-82fb-01de2dd71d76",
+"nom": "Crevettes cuites",
+"categorie": "Fruits de mer",
+"kcal": 100,
+"proteines": 22,
+"glucides": 0,
+"lipides": 1.2,
+"fibres": 0,
+"contient": [
+"fruits_de_mer"
+],
+"source": "base"
+},
+{
+"id": "7ecafdac-122b-53c2-bbd6-d768f00a6656",
+"nom": "Moules cuites",
+"categorie": "Fruits de mer",
+"kcal": 120,
+"proteines": 20,
+"glucides": 3.5,
+"lipides": 3,
+"fibres": 0,
+"contient": [
+"fruits_de_mer"
+],
+"source": "base"
+},
+{
+"id": "0984ab6a-6369-5863-b8ca-752a81074676",
+"nom": "Surimi",
+"categorie": "Poissons",
+"kcal": 105,
+"proteines": 8,
+"glucides": 15,
+"lipides": 1,
+"fibres": 0,
+"contient": [
+"poisson",
+"oeuf",
+"gluten"
+],
+"source": "base"
+},
+{
+"id": "dc7de4d2-ba42-59a7-82a8-c84b0a06b9f5",
+"nom": "Œuf entier",
+"categorie": "Œufs",
+"kcal": 140,
+"proteines": 12.5,
+"glucides": 0.5,
+"lipides": 9.5,
+"fibres": 0,
+"contient": [
+"oeuf"
+],
+"portionG": 60,
+"portionLibelle": "1 œuf",
+"source": "base"
+},
+{
+"id": "62e25fa8-59e0-5cfb-a09f-3fe6c4aa7e82",
+"nom": "Blanc d'œuf",
+"categorie": "Œufs",
+"kcal": 48,
+"proteines": 10.5,
+"glucides": 0.5,
+"lipides": 0.2,
+"fibres": 0,
+"contient": [
+"oeuf"
+],
+"portionG": 33,
+"portionLibelle": "1 blanc",
+"source": "base"
+},
+{
+"id": "7f8d3995-34f1-565f-9f9b-f8640d473740",
+"nom": "Jaune d'œuf",
+"categorie": "Œufs",
+"kcal": 320,
+"proteines": 16,
+"glucides": 0.5,
+"lipides": 28,
+"fibres": 0,
+"contient": [
+"oeuf"
+],
+"portionG": 18,
+"portionLibelle": "1 jaune",
+"source": "base"
+},
+{
+"id": "1c5a0214-d16b-55ac-a5ed-0bb171a97fa6",
+"nom": "Lait demi-écrémé",
+"categorie": "Produits laitiers",
+"kcal": 46,
+"proteines": 3.3,
+"glucides": 4.8,
+"lipides": 1.6,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 250,
+"portionLibelle": "1 verre",
+"source": "base"
+},
+{
+"id": "6d439376-bf28-5a1e-a3a1-d2cb31c5d613",
+"nom": "Lait écrémé",
+"categorie": "Produits laitiers",
+"kcal": 34,
+"proteines": 3.4,
+"glucides": 4.8,
+"lipides": 0.1,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 250,
+"portionLibelle": "1 verre",
+"source": "base"
+},
+{
+"id": "3e4142bd-ac45-542c-82f5-965680cb32dd",
+"nom": "Lait entier",
+"categorie": "Produits laitiers",
+"kcal": 65,
+"proteines": 3.3,
+"glucides": 4.7,
+"lipides": 3.6,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 250,
+"portionLibelle": "1 verre",
+"source": "base"
+},
+{
+"id": "09fe88d0-f7fd-5859-a895-9c946c6e6f07",
+"nom": "Yaourt nature",
+"categorie": "Produits laitiers",
+"kcal": 60,
+"proteines": 4.2,
+"glucides": 5,
+"lipides": 2.8,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 125,
+"portionLibelle": "1 pot",
+"source": "base"
+},
+{
+"id": "7a216aee-7d05-5ece-8a65-ab93cd4857e3",
+"nom": "Yaourt grec nature",
+"categorie": "Produits laitiers",
+"kcal": 120,
+"proteines": 5.5,
+"glucides": 4,
+"lipides": 9,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 150,
+"portionLibelle": "1 pot",
+"source": "base"
+},
+{
+"id": "12fab1a7-a03b-5876-8dd7-6477feafada6",
+"nom": "Skyr nature",
+"categorie": "Produits laitiers",
+"kcal": 60,
+"proteines": 10.5,
+"glucides": 4,
+"lipides": 0.2,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 150,
+"portionLibelle": "1 pot",
+"source": "base"
+},
+{
+"id": "5ffeaa25-630e-5193-90e8-f54535076ade",
+"nom": "Fromage blanc 0 %",
+"categorie": "Produits laitiers",
+"kcal": 48,
+"proteines": 7.5,
+"glucides": 4,
+"lipides": 0.2,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 100,
+"source": "base"
+},
+{
+"id": "d1d57b92-d3cd-58f1-af06-1db3d1803e48",
+"nom": "Fromage blanc 3 %",
+"categorie": "Produits laitiers",
+"kcal": 75,
+"proteines": 7,
+"glucides": 4,
+"lipides": 3.2,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 100,
+"source": "base"
+},
+{
+"id": "4feda95e-edd3-5bed-906f-18f8e939a9b5",
+"nom": "Petit-suisse nature",
+"categorie": "Produits laitiers",
+"kcal": 130,
+"proteines": 9,
+"glucides": 3.5,
+"lipides": 8.5,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 60,
+"portionLibelle": "1 petit-suisse",
+"source": "base"
+},
+{
+"id": "bab6f6d2-ff83-51da-a678-891edf07c4b8",
+"nom": "Emmental",
+"categorie": "Fromages",
+"kcal": 380,
+"proteines": 28,
+"glucides": 0,
+"lipides": 30,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 30,
+"portionLibelle": "1 portion",
+"source": "base"
+},
+{
+"id": "ced1da9f-d674-59c3-abd5-b5425e0211f7",
+"nom": "Comté",
+"categorie": "Fromages",
+"kcal": 410,
+"proteines": 27,
+"glucides": 0,
+"lipides": 34,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 30,
+"portionLibelle": "1 portion",
+"source": "base"
+},
+{
+"id": "8e606ab1-d014-5c45-868c-1f804da1af03",
+"nom": "Camembert",
+"categorie": "Fromages",
+"kcal": 270,
+"proteines": 20,
+"glucides": 0.5,
+"lipides": 21,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 30,
+"portionLibelle": "1 portion",
+"source": "base"
+},
+{
+"id": "821c6f24-29f4-508c-af14-a2c168862d20",
+"nom": "Mozzarella",
+"categorie": "Fromages",
+"kcal": 250,
+"proteines": 18,
+"glucides": 1,
+"lipides": 19.5,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 125,
+"portionLibelle": "1 boule",
+"source": "base"
+},
+{
+"id": "b538f83e-4ce2-51b5-9a7e-65eca5955844",
+"nom": "Feta",
+"categorie": "Fromages",
+"kcal": 270,
+"proteines": 15,
+"glucides": 1,
+"lipides": 22.5,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 30,
+"portionLibelle": "1 portion",
+"source": "base"
+},
+{
+"id": "09ad7064-7a8f-5027-8423-ce4774beecb5",
+"nom": "Parmesan",
+"categorie": "Fromages",
+"kcal": 400,
+"proteines": 35,
+"glucides": 0,
+"lipides": 28,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 10,
+"portionLibelle": "1 cuillère à soupe râpée",
+"source": "base"
+},
+{
+"id": "e08255e3-37a6-5699-970b-7c46438ff798",
+"nom": "Chèvre frais",
+"categorie": "Fromages",
+"kcal": 200,
+"proteines": 11,
+"glucides": 2.5,
+"lipides": 16,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 30,
+"portionLibelle": "1 portion",
+"source": "base"
+},
+{
+"id": "ce0e747b-22da-5cc6-8cac-a00c3f73cc29",
+"nom": "Fromage frais type Saint-Môret",
+"categorie": "Fromages",
+"kcal": 250,
+"proteines": 6,
+"glucides": 3,
+"lipides": 24,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 30,
+"portionLibelle": "1 portion",
+"source": "base"
+},
+{
+"id": "ecef8ee3-3e88-5b0a-8f70-9287cb74d7bc",
+"nom": "Ricotta",
+"categorie": "Fromages",
+"kcal": 150,
+"proteines": 9,
+"glucides": 3.5,
+"lipides": 11,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"source": "base"
+},
+{
+"id": "ba688790-c7f7-57de-abb6-3252cf1e0f2c",
+"nom": "Cottage cheese",
+"categorie": "Produits laitiers",
+"kcal": 95,
+"proteines": 11,
+"glucides": 3,
+"lipides": 4.3,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 100,
+"source": "base"
+},
+{
+"id": "067de6df-63d6-5a9f-bb46-dd3c7f6f58ac",
+"nom": "Beurre doux",
+"categorie": "Matières grasses",
+"kcal": 745,
+"proteines": 0.7,
+"glucides": 0.6,
+"lipides": 82,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 10,
+"portionLibelle": "1 noisette",
+"source": "base"
+},
+{
+"id": "720d9bee-7f9f-5ba0-bfd5-428edde871b1",
+"nom": "Crème fraîche épaisse 30 %",
+"categorie": "Produits laitiers",
+"kcal": 300,
+"proteines": 2.3,
+"glucides": 3,
+"lipides": 30,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 15,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "0cdb0308-ecd7-5671-8c2a-3256c35110ca",
+"nom": "Crème fraîche légère 15 %",
+"categorie": "Produits laitiers",
+"kcal": 165,
+"proteines": 3,
+"glucides": 4,
+"lipides": 15,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 15,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "ad875383-9ae0-5384-9b8c-a80716dad705",
+"nom": "Riz blanc cuit",
+"categorie": "Féculents",
+"kcal": 130,
+"proteines": 2.7,
+"glucides": 28,
+"lipides": 0.3,
+"fibres": 0.4,
+"contient": [],
+"portionG": 150,
+"portionLibelle": "1 assiette",
+"source": "base"
+},
+{
+"id": "bb1b600f-cd39-5271-b7d2-3eec58f2e5d1",
+"nom": "Riz basmati cuit",
+"categorie": "Féculents",
+"kcal": 130,
+"proteines": 3,
+"glucides": 28,
+"lipides": 0.4,
+"fibres": 0.5,
+"contient": [],
+"portionG": 150,
+"portionLibelle": "1 assiette",
+"source": "base"
+},
+{
+"id": "a626cfcd-69cb-54e1-ae5a-18850341f16a",
+"nom": "Riz complet cuit",
+"categorie": "Féculents",
+"kcal": 125,
+"proteines": 2.8,
+"glucides": 25,
+"lipides": 1,
+"fibres": 1.8,
+"contient": [],
+"portionG": 150,
+"portionLibelle": "1 assiette",
+"source": "base"
+},
+{
+"id": "0ae59fd0-b7c2-550c-9075-fa07a9644f88",
+"nom": "Riz cru",
+"categorie": "Féculents",
+"kcal": 355,
+"proteines": 7,
+"glucides": 78,
+"lipides": 0.7,
+"fibres": 1.3,
+"contient": [],
+"source": "base"
+},
+{
+"id": "4520024f-522b-567b-aab7-9bce1f66d834",
+"nom": "Pâtes cuites",
+"categorie": "Féculents",
+"kcal": 150,
+"proteines": 5,
+"glucides": 30,
+"lipides": 0.9,
+"fibres": 1.8,
+"contient": [
+"gluten"
+],
+"portionG": 200,
+"portionLibelle": "1 assiette",
+"source": "base"
+},
+{
+"id": "e234a894-8d02-5f7b-8e90-c0d9102cfd97",
+"nom": "Pâtes complètes cuites",
+"categorie": "Féculents",
+"kcal": 140,
+"proteines": 5.5,
+"glucides": 27,
+"lipides": 1,
+"fibres": 4,
+"contient": [
+"gluten"
+],
+"portionG": 200,
+"portionLibelle": "1 assiette",
+"source": "base"
+},
+{
+"id": "d7326591-1b53-581a-85cd-2021d6bf733f",
+"nom": "Pâtes crues",
+"categorie": "Féculents",
+"kcal": 355,
+"proteines": 12.5,
+"glucides": 71,
+"lipides": 1.5,
+"fibres": 3,
+"contient": [
+"gluten"
+],
+"source": "base"
+},
+{
+"id": "8e77b7d3-a5aa-52e6-95a7-d3a8aa3d452c",
+"nom": "Semoule de blé cuite",
+"categorie": "Féculents",
+"kcal": 115,
+"proteines": 4,
+"glucides": 23,
+"lipides": 0.3,
+"fibres": 1.5,
+"contient": [
+"gluten"
+],
+"portionG": 150,
+"source": "base"
+},
+{
+"id": "8d466f20-98eb-5c16-b8c7-71efea66927b",
+"nom": "Boulgour cuit",
+"categorie": "Féculents",
+"kcal": 85,
+"proteines": 3,
+"glucides": 18,
+"lipides": 0.3,
+"fibres": 4,
+"contient": [
+"gluten"
+],
+"portionG": 150,
+"source": "base"
+},
+{
+"id": "c55a1119-665c-5159-b52a-35961dac0a69",
+"nom": "Quinoa cuit",
+"categorie": "Féculents",
+"kcal": 125,
+"proteines": 4.5,
+"glucides": 21,
+"lipides": 2,
+"fibres": 2.8,
+"contient": [],
+"portionG": 150,
+"source": "base"
+},
+{
+"id": "18c07959-da72-5015-a3a8-b5304c2cdc0f",
+"nom": "Pomme de terre cuite à l'eau",
+"categorie": "Féculents",
+"kcal": 80,
+"proteines": 2,
+"glucides": 17,
+"lipides": 0.1,
+"fibres": 1.8,
+"contient": [],
+"portionG": 150,
+"portionLibelle": "2 pommes de terre moyennes",
+"source": "base"
+},
+{
+"id": "4a66ac7e-20e3-5036-a2ed-362a2a8534c8",
+"nom": "Patate douce cuite",
+"categorie": "Féculents",
+"kcal": 90,
+"proteines": 1.6,
+"glucides": 19,
+"lipides": 0.2,
+"fibres": 3,
+"contient": [],
+"portionG": 150,
+"source": "base"
+},
+{
+"id": "37565958-1f59-54ca-99bb-e11ecb9088e9",
+"nom": "Frites au four",
+"categorie": "Féculents",
+"kcal": 160,
+"proteines": 2.8,
+"glucides": 26,
+"lipides": 4.5,
+"fibres": 2.7,
+"contient": [],
+"source": "base"
+},
+{
+"id": "c41e9320-efb2-543c-9d9f-8a0134a8382e",
+"nom": "Purée de pommes de terre maison",
+"categorie": "Féculents",
+"kcal": 95,
+"proteines": 2,
+"glucides": 13,
+"lipides": 4,
+"fibres": 1.5,
+"contient": [
+"lait"
+],
+"source": "base"
+},
+{
+"id": "3bf1c5b6-da35-51bf-98af-e5e1198af87d",
+"nom": "Lentilles vertes cuites",
+"categorie": "Légumineuses",
+"kcal": 115,
+"proteines": 9,
+"glucides": 16,
+"lipides": 0.5,
+"fibres": 8,
+"contient": [],
+"portionG": 150,
+"source": "base"
+},
+{
+"id": "f9a4352a-472f-50d0-855c-22550cadfa3d",
+"nom": "Pois chiches cuits",
+"categorie": "Légumineuses",
+"kcal": 140,
+"proteines": 8,
+"glucides": 18,
+"lipides": 2.5,
+"fibres": 6,
+"contient": [],
+"portionG": 150,
+"source": "base"
+},
+{
+"id": "45ca3d78-a9cb-5d7e-897f-4b29d5939941",
+"nom": "Haricots rouges cuits",
+"categorie": "Légumineuses",
+"kcal": 110,
+"proteines": 8,
+"glucides": 14,
+"lipides": 0.5,
+"fibres": 7.5,
+"contient": [],
+"portionG": 150,
+"source": "base"
+},
+{
+"id": "e98a421a-cc9e-54be-acd3-7d9a83dbceb9",
+"nom": "Haricots blancs cuits",
+"categorie": "Légumineuses",
+"kcal": 110,
+"proteines": 7.5,
+"glucides": 14,
+"lipides": 0.5,
+"fibres": 7,
+"contient": [],
+"portionG": 150,
+"source": "base"
+},
+{
+"id": "8fe2d515-c294-5cef-9cd6-92f4e960006e",
+"nom": "Lentilles corail cuites",
+"categorie": "Légumineuses",
+"kcal": 115,
+"proteines": 9,
+"glucides": 17,
+"lipides": 0.4,
+"fibres": 4,
+"contient": [],
+"portionG": 150,
+"source": "base"
+},
+{
+"id": "bf522bac-7ab0-5136-8b2b-65a76bfe1995",
+"nom": "Pois cassés cuits",
+"categorie": "Légumineuses",
+"kcal": 120,
+"proteines": 8,
+"glucides": 18,
+"lipides": 0.5,
+"fibres": 6,
+"contient": [],
+"source": "base"
+},
+{
+"id": "9fdde0de-1588-5d3f-a4e1-bf5caecf0d2d",
+"nom": "Flocons d'avoine",
+"categorie": "Céréales",
+"kcal": 370,
+"proteines": 13,
+"glucides": 58,
+"lipides": 7,
+"fibres": 10,
+"contient": [
+"gluten"
+],
+"portionG": 40,
+"portionLibelle": "4 cuillères à soupe",
+"source": "base"
+},
+{
+"id": "467befdc-076e-58f3-a5c0-c1d858a0026b",
+"nom": "Muesli sans sucres ajoutés",
+"categorie": "Céréales",
+"kcal": 360,
+"proteines": 10,
+"glucides": 60,
+"lipides": 7,
+"fibres": 8,
+"contient": [
+"gluten"
+],
+"portionG": 40,
+"source": "base"
+},
+{
+"id": "6b05c7b5-c710-524a-86c9-c354d186dfe0",
+"nom": "Corn flakes",
+"categorie": "Céréales",
+"kcal": 375,
+"proteines": 7,
+"glucides": 84,
+"lipides": 0.9,
+"fibres": 3,
+"contient": [
+"gluten"
+],
+"portionG": 30,
+"portionLibelle": "1 bol",
+"source": "base"
+},
+{
+"id": "4f70fcdb-5b4c-5f00-9d3f-b871ad627cb6",
+"nom": "Granola",
+"categorie": "Céréales",
+"kcal": 450,
+"proteines": 9,
+"glucides": 62,
+"lipides": 17,
+"fibres": 6,
+"contient": [
+"gluten"
+],
+"portionG": 40,
+"source": "base"
+},
+{
+"id": "2ad6dc3f-c0a4-5c09-9303-40c37a9b5f79",
+"nom": "Pain baguette",
+"categorie": "Pains",
+"kcal": 270,
+"proteines": 9,
+"glucides": 55,
+"lipides": 1.2,
+"fibres": 3,
+"contient": [
+"gluten"
+],
+"portionG": 50,
+"portionLibelle": "1/5 de baguette",
+"source": "base"
+},
+{
+"id": "3ee16e47-15ba-517d-a5f6-d79775d25503",
+"nom": "Pain complet",
+"categorie": "Pains",
+"kcal": 240,
+"proteines": 9,
+"glucides": 45,
+"lipides": 2.5,
+"fibres": 7,
+"contient": [
+"gluten"
+],
+"portionG": 30,
+"portionLibelle": "1 tranche",
+"source": "base"
+},
+{
+"id": "62114ff0-3426-5a2c-867b-97187f575d50",
+"nom": "Pain de mie",
+"categorie": "Pains",
+"kcal": 265,
+"proteines": 8,
+"glucides": 48,
+"lipides": 4,
+"fibres": 3.5,
+"contient": [
+"gluten"
+],
+"portionG": 25,
+"portionLibelle": "1 tranche",
+"source": "base"
+},
+{
+"id": "e5524521-e6e1-5fe1-b421-aa635181a3ab",
+"nom": "Pain aux céréales",
+"categorie": "Pains",
+"kcal": 260,
+"proteines": 10,
+"glucides": 44,
+"lipides": 4,
+"fibres": 6.5,
+"contient": [
+"gluten"
+],
+"portionG": 30,
+"portionLibelle": "1 tranche",
+"source": "base"
+},
+{
+"id": "14dc524f-43f6-5080-8d3b-be983e353f3e",
+"nom": "Pain sans gluten",
+"categorie": "Pains",
+"kcal": 250,
+"proteines": 4,
+"glucides": 45,
+"lipides": 6,
+"fibres": 5,
+"contient": [],
+"portionG": 30,
+"portionLibelle": "1 tranche",
+"source": "base"
+},
+{
+"id": "4ab5d1eb-fbb1-5eac-a0a2-5a9ea98d364c",
+"nom": "Galettes de riz",
+"categorie": "Céréales",
+"kcal": 380,
+"proteines": 8,
+"glucides": 80,
+"lipides": 2.8,
+"fibres": 3,
+"contient": [],
+"portionG": 8,
+"portionLibelle": "1 galette",
+"source": "base"
+},
+{
+"id": "7f19e965-4adb-5893-a55e-fc74a03cee3a",
+"nom": "Wrap / tortilla de blé",
+"categorie": "Pains",
+"kcal": 310,
+"proteines": 8.5,
+"glucides": 52,
+"lipides": 7,
+"fibres": 3,
+"contient": [
+"gluten"
+],
+"portionG": 60,
+"portionLibelle": "1 tortilla",
+"source": "base"
+},
+{
+"id": "5ce66cfc-e5bc-5ffb-b5f9-55c94064804f",
+"nom": "Farine de blé",
+"categorie": "Céréales",
+"kcal": 345,
+"proteines": 10,
+"glucides": 72,
+"lipides": 1.2,
+"fibres": 4,
+"contient": [
+"gluten"
+],
+"source": "base"
+},
+{
+"id": "ec731ac0-aa46-5470-ab3a-cecc8c578030",
+"nom": "Biscottes",
+"categorie": "Pains",
+"kcal": 405,
+"proteines": 11,
+"glucides": 74,
+"lipides": 6,
+"fibres": 4,
+"contient": [
+"gluten"
+],
+"portionG": 10,
+"portionLibelle": "1 biscotte",
+"source": "base"
+},
+{
+"id": "0be2c160-576a-5359-aa8d-c44f337ed4f2",
+"nom": "Croissant",
+"categorie": "Viennoiseries",
+"kcal": 420,
+"proteines": 8,
+"glucides": 46,
+"lipides": 22,
+"fibres": 2,
+"contient": [
+"gluten",
+"lait",
+"oeuf"
+],
+"portionG": 60,
+"portionLibelle": "1 croissant",
+"source": "base"
+},
+{
+"id": "e64e582a-0f89-5a1b-b0db-78a5729afc1b",
+"nom": "Pain au chocolat",
+"categorie": "Viennoiseries",
+"kcal": 420,
+"proteines": 7.5,
+"glucides": 48,
+"lipides": 22,
+"fibres": 2.5,
+"contient": [
+"gluten",
+"lait",
+"oeuf"
+],
+"portionG": 70,
+"portionLibelle": "1 pain au chocolat",
+"source": "base"
+},
+{
+"id": "308b1b02-5da1-50af-a657-c7ab5c6ca491",
+"nom": "Brocoli cuit",
+"categorie": "Légumes",
+"kcal": 30,
+"proteines": 2.5,
+"glucides": 2.5,
+"lipides": 0.5,
+"fibres": 2.8,
+"contient": [],
+"portionG": 150,
+"source": "base"
+},
+{
+"id": "d69063c4-a1d8-5ed2-94a5-e6295ec740fd",
+"nom": "Haricots verts cuits",
+"categorie": "Légumes",
+"kcal": 30,
+"proteines": 1.8,
+"glucides": 3.5,
+"lipides": 0.2,
+"fibres": 3.5,
+"contient": [],
+"portionG": 150,
+"source": "base"
+},
+{
+"id": "65349af3-43e5-5be2-aa6d-c57c3caee1d2",
+"nom": "Courgette cuite",
+"categorie": "Légumes",
+"kcal": 18,
+"proteines": 1.2,
+"glucides": 2,
+"lipides": 0.3,
+"fibres": 1.2,
+"contient": [],
+"portionG": 150,
+"source": "base"
+},
+{
+"id": "b59cada4-8f04-5099-a267-ee08edde27d0",
+"nom": "Carotte crue",
+"categorie": "Légumes",
+"kcal": 35,
+"proteines": 0.8,
+"glucides": 7,
+"lipides": 0.3,
+"fibres": 2.5,
+"contient": [],
+"portionG": 80,
+"portionLibelle": "1 carotte",
+"source": "base"
+},
+{
+"id": "775c41b1-d108-50e1-8c94-c8e98993653d",
+"nom": "Carotte cuite",
+"categorie": "Légumes",
+"kcal": 28,
+"proteines": 0.7,
+"glucides": 5,
+"lipides": 0.2,
+"fibres": 2.5,
+"contient": [],
+"source": "base"
+},
+{
+"id": "386f2bfd-5035-5307-83e7-80df6ea8f971",
+"nom": "Tomate",
+"categorie": "Légumes",
+"kcal": 20,
+"proteines": 0.9,
+"glucides": 3,
+"lipides": 0.3,
+"fibres": 1.2,
+"contient": [],
+"portionG": 120,
+"portionLibelle": "1 tomate",
+"source": "base"
+},
+{
+"id": "c3decfde-1f1d-5587-bc3e-5dcafbcf5430",
+"nom": "Concombre",
+"categorie": "Légumes",
+"kcal": 13,
+"proteines": 0.6,
+"glucides": 2,
+"lipides": 0.1,
+"fibres": 0.6,
+"contient": [],
+"source": "base"
+},
+{
+"id": "2df05f50-dac0-51f4-af39-cb4e8b1fff52",
+"nom": "Salade verte",
+"categorie": "Légumes",
+"kcal": 15,
+"proteines": 1.2,
+"glucides": 1.5,
+"lipides": 0.2,
+"fibres": 1.5,
+"contient": [],
+"portionG": 50,
+"portionLibelle": "1 bol",
+"source": "base"
+},
+{
+"id": "4c414179-ce34-580e-b5ca-0a912f58bdd2",
+"nom": "Épinards cuits",
+"categorie": "Légumes",
+"kcal": 25,
+"proteines": 3,
+"glucides": 1,
+"lipides": 0.5,
+"fibres": 2.5,
+"contient": [],
+"source": "base"
+},
+{
+"id": "19861675-738c-5c66-abf5-77a89b060dda",
+"nom": "Poivron rouge cru",
+"categorie": "Légumes",
+"kcal": 30,
+"proteines": 0.9,
+"glucides": 5,
+"lipides": 0.3,
+"fibres": 1.8,
+"contient": [],
+"source": "base"
+},
+{
+"id": "71ddcf36-2fe6-5a5e-baf6-c5952fe825e1",
+"nom": "Oignon cru",
+"categorie": "Légumes",
+"kcal": 35,
+"proteines": 1.2,
+"glucides": 6.5,
+"lipides": 0.2,
+"fibres": 1.8,
+"contient": [],
+"source": "base"
+},
+{
+"id": "d24234d5-e08b-527e-8f47-3ac0ebcfa2dc",
+"nom": "Champignons de Paris cuits",
+"categorie": "Légumes",
+"kcal": 25,
+"proteines": 2.5,
+"glucides": 1.5,
+"lipides": 0.5,
+"fibres": 2,
+"contient": [],
+"source": "base"
+},
+{
+"id": "11465d05-9c3d-520c-b543-f31b728d717e",
+"nom": "Chou-fleur cuit",
+"categorie": "Légumes",
+"kcal": 25,
+"proteines": 2,
+"glucides": 2.5,
+"lipides": 0.4,
+"fibres": 2.5,
+"contient": [],
+"source": "base"
+},
+{
+"id": "24c0c79b-42a1-57af-bfff-68fafdf8b9a1",
+"nom": "Aubergine cuite",
+"categorie": "Légumes",
+"kcal": 30,
+"proteines": 1,
+"glucides": 4,
+"lipides": 0.5,
+"fibres": 2.5,
+"contient": [],
+"source": "base"
+},
+{
+"id": "c030d65b-6797-528e-9e0a-2e58c131dbdf",
+"nom": "Petits pois cuits",
+"categorie": "Légumes",
+"kcal": 80,
+"proteines": 5.5,
+"glucides": 10,
+"lipides": 0.5,
+"fibres": 5.5,
+"contient": [],
+"source": "base"
+},
+{
+"id": "6d24849a-2ab8-5276-af6f-e908ab879e67",
+"nom": "Maïs doux en conserve",
+"categorie": "Légumes",
+"kcal": 100,
+"proteines": 3,
+"glucides": 17,
+"lipides": 1.5,
+"fibres": 2.5,
+"contient": [],
+"source": "base"
+},
+{
+"id": "0a8a76e5-e43c-538e-a92e-b7d3401c3078",
+"nom": "Avocat",
+"categorie": "Légumes",
+"kcal": 160,
+"proteines": 2,
+"glucides": 1.5,
+"lipides": 15,
+"fibres": 5.5,
+"contient": [],
+"portionG": 80,
+"portionLibelle": "1/2 avocat",
+"source": "base"
+},
+{
+"id": "d13ea5c9-4a50-5e91-8c1f-ddbb02bd544e",
+"nom": "Légumes pour poêlée surgelés",
+"categorie": "Légumes",
+"kcal": 45,
+"proteines": 2,
+"glucides": 5,
+"lipides": 1.5,
+"fibres": 3,
+"contient": [],
+"source": "base"
+},
+{
+"id": "85661a4f-3ea3-51f5-97af-352a8414b17a",
+"nom": "Soupe de légumes maison",
+"categorie": "Légumes",
+"kcal": 30,
+"proteines": 1,
+"glucides": 4.5,
+"lipides": 0.8,
+"fibres": 1.2,
+"contient": [],
+"portionG": 250,
+"portionLibelle": "1 bol",
+"source": "base"
+},
+{
+"id": "2e7753fd-2aef-592f-b60b-05be15eae777",
+"nom": "Betterave cuite",
+"categorie": "Légumes",
+"kcal": 45,
+"proteines": 1.6,
+"glucides": 8,
+"lipides": 0.1,
+"fibres": 2.5,
+"contient": [],
+"source": "base"
+},
+{
+"id": "588e7b5f-408e-5e73-9877-6ab9eb6a863c",
+"nom": "Poireau cuit",
+"categorie": "Légumes",
+"kcal": 25,
+"proteines": 1,
+"glucides": 4,
+"lipides": 0.3,
+"fibres": 2.5,
+"contient": [],
+"source": "base"
+},
+{
+"id": "e2fb1276-407f-5244-a7f7-c99849846a58",
+"nom": "Butternut cuite",
+"categorie": "Légumes",
+"kcal": 40,
+"proteines": 1,
+"glucides": 8,
+"lipides": 0.1,
+"fibres": 2,
+"contient": [],
+"source": "base"
+},
+{
+"id": "fd7be014-a8a6-5cef-9cf5-5d80daa16a29",
+"nom": "Pomme",
+"categorie": "Fruits",
+"kcal": 53,
+"proteines": 0.3,
+"glucides": 11.5,
+"lipides": 0.2,
+"fibres": 2,
+"contient": [],
+"portionG": 150,
+"portionLibelle": "1 pomme",
+"source": "base"
+},
+{
+"id": "a8119574-ae87-5391-9c75-5727a3103aef",
+"nom": "Banane",
+"categorie": "Fruits",
+"kcal": 90,
+"proteines": 1.1,
+"glucides": 20,
+"lipides": 0.3,
+"fibres": 2.2,
+"contient": [],
+"portionG": 120,
+"portionLibelle": "1 banane",
+"source": "base"
+},
+{
+"id": "c2c884bb-be1d-5c88-8226-e3ae9aa3ff7e",
+"nom": "Orange",
+"categorie": "Fruits",
+"kcal": 45,
+"proteines": 0.9,
+"glucides": 9,
+"lipides": 0.2,
+"fibres": 2,
+"contient": [],
+"portionG": 150,
+"portionLibelle": "1 orange",
+"source": "base"
+},
+{
+"id": "c9c74477-b9f3-504a-aaa9-e14fbd347a5b",
+"nom": "Poire",
+"categorie": "Fruits",
+"kcal": 55,
+"proteines": 0.4,
+"glucides": 12,
+"lipides": 0.2,
+"fibres": 3,
+"contient": [],
+"portionG": 150,
+"portionLibelle": "1 poire",
+"source": "base"
+},
+{
+"id": "35672647-bf54-5b4a-8eb6-60944fc36a2e",
+"nom": "Kiwi",
+"categorie": "Fruits",
+"kcal": 60,
+"proteines": 1,
+"glucides": 11,
+"lipides": 0.6,
+"fibres": 3,
+"contient": [],
+"portionG": 75,
+"portionLibelle": "1 kiwi",
+"source": "base"
+},
+{
+"id": "a9b4d21d-74d8-57ef-903c-103a0edba539",
+"nom": "Fraises",
+"categorie": "Fruits",
+"kcal": 35,
+"proteines": 0.7,
+"glucides": 6,
+"lipides": 0.3,
+"fibres": 2,
+"contient": [],
+"portionG": 150,
+"portionLibelle": "1 barquette",
+"source": "base"
+},
+{
+"id": "81fb3d96-e4b4-5217-820d-169c2c41fdce",
+"nom": "Framboises",
+"categorie": "Fruits",
+"kcal": 45,
+"proteines": 1.2,
+"glucides": 6,
+"lipides": 0.5,
+"fibres": 6.5,
+"contient": [],
+"source": "base"
+},
+{
+"id": "2b6e07c4-a8c0-57a6-8c24-b89b1d15717b",
+"nom": "Myrtilles",
+"categorie": "Fruits",
+"kcal": 55,
+"proteines": 0.8,
+"glucides": 11,
+"lipides": 0.3,
+"fibres": 2.5,
+"contient": [],
+"source": "base"
+},
+{
+"id": "ac5884be-d621-54f6-9546-1f6f97862a72",
+"nom": "Raisin",
+"categorie": "Fruits",
+"kcal": 70,
+"proteines": 0.6,
+"glucides": 16,
+"lipides": 0.2,
+"fibres": 1,
+"contient": [],
+"source": "base"
+},
+{
+"id": "d8906860-58ea-552d-90b6-19f9e9ed1f22",
+"nom": "Mangue",
+"categorie": "Fruits",
+"kcal": 65,
+"proteines": 0.6,
+"glucides": 14,
+"lipides": 0.3,
+"fibres": 1.8,
+"contient": [],
+"source": "base"
+},
+{
+"id": "6b029f18-b924-59f9-bfc2-d1a6f7b2a0b3",
+"nom": "Ananas",
+"categorie": "Fruits",
+"kcal": 55,
+"proteines": 0.5,
+"glucides": 12,
+"lipides": 0.2,
+"fibres": 1.3,
+"contient": [],
+"source": "base"
+},
+{
+"id": "64a915b2-55ef-5ba3-96d7-4eb60937d1d8",
+"nom": "Clémentine",
+"categorie": "Fruits",
+"kcal": 45,
+"proteines": 0.8,
+"glucides": 9.5,
+"lipides": 0.2,
+"fibres": 1.5,
+"contient": [],
+"portionG": 60,
+"portionLibelle": "1 clémentine",
+"source": "base"
+},
+{
+"id": "1fb2cf91-77e2-5d05-a6e7-cd02ab9c6dc6",
+"nom": "Compote sans sucres ajoutés",
+"categorie": "Fruits",
+"kcal": 60,
+"proteines": 0.3,
+"glucides": 13,
+"lipides": 0.2,
+"fibres": 1.8,
+"contient": [],
+"portionG": 100,
+"portionLibelle": "1 pot",
+"source": "base"
+},
+{
+"id": "7b260ad5-825b-5742-9987-9b5056e17b5e",
+"nom": "Dattes sèches",
+"categorie": "Fruits secs",
+"kcal": 300,
+"proteines": 2.5,
+"glucides": 66,
+"lipides": 0.4,
+"fibres": 7,
+"contient": [],
+"portionG": 8,
+"portionLibelle": "1 datte",
+"source": "base"
+},
+{
+"id": "fc8f6b44-c679-52b7-a301-8f6b35bbff9b",
+"nom": "Abricots secs",
+"categorie": "Fruits secs",
+"kcal": 250,
+"proteines": 3,
+"glucides": 55,
+"lipides": 0.5,
+"fibres": 7,
+"contient": [],
+"source": "base"
+},
+{
+"id": "8327b72b-64d7-5cfb-90f7-c08b75fab371",
+"nom": "Raisins secs",
+"categorie": "Fruits secs",
+"kcal": 300,
+"proteines": 3,
+"glucides": 68,
+"lipides": 0.5,
+"fibres": 4,
+"contient": [],
+"source": "base"
+},
+{
+"id": "7f635ec2-1f87-58f2-8c00-ffa2949ec74f",
+"nom": "Amandes",
+"categorie": "Oléagineux",
+"kcal": 620,
+"proteines": 25,
+"glucides": 8,
+"lipides": 53,
+"fibres": 12,
+"contient": [],
+"portionG": 30,
+"portionLibelle": "1 poignée",
+"source": "base"
+},
+{
+"id": "6e0ba847-7afc-52a0-b31f-e244a8ef6f82",
+"nom": "Noix",
+"categorie": "Oléagineux",
+"kcal": 700,
+"proteines": 15,
+"glucides": 7,
+"lipides": 65,
+"fibres": 6,
+"contient": [],
+"portionG": 30,
+"portionLibelle": "1 poignée",
+"source": "base"
+},
+{
+"id": "2c2883c7-db67-53e0-8fc5-e14a30cf8f7a",
+"nom": "Noix de cajou",
+"categorie": "Oléagineux",
+"kcal": 600,
+"proteines": 19,
+"glucides": 26,
+"lipides": 46,
+"fibres": 4,
+"contient": [],
+"portionG": 30,
+"portionLibelle": "1 poignée",
+"source": "base"
+},
+{
+"id": "2e1a2dbc-c4a1-566e-9007-0ff5f5e1eec0",
+"nom": "Noisettes",
+"categorie": "Oléagineux",
+"kcal": 650,
+"proteines": 15,
+"glucides": 7,
+"lipides": 61,
+"fibres": 9,
+"contient": [],
+"portionG": 30,
+"portionLibelle": "1 poignée",
+"source": "base"
+},
+{
+"id": "556ca184-0d79-5c09-96ed-c9214a4f26f9",
+"nom": "Cacahuètes grillées",
+"categorie": "Oléagineux",
+"kcal": 600,
+"proteines": 25,
+"glucides": 13,
+"lipides": 50,
+"fibres": 8,
+"contient": [],
+"portionG": 30,
+"portionLibelle": "1 poignée",
+"source": "base"
+},
+{
+"id": "fc9ded38-4722-51b2-b7da-c830b8853741",
+"nom": "Beurre de cacahuète",
+"categorie": "Oléagineux",
+"kcal": 620,
+"proteines": 25,
+"glucides": 13,
+"lipides": 50,
+"fibres": 6,
+"contient": [],
+"portionG": 15,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "dec704ba-90d4-57d4-848b-a3a0f2340bd9",
+"nom": "Purée d'amande",
+"categorie": "Oléagineux",
+"kcal": 630,
+"proteines": 22,
+"glucides": 8,
+"lipides": 55,
+"fibres": 10,
+"contient": [],
+"portionG": 15,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "c73df453-77a1-5198-80bd-b54fd78432b9",
+"nom": "Graines de chia",
+"categorie": "Oléagineux",
+"kcal": 490,
+"proteines": 17,
+"glucides": 8,
+"lipides": 31,
+"fibres": 34,
+"contient": [],
+"portionG": 10,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "5c5e4e13-4aa6-5104-8aec-2f424632ec6a",
+"nom": "Graines de courge",
+"categorie": "Oléagineux",
+"kcal": 580,
+"proteines": 30,
+"glucides": 5,
+"lipides": 49,
+"fibres": 6,
+"contient": [],
+"source": "base"
+},
+{
+"id": "4d31612e-9e06-5a10-b374-97aae008fbd6",
+"nom": "Huile d'olive",
+"categorie": "Matières grasses",
+"kcal": 900,
+"proteines": 0,
+"glucides": 0,
+"lipides": 100,
+"fibres": 0,
+"contient": [],
+"portionG": 10,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "3eb499d2-0fa9-5424-a15c-04ed848914bb",
+"nom": "Huile de colza",
+"categorie": "Matières grasses",
+"kcal": 900,
+"proteines": 0,
+"glucides": 0,
+"lipides": 100,
+"fibres": 0,
+"contient": [],
+"portionG": 10,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "9ae02155-f939-5084-837c-19337aae9161",
+"nom": "Huile de coco",
+"categorie": "Matières grasses",
+"kcal": 900,
+"proteines": 0,
+"glucides": 0,
+"lipides": 100,
+"fibres": 0,
+"contient": [],
+"portionG": 10,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "f8cf4ca6-9619-5dd3-8cea-f10ab2ecb0d1",
+"nom": "Margarine",
+"categorie": "Matières grasses",
+"kcal": 540,
+"proteines": 0.2,
+"glucides": 0.5,
+"lipides": 60,
+"fibres": 0,
+"contient": [],
+"portionG": 10,
+"source": "base"
+},
+{
+"id": "b1cc0d5b-e816-5b79-83da-cfe3f5c3b650",
+"nom": "Mayonnaise",
+"categorie": "Sauces",
+"kcal": 700,
+"proteines": 1.3,
+"glucides": 2,
+"lipides": 77,
+"fibres": 0,
+"contient": [
+"oeuf"
+],
+"portionG": 15,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "c5b42be7-45fb-52b5-85b4-d05f965c9809",
+"nom": "Vinaigrette",
+"categorie": "Sauces",
+"kcal": 450,
+"proteines": 0.3,
+"glucides": 4,
+"lipides": 47,
+"fibres": 0,
+"contient": [],
+"portionG": 15,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "76632394-2725-5b84-9941-98ea5dd4afcc",
+"nom": "Ketchup",
+"categorie": "Sauces",
+"kcal": 110,
+"proteines": 1.3,
+"glucides": 25,
+"lipides": 0.2,
+"fibres": 0.5,
+"contient": [],
+"portionG": 15,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "54d12a03-d6fe-57d4-92a1-210b76e4b759",
+"nom": "Moutarde",
+"categorie": "Sauces",
+"kcal": 150,
+"proteines": 7,
+"glucides": 4,
+"lipides": 11,
+"fibres": 3,
+"contient": [],
+"portionG": 5,
+"portionLibelle": "1 cuillère à café",
+"source": "base"
+},
+{
+"id": "d8214066-c0ca-5912-9f6e-956410803e12",
+"nom": "Sauce soja",
+"categorie": "Sauces",
+"kcal": 60,
+"proteines": 8,
+"glucides": 6,
+"lipides": 0.5,
+"fibres": 0,
+"contient": [
+"gluten"
+],
+"portionG": 10,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "b2b21ce5-a3f5-537a-8d38-6f65ebc1c75d",
+"nom": "Pesto",
+"categorie": "Sauces",
+"kcal": 450,
+"proteines": 5,
+"glucides": 5,
+"lipides": 45,
+"fibres": 1.5,
+"contient": [
+"lait"
+],
+"portionG": 15,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "82942ac5-cede-543e-921f-d007bbf68fac",
+"nom": "Sauce tomate cuisinée",
+"categorie": "Sauces",
+"kcal": 50,
+"proteines": 1.5,
+"glucides": 7,
+"lipides": 1.5,
+"fibres": 1.5,
+"contient": [],
+"portionG": 100,
+"source": "base"
+},
+{
+"id": "6debfc93-c5b2-5c14-a029-2cb0a340a300",
+"nom": "Houmous",
+"categorie": "Légumineuses",
+"kcal": 300,
+"proteines": 7.5,
+"glucides": 12,
+"lipides": 25,
+"fibres": 5,
+"contient": [],
+"portionG": 30,
+"portionLibelle": "2 cuillères à soupe",
+"source": "base"
+},
+{
+"id": "6ba00c8e-4883-5ed0-a5b6-2ab8215ede45",
+"nom": "Tofu ferme",
+"categorie": "Protéines végétales",
+"kcal": 145,
+"proteines": 15,
+"glucides": 2,
+"lipides": 8.5,
+"fibres": 1.5,
+"contient": [],
+"portionG": 100,
+"source": "base"
+},
+{
+"id": "a9d4eeae-ba6b-5178-b1eb-13ab615c23b5",
+"nom": "Tofu soyeux",
+"categorie": "Protéines végétales",
+"kcal": 55,
+"proteines": 5.5,
+"glucides": 1.5,
+"lipides": 3,
+"fibres": 0.3,
+"contient": [],
+"source": "base"
+},
+{
+"id": "58c05bf2-424d-5b8b-816d-d1e623661249",
+"nom": "Tempeh",
+"categorie": "Protéines végétales",
+"kcal": 195,
+"proteines": 20,
+"glucides": 8,
+"lipides": 11,
+"fibres": 5,
+"contient": [],
+"portionG": 100,
+"source": "base"
+},
+{
+"id": "89f230d8-398e-5a02-be5f-c400bdd02a0f",
+"nom": "Seitan",
+"categorie": "Protéines végétales",
+"kcal": 120,
+"proteines": 24,
+"glucides": 4,
+"lipides": 1.5,
+"fibres": 0.5,
+"contient": [
+"gluten"
+],
+"portionG": 100,
+"source": "base"
+},
+{
+"id": "206ab4d6-bc47-56f5-a88c-75f84bd045d5",
+"nom": "Protéines de soja texturées réhydratées",
+"categorie": "Protéines végétales",
+"kcal": 110,
+"proteines": 17,
+"glucides": 8,
+"lipides": 0.5,
+"fibres": 4,
+"contient": [],
+"source": "base"
+},
+{
+"id": "523de2e3-3a58-593d-bb2b-4ac7e6c16e42",
+"nom": "Edamame",
+"categorie": "Protéines végétales",
+"kcal": 120,
+"proteines": 11,
+"glucides": 7,
+"lipides": 5,
+"fibres": 5,
+"contient": [],
+"source": "base"
+},
+{
+"id": "322124c5-daf6-5c4d-bfda-0529ff7eea62",
+"nom": "Boisson soja nature",
+"categorie": "Alternatives végétales",
+"kcal": 38,
+"proteines": 3.3,
+"glucides": 1.5,
+"lipides": 1.8,
+"fibres": 0.5,
+"contient": [],
+"portionG": 250,
+"portionLibelle": "1 verre",
+"source": "base"
+},
+{
+"id": "40dd7d04-7cc0-5cbc-a50c-d56bf9535721",
+"nom": "Boisson amande sans sucre",
+"categorie": "Alternatives végétales",
+"kcal": 15,
+"proteines": 0.5,
+"glucides": 0.3,
+"lipides": 1.2,
+"fibres": 0.2,
+"contient": [],
+"portionG": 250,
+"portionLibelle": "1 verre",
+"source": "base"
+},
+{
+"id": "01897338-e891-548d-84a8-bed61ffd8eb4",
+"nom": "Boisson avoine",
+"categorie": "Alternatives végétales",
+"kcal": 45,
+"proteines": 0.8,
+"glucides": 7,
+"lipides": 1.4,
+"fibres": 0.8,
+"contient": [
+"gluten"
+],
+"portionG": 250,
+"portionLibelle": "1 verre",
+"source": "base"
+},
+{
+"id": "5350e570-07b8-595c-9b47-c7a204123e0c",
+"nom": "Yaourt soja nature",
+"categorie": "Alternatives végétales",
+"kcal": 45,
+"proteines": 4,
+"glucides": 1.5,
+"lipides": 2.3,
+"fibres": 0.8,
+"contient": [],
+"portionG": 125,
+"portionLibelle": "1 pot",
+"source": "base"
+},
+{
+"id": "4a2e9a0b-36a0-55a3-a944-a4cd3d6b0cc8",
+"nom": "Levure maltée",
+"categorie": "Alternatives végétales",
+"kcal": 350,
+"proteines": 45,
+"glucides": 25,
+"lipides": 5,
+"fibres": 20,
+"contient": [],
+"portionG": 5,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "b70eb29c-b423-5076-a413-003f79f6fc15",
+"nom": "Whey protéine (poudre)",
+"categorie": "Compléments",
+"kcal": 380,
+"proteines": 78,
+"glucides": 7,
+"lipides": 5,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 30,
+"portionLibelle": "1 dose",
+"source": "base"
+},
+{
+"id": "ef81971f-784f-5840-8fcb-7796e7dfaf18",
+"nom": "Protéine végétale en poudre",
+"categorie": "Compléments",
+"kcal": 380,
+"proteines": 75,
+"glucides": 6,
+"lipides": 6,
+"fibres": 4,
+"contient": [],
+"portionG": 30,
+"portionLibelle": "1 dose",
+"source": "base"
+},
+{
+"id": "4fdbf62f-77c8-5962-b1df-eb9855f3d49b",
+"nom": "Caséine (poudre)",
+"categorie": "Compléments",
+"kcal": 360,
+"proteines": 80,
+"glucides": 5,
+"lipides": 1.5,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 30,
+"portionLibelle": "1 dose",
+"source": "base"
+},
+{
+"id": "4fa24982-ec22-50d3-badd-1b1823971eab",
+"nom": "Barre protéinée",
+"categorie": "Compléments",
+"kcal": 380,
+"proteines": 30,
+"glucides": 35,
+"lipides": 12,
+"fibres": 8,
+"contient": [
+"lait"
+],
+"portionG": 60,
+"portionLibelle": "1 barre",
+"source": "base"
+},
+{
+"id": "e0313d75-97c6-593e-8111-755bffa8edd6",
+"nom": "Chocolat noir 70 %",
+"categorie": "Sucré",
+"kcal": 580,
+"proteines": 8,
+"glucides": 33,
+"lipides": 43,
+"fibres": 11,
+"contient": [],
+"portionG": 10,
+"portionLibelle": "1 carré",
+"source": "base"
+},
+{
+"id": "4fb0ad89-ac0f-5e4c-a697-dd232db07f21",
+"nom": "Chocolat au lait",
+"categorie": "Sucré",
+"kcal": 550,
+"proteines": 7,
+"glucides": 57,
+"lipides": 32,
+"fibres": 2,
+"contient": [
+"lait"
+],
+"portionG": 10,
+"portionLibelle": "1 carré",
+"source": "base"
+},
+{
+"id": "c498b724-be13-5f63-b90a-2aca2a69d33c",
+"nom": "Miel",
+"categorie": "Sucré",
+"kcal": 330,
+"proteines": 0.4,
+"glucides": 81,
+"lipides": 0,
+"fibres": 0,
+"contient": [
+"miel"
+],
+"portionG": 10,
+"portionLibelle": "1 cuillère à café",
+"source": "base"
+},
+{
+"id": "b8a51b32-60ac-5ce8-82e5-aea20f5219c7",
+"nom": "Confiture",
+"categorie": "Sucré",
+"kcal": 250,
+"proteines": 0.4,
+"glucides": 60,
+"lipides": 0.1,
+"fibres": 1,
+"contient": [],
+"portionG": 15,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "7bb68d2b-6034-5e16-ba8a-40fc771087c7",
+"nom": "Sucre blanc",
+"categorie": "Sucré",
+"kcal": 400,
+"proteines": 0,
+"glucides": 100,
+"lipides": 0,
+"fibres": 0,
+"contient": [],
+"portionG": 5,
+"portionLibelle": "1 morceau",
+"source": "base"
+},
+{
+"id": "6319d1f1-190d-518b-8019-d1f9d20ca30f",
+"nom": "Sirop d'érable",
+"categorie": "Sucré",
+"kcal": 260,
+"proteines": 0,
+"glucides": 67,
+"lipides": 0,
+"fibres": 0,
+"contient": [],
+"portionG": 10,
+"source": "base"
+},
+{
+"id": "366fd3fe-4f1b-5f19-91de-62febbe805f7",
+"nom": "Pâte à tartiner chocolat noisette",
+"categorie": "Sucré",
+"kcal": 540,
+"proteines": 6,
+"glucides": 57,
+"lipides": 31,
+"fibres": 3,
+"contient": [
+"lait"
+],
+"portionG": 15,
+"portionLibelle": "1 cuillère à soupe",
+"source": "base"
+},
+{
+"id": "2ef52aa8-5527-5dcb-b120-2371d8390c29",
+"nom": "Biscuits secs type petit-beurre",
+"categorie": "Sucré",
+"kcal": 440,
+"proteines": 7.5,
+"glucides": 75,
+"lipides": 12,
+"fibres": 2.5,
+"contient": [
+"gluten",
+"lait"
+],
+"portionG": 8,
+"portionLibelle": "1 biscuit",
+"source": "base"
+},
+{
+"id": "6575ceb9-cb0b-57a7-a82c-080302587849",
+"nom": "Gâteau au chocolat",
+"categorie": "Sucré",
+"kcal": 420,
+"proteines": 6,
+"glucides": 48,
+"lipides": 23,
+"fibres": 2,
+"contient": [
+"gluten",
+"lait",
+"oeuf"
+],
+"portionG": 80,
+"portionLibelle": "1 part",
+"source": "base"
+},
+{
+"id": "77e34935-9fb6-5955-9f6d-b5f9c222bdec",
+"nom": "Glace à la vanille",
+"categorie": "Sucré",
+"kcal": 210,
+"proteines": 3.5,
+"glucides": 24,
+"lipides": 11,
+"fibres": 0,
+"contient": [
+"lait"
+],
+"portionG": 60,
+"portionLibelle": "1 boule",
+"source": "base"
+},
+{
+"id": "13730a73-354b-58dd-a523-b2f060006049",
+"nom": "Jus d'orange",
+"categorie": "Boissons",
+"kcal": 45,
+"proteines": 0.7,
+"glucides": 10,
+"lipides": 0.2,
+"fibres": 0.2,
+"contient": [],
+"portionG": 200,
+"portionLibelle": "1 verre",
+"source": "base"
+},
+{
+"id": "e61c6e2e-e21f-5af8-a63a-0ee3d556c450",
+"nom": "Soda sucré",
+"categorie": "Boissons",
+"kcal": 42,
+"proteines": 0,
+"glucides": 10.5,
+"lipides": 0,
+"fibres": 0,
+"contient": [],
+"portionG": 330,
+"portionLibelle": "1 canette",
+"source": "base"
+},
+{
+"id": "924d6068-20df-5116-897c-728356246967",
+"nom": "Soda sans sucre",
+"categorie": "Boissons",
+"kcal": 1,
+"proteines": 0,
+"glucides": 0,
+"lipides": 0,
+"fibres": 0,
+"contient": [],
+"portionG": 330,
+"portionLibelle": "1 canette",
+"source": "base"
+},
+{
+"id": "d6c7356f-4d68-5e3f-bb5b-872495664bbe",
+"nom": "Bière",
+"categorie": "Boissons",
+"kcal": 43,
+"proteines": 0.4,
+"glucides": 3.5,
+"lipides": 0,
+"fibres": 0,
+"contient": [
+"gluten"
+],
+"portionG": 250,
+"portionLibelle": "1 demi",
+"source": "base"
+},
+{
+"id": "254396a5-940a-508d-9d12-929869a28c92",
+"nom": "Vin rouge",
+"categorie": "Boissons",
+"kcal": 85,
+"proteines": 0.1,
+"glucides": 2.5,
+"lipides": 0,
+"fibres": 0,
+"contient": [],
+"portionG": 125,
+"portionLibelle": "1 verre",
+"source": "base"
+},
+{
+"id": "3c55db7a-eac5-5a8c-9ed1-2c60f5d2fb6e",
+"nom": "Café noir",
+"categorie": "Boissons",
+"kcal": 2,
+"proteines": 0.2,
+"glucides": 0,
+"lipides": 0,
+"fibres": 0,
+"contient": [],
+"portionG": 100,
+"portionLibelle": "1 tasse",
+"source": "base"
+},
+{
+"id": "4cfbcb1b-ab81-5a93-976f-f3fd8a2cc8fe",
+"nom": "Thé infusé",
+"categorie": "Boissons",
+"kcal": 1,
+"proteines": 0,
+"glucides": 0.2,
+"lipides": 0,
+"fibres": 0,
+"contient": [],
+"portionG": 250,
+"portionLibelle": "1 tasse",
+"source": "base"
+},
+{
+"id": "bd11691d-2069-5223-870d-83fdbeb295f2",
+"nom": "Pizza margherita",
+"categorie": "Plats",
+"kcal": 250,
+"proteines": 10,
+"glucides": 30,
+"lipides": 9.5,
+"fibres": 2,
+"contient": [
+"gluten",
+"lait"
+],
+"source": "base"
+},
+{
+"id": "bf3b4059-4836-5207-9b0a-1312e1f8ce9f",
+"nom": "Lasagnes à la bolognaise",
+"categorie": "Plats",
+"kcal": 150,
+"proteines": 8,
+"glucides": 13,
+"lipides": 7,
+"fibres": 1,
+"contient": [
+"viande",
+"gluten",
+"lait",
+"oeuf"
+],
+"portionG": 300,
+"portionLibelle": "1 part",
+"source": "base"
+},
+{
+"id": "c1101001-cbc5-555c-a224-23bd5e1c1d81",
+"nom": "Hamburger",
+"categorie": "Plats",
+"kcal": 250,
+"proteines": 13,
+"glucides": 26,
+"lipides": 10,
+"fibres": 1.5,
+"contient": [
+"viande",
+"gluten",
+"lait"
+],
+"portionG": 200,
+"portionLibelle": "1 burger",
+"source": "base"
+},
+{
+"id": "b3278c45-2d11-5839-a695-e7d786f7acb4",
+"nom": "Quiche lorraine",
+"categorie": "Plats",
+"kcal": 270,
+"proteines": 9,
+"glucides": 18,
+"lipides": 18,
+"fibres": 1,
+"contient": [
+"viande",
+"gluten",
+"lait",
+"oeuf"
+],
+"portionG": 150,
+"portionLibelle": "1 part",
+"source": "base"
+},
+{
+"id": "bebf60e2-13e7-5574-bb40-4be2c0aaa6ee",
+"nom": "Sandwich jambon-beurre",
+"categorie": "Plats",
+"kcal": 270,
+"proteines": 11,
+"glucides": 32,
+"lipides": 10.5,
+"fibres": 1.8,
+"contient": [
+"viande",
+"gluten",
+"lait"
+],
+"portionG": 200,
+"portionLibelle": "1 sandwich",
+"source": "base"
+},
+{
+"id": "ff3a2457-483d-51a9-af0a-c32757ec0456",
+"nom": "Sushi saumon (nigiri)",
+"categorie": "Plats",
+"kcal": 160,
+"proteines": 7,
+"glucides": 27,
+"lipides": 2.5,
+"fibres": 0.5,
+"contient": [
+"poisson"
+],
+"portionG": 30,
+"portionLibelle": "1 pièce",
+"source": "base"
+},
+{
+"id": "bfdab6f9-6c60-550d-8be9-4286fc385544",
+"nom": "Chili con carne",
+"categorie": "Plats",
+"kcal": 110,
+"proteines": 8,
+"glucides": 9,
+"lipides": 4.5,
+"fibres": 3,
+"contient": [
+"viande"
+],
+"portionG": 300,
+"portionLibelle": "1 assiette",
+"source": "base"
+},
+{
+"id": "4fa147c1-5c15-59fc-a92b-543b9dc15708",
+"nom": "Couscous poulet merguez",
+"categorie": "Plats",
+"kcal": 160,
+"proteines": 10,
+"glucides": 15,
+"lipides": 6.5,
+"fibres": 2,
+"contient": [
+"viande",
+"gluten"
+],
+"portionG": 350,
+"portionLibelle": "1 assiette",
+"source": "base"
+},
+{
+"id": "1a9a8c48-e22b-5e46-a0cf-651e00f1397a",
+"nom": "Omelette nature",
+"categorie": "Plats",
+"kcal": 160,
+"proteines": 11,
+"glucides": 0.5,
+"lipides": 12.5,
+"fibres": 0,
+"contient": [
+"oeuf"
+],
+"portionG": 120,
+"portionLibelle": "2 œufs",
+"source": "base"
+},
+{
+"id": "a3fc1619-62fd-5ea6-ad00-a96f16eda14f",
+"nom": "Salade César",
+"categorie": "Plats",
+"kcal": 150,
+"proteines": 9,
+"glucides": 6,
+"lipides": 10,
+"fibres": 1.5,
+"contient": [
+"viande",
+"gluten",
+"lait",
+"oeuf"
+],
+"portionG": 300,
+"portionLibelle": "1 assiette",
+"source": "base"
+}
+]

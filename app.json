@@ -2,7 +2,7 @@
   "expo": {
     "name": "Coach OS",
     "slug": "coach-os",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "coachos",
@@ -43,7 +43,21 @@
         }
       ],
       "expo-sharing",
-      "expo-mail-composer"
+      "expo-mail-composer",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Coach OS utilise l’appareil photo pour scanner le code-barres de tes aliments et photographier tes repas.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Coach OS ouvre tes photos pour estimer ce qu’il y a dans ton assiette.",
+          "cameraPermission": "Coach OS utilise l’appareil photo pour photographier tes repas."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false,
