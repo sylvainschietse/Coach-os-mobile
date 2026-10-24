@@ -10,6 +10,7 @@ import { envoyerEnAttente } from '@/data/file-envoi';
 import { useCharger } from '@/lib/useCharger';
 
 import { JournalRepas } from './alimentation/journal-repas';
+import { PlanSemaine } from './alimentation/plan-semaine';
 import { ProfilNutritionCarte } from './alimentation/profil';
 import { RecettesClient } from './alimentation/recettes';
 import { BandeauDemo, BarreClient, BoutonContour, EnTeteRubrique, Hero, NonRepris, Selecteur, SousNav, Vide, type OngletDef } from './coque';
@@ -113,7 +114,8 @@ export function EspaceClient({
               {nutrition === 'recettes' && <RecettesClient key={clientId} clientId={clientId} />}
               {nutrition === 'semaine' && (
                 <>
-                  <NonRepris ecran="Ma semaine et courses" lot={5} detail="En attendant, le plan fixé par le coach et le ressenti existants restent ci-dessous." />
+                  <PlanSemaine key={`s${clientId}`} clientId={clientId} modifiable={false} />
+                  <NonRepris ecran="Liste de courses" lot={5} />
                   <PlanNutritionCarte key={`p${clientId}`} clientId={clientId} modifiable={false} />
                   <JournalNutritionVue key={`j${clientId}`} clientId={clientId} saisie={!apercu} />
                 </>

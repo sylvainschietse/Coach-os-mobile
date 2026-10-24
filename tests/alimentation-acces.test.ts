@@ -147,3 +147,22 @@ describe('journal des repas', () => {
     ).rejects.toThrow();
   });
 });
+
+describe('plan alimentaire de la semaine', () => {
+  const jours = JSON.stringify([[{ id: 'a', moment: 'dejeuner', recetteId: 'r', titre: 'Bol', portions: 1, macrosPortion: { kcal: 500, proteines: 30, glucides: 50, lipides: 15 }, macros: { kcal: 500, proteines: 30, glucides: 50, lipides: 15 } }], [], [], [], [], [], []]);
+  it('le coach prépare la semaine de Léa ; Léa la lit sans la modifier ; les autres ne la voient pas', async () => {
+    await en(ids.userCoach1, `insert into public.plans_repas (client_id, semaine, jours) values ('${ids.lea}', '2026-10-19', $1)`, [jours]);
+    expect((await en(ids.userLea, 'select semaine::text from public.plans_repas')).rows).toEqual([{ semaine: '2026-10-19' }]);
+    expect((await en(ids.userThomas, 'select * from public.plans_repas')).rows).toEqual([]);
+    expect((await en(ids.userCoach2, 'select * from public.plans_repas')).rows).toEqual([]);
+    await en(ids.userLea, `update public.plans_repas set jours = '[[],[],[],[],[],[],[]]'`);
+    expect((await db.query(`select jsonb_array_length(jours->0) as n from public.plans_repas`)).rows).toEqual([{ n: 1 }]);
+    await expect(en(ids.userLea, `insert into public.plans_repas (client_id, semaine, jours) values ('${ids.lea}', '2026-10-26', $1)`, [jours])).rejects.toThrow();
+    await expect(en(ids.userCoach2, `insert into public.plans_repas (client_id, semaine, jours) values ('${ids.lea}', '2026-10-26', $1)`, [jours])).rejects.toThrow();
+  });
+
+  it('refuse une semaine qui ne commence pas un lundi ou qui n’a pas 7 jours', async () => {
+    await expect(en(ids.userCoach1, `insert into public.plans_repas (client_id, semaine, jours) values ('${ids.lea}', '2026-10-21', $1)`, [jours])).rejects.toThrow();
+    await expect(en(ids.userCoach1, `insert into public.plans_repas (client_id, semaine, jours) values ('${ids.lea}', '2026-11-02', '[[],[]]')`)).rejects.toThrow();
+  });
+});

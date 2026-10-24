@@ -20,7 +20,7 @@ import { crm, ecouterCrm } from '@/data/crm';
 import { useSession } from '@/data/session';
 import type { ClientResume } from '@/domain/types';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
-import { BanqueRecettes } from '@/ui/alimentation/recettes';
+import { NutritionCoach } from '@/ui/alimentation/nutrition-coach';
 import {
   BandeauDemo,
   BoutonContour,
@@ -28,7 +28,6 @@ import {
   CommutateurApercu,
   EnTete,
   EnTeteRubrique,
-  LibelleSection,
   MenuRubriques,
   NonRepris,
   OngletsCoach,
@@ -42,13 +41,15 @@ import { EspaceClient } from '@/ui/espace-client';
 import { Modeles } from '@/ui/programmes/modeles';
 import { couleurs, espace, LARGEUR_COACH, LARGEUR_LG } from '@/ui/theme';
 
-type Onglet = 'crm' | 'airtable' | 'suivis' | 'bilan' | 'hebdo';
+type Onglet = 'crm' | 'airtable' | 'suivis' | 'bilan' | 'hebdo' | 'nutrition';
 const ONGLETS: OngletDef<Onglet>[] = [
   { cle: 'crm', libelle: 'Tableau de bord' },
   { cle: 'airtable', libelle: 'Programmes' },
   { cle: 'suivis', libelle: 'Cycles clients' },
   { cle: 'bilan', libelle: 'Séances réalisées' },
   { cle: 'hebdo', libelle: 'Bilans hebdo' },
+  // Ajout demandé par Sylvain (absent de Zite) : recettes, clients suivis et plans alimentaires.
+  { cle: 'nutrition', libelle: 'Nutrition' },
 ];
 
 type Rubrique = 'Accueil' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Automations';
@@ -71,7 +72,7 @@ const quand = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 
 export default function EspaceCoach() {
   const { profil, email, deconnecter } = useSession();
   const { width } = useWindowDimensions();
-  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string }>();
+  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; client?: string }>();
   const onglet = ONGLETS.find((o) => o.cle === params.onglet)?.cle ?? 'crm';
   const rubrique = RUBRIQUES.find((r) => r.cle === params.rubrique)?.cle ?? 'Accueil';
   const [apercu, setApercu] = useState<'coach' | 'client'>('coach');
@@ -83,7 +84,8 @@ export default function EspaceCoach() {
   if (profil?.role !== 'coach') return <Redirect href="/" />;
 
   // L'onglet et la rubrique vivent dans l'adresse : Retour et rechargement gardent le contexte.
-  const naviguer = (o: Onglet, r?: Rubrique) => router.setParams({ onglet: o, rubrique: o === 'crm' ? (r ?? rubrique) : undefined });
+  const naviguer = (o: Onglet, r?: Rubrique) =>
+    router.setParams({ onglet: o, rubrique: o === 'crm' ? (r ?? rubrique) : undefined, client: undefined });
   const ouvrirContact = (id: string) => router.push({ pathname: '/coach/contact/[id]', params: { id } });
   const ouvrirClient = (c: ClientResume) => router.push({ pathname: '/coach/client/[id]', params: { id: c.id, prenom: c.prenom } });
 
@@ -152,13 +154,7 @@ export default function EspaceCoach() {
             />
           )}
           {onglet === 'airtable' && (
-            <View style={{ gap: espace(6) }}>
-              <Modeles coachId={coachId} />
-              <View style={{ gap: espace(3) }}>
-                <LibelleSection>Banque de recettes (placement à confirmer)</LibelleSection>
-                <BanqueRecettes coachId={coachId} />
-              </View>
-            </View>
+            <Modeles coachId={coachId} />
           )}
           {onglet === 'suivis' && (
             <View style={{ gap: espace(3) }}>
@@ -185,6 +181,9 @@ export default function EspaceCoach() {
           )}
           {onglet === 'bilan' && <NonRepris ecran="Séances réalisées" lot={3} detail="Les séances de chaque client restent visibles dans Cycles clients." />}
           {onglet === 'hebdo' && <NonRepris ecran="Bilans hebdo" lot={4} />}
+          {onglet === 'nutrition' && (
+            <NutritionCoach coachId={coachId} clientId={params.client} onClient={(id) => router.setParams({ onglet: 'nutrition', client: id })} />
+          )}
         </View>
       </ScrollView>
     </View>
