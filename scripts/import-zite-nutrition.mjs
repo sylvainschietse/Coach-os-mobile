@@ -238,7 +238,7 @@ if (option === '--sql') {
   const json = (v) => (v === undefined ? 'null' : `${t(JSON.stringify(v))}::jsonb`);
   const morceaux = (liste, taille) => Array.from({ length: Math.ceil(liste.length / taille) }, (_, k) => liste.slice(k * taille, (k + 1) * taille));
 
-  morceaux(recettes, 30).forEach((paquet, k) => {
+  morceaux(recettes, 15).forEach((paquet, k) => {
     const lignes = paquet.map(
       (r) =>
         `(${t(r.id)}, ${t(coachId)}, ${t(r.titre)}, ${r.portions}, ${r.tempsMin ?? 'null'}, ${t(r.etapes)}, ${json(r.ingredients)}, 'brouillon', ${json(r.macrosPortion)}, ${json(r.variantes)}, ${json(r.origine)}, ${tab(r.types)}, ${t(r.regimeSource)}, ${t(r.origine.ref)})`,
