@@ -274,7 +274,7 @@ function Comparaison({ seances }: { seances: SeanceBilan[] }) {
                     </View>
                     {Array.from({ length: n }, (_, k) => (
                       <View key={k} style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: couleurs.bordure }}>
-                        <Text style={[ts.texte, { width: 52, paddingVertical: 4 }]}>S{a.ex.series[k]?.index ?? b.ex.series[k]?.index}</Text>
+                        <Text style={[ts.texte, { width: 52, paddingVertical: 4 }]}>S{(a.ex.series[k]?.index ?? b.ex.series[k]?.index ?? 0) + 1}</Text>
                         <Text style={[ts.texte, col, { fontVariant: ['tabular-nums'] }]}>{serie(a.ex.series[k])}</Text>
                         <Text style={[ts.texte, col, { fontVariant: ['tabular-nums'] }]}>{serie(b.ex.series[k])}</Text>
                       </View>
@@ -325,7 +325,7 @@ function CarteSeance({ s, onOuvrirProgramme }: { s: SeanceBilan; onOuvrirProgram
             <Ligne style={{ marginTop: 4, gap: 6 }}>
               {e.series.map((x) => (
                 <Text key={x.id} style={{ borderRadius: 6, backgroundColor: couleurs.secondaire, color: '#FFFFFF', paddingHorizontal: 8, paddingVertical: 2, fontSize: 12, fontFamily: polices.texte, fontVariant: ['tabular-nums'] }}>
-                  S{x.index} · {serie(x)}
+                  S{x.index + 1} · {serie(x)}
                 </Text>
               ))}
             </Ligne>
