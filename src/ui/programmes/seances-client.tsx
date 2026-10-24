@@ -43,7 +43,7 @@ function CarteSeance({ s, onChange }: { s: SeanceResume; onChange: () => void })
           onPress={() =>
             agir(async () => {
               const complete = await depot.seance(s.id);
-              await depot.enregistrerSeance(dupliquerSeance(complete, complete.clientId, nouvelId, `${complete.titre} (copie)`));
+              await depot.enregistrerSeance(dupliquerSeance(complete, complete.clientId ?? '', nouvelId, `${complete.titre} (copie)`));
             })
           }
         />

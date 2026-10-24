@@ -1,4 +1,5 @@
 // Vocabulaire métier partagé par l'app client, l'espace coach et la base.
+import type { VarianteCycle } from './cycles';
 import type { ConfigMinuteur } from './minuteur';
 
 /** Ce qu'on mesure sur un exercice. Un développé couché n'a ni distance ni allure. */
@@ -24,19 +25,32 @@ export interface Exercice {
   muscles?: string[];
 }
 
+/** Phase d'une ligne dans Airtable (Exercices de séance). */
+export type Phase = 'Échauffement' | 'Principal' | 'Finisher' | 'Retour au calme';
+
 /** Une ligne de prescription : ce que le coach demande pour un exercice. */
 export interface LignePrescription {
   id: string;
   exercice: Exercice;
   series: number;
+  /** Répétitions telles que prescrites : « 12–15 », « 6–8 par côté ». */
+  repetitions?: string;
+  /** Lus dans `repetitions` quand c'est un nombre ou une fourchette : servent à la saisie. */
   repetitionsMin?: number;
   repetitionsMax?: number;
   chargeIndicative?: number;
+  /** Charge / intensité, ou objectif cardio encodé comme dans l'app d'origine (« 20 cal », « 2:05 / 500 m »). */
+  chargeIntensite?: string;
   dureeS?: number;
+  distanceM?: number;
   recuperationS?: number;
   rir?: number;
   tempo?: string;
   consignes?: string;
+  progression?: string;
+  phase?: Phase;
+  /** Les quatre variantes d'un modèle Fondamentaux (cycle 1 = la ligne elle-même). */
+  cycles?: VarianteCycle[];
   /** Chrono réglé par le coach pour cet exercice (fractionné, tabata…). */
   minuteur?: ConfigMinuteur;
 }
@@ -51,13 +65,18 @@ export interface Bloc {
 
 export interface Seance {
   id: string;
-  clientId: string;
+  /** Vide pour une séance de modèle. */
+  clientId?: string;
   titre: string;
   datePrevue?: string;
   consignes?: string;
   blocs: Bloc[];
   programmeId?: string;
+  /** Jour dans la semaine type (J1, J2…). */
   ordre?: number;
+  dominante?: string;
+  dureeMin?: number;
+  objectif?: string;
 }
 
 /** Séance d'un modèle de programme : pas encore attribuée à un client. */
@@ -74,6 +93,19 @@ export interface Programme {
   niveau?: string;
   notes?: string;
   seances: SeanceModele[];
+  statut?: string;
+  environnement?: string;
+  materiel?: string;
+  contraintes?: string;
+  /** Descriptif et consignes du programme (« Consignes générales » d'Airtable). */
+  consignes?: string;
+  dureeCibleMin?: number;
+  priorites?: string[];
+  version?: string;
+  modeleOrigineId?: string;
+  cycleApplique?: number;
+  /** Conteneur « Séance seule · … » d'une séance créée hors programme. */
+  seanceSeule?: boolean;
 }
 
 export interface SeanceResume {

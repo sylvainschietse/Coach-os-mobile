@@ -5,7 +5,7 @@ export const LIBELLES: Record<Mesure, { libelle: string; unite: string }> = {
   repetitions: { libelle: 'Répétitions', unite: 'rép.' },
   duree: { libelle: 'Durée', unite: 's' },
   distance: { libelle: 'Distance', unite: 'm' },
-  calories: { libelle: 'Calories', unite: 'kcal' },
+  calories: { libelle: 'Calories', unite: 'cal' },
   watts: { libelle: 'Puissance', unite: 'W' },
   allure500: { libelle: 'Allure /500 m', unite: 's' },
 };
