@@ -30,6 +30,11 @@ export interface Contact {
   /** Lien vers la fiche client (programmes, séances) une fois converti. */
   clientId?: string;
   creeLe: string;
+  /** Statut choisi par le coach ; absent, il suit l'étape du parcours (voir statutContact). */
+  statutCrm?: StatutContact;
+  objectifPrincipal?: string;
+  prochaineAction?: string;
+  offreVendue?: string;
 }
 
 export interface Questionnaire {
@@ -58,9 +63,39 @@ export interface Booster {
   planEnvoyeLe?: string;
   /** Textes développés du compte rendu, une fois rédigés (IA) ou retouchés par le coach. */
   redaction?: Redaction;
+  nom?: string;
+  /** Statut choisi parmi les statuts ouverts (À préparer, Questionnaire reçu, En cours) ; voir statutBooster. */
+  statutCrm?: StatutBooster;
+  resumeIa?: string;
+  pointsAttention?: string;
+  offreRecommandee?: string;
+  resultatCommercial?: string;
+  /** AAAA-MM-JJ. */
+  dateRelance?: string;
+  /** Réservées au coach : jamais dans le compte rendu. */
+  notesInternes?: string;
 }
 
-export type SaisieBooster = Partial<Pick<Booster, 'evaluation' | 'entretien' | 'priorites' | 'paye' | 'compteRendu' | 'planEnvoyeLe' | 'redaction'>>;
+export type SaisieBooster = Partial<
+  Pick<
+    Booster,
+    | 'evaluation'
+    | 'entretien'
+    | 'priorites'
+    | 'paye'
+    | 'compteRendu'
+    | 'planEnvoyeLe'
+    | 'redaction'
+    | 'nom'
+    | 'date'
+    | 'resumeIa'
+    | 'pointsAttention'
+    | 'offreRecommandee'
+    | 'resultatCommercial'
+    | 'dateRelance'
+    | 'notesInternes'
+  >
+>;
 
 /** « tache » : une chose à faire pour ce contact, sans message à envoyer (le texte est dans la note). */
 export type ModeleMessage = 'questionnaire' | 'booster' | 'rappel_booster' | 'suivi_booster' | 'libre' | 'tache';
@@ -177,25 +212,88 @@ function relancer(c: Carnet, contactId: string, modele: ModeleMessage, echeance:
   return { ...c, relances: [...c.relances, { id: ctx.nouvelId(), contactId, echeance, modele }] };
 }
 
+// ---------- Choix repris de la configuration d'origine (Champs-CRM.json) ----------
+
+export const STATUTS_CONTACT = [
+  'Nouveau Prospect',
+  'Booster planifié',
+  'Booster réalisé',
+  'En réflexion',
+  'Client actif',
+  'Coaching terminé',
+  'A relancer',
+  'Perdu',
+] as const;
+export type StatutContact = (typeof STATUTS_CONTACT)[number];
+export const OBJECTIFS = ['Perte de poids', 'Prise de masse', 'Remise en forme', 'Santé', 'Préparation physique', 'Performance', 'Autre', 'Prendre du muscle', 'Perdre du poids', 'Retrouver la forme'];
+export const PROCHAINES_ACTIONS = ['Appeler', 'Planifier booster', 'Envoyer lien stripe', 'Envoyer questionnaire', 'Créer programme', 'Relancer', 'Attendre retour', 'Aucune'];
+export const ORIGINES = ['Booster', 'Bouche à Oreille', 'Ancien client', 'Demande en direct', 'Recommandation', 'Autre'];
+export const OFFRES_VENDUES = ['Séance Coaching', 'Formule Essentielle', 'Formule premium', 'Suivi Nutritionnel', 'Analyse vidéo'];
+
+export const STATUTS_BOOSTER = ['À préparer', 'Questionnaire reçu', 'En cours', 'Terminée', 'Annulée'] as const;
+export type StatutBooster = (typeof STATUTS_BOOSTER)[number];
+/** Tarifs historiques de la base d'origine : à confirmer par Sylvain avant tout paiement. */
+export const OFFRES_RECOMMANDEES = ['Coaching Essentiel – 150 €', 'Coaching Premium – 250 €', 'Aucune'];
+export const RESULTATS_COMMERCIAUX = ['Vendu', 'En réflexion', 'À relancer', 'Refus', 'À recontacter plus tard'];
+
+const STATUT_DE_L_ETAPE: Record<Exclude<Statut, 'archive'>, StatutContact> = {
+  prospect: 'Nouveau Prospect',
+  booster_prevu: 'Booster planifié',
+  booster_fait: 'Booster réalisé',
+  client: 'Client actif',
+};
+
+/**
+ * Statut affiché du contact : celui choisi par le coach, sinon celui de l'étape du parcours.
+ * L'archivage est à part (comme « Gestion du dossier » d'origine) : un contact archivé garde son statut.
+ */
+export function statutContact(c: Pick<Contact, 'statut' | 'statutAvantArchive' | 'statutCrm'>): StatutContact {
+  if (c.statutCrm) return c.statutCrm;
+  const etape = c.statut === 'archive' ? (c.statutAvantArchive ?? 'prospect') : c.statut;
+  return STATUT_DE_L_ETAPE[etape === 'archive' ? 'prospect' : etape];
+}
+
+export function statutBooster(b: Pick<Booster, 'statut' | 'statutCrm'>): StatutBooster {
+  if (b.statut === 'fait') return 'Terminée';
+  if (b.statut === 'annule') return 'Annulée';
+  return b.statutCrm && b.statutCrm !== 'Terminée' && b.statutCrm !== 'Annulée' ? b.statutCrm : 'À préparer';
+}
+
+/** Nom d'origine d'un Booster (« Booster · Prénom Nom »), proposé à la création. */
+export const nomBooster = (c: Pick<Contact, 'prenom' | 'nom'>) => `Booster · ${`${c.prenom} ${c.nom}`.trim()}`;
+
+/** Les 3 priorités gardent leur place : la priorité 2 peut être remplie sans la 1. */
+export const troisPriorites = (p: string[] | undefined) => [0, 1, 2].map((i) => p?.[i] ?? '');
+
 export type ResultatCreation = { carnet: Carnet; contact: Contact } | { doublon: Doublon };
 
 /** Création depuis l'appli par le coach : un téléphone suffit. */
 export function creerContact(
   c: Carnet,
-  saisie: { prenom: string; nom?: string; telephone?: string; email?: string; source?: string },
+  saisie: { prenom: string; nom?: string; telephone?: string; email?: string; source?: string } & SaisieContactFiche,
   ctx: Contexte,
 ): ResultatCreation {
   const doublon = trouverDoublon(c.contacts, saisie);
   if (doublon) return { doublon };
+  if (saisie.telephone?.trim() && !normaliserTelephone(saisie.telephone)) throw new Error('Numéro de téléphone non reconnu.');
+  if (saisie.email?.trim() && !normaliserEmail(saisie.email)) throw new Error('Adresse e-mail non reconnue.');
+  if (!normaliserTelephone(saisie.telephone) && !normaliserEmail(saisie.email)) throw new Error('Indique au moins un téléphone ou un e-mail.');
+  const propre = (v: string | undefined) => v?.trim() || undefined;
   const contact: Contact = {
     id: ctx.nouvelId(),
     prenom: saisie.prenom.trim(),
     nom: saisie.nom?.trim() ?? '',
     telephone: normaliserTelephone(saisie.telephone),
     email: normaliserEmail(saisie.email),
-    source: saisie.source,
+    source: propre(saisie.source),
     statut: 'prospect',
     creeLe: ctx.maintenant.toISOString(),
+    statutCrm: saisie.statutCrm,
+    objectifPrincipal: propre(saisie.objectifPrincipal),
+    prochaineAction: propre(saisie.prochaineAction),
+    offreVendue: propre(saisie.offreVendue),
+    notes: propre(saisie.notes),
+    dateNaissance: propre(saisie.dateNaissance),
   };
   const avec = { ...c, contacts: [...c.contacts, contact] };
   return { carnet: relancer(avec, contact.id, 'questionnaire', jourLocal(ctx.maintenant), ctx), contact };
@@ -274,14 +372,18 @@ export function recevoirQuestionnaire(c: Carnet, reponses: Record<string, string
   return { carnet, contact, questionnaire };
 }
 
-export function planifierBooster(c: Carnet, contactId: string, date: string, ctx: Contexte): Carnet {
+export function planifierBooster(c: Carnet, contactId: string, date: string, ctx: Contexte, extra: SaisieBooster & { id?: string } = {}): Carnet {
+  const contact = c.contacts.find((x) => x.id === contactId);
+  const { id, ...champs } = extra;
   let carnet: Carnet = {
     ...c,
-    boosters: [...c.boosters, { id: ctx.nouvelId(), contactId, date, statut: 'prevu', priorites: [] }],
+    boosters: [
+      ...c.boosters,
+      { nom: contact ? nomBooster(contact) : undefined, ...champs, id: id ?? ctx.nouvelId(), contactId, date, statut: 'prevu', priorites: troisPriorites(champs.priorites) },
+    ],
   };
-  const contact = c.contacts.find((x) => x.id === contactId);
   if (contact && (contact.statut === 'prospect' || contact.statut === 'booster_fait')) {
-    carnet = majContact(carnet, contactId, { statut: 'booster_prevu' });
+    carnet = majContact(carnet, contactId, { statut: 'booster_prevu', statutCrm: undefined });
   }
   carnet = fermerRelances(carnet, contactId, ctx, ['questionnaire', 'booster']);
   // Rappel la veille ; le jour même si le Booster est dans moins de 24 h.
@@ -310,14 +412,14 @@ export function terminerBooster(
 ): Carnet {
   const booster = c.boosters.find((b) => b.id === boosterId);
   if (!booster) return c;
-  let carnet = enregistrerBooster(c, boosterId, { ...compteRendu, priorites: compteRendu.priorites.map((p) => p.trim()).filter(Boolean) });
+  let carnet = enregistrerBooster(c, boosterId, { ...compteRendu, priorites: troisPriorites(compteRendu.priorites.map((p) => p.trim())) });
   if (compteRendu.tests !== undefined && !compteRendu.evaluation) {
     carnet = { ...carnet, boosters: carnet.boosters.map((b) => (b.id === boosterId ? { ...b, tests: compteRendu.tests } : b)) };
   }
-  carnet = { ...carnet, boosters: carnet.boosters.map((b) => (b.id === boosterId ? { ...b, statut: 'fait' } : b)) };
+  carnet = { ...carnet, boosters: carnet.boosters.map((b) => (b.id === boosterId ? { ...b, statut: 'fait', statutCrm: undefined } : b)) };
   const contact = c.contacts.find((x) => x.id === booster.contactId);
-  if (contact && contact.statut !== 'client' && booster.statut !== 'fait') {
-    carnet = majContact(carnet, contact.id, { statut: 'booster_fait' });
+  if (contact && contact.statut !== 'client' && contact.statut !== 'archive' && booster.statut !== 'fait') {
+    carnet = majContact(carnet, contact.id, { statut: 'booster_fait', statutCrm: undefined });
     carnet = fermerRelances(carnet, contact.id, ctx, ['rappel_booster']);
     carnet = relancer(carnet, contact.id, 'suivi_booster', ajouterJours(jourLocal(ctx.maintenant), 2), ctx);
   }
@@ -327,15 +429,64 @@ export function terminerBooster(
 export function annulerBooster(c: Carnet, boosterId: string, ctx: Contexte): Carnet {
   const booster = c.boosters.find((b) => b.id === boosterId);
   if (!booster) return c;
-  let carnet: Carnet = { ...c, boosters: c.boosters.map((b) => (b.id === boosterId ? { ...b, statut: 'annule' } : b)) };
-  carnet = fermerRelances(carnet, booster.contactId, ctx, ['rappel_booster']);
+  const carnet: Carnet = { ...c, boosters: c.boosters.map((b) => (b.id === boosterId ? { ...b, statut: 'annule', statutCrm: undefined } : b)) };
+  return apresRetraitBooster(carnet, booster, ctx);
+}
+
+/** Un Booster prévu disparaît (annulé ou supprimé) : rappel fermé, contact revenu à l'étape d'avant. */
+function apresRetraitBooster(c: Carnet, booster: Booster, ctx: Contexte): Carnet {
+  if (booster.statut !== 'prevu') return c;
+  let carnet = fermerRelances(c, booster.contactId, ctx, ['rappel_booster']);
   const contact = c.contacts.find((x) => x.id === booster.contactId);
   const autrePrevu = carnet.boosters.some((b) => b.contactId === booster.contactId && b.statut === 'prevu');
   if (contact?.statut === 'booster_prevu' && !autrePrevu) {
-    carnet = majContact(carnet, contact.id, { statut: 'prospect' });
+    carnet = majContact(carnet, contact.id, { statut: 'prospect', statutCrm: undefined });
     carnet = relancer(carnet, contact.id, 'booster', jourLocal(ctx.maintenant), ctx);
   }
   return carnet;
+}
+
+/**
+ * Supprime un Booster saisi par erreur. Le contact, ses autres Boosters, questionnaires et relances restent.
+ */
+export function supprimerBooster(c: Carnet, boosterId: string, ctx: Contexte): Carnet {
+  const booster = c.boosters.find((b) => b.id === boosterId);
+  if (!booster) return c;
+  return apresRetraitBooster({ ...c, boosters: c.boosters.filter((b) => b.id !== boosterId) }, booster, ctx);
+}
+
+export type SaisieFicheBooster = SaisieBooster & { statutCrm?: StatutBooster };
+
+/**
+ * Enregistrement de l'éditeur Booster (Préparation, Entretien, Tests, Conclusion).
+ * Choisir « Terminée » ou « Annulée » fait avancer le parcours comme les boutons dédiés ;
+ * revenir à un statut ouvert rouvre le Booster sans toucher au contact.
+ */
+export function modifierBooster(c: Carnet, boosterId: string, saisie: SaisieFicheBooster, ctx: Contexte): Carnet {
+  const booster = c.boosters.find((b) => b.id === boosterId);
+  if (!booster) return c;
+  const { statutCrm, ...champs } = saisie;
+  if (champs.priorites) champs.priorites = troisPriorites(champs.priorites.map((p) => p.trim()));
+  let carnet = enregistrerBooster(c, boosterId, champs);
+  if (!statutCrm || statutCrm === statutBooster(booster)) return carnet;
+  if (statutCrm === 'Terminée') {
+    const apres = carnet.boosters.find((b) => b.id === boosterId)!;
+    return terminerBooster(carnet, boosterId, { priorites: apres.priorites }, ctx);
+  }
+  if (statutCrm === 'Annulée') return annulerBooster(carnet, boosterId, ctx);
+  carnet = { ...carnet, boosters: carnet.boosters.map((b) => (b.id === boosterId ? { ...b, statut: 'prevu', statutCrm } : b)) };
+  return carnet;
+}
+
+/** « Nouveau Booster » : un contact et une date suffisent, le reste se complète ensuite. */
+export function creerBooster(c: Carnet, contactId: string, saisie: SaisieFicheBooster & { date: string }, ctx: Contexte): { carnet: Carnet; id: string } {
+  if (!c.contacts.some((x) => x.id === contactId)) throw new Error('Choisis le contact de ce Booster.');
+  if (!saisie.date || Number.isNaN(new Date(saisie.date).getTime())) throw new Error('Indique la date et l’heure du Booster.');
+  const id = ctx.nouvelId();
+  const { statutCrm, ...champs } = saisie;
+  let carnet = planifierBooster(c, contactId, saisie.date, ctx, { ...champs, id });
+  if (statutCrm && statutCrm !== 'À préparer') carnet = modifierBooster(carnet, id, { statutCrm }, ctx);
+  return { carnet, id };
 }
 
 export function ajouterRelance(c: Carnet, contactId: string, echeance: string, modele: ModeleMessage, note: string | undefined, ctx: Contexte): Carnet {
@@ -352,7 +503,7 @@ export function reporterRelance(c: Carnet, relanceId: string, echeance: string):
 }
 
 export function devenirClient(c: Carnet, contactId: string, clientId: string, ctx: Contexte): Carnet {
-  return fermerRelances(majContact(c, contactId, { statut: 'client', clientId }), contactId, ctx);
+  return fermerRelances(majContact(c, contactId, { statut: 'client', clientId, statutCrm: undefined }), contactId, ctx);
 }
 
 export function archiver(c: Carnet, contactId: string, ctx: Contexte): Carnet {
@@ -367,8 +518,28 @@ export function reactiver(c: Carnet, contactId: string): Carnet {
   return majContact(c, contactId, { statut: contact.statutAvantArchive ?? 'prospect', statutAvantArchive: undefined });
 }
 
-export function modifierContact(c: Carnet, contactId: string, patch: Partial<Pick<Contact, 'prenom' | 'nom' | 'telephone' | 'email' | 'notes' | 'dateNaissance'>>) {
+export type SaisieContactFiche = Partial<
+  Pick<Contact, 'prenom' | 'nom' | 'telephone' | 'email' | 'notes' | 'dateNaissance' | 'source' | 'statutCrm' | 'objectifPrincipal' | 'prochaineAction' | 'offreVendue'>
+>;
+
+export function modifierContact(c: Carnet, contactId: string, patch: SaisieContactFiche) {
   const propre = { ...patch };
+  for (const cle of Object.keys(propre) as (keyof SaisieContactFiche)[]) {
+    if (typeof propre[cle] === 'string' && cle !== 'statutCrm') (propre as Record<string, string | undefined>)[cle] = (propre[cle] as string).trim() || undefined;
+  }
+  if ('prenom' in patch) propre.prenom = patch.prenom?.trim() ?? '';
+  if ('nom' in patch) propre.nom = patch.nom?.trim() ?? '';
+  if ('statutCrm' in patch) propre.statutCrm = patch.statutCrm || undefined;
+  if ('telephone' in patch && patch.telephone?.trim() && !normaliserTelephone(patch.telephone)) throw new Error('Numéro de téléphone non reconnu.');
+  if ('email' in patch && patch.email?.trim() && !normaliserEmail(patch.email)) throw new Error('Adresse e-mail non reconnue.');
+  const doublon = trouverDoublon(
+    c.contacts.filter((x) => x.id !== contactId),
+    { telephone: 'telephone' in patch ? patch.telephone : undefined, email: 'email' in patch ? patch.email : undefined },
+  );
+  if (doublon) {
+    const qui = `${doublon.contact.prenom} ${doublon.contact.nom}`.trim() || 'un autre contact';
+    throw new Error(`${doublon.par === 'telephone' ? 'Ce numéro' : 'Cet e-mail'} est déjà celui de ${qui}. Rien n’a été fusionné.`);
+  }
   if ('telephone' in patch) propre.telephone = normaliserTelephone(patch.telephone);
   if ('email' in patch) propre.email = normaliserEmail(patch.email);
   return majContact(c, contactId, propre);
@@ -419,6 +590,32 @@ export function fiche(c: Carnet, contactId: string): FicheContact | null {
   };
 }
 
+export type BoosterDossier = Booster & { contact: Contact };
+
+/** Rubrique Boosters : tous les Boosters, le plus récent d'abord, avec leur contact. */
+export function listeBoosters(c: Carnet): BoosterDossier[] {
+  return c.boosters
+    .map((b) => ({ ...b, contact: c.contacts.find((x) => x.id === b.contactId)! }))
+    .filter((b) => b.contact)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function filtrerBoosters(
+  boosters: BoosterDossier[],
+  recherche: string,
+  options: { statut?: StatutBooster; contactId?: string; archives?: boolean } = {},
+): BoosterDossier[] {
+  const simple = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const q = simple(recherche.trim());
+  return boosters.filter(
+    (b) =>
+      (options.archives || b.contact.statut !== 'archive') &&
+      (!options.contactId || b.contactId === options.contactId) &&
+      (!options.statut || statutBooster(b) === options.statut) &&
+      (!q || simple(`${b.nom ?? ''} ${b.contact.prenom} ${b.contact.nom} ${b.contact.email ?? ''}`).includes(q)),
+  );
+}
+
 export interface ContactResume extends Contact {
   prochaineRelance?: string;
   prochainBooster?: string;
@@ -434,14 +631,20 @@ export function listeContacts(c: Carnet): ContactResume[] {
     .sort((a, b) => b.creeLe.localeCompare(a.creeLe));
 }
 
-export function filtrerContacts(contacts: ContactResume[], recherche: string, statut?: Statut): ContactResume[] {
+export function filtrerContacts(
+  contacts: ContactResume[],
+  recherche: string,
+  statut?: StatutContact,
+  options: { archives?: boolean } = {},
+): ContactResume[] {
   const simple = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const mots = simple(recherche).split(/\s+/).filter(Boolean);
   const chiffres = recherche.replace(/\D/g, '');
   return contacts.filter((x) => {
-    if (statut ? x.statut !== statut : x.statut === 'archive') return false;
+    if (!options.archives && x.statut === 'archive') return false;
+    if (statut && statutContact(x) !== statut) return false;
     if (!mots.length) return true;
-    const texte = simple(`${x.prenom} ${x.nom} ${x.email ?? ''}`);
+    const texte = simple(`${x.prenom} ${x.nom} ${x.email ?? ''} ${x.objectifPrincipal ?? ''}`);
     const telTrouve =
       chiffres.length >= 4 && [x.telephone ?? '', formaterTelephone(x.telephone).replace(/\D/g, '')].some((t) => t.includes(chiffres));
     return telTrouve || mots.every((m) => texte.includes(m));
@@ -499,4 +702,54 @@ export function lienEnvoi(canal: Canal, contact: Contact, message: string, sujet
   if (canal === 'appel') return `tel:+${contact.telephone}`;
   if (canal === 'whatsapp') return `https://wa.me/${contact.telephone}?text=${m}`;
   return `sms:+${contact.telephone}?body=${m}`;
+}
+
+// ---------- Saisie des dates dans les éditeurs ----------
+
+/** « 30/10/2026 » → « 2026-10-30 » ; undefined si la date n'existe pas. */
+export function lireJour(texte: string): string | undefined {
+  const m = texte.trim().match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
+  if (!m) return undefined;
+  const [j, mo, a] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const d = new Date(a, mo - 1, j);
+  if (d.getFullYear() !== a || d.getMonth() !== mo - 1 || d.getDate() !== j) return undefined;
+  return jourLocal(d);
+}
+
+/** « 2026-10-30 » → « 30/10/2026 ». */
+export const ecrireJour = (jour: string | undefined) => (jour ? jour.split('-').reverse().join('/') : '');
+
+/** Date ISO → « 24/10/2026 18:30 » (heure locale), relisible par lireDateHeure. */
+export function ecrireDateHeure(iso: string | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${deux(d.getDate())}/${deux(d.getMonth() + 1)}/${d.getFullYear()} ${deux(d.getHours())}:${deux(d.getMinutes())}`;
+}
+
+// ---------- Accès du client à son espace ----------
+
+/**
+ * Message d'origine « Envoyer l'accès client » : le client se connecte avec l'e-mail donné au coach
+ * (Google, Microsoft ou son propre mot de passe), et son compte est relié à sa fiche par cet e-mail.
+ */
+export function messageAccesClient(prenom: string, coach: string, lienAppli: string): string {
+  return [
+    `Salut${prenom ? ` ${prenom}` : ''} ! Voici le lien pour accéder à ton espace Coach OS : ${lienAppli}`,
+    '',
+    'Connecte-toi avec l’adresse email que tu m’as communiquée. Tu pourras y retrouver ton programme et enregistrer tes séances.',
+    '',
+    'Tu peux aussi ajouter le lien à l’écran d’accueil de ton téléphone pour y accéder facilement.',
+    '',
+    `À bientôt, ${coach}`,
+  ].join('\n');
+}
+
+/**
+ * Lien WhatsApp « Envoyer l'accès client », seulement quand l'accès est prêt (fiche client avec e-mail),
+ * le dossier actif et le numéro valide. Ouvrir ce lien ne prouve pas que le message est parti.
+ */
+export function lienAccesWhatsApp(contact: Contact, coach: string, lienAppli: string): string | null {
+  if (!contact.clientId || !contact.email || contact.statut === 'archive' || !contact.telephone) return null;
+  return lienEnvoi('whatsapp', contact, messageAccesClient(contact.prenom, coach, lienAppli));
 }

@@ -45,13 +45,13 @@ export const TESTS: DefinitionTest[] = [
     id: 'mobilite',
     libelle: 'Mobilité',
     resultats: ['Bonne', 'Correcte', 'Légèrement limitée', 'Nettement limitée', 'Très limitée', 'Non réalisée', 'Non adaptée'],
-    observations: ['Chevilles', 'Hanches', 'Épaules', 'Thorax', 'Asymétrie', 'Douleur ou gêne'],
+    observations: ['Chevilles', 'Hanches', 'Épaules', 'Thorax', 'Asymétrie', 'Douleur / gêne'],
   },
   {
     id: 'posture',
     libelle: 'Posture',
     resultats: ['RAS', 'Légère asymétrie', 'Asymétrie nette', 'Compensation marquée', 'À approfondir', 'Non évaluée'],
-    observations: ['Épaules', 'Bassin', 'Tête', 'Dos', 'Appuis', 'Droite-gauche'],
+    observations: ['Épaules', 'Bassin', 'Tête', 'Dos', 'Appuis', 'Droite / gauche'],
   },
 ];
 
@@ -75,7 +75,7 @@ export const ENTRETIEN: { id: string; libelle: string }[] = [
   { id: 'dejaEssaye', libelle: 'Ce qui a déjà été essayé' },
   { id: 'freins', libelle: 'Freins identifiés' },
   { id: 'attentesCoach', libelle: 'Attentes envers le coach' },
-  { id: 'projection', libelle: 'Projection à six mois' },
+  { id: 'projection', libelle: 'Projection à 6 mois' },
   { id: 'observationsCoach', libelle: 'Observations du coach' },
 ];
 

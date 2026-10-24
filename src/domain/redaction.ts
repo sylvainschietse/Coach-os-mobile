@@ -116,8 +116,8 @@ function explicationTest(id: IdTest, resultat: string, observations: string[], r
     // Les observations sont ici des zones du corps.
     const zones = observations.map((o) => ZONES[o]).filter(Boolean);
     if (!constat.endsWith('.')) constat += zones.length ? `, surtout au niveau ${liste(zones)}.` : '.';
-    if (observations.includes('Droite-gauche') || observations.includes('Asymétrie')) constat += ' Une différence entre ton côté droit et ton côté gauche est visible.';
-    if (observations.includes('Douleur ou gêne')) suite += ' On respectera tes sensations et on surveillera la gêne ressentie.';
+    if (observations.includes('Droite / gauche') || observations.includes('Asymétrie')) constat += ' Une différence entre ton côté droit et ton côté gauche est visible.';
+    if (observations.includes('Douleur / gêne')) suite += ' On respectera tes sensations et on surveillera la gêne ressentie.';
     phrases.push(constat);
   } else {
     phrases.push(constat);

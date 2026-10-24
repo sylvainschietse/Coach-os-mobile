@@ -41,7 +41,7 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
   const reponses = fiche.questionnaires[0]?.reponses;
   const cr = construireCompteRendu(fiche.contact, { ...booster, compteRendu: mot, redaction: textes, priorites }, reponses, coach);
   const affiches = textes ?? redactionModele(fiche.contact, { ...booster, priorites }, reponses);
-  const sansPriorite = priorites.length === 0;
+  const sansPriorite = !priorites.some((p) => p.trim());
 
   // Le mot du coach s'enregistre un instant après la frappe.
   useEffect(() => {
@@ -152,15 +152,17 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
             placeholder="Ce que dit le résultat, et la suite du travail"
           />
         ))}
-        {priorites.map((p, i) => (
-          <ChampTexte
-            key={i}
-            libelle={`Priorité ${i + 1} · ${p}`}
-            multiligne
-            valeur={affiches.priorites?.[i] ?? ''}
-            onChange={(v) => retoucher({ priorites: priorites.map((_, j) => (j === i ? v : (affiches.priorites?.[j] ?? ''))) })}
-          />
-        ))}
+        {priorites.map((p, i) =>
+          p.trim() ? (
+            <ChampTexte
+              key={i}
+              libelle={`Priorité ${i + 1} · ${p}`}
+              multiligne
+              valeur={affiches.priorites?.[i] ?? ''}
+              onChange={(v) => retoucher({ priorites: priorites.map((_, j) => (j === i ? v : (affiches.priorites?.[j] ?? ''))) })}
+            />
+          ) : null,
+        )}
         <ChampTexte
           libelle="Cette semaine (une action par ligne)"
           multiligne

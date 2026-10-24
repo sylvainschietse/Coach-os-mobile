@@ -150,12 +150,20 @@ function ListeSuivis({ suivis, onOuvrir }: { suivis: ReturnType<typeof useCharge
 }
 
 function FicheNutrition({ suivi, coachId, onRetour }: { suivi: SuiviAlimentaire; coachId: string; onRetour: () => void }) {
-  const [rubrique, setRubrique] = useState<RubriqueClient>('plan');
-  const id = suivi.client.id;
   return (
     <View style={{ gap: espace(4) }}>
       <BoutonContour libelle="← Tous les clients" onPress={onRetour} />
       <EnTeteRubrique kicker="Nutrition" titre={`${suivi.client.prenom} ${suivi.client.nom}`.trim()} />
+      <NutritionDuClient clientId={suivi.client.id} coachId={coachId} />
+    </View>
+  );
+}
+
+/** Le dossier nutrition d'un client (aussi ouvert depuis la fiche Contact, rubrique Nutrition). */
+export function NutritionDuClient({ clientId: id, coachId }: { clientId: string; coachId: string }) {
+  const [rubrique, setRubrique] = useState<RubriqueClient>('plan');
+  return (
+    <View style={{ gap: espace(4) }}>
       <SousNav nom="Nutrition du client" onglets={RUBRIQUES_CLIENT} valeur={rubrique} onChange={setRubrique} />
       {rubrique === 'plan' && <PlanSemaine key={id} clientId={id} modifiable />}
       {rubrique === 'objectifs' && (

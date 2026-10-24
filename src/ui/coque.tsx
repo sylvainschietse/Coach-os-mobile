@@ -235,17 +235,20 @@ export function Selecteur<T extends string>({
   options,
   valeur,
   onChange,
+  sansLibelle,
 }: {
   libelle: string;
   options: OngletDef<T>[];
   valeur: T;
   onChange: (v: T) => void;
+  /** Le libellé reste lu par les lecteurs d'écran (aria-label d'origine) sans être affiché. */
+  sansLibelle?: boolean;
 }) {
   const [ouvert, setOuvert] = useState(false);
   const courante = options.find((r) => r.cle === valeur);
   return (
     <View>
-      <Text style={styles.selecteurLibelle}>{libelle}</Text>
+      {!sansLibelle && <Text style={styles.selecteurLibelle}>{libelle}</Text>}
       <Pressable accessibilityRole="button" accessibilityLabel={libelle} onPress={() => setOuvert(true)} style={styles.selecteur}>
         <Text style={styles.selecteurTexte}>{courante?.libelle ?? '—'}</Text>
         <ChevronDown size={16} color={couleurs.texteDoux} />

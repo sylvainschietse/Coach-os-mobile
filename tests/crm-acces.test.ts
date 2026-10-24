@@ -48,6 +48,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261021000000_programmes_suivi.sql'), 'utf8'));
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261024000000_alimentation.sql'), 'utf8'));
   await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261024100000_alimentation_zite.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261024300000_crm_champs_origine.sql'), 'utf8'));
   await db.exec(`
     grant usage on schema public to anon;
     insert into auth.users (id) values ('${ids.userCoach1}'), ('${ids.userCoach2}');
@@ -120,6 +121,40 @@ describe('évaluation du Booster', () => {
     expect(rows[0].jambes).toBe('Correct');
     const autre = await en('authenticated', ids.userCoach2, `select count(*)::int as n from public.boosters where evaluation is not null`);
     expect(autre.rows[0].n).toBe(0);
+  });
+});
+
+describe('champs d’origine du lot 2', () => {
+  it('le coach enregistre statut, objectif, priorités à leur place et conclusion ; un autre coach ne les voit pas', async () => {
+    await en('authenticated', ids.userCoach1, `update public.contacts set statut_crm = 'En réflexion', objectif_principal = 'Remise en forme' where prenom = 'Julie'`);
+    const { rows } = await en(
+      'authenticated',
+      ids.userCoach1,
+      `insert into public.boosters (contact_id, date, nom, statut_crm, priorites, offre_recommandee, resultat_commercial, date_relance, notes_internes)
+       select id, now(), 'Booster · Julie', 'En cours', array['', 'Mobilité', ''], 'Aucune', 'En réflexion', '2026-10-30', 'Budget serré'
+       from public.contacts where prenom = 'Julie' limit 1
+       returning priorites, date_relance::text as relance`,
+    );
+    expect(rows[0]).toEqual({ priorites: ['', 'Mobilité', ''], relance: '2026-10-30' });
+    const julie = await en('authenticated', ids.userCoach1, `select statut_crm, objectif_principal from public.contacts where prenom = 'Julie'`);
+    expect(julie.rows[0]).toEqual({ statut_crm: 'En réflexion', objectif_principal: 'Remise en forme' });
+    const autre = await en('authenticated', ids.userCoach2, `select count(*)::int as n from public.boosters where notes_internes is not null`);
+    expect(autre.rows[0].n).toBe(0);
+  });
+
+  it('refuse un statut qui n’existe pas dans la configuration d’origine', async () => {
+    await expect(en('authenticated', ids.userCoach1, `update public.contacts set statut_crm = 'Client' where prenom = 'Julie'`)).rejects.toThrow();
+    await expect(en('authenticated', ids.userCoach1, `update public.boosters set statut_crm = 'Fini'`)).rejects.toThrow();
+  });
+
+  it('supprimer un Booster laisse le contact et ses autres Boosters', async () => {
+    const avant = await en('authenticated', ids.userCoach1, `select count(*)::int as n from public.boosters`);
+    const { rows } = await en('authenticated', ids.userCoach1, `delete from public.boosters where nom = 'Booster · Julie' returning id`);
+    expect(rows).toHaveLength(1);
+    const apres = await en('authenticated', ids.userCoach1, `select (select count(*)::int from public.boosters) as b, (select count(*)::int from public.contacts where prenom = 'Julie') as c`);
+    expect(apres.rows[0]).toEqual({ b: (avant.rows[0].n as number) - 1, c: 1 });
+    const intrus = await en('authenticated', ids.userCoach2, `delete from public.boosters returning id`);
+    expect(intrus.rows).toHaveLength(0);
   });
 });
 

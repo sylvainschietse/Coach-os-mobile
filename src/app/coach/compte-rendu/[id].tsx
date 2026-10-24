@@ -11,7 +11,7 @@ export default function EcranCompteRendu() {
       <CompteRenduVue
         boosterId={id}
         contactId={contact}
-        onModifierSeance={() => router.replace({ pathname: '/coach/booster/[id]', params: { id, contact } })}
+        onModifierSeance={() => router.replace({ pathname: '/coach', params: { onglet: 'crm', rubrique: 'Boosters', booster: id, bc: contact } })}
       />
     </Ecran>
   );

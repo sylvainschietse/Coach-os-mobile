@@ -40,7 +40,7 @@ describe('évaluation du Booster', () => {
     expect(brouillon.boosters[0]).toMatchObject({ statut: 'prevu', entretien: { freins: 'Horaires' } });
     expect(brouillon.boosters[0].tests).toContain('JAMBES — Correct');
     const fini = terminerBooster(brouillon, 'b', { evaluation: e, priorites: ['Mobilité', ' ', 'Cardio'] }, ctx);
-    expect(fini.boosters[0]).toMatchObject({ statut: 'fait', priorites: ['Mobilité', 'Cardio'] });
+    expect(fini.boosters[0]).toMatchObject({ statut: 'fait', priorites: ['Mobilité', '', 'Cardio'] });
     expect(fini.relances.filter((r) => r.modele === 'suivi_booster')).toHaveLength(1);
     // Compléter la séance après coup ne relance pas une deuxième fois.
     const complete = terminerBooster(fini, 'b', { priorites: ['Mobilité', 'Cardio', 'Sommeil'] }, ctx);

@@ -9,17 +9,23 @@ import { carnetDemo } from './crm-demo';
 import { supabase } from './supabase';
 
 export type BoosterAVenir = Booster & { contact: Contact };
-export type SaisieContact = { prenom: string; nom?: string; telephone?: string; email?: string; source?: string };
+export type SaisieContact = Parameters<typeof regles.creerContact>[1];
 export type CompteRendu = regles.SaisieBooster & { tests?: string; priorites: string[] };
 
 /** L'accueil des clients côté coach, quelle que soit la source (démo locale ou Supabase). */
 export interface DepotCrm {
   contacts(): Promise<ContactResume[]>;
+  boosters(): Promise<regles.BoosterDossier[]>;
   fiche(id: string): Promise<FicheContact>;
   journee(): Promise<{ relances: RelanceAFaire[]; boosters: BoosterAVenir[] }>;
   creerContact(saisie: SaisieContact): Promise<{ contact: Contact } | { doublon: Doublon }>;
   modifierContact(id: string, patch: Parameters<typeof regles.modifierContact>[2]): Promise<void>;
   planifierBooster(contactId: string, date: string): Promise<void>;
+  /** « Nouveau Booster » : renvoie l'identifiant pour ouvrir l'éditeur dessus. */
+  creerBooster(contactId: string, saisie: regles.SaisieFicheBooster & { date: string }): Promise<string>;
+  /** Enregistrement explicite de l'éditeur Booster (les 4 rubriques). */
+  modifierBooster(boosterId: string, saisie: regles.SaisieFicheBooster): Promise<void>;
+  supprimerBooster(boosterId: string): Promise<void>;
   /** Enregistre la saisie en cours de séance (évaluation, entretien, priorités) sans clore le Booster. */
   enregistrerBooster(boosterId: string, saisie: regles.SaisieBooster): Promise<void>;
   terminerBooster(boosterId: string, compteRendu: CompteRendu): Promise<void>;
@@ -29,6 +35,11 @@ export interface DepotCrm {
   reporterRelance(id: string, echeance: string): Promise<void>;
   /** Ouvre l'espace client (programmes, séances) et clôt les relances commerciales. */
   devenirClient(contactId: string): Promise<void>;
+  /**
+   * « Préparer / Actualiser l'accès client » : ouvre la fiche client avec l'e-mail du contact,
+   * ou recopie l'e-mail et le téléphone actuels sur la fiche client existante.
+   */
+  preparerAcces(contactId: string): Promise<void>;
   archiver(contactId: string): Promise<void>;
   reactiver(contactId: string): Promise<void>;
   /** Appelé par le questionnaire public, sans compte. */
@@ -57,6 +68,7 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
   soumettreQuestionnaire: DepotCrm['soumettreQuestionnaire'];
   lienQuestionnaire: DepotCrm['lienQuestionnaire'];
   ouvrirEspaceClient: (contact: Contact) => Promise<string>;
+  actualiserEspaceClient: (contact: Contact) => Promise<void>;
 }): DepotCrm {
   async function ecrire(avant: Carnet, apres: Carnet) {
     await ecrireBrut(avant, apres);
@@ -71,6 +83,9 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
   return {
     async contacts() {
       return regles.listeContacts(await lire());
+    },
+    async boosters() {
+      return regles.listeBoosters(await lire());
     },
     async fiche(id) {
       const f = regles.fiche(await lire(), id);
@@ -91,6 +106,14 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
     },
     modifierContact: (id, patch) => appliquer((c) => regles.modifierContact(c, id, patch)),
     planifierBooster: (contactId, date) => appliquer((c, ctx) => regles.planifierBooster(c, contactId, date, ctx)),
+    async creerBooster(contactId, saisie) {
+      const avant = await lire();
+      const r = regles.creerBooster(avant, contactId, saisie, contexte());
+      await ecrire(avant, r.carnet);
+      return r.id;
+    },
+    modifierBooster: (id, saisie) => appliquer((c, ctx) => regles.modifierBooster(c, id, saisie, ctx)),
+    supprimerBooster: (id) => appliquer((c, ctx) => regles.supprimerBooster(c, id, ctx)),
     enregistrerBooster: (id, saisie) => appliquer((c) => regles.enregistrerBooster(c, id, saisie)),
     terminerBooster: (id, cr) => appliquer((c, ctx) => regles.terminerBooster(c, id, cr, ctx)),
     annulerBooster: (id) => appliquer((c, ctx) => regles.annulerBooster(c, id, ctx)),
@@ -103,6 +126,20 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
       const contact = avant.contacts.find((x) => x.id === contactId);
       if (!contact) throw new Error('Contact introuvable');
       const clientId = contact.clientId ?? (await extra.ouvrirEspaceClient(contact));
+      await ecrire(avant, regles.devenirClient(avant, contactId, clientId, contexte()));
+    },
+    async preparerAcces(contactId) {
+      const avant = await lire();
+      const contact = avant.contacts.find((x) => x.id === contactId);
+      if (!contact) throw new Error('Contact introuvable');
+      if (contact.statut === 'archive') throw new Error('Réactivez d’abord ce dossier.');
+      if (!contact.email) throw new Error('Ajoutez d’abord l’e-mail du client dans Coordonnées : il se connectera avec cette adresse.');
+      if (contact.clientId) {
+        await extra.actualiserEspaceClient(contact);
+        prevenir();
+        return;
+      }
+      const clientId = await extra.ouvrirEspaceClient(contact);
       await ecrire(avant, regles.devenirClient(avant, contactId, clientId, contexte()));
     },
     archiver: (id) => appliquer((c, ctx) => regles.archiver(c, id, ctx)),
@@ -152,6 +189,16 @@ export const crmDemo = creerDepot(lireDemo, ecrireDemo, {
     await AsyncStorage.setItem(CLE_CLIENTS_DEMO, JSON.stringify([...ajoutes, { id, prenom: contact.prenom, nom: contact.nom }]));
     return id;
   },
+  async actualiserEspaceClient(contact) {
+    let ajoutes: { id: string; prenom: string; nom: string }[] = [];
+    try {
+      ajoutes = JSON.parse((await AsyncStorage.getItem(CLE_CLIENTS_DEMO)) ?? '[]');
+    } catch {
+      ajoutes = [];
+    }
+    const maj = ajoutes.map((a) => (a.id === contact.clientId ? { ...a, prenom: contact.prenom, nom: contact.nom } : a));
+    await AsyncStorage.setItem(CLE_CLIENTS_DEMO, JSON.stringify(maj));
+  },
 });
 
 export async function effacerCrmDemo() {
@@ -169,13 +216,16 @@ const versLigne = {
   contacts: (c: Contact): Ligne => ({
     id: c.id, prenom: c.prenom, nom: c.nom, telephone: n(c.telephone), email: n(c.email), date_naissance: n(c.dateNaissance),
     statut: c.statut, statut_avant_archive: n(c.statutAvantArchive), source: n(c.source), notes: n(c.notes),
-    client_id: n(c.clientId), cree_le: c.creeLe,
+    client_id: n(c.clientId), cree_le: c.creeLe, statut_crm: n(c.statutCrm), objectif_principal: n(c.objectifPrincipal),
+    prochaine_action: n(c.prochaineAction), offre_vendue: n(c.offreVendue),
   }),
   questionnaires: (q: Questionnaire): Ligne => ({ id: q.id, contact_id: q.contactId, recu_le: q.recuLe, reponses: q.reponses, alertes: q.alertes }),
   boosters: (b: Booster): Ligne => ({
     id: b.id, contact_id: b.contactId, date: b.date, statut: b.statut, tests: n(b.tests), compte_rendu: n(b.compteRendu),
     priorites: b.priorites, paye: b.paye ?? false, evaluation: b.evaluation ?? null, entretien: b.entretien ?? null, plan_envoye_le: n(b.planEnvoyeLe),
-    redaction: b.redaction ?? null,
+    redaction: b.redaction ?? null, nom: n(b.nom), statut_crm: n(b.statutCrm), resume_ia: n(b.resumeIa), points_attention: n(b.pointsAttention),
+    offre_recommandee: n(b.offreRecommandee), resultat_commercial: n(b.resultatCommercial), date_relance: n(b.dateRelance),
+    notes_internes: n(b.notesInternes),
   }),
   relances: (r: Relance): Ligne => ({
     id: r.id, contact_id: r.contactId, echeance: r.echeance, modele: r.modele, note: n(r.note), faite_le: n(r.faiteLe), auto: r.auto ?? false,
@@ -186,13 +236,16 @@ const depuisLigne = {
   contacts: (l: any): Contact => ({
     id: l.id, prenom: l.prenom, nom: l.nom, telephone: u(l.telephone), email: u(l.email), dateNaissance: u(l.date_naissance),
     statut: l.statut, statutAvantArchive: u(l.statut_avant_archive), source: u(l.source), notes: u(l.notes),
-    clientId: u(l.client_id), creeLe: l.cree_le,
+    clientId: u(l.client_id), creeLe: l.cree_le, statutCrm: u(l.statut_crm), objectifPrincipal: u(l.objectif_principal),
+    prochaineAction: u(l.prochaine_action), offreVendue: u(l.offre_vendue),
   }),
   questionnaires: (l: any): Questionnaire => ({ id: l.id, contactId: l.contact_id, recuLe: l.recu_le, reponses: l.reponses, alertes: l.alertes }),
   boosters: (l: any): Booster => ({
     id: l.id, contactId: l.contact_id, date: l.date, statut: l.statut, tests: u(l.tests), compteRendu: u(l.compte_rendu),
     priorites: l.priorites, paye: l.paye, evaluation: u(l.evaluation), entretien: u(l.entretien), planEnvoyeLe: u(l.plan_envoye_le),
-    redaction: u(l.redaction),
+    redaction: u(l.redaction), nom: u(l.nom), statutCrm: u(l.statut_crm), resumeIa: u(l.resume_ia), pointsAttention: u(l.points_attention),
+    offreRecommandee: u(l.offre_recommandee), resultatCommercial: u(l.resultat_commercial), dateRelance: u(l.date_relance),
+    notesInternes: u(l.notes_internes),
   }),
   relances: (l: any): Relance => ({
     id: l.id, contactId: l.contact_id, echeance: l.echeance, modele: l.modele, note: u(l.note), faiteLe: u(l.faite_le), auto: l.auto,
@@ -218,6 +271,14 @@ export function creerCrmSupabase(db: SupabaseClient): DepotCrm {
   /** Les règles renvoient les mêmes objets quand rien n'a changé : on n'envoie que les autres. */
   async function ecrire(avant: Carnet, apres: Carnet) {
     for (const t of TABLES) {
+      // Seule une suppression explicite (Booster saisi par erreur) retire une ligne.
+      const restants = new Set((apres[t] as { id: string }[]).map((x) => x.id));
+      const retires = (avant[t] as { id: string }[]).filter((x) => !restants.has(x.id)).map((x) => x.id);
+      if (retires.length) {
+        const { data, error } = await db.from(t).delete().in('id', retires).select('id');
+        if (error) throw new Error(error.message);
+        if ((data ?? []).length !== retires.length) throw new Error('Suppression non confirmée par le serveur.');
+      }
       const anciens = new Set<unknown>(avant[t]);
       const changes = (apres[t] as (Contact & Questionnaire & Booster & Relance)[]).filter((x) => !anciens.has(x));
       if (changes.length === 0) continue;
@@ -244,6 +305,15 @@ export function creerCrmSupabase(db: SupabaseClient): DepotCrm {
         .single();
       if (error) throw new Error(error.message);
       return data.id as string;
+    },
+    async actualiserEspaceClient(contact) {
+      const { data, error } = await db
+        .from('clients')
+        .update({ prenom: contact.prenom, nom: contact.nom, email: n(contact.email), telephone: n(contact.telephone) })
+        .eq('id', contact.clientId!)
+        .select('id');
+      if (error) throw new Error(error.message);
+      if (!data?.length) throw new Error('Fiche client introuvable ou non modifiable.');
     },
   });
 }

@@ -159,10 +159,11 @@ describe('Booster et relances', () => {
     const apres = terminerBooster(
       carnet,
       carnet.boosters[0].id,
-      { compteRendu: 'Bonne base', priorites: ['Mobilité hanches', 'Gainage', '', 'Sommeil'], paye: true },
+      { compteRendu: 'Bonne base', priorites: ['Mobilité hanches', '', ' Sommeil '], paye: true },
       ctx,
     );
-    expect(apres.boosters[0]).toMatchObject({ statut: 'fait', priorites: ['Mobilité hanches', 'Gainage', 'Sommeil'], paye: true });
+    // Chaque priorité garde sa place (champs Priorité 1, 2, 3 d'origine).
+    expect(apres.boosters[0]).toMatchObject({ statut: 'fait', priorites: ['Mobilité hanches', '', 'Sommeil'], paye: true });
     expect(apres.contacts[0].statut).toBe('booster_fait');
     expect(apres.relances.filter((r) => r.contactId === contact.id && !r.faiteLe).map((r) => [r.modele, r.echeance])).toEqual([
       ['suivi_booster', '2026-10-25'],
@@ -210,5 +211,119 @@ describe('tâches libres', () => {
     const jour = relancesDuJour(avec, ctx.maintenant);
     expect(jour.map((r) => r.note)).toContain('Préparer son programme');
     expect(rediger('tache', contact, { coach: 'Sylvain' })).toBe('');
+  });
+});
+
+describe('champs d’origine (lot 2)', () => {
+  it('affiche le statut d’origine de l’étape, et celui choisi par le coach s’il y en a un', async () => {
+    const { statutContact, modifierContact } = await import('../src/domain/crm');
+    const ctx = contexte();
+    const { carnet, contact } = avecJulie(ctx);
+    expect(statutContact(contact)).toBe('Nouveau Prospect');
+    const choisi = modifierContact(carnet, contact.id, { statutCrm: 'En réflexion', objectifPrincipal: 'Remise en forme' });
+    const julie = choisi.contacts[0];
+    expect(statutContact(julie)).toBe('En réflexion');
+    expect(julie.objectifPrincipal).toBe('Remise en forme');
+    // Planifier un Booster fait avancer le parcours : le statut suit à nouveau l'étape.
+    const planifie = planifierBooster(choisi, contact.id, '2026-10-22T18:00:00', ctx);
+    expect(statutContact(planifie.contacts[0])).toBe('Booster planifié');
+    // Archivé : le statut reste lisible, l'archivage est à part.
+    expect(statutContact(archiver(planifie, contact.id, ctx).contacts[0])).toBe('Booster planifié');
+  });
+
+  it('crée avec un téléphone seul, ajoute l’e-mail sur la même personne et refuse un doublon', async () => {
+    const { modifierContact } = await import('../src/domain/crm');
+    const ctx = contexte();
+    const { carnet, contact } = avecJulie(ctx);
+    expect(contact.email).toBeUndefined();
+    const avecEmail = modifierContact(carnet, contact.id, { email: 'Julie@Exemple.fr ' });
+    expect(avecEmail.contacts).toHaveLength(1);
+    expect(avecEmail.contacts[0].email).toBe('julie@exemple.fr');
+    const r = creerContact(avecEmail, { prenom: 'Julie', email: 'julie@exemple.fr' }, ctx);
+    expect('doublon' in r && r.doublon.par).toBe('email');
+    const marc = creerContact(avecEmail, { prenom: 'Marc', telephone: '07 00 00 00 01' }, ctx);
+    if ('doublon' in marc) throw new Error('inattendu');
+    expect(() => modifierContact(marc.carnet, marc.contact.id, { email: 'julie@exemple.fr' })).toThrow(/déjà celui de Julie/);
+    expect(() => modifierContact(marc.carnet, marc.contact.id, { telephone: '12' })).toThrow(/non reconnu/);
+  });
+
+  it('filtre par statut d’origine et cache les archivés sauf si demandé', async () => {
+    const { modifierContact } = await import('../src/domain/crm');
+    const ctx = contexte();
+    const { carnet, contact } = avecJulie(ctx);
+    const perdu = modifierContact(carnet, contact.id, { statutCrm: 'Perdu' });
+    const archive = archiver(perdu, contact.id, ctx);
+    const liste = listeContacts(archive);
+    expect(filtrerContacts(liste, '', 'Perdu')).toHaveLength(0);
+    expect(filtrerContacts(liste, '', 'Perdu', { archives: true })).toHaveLength(1);
+    expect(filtrerContacts(liste, '', 'Nouveau Prospect', { archives: true })).toHaveLength(0);
+  });
+});
+
+describe('éditeur Booster (lot 2)', () => {
+  async function avecBooster() {
+    const crmMod = await import('../src/domain/crm');
+    const ctx = contexte();
+    const { carnet, contact } = avecJulie(ctx);
+    const { carnet: c2, id } = crmMod.creerBooster(carnet, contact.id, { date: '2026-10-22T18:00:00.000Z' }, ctx);
+    return { ...crmMod, ctx, carnet: c2, contact, id };
+  }
+
+  it('crée un Booster nommé à l’origine, À préparer, et refuse sans date ni contact', async () => {
+    const { carnet, id, statutBooster, creerBooster, ctx, contact } = await avecBooster();
+    const b = carnet.boosters.find((x) => x.id === id)!;
+    expect(b.nom).toBe('Booster · Julie');
+    expect(statutBooster(b)).toBe('À préparer');
+    expect(b.priorites).toEqual(['', '', '']);
+    expect(carnet.contacts[0].statut).toBe('booster_prevu');
+    expect(() => creerBooster(carnet, contact.id, { date: '' }, ctx)).toThrow(/date/);
+    expect(() => creerBooster(carnet, 'inconnu', { date: '2026-10-22T18:00:00Z' }, ctx)).toThrow(/contact/);
+  });
+
+  it('garde les 3 priorités à leur place et les champs des 4 rubriques', async () => {
+    const { carnet, id, modifierBooster, ctx } = await avecBooster();
+    const apres = modifierBooster(
+      carnet,
+      id,
+      {
+        statutCrm: 'En cours',
+        resumeIa: 'Reprise après 2 ans',
+        priorites: ['', ' Mobilité des hanches ', ''],
+        offreRecommandee: 'Aucune',
+        resultatCommercial: 'En réflexion',
+        dateRelance: '2026-10-30',
+        notesInternes: 'Hésite sur le budget',
+        entretien: { pourquoiMaintenant: 'Mariage en juin' },
+      },
+      ctx,
+    );
+    const b = apres.boosters.find((x) => x.id === id)!;
+    expect(b.priorites).toEqual(['', 'Mobilité des hanches', '']);
+    expect(b.statutCrm).toBe('En cours');
+    expect(b.statut).toBe('prevu');
+    expect(b.dateRelance).toBe('2026-10-30');
+    expect(b.entretien?.pourquoiMaintenant).toBe('Mariage en juin');
+  });
+
+  it('« Terminée » fait avancer le contact comme le bouton Terminer, « Annulée » le ramène', async () => {
+    const { carnet, id, modifierBooster, statutBooster, ctx } = await avecBooster();
+    const fini = modifierBooster(carnet, id, { statutCrm: 'Terminée' }, ctx);
+    expect(statutBooster(fini.boosters.find((x) => x.id === id)!)).toBe('Terminée');
+    expect(fini.contacts[0].statut).toBe('booster_fait');
+    expect(fini.relances.some((r) => r.modele === 'suivi_booster' && !r.faiteLe)).toBe(true);
+    const annule = modifierBooster(carnet, id, { statutCrm: 'Annulée' }, ctx);
+    expect(annule.contacts[0].statut).toBe('prospect');
+  });
+
+  it('supprime un Booster erroné sans toucher au contact ni aux autres Boosters', async () => {
+    const { carnet, id, supprimerBooster, creerBooster, ctx, contact } = await avecBooster();
+    const deux = creerBooster(carnet, contact.id, { date: '2026-11-02T18:00:00Z' }, ctx);
+    const apres = supprimerBooster(deux.carnet, id, ctx);
+    expect(apres.boosters.map((b) => b.id)).toEqual([deux.id]);
+    expect(apres.contacts).toHaveLength(1);
+    expect(apres.contacts[0].statut).toBe('booster_prevu');
+    const plusRien = supprimerBooster(apres, deux.id, ctx);
+    expect(plusRien.contacts[0].statut).toBe('prospect');
+    expect(plusRien.questionnaires).toEqual(apres.questionnaires);
   });
 });

@@ -1,17 +1,7 @@
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 
-import { Ecran } from '@/ui/composants';
-import { FicheContactVue } from '@/ui/crm/fiche';
-
+/** Ancienne adresse de la fiche contact : la fiche d'origine est une modale de la rubrique Contacts. */
 export default function FicheContact() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  return (
-    <Ecran>
-      <Stack.Screen options={{ title: 'Fiche contact' }} />
-      <FicheContactVue
-        id={id}
-        onVoirClient={(clientId, prenom) => router.push({ pathname: '/coach/client/[id]', params: { id: clientId, prenom } })}
-      />
-    </Ecran>
-  );
+  return <Redirect href={{ pathname: '/coach', params: { onglet: 'crm', rubrique: 'Contacts', contact: id } }} />;
 }

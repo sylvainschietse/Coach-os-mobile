@@ -18,6 +18,7 @@ import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { depot } from '@/data';
 import { crm, ecouterCrm } from '@/data/crm';
 import { useSession } from '@/data/session';
+import type { Booster, Contact } from '@/domain/crm';
 import type { ClientResume } from '@/domain/types';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { NutritionCoach } from '@/ui/alimentation/nutrition-coach';
@@ -35,7 +36,12 @@ import {
   type OngletDef,
 } from '@/ui/coque';
 import { Carte, Chargement, Erreur, Pastille, SousTitre, Texte } from '@/ui/composants';
+import { Boosters } from '@/ui/crm/boosters';
+import { nomComplet } from '@/ui/crm/commun';
 import { Contacts } from '@/ui/crm/contacts';
+import { EditeurBoosterModale } from '@/ui/crm/editeur-booster';
+import { FicheContactModale, type VoletFiche } from '@/ui/crm/fiche-contact';
+import { ConfirmerSuppression } from '@/ui/crm/suppression';
 import { VueEnsemble } from '@/ui/crm/vue-ensemble';
 import { EspaceClient } from '@/ui/espace-client';
 import { Modeles } from '@/ui/programmes/modeles';
@@ -64,7 +70,7 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Paiements', libelle: 'Paiements', icone: Wallet },
   { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
 ];
-const LOT: Partial<Record<Rubrique, number>> = { Boosters: 2, Coachings: 2, Bilans: 4, Documents: 2, Taches: 2, Paiements: 2, Automations: 6 };
+const LOT: Partial<Record<Rubrique, number>> = { Coachings: 2, Bilans: 4, Documents: 2, Taches: 2, Paiements: 2, Automations: 6 };
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 const quand = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
@@ -72,7 +78,7 @@ const quand = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 
 export default function EspaceCoach() {
   const { profil, email, deconnecter } = useSession();
   const { width } = useWindowDimensions();
-  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; client?: string }>();
+  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; client?: string } & ParamsDossier>();
   const onglet = ONGLETS.find((o) => o.cle === params.onglet)?.cle ?? 'crm';
   const rubrique = RUBRIQUES.find((r) => r.cle === params.rubrique)?.cle ?? 'Accueil';
   const [apercu, setApercu] = useState<'coach' | 'client'>('coach');
@@ -84,9 +90,8 @@ export default function EspaceCoach() {
   if (profil?.role !== 'coach') return <Redirect href="/" />;
 
   // L'onglet et la rubrique vivent dans l'adresse : Retour et rechargement gardent le contexte.
-  const naviguer = (o: Onglet, r?: Rubrique) =>
-    router.setParams({ onglet: o, rubrique: o === 'crm' ? (r ?? rubrique) : undefined, client: undefined });
-  const ouvrirContact = (id: string) => router.push({ pathname: '/coach/contact/[id]', params: { id } });
+  const naviguer = (o: Onglet, r?: Rubrique, dossier?: string) =>
+    router.setParams({ onglet: o, rubrique: o === 'crm' ? (r ?? rubrique) : undefined, client: undefined, dossier, ...FERME });
   const ouvrirClient = (c: ClientResume) => router.push({ pathname: '/coach/client/[id]', params: { id: c.id, prenom: c.prenom } });
 
   const enTete = (
@@ -147,9 +152,9 @@ export default function EspaceCoach() {
           {onglet === 'crm' && (
             <Crm
               rubrique={rubrique}
+              params={params}
               large={width >= LARGEUR_LG}
-              onRubrique={(r) => naviguer('crm', r)}
-              onOuvrirContact={ouvrirContact}
+              onRubrique={(r, dossier) => naviguer('crm', r, dossier)}
               onCycles={() => naviguer('suivis')}
             />
           )}
@@ -190,33 +195,46 @@ export default function EspaceCoach() {
   );
 }
 
+/**
+ * Fiche ou éditeur ouverts : dans l'adresse, pour que le rechargement rouvre le même dossier et que fermer
+ * l'éditeur Booster ramène à la fiche d'où il a été ouvert.
+ */
+type ParamsDossier = { contact?: string; volet?: string; booster?: string; bc?: string; dossier?: string };
+const FERME = { contact: undefined, volet: undefined, booster: undefined, bc: undefined };
+
 function Crm({
   rubrique,
+  params,
   large,
   onRubrique,
-  onOuvrirContact,
   onCycles,
 }: {
   rubrique: Rubrique;
+  params: ParamsDossier;
   large: boolean;
-  onRubrique: (r: Rubrique) => void;
-  onOuvrirContact: (id: string) => void;
+  onRubrique: (r: Rubrique, dossier?: string) => void;
   onCycles: () => void;
 }) {
   const [maj, setMaj] = useState(() => new Date());
+  const [suppression, setSuppression] = useState<{ booster: Booster; contact: Contact }>();
   const charger = useCallback(async () => {
-    const [contacts, journee] = await Promise.all([crm.contacts(), crm.journee()]);
+    const [contacts, journee, boosters] = await Promise.all([crm.contacts(), crm.journee(), crm.boosters()]);
     setMaj(new Date());
-    return { contacts, relances: journee.relances };
+    return { contacts, relances: journee.relances, boosters };
   }, []);
   const vue = useCharger(charger, 'vue-ensemble');
   useFocusEffect(vue.recharger);
   useRechargerSur(vue.recharger, ecouterCrm);
   const titre = RUBRIQUES.find((r) => r.cle === rubrique)!.libelle;
 
+  const ouvrirContact = (id: string, volet?: VoletFiche) => router.setParams({ ...FERME, contact: id, volet });
+  const ouvrirBooster = (b: Pick<Booster, 'id' | 'contactId'>) => router.setParams({ booster: b.id, bc: b.contactId });
+  const nouveauBooster = (contactId?: string) => router.setParams({ booster: 'nouveau', bc: contactId });
+  const volet = (['fiche', 'boosters', 'nutrition', 'photos'] as const).find((v) => v === params.volet) ?? 'fiche';
+
   return (
     <View style={{ flexDirection: large ? 'row' : 'column', gap: 24, alignItems: large ? 'flex-start' : 'stretch' }}>
-      <MenuRubriques rubriques={RUBRIQUES} valeur={rubrique} onChange={onRubrique} large={large} />
+      <MenuRubriques rubriques={RUBRIQUES} valeur={rubrique} onChange={(r) => onRubrique(r)} large={large} />
       <View style={{ flex: large ? 1 : undefined, minWidth: 0 }}>
         <EnTeteRubrique
           kicker="Gestion du coaching"
@@ -234,17 +252,68 @@ function Crm({
           (vue.donnee ? (
             <VueEnsemble
               donnees={vue.donnee}
-              maintenant={maj}
               onRubrique={onRubrique}
-              onOuvrirContact={onOuvrirContact}
+              onOuvrirContact={ouvrirContact}
+              onOuvrirBooster={ouvrirBooster}
               onCycles={onCycles}
             />
           ) : (
             !vue.erreur && <Chargement />
           ))}
-        {rubrique === 'Contacts' && <Contacts onOuvrir={onOuvrirContact} />}
+        {rubrique === 'Contacts' && (
+          <Contacts
+            onOuvrir={(id) => ouvrirContact(id)}
+            onNouveau={() => router.setParams({ ...FERME, contact: 'nouveau' })}
+            onPlanifierBooster={(id) => nouveauBooster(id)}
+            onRubrique={(r, id) => onRubrique(r, id)}
+          />
+        )}
+        {rubrique === 'Boosters' && (
+          <Boosters
+            contactId={params.dossier}
+            onToutAfficher={() => onRubrique('Boosters')}
+            onOuvrir={ouvrirBooster}
+            onNouveau={() => nouveauBooster(params.dossier)}
+            onSupprimer={(b) => setSuppression({ booster: b, contact: b.contact })}
+            onDocuments={(id) => onRubrique('Documents', id)}
+          />
+        )}
         {LOT[rubrique] && <NonRepris ecran={titre} lot={LOT[rubrique]!} />}
       </View>
+
+      {params.booster ? (
+        <EditeurBoosterModale
+          key={`${params.booster}-${params.bc ?? ''}`}
+          boosterId={params.booster === 'nouveau' ? undefined : params.booster}
+          contactId={params.bc}
+          onFermer={() => router.setParams({ booster: undefined, bc: undefined })}
+          onSupprimer={(booster, contact) => setSuppression({ booster, contact })}
+        />
+      ) : params.contact ? (
+        <FicheContactModale
+          key={params.contact}
+          id={params.contact === 'nouveau' ? undefined : params.contact}
+          volet={volet}
+          onVolet={(v) => router.setParams({ volet: v })}
+          onFermer={() => router.setParams(FERME)}
+          onOuvrirAutre={(id) => ouvrirContact(id)}
+          onBooster={ouvrirBooster}
+          onNouveauBooster={(id) => nouveauBooster(id)}
+          onSupprimerBooster={(booster, contact) => setSuppression({ booster, contact })}
+        />
+      ) : null}
+      {suppression && (
+        <ConfirmerSuppression
+          quoi="ce Booster"
+          nom={suppression.booster.nom || 'Booster'}
+          contact={nomComplet(suppression.contact)}
+          onSupprimer={async () => {
+            await crm.supprimerBooster(suppression.booster.id);
+            if (params.booster === suppression.booster.id) router.setParams({ booster: undefined, bc: undefined });
+          }}
+          onFermer={() => setSuppression(undefined)}
+        />
+      )}
     </View>
   );
 }

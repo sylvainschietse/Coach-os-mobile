@@ -69,7 +69,8 @@ export function construireCompteRendu(contact: Contact, booster: Booster, repons
   const textesPriorites = red.priorites ?? modele.priorites ?? [];
   const semaine = (red.semaine ?? modele.semaine ?? []).filter((x) => x.trim());
   const suite = (red.suite ?? modele.suite ?? []).filter((x) => x.trim());
-  const titres = booster.priorites.filter((p) => p.trim());
+  // Chaque priorité garde son explication même si une place est vide (priorité 2 sans 1).
+  const titres = booster.priorites.map((p, i) => ({ titre: p.trim(), i })).filter((p) => p.titre);
   const propre = (v: string | undefined) => (v?.trim() ? v.trim() : undefined);
   const sections: SectionCompteRendu[] = [];
   const ajouter = (titre: string, lignes: (string | undefined | false)[], numerotee?: boolean) => {
@@ -100,7 +101,7 @@ export function construireCompteRendu(contact: Contact, booster: Booster, repons
   );
   ajouter('Tes habitudes à travailler', bilan?.leviers ?? []);
   ajouter('Ce qui peut te freiner', [entretien.freins, bilan?.motivation.find((l) => l.startsWith('Principal obstacle'))]);
-  ajouter('Tes 3 priorités', titres.map((p, i) => (textesPriorites[i] ? `${p}\n${textesPriorites[i]}` : p)), true);
+  ajouter('Tes 3 priorités', titres.map(({ titre, i }) => (textesPriorites[i] ? `${titre}\n${textesPriorites[i]}` : titre)), true);
   ajouter('Cette semaine', semaine);
   ajouter('La suite', suite);
 
@@ -139,7 +140,7 @@ export function construireCompteRendu(contact: Contact, booster: Booster, repons
       notes: propre(e?.notes),
       leviers: bilan?.leviers ?? [],
       freins: [propre(entretien.freins), bilan?.motivation.find((l) => l.startsWith('Principal obstacle'))].filter((x): x is string => !!x),
-      priorites: titres.map((titre, i) => ({ titre, texte: propre(textesPriorites[i]) })),
+      priorites: titres.map(({ titre, i }) => ({ titre, texte: propre(textesPriorites[i]) })),
       semaine,
       suite,
     },
