@@ -19,7 +19,10 @@ export function Modale({
   enTete,
   children,
   pied,
+  largeur,
 }: {
+  /** `max-w-3xl` par défaut ; l'étape 2 de la création de séance passe en `max-w-4xl`. */
+  largeur?: number;
   titre: string;
   /** Croix et touche Retour : passent par la même garde que le bouton Fermer. */
   onFermer: () => void;
@@ -41,7 +44,7 @@ export function Modale({
           },
         ]}
       >
-        <View accessibilityRole={'dialog' as never} accessibilityLabel={titre} style={[styles.boite, etroit && { borderRadius: arrondi.global }]}>
+        <View accessibilityRole={'dialog' as never} accessibilityLabel={titre} style={[styles.boite, largeur ? { maxWidth: largeur } : null, etroit && { borderRadius: arrondi.global }]}>
           <View style={styles.titreLigne}>
             <Text style={styles.titre} numberOfLines={2}>
               {titre}
