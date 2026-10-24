@@ -235,15 +235,57 @@ export interface Aliment extends Macros {
   source: 'base' | 'off' | 'coach' | 'client';
   /** Aliment personnel d'un client. */
   clientId?: string;
+  /** Code de l'aliment dans la table Ciqual (Anses). */
+  codeCiqual?: string;
+  /** Nutriments non mesurés : enregistrés à 0, mais à afficher comme inconnus. */
+  valeursInconnues?: (keyof Macros)[];
+  /** Nutriments présents à l'état de traces dans Ciqual (comptés 0). */
+  traces?: (keyof Macros)[];
 }
 
 /** Un ingrédient garde ses valeurs pour 100 g : la recette ne change pas si la base change. */
 export interface Ingredient extends Macros {
   alimentId?: string;
   nom: string;
+  /** Grammes qui servent au calcul des macros ; 0 quand la quantité n'est pas en grammes (pièce, ml, selon goût). */
   quantiteG: number;
   contient: Contient[];
+  /** Valeurs pour 100 g inconnues : les macros de la recette viennent alors des valeurs publiées par portion. */
+  valeursInconnues?: boolean;
+  /** Quantité telle qu'écrite dans la recette source (ex. 2 pièce, 1 c. à soupe, selon goût). */
+  quantite?: number;
+  unite?: string;
+  approximatif?: boolean;
+  facultatif?: boolean;
 }
+
+export type RegimeSource = 'omnivore' | 'vegetarien' | 'vegan';
+
+/** Une autre version de la recette publiée avec elle : végétarienne, végane, ou enrichie en protéines. */
+export interface VarianteRecette {
+  id: string;
+  libelle: string;
+  regime: RegimeSource;
+  macrosPortion: Macros;
+  ingredients: Ingredient[];
+  notes?: string[];
+  etapes?: string;
+}
+
+/** D'où vient une recette importée : la source et ce qu'en disent ses lecteurs (pas une validation du coach). */
+export interface OrigineRecette {
+  ref: string;
+  nom: string;
+  url: string;
+  note?: number;
+  votes?: number;
+  verifieLe?: string;
+  cuisine?: string;
+  methode?: string;
+  prepMin?: number;
+}
+
+export type TypeRecette = 'plat' | 'collation' | 'sucre' | 'sale';
 
 export interface Recette {
   id: string;
@@ -260,6 +302,12 @@ export interface Recette {
   /** Régimes confirmés à la main (sans gluten notamment), en plus de ce que disent les ingrédients. */
   regimesConfirmes: Regime[];
   archive?: boolean;
+  /** Valeurs par portion publiées par la source : elles priment sur le calcul par ingrédient. */
+  macrosPortion?: Macros;
+  variantes?: VarianteRecette[];
+  origine?: OrigineRecette;
+  types?: TypeRecette[];
+  regimeSource?: RegimeSource;
 }
 
 export type MomentRepas = 'petit_dejeuner' | 'dejeuner' | 'collation' | 'diner';

@@ -11,7 +11,10 @@ import {
   exclusionsTrouvees,
   lireProduitOff,
   objectifsDuJour,
+  quantiteLisible,
   rechercherAliments,
+  rechercherRecettes,
+  recetteDeVariante,
   recettesPourLeClient,
   totalRecette,
   totauxDuJour,
@@ -99,8 +102,8 @@ describe('recettes', () => {
     const { recette: r, adaptations, impossibles } = adapterAuxRegimes(recette, ['vegetarien']);
     expect(impossibles).toEqual([]);
     expect(adaptations).toHaveLength(1);
-    expect(adaptations[0].apres.nom).toBe('Tofu ferme');
-    // 300 g de poulet = 69 g de protéines ; à 15 g/100 g il faudrait 460 g, plafonné à 450 g.
+    expect(adaptations[0].apres.nom).toBe('Tofu nature');
+    // 300 g de poulet = 69 g de protéines ; à 13,4 g/100 g il faudrait 515 g, plafonné à 450 g.
     expect(adaptations[0].apres.quantiteG).toBe(450);
     expect(convientAuRegime(r, 'vegetarien')).toBe(true);
   });
@@ -155,5 +158,88 @@ describe('aliments', () => {
     expect(a).toMatchObject({ nom: 'Pâte à tartiner', marque: 'Marque', kcal: 539, portionG: 15, contient: ['lait'], source: 'off' });
     expect(lireProduitOff('1', { status: 0 })).toBeUndefined();
     expect(lireProduitOff('1', { status: 1, product: { product_name: 'x', nutriments: { fat_100g: 1 } } })).toBeUndefined();
+  });
+});
+
+describe('recettes importées de l’ancienne app (Zite)', () => {
+  // Format des recettes importées : macros publiées par portion, valeurs pour 100 g connues seulement pour la protéine de référence.
+  const importee: Recette = {
+    id: 'zite',
+    titre: 'Poulet au curry',
+    portions: 2,
+    statut: 'approuvee',
+    regimesConfirmes: [],
+    macrosPortion: { kcal: 500, proteines: 40, glucides: 45, lipides: 15 },
+    ingredients: [
+      { nom: 'Filet de poulet', quantiteG: 250, kcal: 110, proteines: 23.4, glucides: 0, lipides: 1.5, contient: ['viande'] },
+      { nom: 'Oignon', quantiteG: 0, quantite: 1, unite: 'pièce', kcal: 0, proteines: 0, glucides: 0, lipides: 0, valeursInconnues: true, contient: [] },
+      { nom: 'Lait de coco', quantiteG: 0, quantite: 200, unite: 'ml', kcal: 0, proteines: 0, glucides: 0, lipides: 0, valeursInconnues: true, contient: [] },
+    ],
+    variantes: [
+      {
+        id: 'vegan',
+        libelle: 'Adaptation vegan',
+        regime: 'vegan',
+        macrosPortion: { kcal: 480, proteines: 28, glucides: 47, lipides: 20 },
+        ingredients: [{ nom: 'Tofu nature', quantiteG: 300, kcal: 147, proteines: 13.4, glucides: 2.9, lipides: 8.5, contient: [] }],
+      },
+    ],
+    origine: { ref: 'zite:curry', nom: 'Good Food', url: 'https://example.org', note: 4.5, votes: 12 },
+    types: ['plat'],
+  };
+
+  it('garde les valeurs publiées par portion et ne devine pas le poids', () => {
+    const { parPortion, total, poidsPortionG } = totalRecette(importee);
+    expect(parPortion).toEqual(importee.macrosPortion);
+    expect(total.kcal).toBe(1000);
+    expect(poidsPortionG).toBeUndefined();
+  });
+
+  it('affiche les quantités comme la source', () => {
+    expect(quantiteLisible(importee.ingredients[1])).toBe('1 pièce');
+    expect(quantiteLisible({ ...importee.ingredients[1], quantite: 2 })).toBe('2 pièces');
+    expect(quantiteLisible({ ...importee.ingredients[1], quantite: undefined, unite: 'selon goût' })).toBe('selon goût');
+    expect(quantiteLisible(importee.ingredients[0])).toBe('250 g');
+  });
+
+  it('propose la variante végane publiée plutôt qu’un remplacement automatique', () => {
+    const [x] = recettesPourLeClient([importee], { ...profil, regimes: ['vegan'] });
+    expect(x.variante?.id).toBe('vegan');
+    expect(totalRecette(recetteDeVariante(importee, x.variante!)).parPortion.kcal).toBe(480);
+  });
+
+  it('remplace une protéine connue et corrige les valeurs publiées de l’écart', () => {
+    const { recette: r, impossibles } = adapterAuxRegimes(importee, ['vegetarien']);
+    expect(impossibles).toEqual([]);
+    const tofu = r.ingredients[0];
+    expect(tofu.nom).toBe('Tofu nature');
+    // 250 g de poulet (58,5 g de protéines) → 375 g de tofu (plafond 1,5×) : +316 kcal et −4,6 g de protéines pour la recette.
+    expect(tofu.quantiteG).toBe(375);
+    expect(r.macrosPortion!.kcal).toBeCloseTo(500 + (375 * 1.47 - 250 * 1.1) / 2, 5);
+    expect(r.macrosPortion!.proteines).toBeCloseTo(40 + (375 * 0.134 - 250 * 0.234) / 2, 5);
+  });
+
+  it('ne remplace pas un ingrédient dont les valeurs sont inconnues', () => {
+    const avecJambon: Recette = {
+      ...importee,
+      variantes: undefined,
+      ingredients: [{ ...importee.ingredients[1], nom: 'Jambon', contient: ['viande'] }],
+    };
+    expect(adapterAuxRegimes(avecJambon, ['vegetarien']).impossibles).toEqual(['Jambon']);
+    expect(recettesPourLeClient([avecJambon], { ...profil, regimes: ['vegetarien'] })).toEqual([]);
+  });
+
+  it('ajuste la portion à la cible en gardant les unités de la source', () => {
+    const { recette: r, macros } = adapterAuxBesoins(importee, { kcal: 600, proteines: 50, glucides: 0, lipides: 0 });
+    expect(Math.abs(macros.kcal - 600)).toBeLessThan(1);
+    expect(Math.abs(macros.proteines - 50)).toBeLessThan(1);
+    expect(r.portions).toBe(1);
+    expect(r.ingredients[1].unite).toBe('pièce');
+    expect(r.ingredients[1].quantite).toBeGreaterThan(0.5);
+  });
+
+  it('cherche par titre, ingrédient et type de repas', () => {
+    expect(rechercherRecettes([importee], 'coco').has('zite')).toBe(true);
+    expect(rechercherRecettes([importee], '', 'collation').size).toBe(0);
   });
 });

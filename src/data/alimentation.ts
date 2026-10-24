@@ -3,17 +3,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { lireProduitOff } from '@/domain/alimentation';
-import type { Aliment, Contient, EntreeRepas, Ingredient, ProfilNutrition, Recette, Regime } from '@/domain/types';
+import { lireProduitOff, lireRecette } from '@/domain/alimentation';
+import type { Aliment, Contient, EntreeRepas, Ingredient, Macros, OrigineRecette, ProfilNutrition, Recette, Regime } from '@/domain/types';
 import { nouvelId } from '@/lib/identifiant';
 
 import alimentsBase from './aliments-base.json';
 import { PROFILS_DEMO, RECETTES_DEMO, REPAS_DEMO } from './demo';
 import { supabase } from './supabase';
 
+/** Table Ciqual 2025 (Anses, Licence Ouverte Etalab 2.0), embarquée dans l'app : la même pour tous, sans réseau. */
+const BASE = alimentsBase as Aliment[];
+const IDS_BASE = new Set(BASE.map((a) => a.id));
+export const CREDIT_CIQUAL = 'Valeurs nutritionnelles : table Ciqual 2025 de l’Anses (Licence Ouverte Etalab 2.0).';
+
 /** Ce que la photo d'un repas laisse estimer : à vérifier par le client avant d'enregistrer. */
 export interface EstimationPhoto {
-  aliments: (Omit<Ingredient, 'contient' | 'alimentId'> & { confiance: 'haute' | 'moyenne' | 'basse' })[];
+  aliments: (Pick<Ingredient, 'nom' | 'quantiteG' | 'kcal' | 'proteines' | 'glucides' | 'lipides'> & { confiance: 'haute' | 'moyenne' | 'basse' })[];
   remarque?: string;
 }
 
@@ -82,7 +87,7 @@ const depotDemo: DepotAlimentation = {
   },
   enregistrerProfil: (p) => remplacer(profilsDemo, { ...p, majLe: new Date().toISOString() }, (x) => x.clientId === p.clientId),
   async aliments() {
-    return [...(alimentsBase as Aliment[]), ...(await alimentsDemo.lire())];
+    return [...BASE, ...(await alimentsDemo.lire())];
   },
   async alimentParCode(code) {
     const connu = (await alimentsDemo.lire()).find((a) => a.codeBarres === code);
@@ -94,15 +99,19 @@ const depotDemo: DepotAlimentation = {
     return aliment;
   },
   async ajouterAliment(a, auteur) {
-    const aliment: Aliment = { ...a, id: nouvelId(), ...('clientId' in auteur ? { source: 'client', clientId: auteur.clientId } : { source: 'coach' }) };
+    const aliment: Aliment = {
+      ...a,
+      id: nouvelId(),
+      ...('clientId' in auteur ? { source: 'client', clientId: auteur.clientId } : { source: 'coach' }),
+    };
     await alimentsDemo.sauver([...(await alimentsDemo.lire()), aliment]);
     return aliment;
   },
   async banqueRecettes() {
-    return (await recettesDemo.lire()).filter((r) => !r.clientId && !r.archive);
+    return (await recettesDemo.lire()).filter((r) => !r.clientId && !r.archive).map(lireRecette);
   },
   async recettesPerso(clientId) {
-    return (await recettesDemo.lire()).filter((r) => r.clientId === clientId && !r.archive);
+    return (await recettesDemo.lire()).filter((r) => r.clientId === clientId && !r.archive).map(lireRecette);
   },
   enregistrerRecette: (r) => remplacer(recettesDemo, r, (x) => x.id === r.id),
   async repas(clientId, depuis) {
@@ -137,6 +146,8 @@ type AlimentBase = {
   portion_g: number | string | null;
   portion_libelle: string | null;
   contient: Contient[];
+  code_ciqual: string | null;
+  valeurs_inconnues: (keyof Macros)[] | null;
 };
 
 const n = (v: number | string | null) => (v === null || v === undefined ? undefined : Number(v));
@@ -158,6 +169,8 @@ const versAliment = (a: AlimentBase): Aliment => ({
   contient: a.contient ?? [],
   source: a.source,
   clientId: ou(a.client_id),
+  codeCiqual: ou(a.code_ciqual),
+  valeursInconnues: a.valeurs_inconnues?.length ? a.valeurs_inconnues : undefined,
 });
 
 const versLigneAliment = (a: Omit<Aliment, 'id'>) => ({
@@ -188,21 +201,32 @@ type RecetteBase = {
   statut: Recette['statut'];
   regimes_confirmes: Regime[];
   archive: boolean;
+  macros_portion: Macros | null;
+  variantes: Recette['variantes'] | null;
+  origine: OrigineRecette | null;
+  types: Recette['types'] | null;
+  regime_source: Recette['regimeSource'] | null;
 };
 
-const versRecette = (r: RecetteBase): Recette => ({
-  id: r.id,
-  clientId: ou(r.client_id),
-  titre: r.titre,
-  description: ou(r.description),
-  portions: r.portions,
-  tempsMin: ou(r.temps_min),
-  etapes: ou(r.etapes),
-  ingredients: r.ingredients ?? [],
-  statut: r.statut,
-  regimesConfirmes: r.regimes_confirmes ?? [],
-  archive: r.archive,
-});
+const versRecette = (r: RecetteBase): Recette =>
+  lireRecette({
+    id: r.id,
+    clientId: ou(r.client_id),
+    titre: r.titre,
+    description: ou(r.description),
+    portions: r.portions,
+    tempsMin: ou(r.temps_min),
+    etapes: ou(r.etapes),
+    ingredients: r.ingredients ?? [],
+    statut: r.statut,
+    regimesConfirmes: r.regimes_confirmes ?? [],
+    archive: r.archive,
+    macrosPortion: ou(r.macros_portion),
+    variantes: r.variantes?.length ? r.variantes : undefined,
+    origine: ou(r.origine),
+    types: r.types?.length ? r.types : undefined,
+    regimeSource: ou(r.regime_source),
+  });
 
 type RepasBase = {
   id: string;
@@ -227,8 +251,7 @@ function creerDepotSupabase(db: SupabaseClient): DepotAlimentation {
     return data;
   };
   let coachDuClient: Promise<string | null> | undefined;
-  const monCoach = () =>
-    (coachDuClient ??= Promise.resolve(db.rpc('coach_de_mon_client')).then(({ data }) => (data as string | null) ?? null));
+  const monCoach = () => (coachDuClient ??= Promise.resolve(db.rpc('coach_de_mon_client')).then(({ data }) => (data as string | null) ?? null));
 
   return {
     async profil(clientId) {
@@ -266,13 +289,22 @@ function creerDepotSupabase(db: SupabaseClient): DepotAlimentation {
     },
 
     async aliments() {
+      // La base commune vient de l'app ; la base de données n'a que les produits scannés et les aliments ajoutés.
       const tous: AlimentBase[] = [];
       for (let debut = 0; ; debut += 1000) {
-        const page = verifier(await db.from('aliments').select('*').eq('archive', false).order('nom').range(debut, debut + 999)) as AlimentBase[];
+        const page = verifier(
+          await db
+            .from('aliments')
+            .select('*')
+            .eq('archive', false)
+            .neq('source', 'base')
+            .order('nom')
+            .range(debut, debut + 999),
+        ) as AlimentBase[];
         tous.push(...page);
         if (page.length < 1000) break;
       }
-      return tous.map(versAliment);
+      return [...BASE, ...tous.map(versAliment)];
     },
 
     async alimentParCode(code, coachId) {
@@ -286,7 +318,11 @@ function creerDepotSupabase(db: SupabaseClient): DepotAlimentation {
       if (!coach) return { ...trouve, id: `off-${code}` };
       const { data, error } = await db
         .from('aliments')
-        .insert({ ...versLigneAliment(trouve), coach_id: coach, client_id: null })
+        .insert({
+          ...versLigneAliment(trouve),
+          coach_id: coach,
+          client_id: null,
+        })
         .select('*')
         .single();
       // Un autre client vient de l'ajouter : on relit.
@@ -297,8 +333,16 @@ function creerDepotSupabase(db: SupabaseClient): DepotAlimentation {
     async ajouterAliment(a, auteur) {
       const ligne: Record<string, unknown> =
         'clientId' in auteur
-          ? { ...versLigneAliment({ ...a, source: 'client' }), coach_id: await monCoach(), client_id: auteur.clientId }
-          : { ...versLigneAliment({ ...a, source: 'coach' }), coach_id: auteur.coachId, client_id: null };
+          ? {
+              ...versLigneAliment({ ...a, source: 'client' }),
+              coach_id: await monCoach(),
+              client_id: auteur.clientId,
+            }
+          : {
+              ...versLigneAliment({ ...a, source: 'coach' }),
+              coach_id: auteur.coachId,
+              client_id: null,
+            };
       return versAliment(verifier(await db.from('aliments').insert(ligne).select('*').single()) as AlimentBase);
     },
 
@@ -324,6 +368,13 @@ function creerDepotSupabase(db: SupabaseClient): DepotAlimentation {
           temps_min: r.tempsMin ?? null,
           etapes: r.etapes ?? null,
           ingredients: r.ingredients,
+          macros_portion: r.macrosPortion ?? null,
+          variantes: r.variantes ?? [],
+          origine: r.origine ?? null,
+          types: r.types ?? [],
+          regime_source: r.regimeSource ?? null,
+          // Une copie personnelle garde l'origine, mais seule la recette de la banque porte la référence d'import.
+          ref_externe: r.clientId ? null : (r.origine?.ref ?? null),
           statut: r.clientId ? 'brouillon' : r.statut,
           regimes_confirmes: r.regimesConfirmes,
           archive: r.archive ?? false,
@@ -333,9 +384,7 @@ function creerDepotSupabase(db: SupabaseClient): DepotAlimentation {
     },
 
     async repas(clientId, depuis) {
-      const lignes = verifier(
-        await db.from('repas').select('*').eq('client_id', clientId).gte('date', depuis).order('created_at'),
-      ) as RepasBase[];
+      const lignes = verifier(await db.from('repas').select('*').eq('client_id', clientId).gte('date', depuis).order('created_at')) as RepasBase[];
       return lignes.map((e) => ({
         id: e.id,
         clientId: e.client_id,
@@ -370,7 +419,8 @@ function creerDepotSupabase(db: SupabaseClient): DepotAlimentation {
             glucides: e.glucides,
             lipides: e.lipides,
             // Un produit Open Food Facts pas encore dans la base n'a pas d'identifiant.
-            aliment_id: e.alimentId && !e.alimentId.startsWith('off-') ? e.alimentId : null,
+            // La table Ciqual vit dans l'app, pas en base : le libellé et les macros de la ligne suffisent.
+            aliment_id: e.alimentId && !e.alimentId.startsWith('off-') && !IDS_BASE.has(e.alimentId) ? e.alimentId : null,
             recette_id: e.recetteId ?? null,
             source: e.source,
           })),

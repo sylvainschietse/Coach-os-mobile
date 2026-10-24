@@ -13,28 +13,77 @@ import type {
   ProfilNutrition,
   Recette,
   Regime,
+  TypeRecette,
+  VarianteRecette,
 } from './types';
+import { formaterNombre } from './suivi';
 
-const sansAccents = (t: string) =>
-  t
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
+const sansAccents = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 // ——— Besoins ———
 
-export const NIVEAUX_ACTIVITE: { cle: NiveauActivite; libelle: string; detail: string; facteur: number }[] = [
-  { cle: 'sedentaire', libelle: 'Sédentaire', detail: 'Travail assis, peu de marche, pas de sport', facteur: 1.2 },
-  { cle: 'leger', libelle: 'Légèrement actif', detail: '1 à 2 séances par semaine, ou beaucoup de marche', facteur: 1.375 },
-  { cle: 'modere', libelle: 'Modérément actif', detail: '3 à 4 séances par semaine', facteur: 1.55 },
-  { cle: 'actif', libelle: 'Très actif', detail: '5 à 6 séances par semaine, ou métier physique', facteur: 1.725 },
-  { cle: 'tres_actif', libelle: 'Extrêmement actif', detail: 'Entraînement quotidien intense et métier physique', facteur: 1.9 },
+export const NIVEAUX_ACTIVITE: {
+  cle: NiveauActivite;
+  libelle: string;
+  detail: string;
+  facteur: number;
+}[] = [
+  {
+    cle: 'sedentaire',
+    libelle: 'Sédentaire',
+    detail: 'Travail assis, peu de marche, pas de sport',
+    facteur: 1.2,
+  },
+  {
+    cle: 'leger',
+    libelle: 'Légèrement actif',
+    detail: '1 à 2 séances par semaine, ou beaucoup de marche',
+    facteur: 1.375,
+  },
+  {
+    cle: 'modere',
+    libelle: 'Modérément actif',
+    detail: '3 à 4 séances par semaine',
+    facteur: 1.55,
+  },
+  {
+    cle: 'actif',
+    libelle: 'Très actif',
+    detail: '5 à 6 séances par semaine, ou métier physique',
+    facteur: 1.725,
+  },
+  {
+    cle: 'tres_actif',
+    libelle: 'Extrêmement actif',
+    detail: 'Entraînement quotidien intense et métier physique',
+    facteur: 1.9,
+  },
 ];
 
-export const OBJECTIFS: { cle: ObjectifNutrition; libelle: string; ajustement: number; proteinesParKg: number }[] = [
-  { cle: 'perte', libelle: 'Perdre du gras', ajustement: 0.8, proteinesParKg: 2 },
-  { cle: 'maintien', libelle: 'Me maintenir', ajustement: 1, proteinesParKg: 1.6 },
-  { cle: 'prise', libelle: 'Prendre du muscle', ajustement: 1.1, proteinesParKg: 1.8 },
+export const OBJECTIFS: {
+  cle: ObjectifNutrition;
+  libelle: string;
+  ajustement: number;
+  proteinesParKg: number;
+}[] = [
+  {
+    cle: 'perte',
+    libelle: 'Perdre du gras',
+    ajustement: 0.8,
+    proteinesParKg: 2,
+  },
+  {
+    cle: 'maintien',
+    libelle: 'Me maintenir',
+    ajustement: 1,
+    proteinesParKg: 1.6,
+  },
+  {
+    cle: 'prise',
+    libelle: 'Prendre du muscle',
+    ajustement: 1.1,
+    proteinesParKg: 1.8,
+  },
 ];
 
 export const REGIMES: { cle: Regime; libelle: string }[] = [
@@ -140,8 +189,18 @@ export function objectifsDuJour(plan: PlanNutrition | null | undefined, besoins:
   return undefined;
 }
 
-export const MOMENTS: { cle: MomentRepas; libelle: string; au: string; part: number }[] = [
-  { cle: 'petit_dejeuner', libelle: 'Petit-déjeuner', au: 'au petit-déjeuner', part: 0.25 },
+export const MOMENTS: {
+  cle: MomentRepas;
+  libelle: string;
+  au: string;
+  part: number;
+}[] = [
+  {
+    cle: 'petit_dejeuner',
+    libelle: 'Petit-déjeuner',
+    au: 'au petit-déjeuner',
+    part: 0.25,
+  },
   { cle: 'dejeuner', libelle: 'Déjeuner', au: 'au déjeuner', part: 0.35 },
   { cle: 'collation', libelle: 'Collation', au: 'à la collation', part: 0.1 },
   { cle: 'diner', libelle: 'Dîner', au: 'au dîner', part: 0.3 },
@@ -173,12 +232,22 @@ const zero = (): Macros => ({ kcal: 0, proteines: 0, glucides: 0, lipides: 0 });
 /** Macros d'une quantité en grammes, à partir des valeurs pour 100 g. */
 export function macrosPour(pour100: Macros, grammes: number): Macros {
   const f = grammes / 100;
-  return { kcal: pour100.kcal * f, proteines: pour100.proteines * f, glucides: pour100.glucides * f, lipides: pour100.lipides * f };
+  return {
+    kcal: pour100.kcal * f,
+    proteines: pour100.proteines * f,
+    glucides: pour100.glucides * f,
+    lipides: pour100.lipides * f,
+  };
 }
 
 export function additionner(liste: Macros[]): Macros {
   return liste.reduce(
-    (t, m) => ({ kcal: t.kcal + m.kcal, proteines: t.proteines + m.proteines, glucides: t.glucides + m.glucides, lipides: t.lipides + m.lipides }),
+    (t, m) => ({
+      kcal: t.kcal + m.kcal,
+      proteines: t.proteines + m.proteines,
+      glucides: t.glucides + m.glucides,
+      lipides: t.lipides + m.lipides,
+    }),
     zero(),
   );
 }
@@ -190,22 +259,94 @@ export const arrondirMacros = (m: Macros): Macros => ({
   lipides: Math.round(m.lipides * 10) / 10,
 });
 
-export function totalRecette(r: Pick<Recette, 'ingredients' | 'portions'>) {
-  const total = additionner(r.ingredients.map((i) => macrosPour(i, i.quantiteG)));
+const fois = (m: Macros, f: number): Macros => ({
+  kcal: m.kcal * f,
+  proteines: m.proteines * f,
+  glucides: m.glucides * f,
+  lipides: m.lipides * f,
+});
+const moins = (a: Macros, b: Macros): Macros => ({
+  kcal: Math.max(0, a.kcal - b.kcal),
+  proteines: Math.max(0, a.proteines - b.proteines),
+  glucides: Math.max(0, a.glucides - b.glucides),
+  lipides: Math.max(0, a.lipides - b.lipides),
+});
+
+/**
+ * Macros d'une recette. Une recette importée garde les valeurs par portion publiées par sa source ;
+ * les autres se calculent ingrédient par ingrédient. Le poids d'une portion n'est connu que si tout est en grammes.
+ */
+export function totalRecette(r: Pick<Recette, 'ingredients' | 'portions' | 'macrosPortion'>) {
   const portions = Math.max(1, r.portions);
+  const parIngredients = additionner(r.ingredients.map((i) => macrosPour(i, i.quantiteG)));
+  const parPortion = r.macrosPortion ?? fois(parIngredients, 1 / portions);
+  const toutEnGrammes = r.ingredients.every((i) => !i.unite || i.unite === 'g');
   const poids = r.ingredients.reduce((n, i) => n + i.quantiteG, 0);
   return {
-    total,
-    parPortion: { kcal: total.kcal / portions, proteines: total.proteines / portions, glucides: total.glucides / portions, lipides: total.lipides / portions },
-    poidsPortionG: poids / portions,
+    total: fois(parPortion, portions),
+    parPortion,
+    poidsPortionG: toutEnGrammes ? poids / portions : undefined,
   };
+}
+
+/** Complète un ingrédient enregistré au format compact (recettes importées). */
+export function lireIngredient(i: Partial<Ingredient> & { nom: string }): Ingredient {
+  return {
+    ...i,
+    quantiteG: i.quantiteG ?? 0,
+    kcal: i.kcal ?? 0,
+    proteines: i.proteines ?? 0,
+    glucides: i.glucides ?? 0,
+    lipides: i.lipides ?? 0,
+    contient: i.contient ?? [],
+  };
+}
+
+export function lireRecette(r: Recette): Recette {
+  return {
+    ...r,
+    ingredients: (r.ingredients ?? []).map(lireIngredient),
+    variantes: r.variantes?.map((v) => ({
+      ...v,
+      ingredients: v.ingredients.map(lireIngredient),
+    })),
+  };
+}
+
+/** La recette telle que sa variante (végé, végane, + protéines) la décrit. */
+export function recetteDeVariante(r: Recette, v: VarianteRecette): Recette {
+  return {
+    ...r,
+    ingredients: v.ingredients,
+    macrosPortion: v.macrosPortion,
+    etapes: v.etapes ?? r.etapes,
+    regimeSource: v.regime,
+  };
+}
+
+const PLURIELS: Record<string, string> = { pièce: 'pièces', boîte: 'boîtes' };
+
+/** « 120 g », « 2 pièces », « env. 1 c. à soupe », « selon goût ». */
+export function quantiteLisible(i: Ingredient): string {
+  const env = i.approximatif ? 'env. ' : '';
+  if (i.unite && i.unite !== 'g') {
+    if (i.quantite === undefined) return i.unite;
+    const q = Math.round(i.quantite * 100) / 100;
+    return `${env}${formaterNombre(q)} ${q > 1 ? (PLURIELS[i.unite] ?? i.unite) : i.unite}`;
+  }
+  const g = i.quantite ?? i.quantiteG;
+  return `${env}${formaterNombre(Math.round(g))} g`;
 }
 
 export function totauxDuJour(entrees: EntreeRepas[], date: string) {
   const du = entrees.filter((e) => e.date === date);
   return {
     total: additionner(du),
-    parMoment: MOMENTS.map((m) => ({ ...m, entrees: du.filter((e) => e.moment === m.cle), total: additionner(du.filter((e) => e.moment === m.cle)) })),
+    parMoment: MOMENTS.map((m) => ({
+      ...m,
+      entrees: du.filter((e) => e.moment === m.cle),
+      total: additionner(du.filter((e) => e.moment === m.cle)),
+    })),
   };
 }
 
@@ -264,7 +405,11 @@ export function erreursRecette(r: Pick<Recette, 'titre' | 'portions' | 'ingredie
   if (!r.titre.trim()) erreurs.push('Donne un nom à la recette.');
   if (!(r.portions >= 1 && r.portions <= 50)) erreurs.push('Portions : entre 1 et 50.');
   if (r.ingredients.length === 0) erreurs.push('Ajoute au moins un ingrédient.');
-  for (const i of r.ingredients) if (!(i.quantiteG > 0 && i.quantiteG <= 5000)) erreurs.push(`${i.nom} : quantité entre 1 et 5000 g.`);
+  // Les quantités hors grammes (pièce, selon goût) viennent d'une recette importée : rien à peser.
+  for (const i of r.ingredients) {
+    if (i.unite && i.unite !== 'g') continue;
+    if (!(i.quantiteG > 0 && i.quantiteG <= 5000)) erreurs.push(`${i.nom} : quantité entre 1 et 5000 g.`);
+  }
   return erreurs;
 }
 
@@ -289,12 +434,27 @@ export function rechercherAliments(aliments: Aliment[], recherche: string, limit
   return trouves.slice(0, limite);
 }
 
+/** Les recettes qui répondent à la recherche (titre, ingrédients, cuisine) et au type de repas. */
+export function rechercherRecettes(recettes: Recette[], recherche: string, type?: TypeRecette): Set<string> {
+  const mots = sansAccents(recherche).split(/\s+/).filter(Boolean);
+  return new Set(
+    recettes
+      .filter((r) => !type || r.types?.includes(type))
+      .filter((r) => {
+        if (!mots.length) return true;
+        const texte = sansAccents([r.titre, r.origine?.cuisine, ...r.ingredients.map((i) => i.nom)].filter(Boolean).join(' '));
+        return mots.every((m) => texte.includes(m));
+      })
+      .map((r) => r.id),
+  );
+}
+
 // ——— Régimes ———
 
 const contientDe = (r: Pick<Recette, 'ingredients'>) => new Set(r.ingredients.flatMap((i) => i.contient));
 
 /** La recette convient-elle au régime ? Sans gluten seulement si c'est confirmé : un ingrédient peut en cacher. */
-export function convientAuRegime(r: Pick<Recette, 'ingredients' | 'portions' | 'regimesConfirmes'>, regime: Regime): boolean {
+export function convientAuRegime(r: Pick<Recette, 'ingredients' | 'portions' | 'regimesConfirmes' | 'macrosPortion'>, regime: Regime): boolean {
   if (r.regimesConfirmes?.includes(regime)) return true;
   if (regime === 'low_carb' || regime === 'high_protein') {
     const { parPortion: m } = totalRecette(r);
@@ -307,7 +467,7 @@ export function convientAuRegime(r: Pick<Recette, 'ingredients' | 'portions' | '
   return !exclus.some((c) => contient.has(c));
 }
 
-export const regimesDeLaRecette = (r: Pick<Recette, 'ingredients' | 'portions' | 'regimesConfirmes'>) =>
+export const regimesDeLaRecette = (r: Pick<Recette, 'ingredients' | 'portions' | 'regimesConfirmes' | 'macrosPortion'>) =>
   REGIMES.filter((g) => convientAuRegime(r, g.cle)).map((g) => g.cle);
 
 /** Mots de l'exclusion (allergies, aliments refusés) trouvés dans les ingrédients. */
@@ -319,48 +479,102 @@ export function exclusionsTrouvees(r: Pick<Recette, 'ingredients'>, exclusions?:
   return mots.filter((m) => r.ingredients.some((i) => sansAccents(i.nom).includes(m.replace(/s$/, ''))));
 }
 
-/** Les remplacements proposés quand un ingrédient ne va pas avec le régime. */
-export const SUBSTITUTS: { pour: Contient; regimes: Regime[]; remplacement: Omit<Ingredient, 'quantiteG'>; equivalence: 'proteines' | 'poids' }[] = [
+/** Les remplacements proposés quand un ingrédient ne va pas avec le régime (valeurs Ciqual 2025 pour le tofu et le tempeh). */
+export const SUBSTITUTS: {
+  pour: Contient;
+  regimes: Regime[];
+  remplacement: Omit<Ingredient, 'quantiteG'>;
+  equivalence: 'proteines' | 'poids';
+}[] = [
   {
     pour: 'viande',
     regimes: ['vegetarien', 'vegan', 'pescetarien'],
-    remplacement: { nom: 'Tofu ferme', kcal: 145, proteines: 15, glucides: 2, lipides: 8.5, contient: [] },
+    remplacement: {
+      nom: 'Tofu nature',
+      kcal: 147,
+      proteines: 13.4,
+      glucides: 2.9,
+      lipides: 8.5,
+      contient: [],
+    },
     equivalence: 'proteines',
   },
   {
     pour: 'poisson',
     regimes: ['vegetarien', 'vegan'],
-    remplacement: { nom: 'Tempeh', kcal: 195, proteines: 20, glucides: 8, lipides: 11, contient: [] },
+    remplacement: {
+      nom: 'Tempeh',
+      kcal: 157,
+      proteines: 16.1,
+      glucides: 7.9,
+      lipides: 4.7,
+      contient: [],
+    },
     equivalence: 'proteines',
   },
   {
     pour: 'fruits_de_mer',
     regimes: ['vegetarien', 'vegan'],
-    remplacement: { nom: 'Tofu ferme', kcal: 145, proteines: 15, glucides: 2, lipides: 8.5, contient: [] },
+    remplacement: {
+      nom: 'Tofu nature',
+      kcal: 147,
+      proteines: 13.4,
+      glucides: 2.9,
+      lipides: 8.5,
+      contient: [],
+    },
     equivalence: 'proteines',
   },
   {
     pour: 'oeuf',
     regimes: ['vegan'],
-    remplacement: { nom: 'Tofu soyeux', kcal: 55, proteines: 5.5, glucides: 1.5, lipides: 3, contient: [] },
+    remplacement: {
+      nom: 'Tofu soyeux',
+      kcal: 55,
+      proteines: 5.5,
+      glucides: 1.5,
+      lipides: 3,
+      contient: [],
+    },
     equivalence: 'poids',
   },
   {
     pour: 'lait',
     regimes: ['vegan', 'sans_lactose'],
-    remplacement: { nom: 'Équivalent végétal au soja (boisson, yaourt ou crème)', kcal: 45, proteines: 3.5, glucides: 2, lipides: 2, contient: [] },
+    remplacement: {
+      nom: 'Équivalent végétal au soja (boisson, yaourt ou crème)',
+      kcal: 45,
+      proteines: 3.5,
+      glucides: 2,
+      lipides: 2,
+      contient: [],
+    },
     equivalence: 'poids',
   },
   {
     pour: 'gluten',
     regimes: ['sans_gluten'],
-    remplacement: { nom: 'Version sans gluten (pâtes, pain, farine)', kcal: 355, proteines: 7, glucides: 76, lipides: 1.5, contient: [] },
+    remplacement: {
+      nom: 'Version sans gluten (pâtes, pain, farine)',
+      kcal: 355,
+      proteines: 7,
+      glucides: 76,
+      lipides: 1.5,
+      contient: [],
+    },
     equivalence: 'poids',
   },
   {
     pour: 'miel',
     regimes: ['vegan'],
-    remplacement: { nom: 'Sirop d’érable', kcal: 260, proteines: 0, glucides: 67, lipides: 0, contient: [] },
+    remplacement: {
+      nom: 'Sirop d’érable',
+      kcal: 260,
+      proteines: 0,
+      glucides: 67,
+      lipides: 0,
+      contient: [],
+    },
     equivalence: 'poids',
   },
 ];
@@ -382,7 +596,8 @@ export function adapterAuxRegimes(r: Recette, regimes: Regime[]): { recette: Rec
     if (genant.length === 0) return i;
     const sub = SUBSTITUTS.find((s) => genant.includes(s.pour) && regimes.some((g) => s.regimes.includes(g)));
     // Un substitut ne règle qu'un problème : un ingrédient qui en a deux (ex. lait et gluten) reste à revoir.
-    if (!sub || genant.length > 1) {
+    // Sans valeurs connues pour l'ingrédient, l'écart de macros ne se calcule pas : à revoir aussi.
+    if (!sub || genant.length > 1 || i.valeursInconnues) {
       impossibles.push(i.nom);
       return i;
     }
@@ -390,11 +605,27 @@ export function adapterAuxRegimes(r: Recette, regimes: Regime[]): { recette: Rec
       sub.equivalence === 'proteines' && sub.remplacement.proteines > 0
         ? Math.round(Math.min((i.quantiteG * i.proteines) / sub.remplacement.proteines, i.quantiteG * 1.5))
         : i.quantiteG;
-    const apres: Ingredient = { ...sub.remplacement, quantiteG };
+    const apres: Ingredient = {
+      ...sub.remplacement,
+      quantiteG,
+      ...(i.unite ? { unite: 'g' } : {}),
+    };
     adaptations.push({ avant: i, apres });
     return apres;
   });
-  return { recette: { ...r, ingredients }, adaptations, impossibles: [...new Set(impossibles)] };
+  // Valeurs publiées : on leur ajoute l'écart entre le remplaçant et l'ingrédient remplacé.
+  const macrosPortion = r.macrosPortion
+    ? additionner([
+        r.macrosPortion,
+        fois(additionner(adaptations.map((a) => macrosPour(a.apres, a.apres.quantiteG))), 1 / Math.max(1, r.portions)),
+        fois(additionner(adaptations.map((a) => macrosPour(a.avant, a.avant.quantiteG))), -1 / Math.max(1, r.portions)),
+      ])
+    : undefined;
+  return {
+    recette: { ...r, ingredients, ...(macrosPortion ? { macrosPortion } : {}) },
+    adaptations,
+    impossibles: [...new Set(impossibles)],
+  };
 }
 
 // ——— Adapter aux besoins ———
@@ -405,14 +636,14 @@ const estProteique = (i: Macros) => i.kcal > 0 && (i.proteines * 4) / i.kcal >= 
 /**
  * Ajuste les quantités d'une portion pour coller à la cible du repas : les sources de protéines
  * et le reste sont multipliés séparément (de 0,5 à 2 fois) pour viser à la fois les calories et les protéines.
+ * Pour une recette importée, « le reste » est ce que les valeurs publiées laissent une fois les protéines connues retirées.
  */
 export function adapterAuxBesoins(r: Recette, cible: Macros) {
   const { parPortion } = totalRecette(r);
   const portions = Math.max(1, r.portions);
-  const part = (filtre: (i: Ingredient) => boolean) =>
-    additionner(r.ingredients.filter(filtre).map((i) => macrosPour(i, i.quantiteG / portions)));
-  const P = part(estProteique);
-  const A = part((i) => !estProteique(i));
+  const proteique = (i: Ingredient) => !i.valeursInconnues && estProteique(i);
+  const P = additionner(r.ingredients.filter(proteique).map((i) => macrosPour(i, i.quantiteG / portions)));
+  const A = moins(parPortion, P);
   const borne = (x: number) => Math.min(2, Math.max(0.5, x));
 
   let fP: number;
@@ -425,12 +656,26 @@ export function adapterAuxBesoins(r: Recette, cible: Macros) {
   } else {
     fP = fA = parPortion.kcal > 0 ? borne(cible.kcal / parPortion.kcal) : 1;
   }
-  const ingredients = r.ingredients.map((i) => ({
-    ...i,
-    quantiteG: Math.round((i.quantiteG / portions) * (estProteique(i) ? fP : fA)),
-  }));
-  const adaptee: Recette = { ...r, portions: 1, ingredients };
-  return { recette: adaptee, macros: totalRecette(adaptee).parPortion, facteurs: { proteines: fP, reste: fA } };
+  const ingredients = r.ingredients.map((i) => {
+    const f = (proteique(i) ? fP : fA) / portions;
+    return {
+      ...i,
+      quantiteG: Math.round(i.quantiteG * f),
+      ...(i.quantite !== undefined ? { quantite: i.quantite * f } : {}),
+    };
+  });
+  const macros = additionner([fois(P, fP), fois(A, fA)]);
+  const adaptee: Recette = {
+    ...r,
+    portions: 1,
+    ingredients,
+    ...(r.macrosPortion ? { macrosPortion: macros } : {}),
+  };
+  return {
+    recette: adaptee,
+    macros: totalRecette(adaptee).parPortion,
+    facteurs: { proteines: fP, reste: fA },
+  };
 }
 
 /** Les recettes de la banque qui conviennent au client, les plus proches de sa cible d'abord. */
@@ -440,9 +685,32 @@ export function recettesPourLeClient(recettes: Recette[], profil: ProfilNutritio
     .filter((r) => !r.archive)
     .map((r) => {
       const directes = regimes.every((g) => convientAuRegime(r, g));
-      const adaptation = directes ? undefined : adapterAuxRegimes(r, regimes.filter((g) => !convientAuRegime(r, g)));
+      // Une variante publiée avec la recette (végé, végane) passe avant nos remplacements automatiques.
+      const variante = directes ? undefined : r.variantes?.find((v) => regimes.every((g) => convientAuRegime(recetteDeVariante(r, v), g)));
+      if (variante) {
+        const v = recetteDeVariante(r, variante);
+        return {
+          recette: r,
+          convient: true,
+          variante,
+          adaptation: undefined,
+          exclusions: exclusionsTrouvees(v, profil?.exclusions),
+        };
+      }
+      const adaptation = directes
+        ? undefined
+        : adapterAuxRegimes(
+            r,
+            regimes.filter((g) => !convientAuRegime(r, g)),
+          );
       const adaptable = !!adaptation && adaptation.impossibles.length === 0 && adaptation.adaptations.length > 0;
-      return { recette: r, convient: directes, adaptation: adaptable ? adaptation : undefined, exclusions: exclusionsTrouvees(r, profil?.exclusions) };
+      return {
+        recette: r,
+        convient: directes,
+        variante: undefined,
+        adaptation: adaptable ? adaptation : undefined,
+        exclusions: exclusionsTrouvees(r, profil?.exclusions),
+      };
     })
     .filter((x) => (x.convient || x.adaptation) && x.exclusions.length === 0);
 }

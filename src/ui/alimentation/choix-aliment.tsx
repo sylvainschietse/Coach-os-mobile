@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { alimentation } from '@/data/alimentation';
+import { alimentation, CREDIT_CIQUAL } from '@/data/alimentation';
 import { erreursAliment, macrosPour, rechercherAliments, totalRecette } from '@/domain/alimentation';
 import { formaterNombre, lireNombre } from '@/domain/suivi';
-import type { Aliment, Contient, Recette } from '@/domain/types';
+import type { Aliment, Contient, Macros, Recette } from '@/domain/types';
 import { useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, Puce, Puces, SousTitre, Texte } from '../composants';
@@ -287,6 +287,7 @@ export function ChoixAliment({
             ))}
           </View>
         )}
+        {trouves.some((a) => a.codeCiqual) && <Texte doux style={{ fontSize: 11 }}>{CREDIT_CIQUAL}</Texte>}
         {recherche.trim() !== '' && aliments && trouves.length === 0 && (
           <Texte doux style={{ fontSize: 14 }}>Rien trouvé. Scanne le paquet, ou crée l’aliment.</Texte>
         )}
@@ -298,6 +299,7 @@ export function ChoixAliment({
             </Texte>
             <Texte doux style={{ fontSize: 13 }}>
               {formaterNombre(a.kcal)} kcal · P {formaterNombre(a.proteines)} g pour 100 g
+              {a.valeursInconnues?.length ? ` · non mesuré dans Ciqual : ${a.valeursInconnues.map((v) => NOMS_MACROS[v]).join(', ')}` : ''}
             </Texte>
           </Pressable>
         ))}
@@ -317,6 +319,8 @@ export function ChoixAliment({
     </Carte>
   );
 }
+
+const NOMS_MACROS: Record<keyof Macros, string> = { kcal: 'calories', proteines: 'protéines', glucides: 'glucides', lipides: 'lipides' };
 
 const styles = {
   ligne: { borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingVertical: espace(2), gap: espace(0.5) },
