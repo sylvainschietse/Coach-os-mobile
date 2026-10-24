@@ -12,6 +12,8 @@ const CLE = 'coachos.demo.profil';
 
 interface ValeurSession {
   profil: Profil | null;
+  /** Adresse du compte connecté, affichée dans l'en-tête ; absente en démo. */
+  email?: string;
   pret: boolean;
   choisirProfilDemo: (p: Profil) => Promise<void>;
   connecter: (email: string, motDePasse: string) => Promise<string | null>;
@@ -33,10 +35,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [profil, setProfil] = useState<Profil | null>(null);
   const [pret, setPret] = useState(false);
   const [motDePasseProvisoire, setProvisoire] = useState(false);
+  const [email, setEmail] = useState<string>();
 
   const lireProvisoire = useCallback(async () => {
     if (!supabase) return setProvisoire(false);
     const { data } = await supabase.auth.getUser();
+    setEmail(data.user?.email ?? undefined);
     setProvisoire(data.user?.user_metadata?.mot_de_passe_provisoire === true);
   }, []);
 
@@ -141,6 +145,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   return (
     <Contexte.Provider value={{
+      email,
         profil,
         pret,
         choisirProfilDemo,

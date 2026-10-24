@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   pasTexte: { fontSize: 22, fontFamily: polices.texteGras, color: couleurs.texte },
   plein: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: espace(6), gap: espace(2) },
   phase: { fontFamily: polices.titre, fontSize: 48, color: '#FFFFFF', letterSpacing: 2 },
-  compte: { fontFamily: polices.titre, fontSize: 140, lineHeight: 150, color: '#FFFFFF' },
+  compte: { fontFamily: polices.chiffres, fontSize: 112, lineHeight: 130, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
   detail: { fontFamily: polices.texteMoyen, fontSize: 18, color: '#FFFFFFCC' },
   actions: { width: '100%', maxWidth: 360, gap: espace(3), marginTop: espace(10) },
 });

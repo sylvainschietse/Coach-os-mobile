@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { couleurs, espace, polices } from './theme';
+import { arrondi, couleurs, espace, espacementTitre, polices } from './theme';
 
 export function Ecran({ children, largeurMax = 640 }: { children: ReactNode; largeurMax?: number }) {
   return (
@@ -57,7 +57,7 @@ export function Bouton({
   desactive?: boolean;
   chargement?: boolean;
 }) {
-  const fond = variante === 'primaire' ? couleurs.rouge : variante === 'secondaire' ? couleurs.noir : 'transparent';
+  const fond = variante === 'primaire' ? couleurs.rouge : variante === 'secondaire' ? couleurs.secondaire : variante === 'discret' ? couleurs.carte : 'transparent';
   const texte = variante === 'discret' ? couleurs.texte : '#FFFFFF';
   const bordure = variante === 'contour' ? '#FFFFFF' : couleurs.bordure;
   return (
@@ -208,27 +208,29 @@ export function Erreur({ message }: { message: string }) {
 const styles = StyleSheet.create({
   ecran: { flex: 1, backgroundColor: couleurs.fond },
   defilement: { padding: espace(4), paddingBottom: espace(12) },
-  titre: { fontFamily: polices.titre, fontSize: 40, lineHeight: 42, color: couleurs.noir, letterSpacing: 0.5 },
-  sousTitre: { fontFamily: polices.titre, fontSize: 24, color: couleurs.noir, letterSpacing: 0.5 },
+  titre: { fontFamily: polices.titre, fontSize: 40, lineHeight: 42, color: couleurs.texte, letterSpacing: espacementTitre(40) },
+  sousTitre: { fontFamily: polices.titre, fontSize: 24, color: couleurs.texte, letterSpacing: espacementTitre(24) },
   texte: { fontFamily: polices.texte, fontSize: 16, lineHeight: 22, color: couleurs.texte },
   carte: {
     backgroundColor: couleurs.carte,
-    borderRadius: 14,
+    borderRadius: arrondi.carte,
+    boxShadow: '0 4px 18px rgba(20, 22, 34, 0.016)',
     padding: espace(4),
     borderWidth: 1,
     borderColor: couleurs.bordure,
     gap: espace(2),
   },
-  bouton: { minHeight: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: espace(5) },
-  boutonTexte: { fontFamily: polices.texteGras, fontSize: 16 },
+  bouton: { minHeight: 44, borderRadius: arrondi.controle, alignItems: 'center', justifyContent: 'center', paddingHorizontal: espace(5) },
+  boutonTexte: { fontFamily: polices.texteMoyen, fontSize: 15 },
   pastille: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: espace(2.5), paddingVertical: espace(0.5) },
   pastilleTexte: { color: '#FFFFFF', fontFamily: polices.texteMoyen, fontSize: 12 },
   champ: { flex: 1, minWidth: 72, gap: espace(1) },
   champLibelle: { fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux },
   champSaisie: {
     borderWidth: 1,
-    borderColor: couleurs.bordure,
-    borderRadius: 10,
+    borderColor: couleurs.saisie,
+    borderRadius: arrondi.controle,
+    minHeight: 44,
     paddingHorizontal: espace(3),
     paddingVertical: espace(2.5),
     fontFamily: polices.texteMoyen,
@@ -247,6 +249,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: espace(3.5),
     paddingVertical: espace(2),
   },
-  puceActive: { backgroundColor: couleurs.noir, borderColor: couleurs.noir },
+  puceActive: { backgroundColor: couleurs.rouge, borderColor: couleurs.rouge },
   puceTexte: { fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.texte },
 });

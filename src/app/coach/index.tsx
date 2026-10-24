@@ -1,152 +1,251 @@
-import { Redirect, router, useFocusEffect } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+// Espace coach repris de apps/coach-os/App.tsx : en-tête, cinq onglets, Tableau de bord = CRM à rubriques.
+import { Redirect, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import {
+  Activity,
+  CalendarCheck,
+  FileText,
+  LayoutDashboard,
+  ListTodo,
+  LogOut,
+  RefreshCw,
+  Users,
+  Wallet,
+  Workflow,
+} from 'lucide-react-native';
+import { useCallback, useState } from 'react';
+import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 
 import { depot } from '@/data';
-import { ecouterCrm } from '@/data/crm';
+import { crm, ecouterCrm } from '@/data/crm';
 import { useSession } from '@/data/session';
 import type { ClientResume } from '@/domain/types';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
-import { Bouton, Carte, Chargement, Ecran, Erreur, Pastille, Puce, Puces, SousTitre, Texte, Titre } from '@/ui/composants';
-import { Contacts } from '@/ui/crm/contacts';
-import { FicheContactVue } from '@/ui/crm/fiche';
-import { Journee } from '@/ui/crm/journee';
-import { FicheClient } from '@/ui/fiche-client';
 import { BanqueRecettes } from '@/ui/alimentation/recettes';
+import {
+  BandeauDemo,
+  BoutonContour,
+  BoutonIcone,
+  CommutateurApercu,
+  EnTete,
+  EnTeteRubrique,
+  LibelleSection,
+  MenuRubriques,
+  NonRepris,
+  OngletsCoach,
+  Vide,
+  type OngletDef,
+} from '@/ui/coque';
+import { Carte, Chargement, Erreur, Pastille, SousTitre, Texte } from '@/ui/composants';
+import { Contacts } from '@/ui/crm/contacts';
+import { VueEnsemble } from '@/ui/crm/vue-ensemble';
+import { EspaceClient } from '@/ui/espace-client';
 import { Modeles } from '@/ui/programmes/modeles';
-import { couleurs, espace, LARGEUR_LARGE } from '@/ui/theme';
+import { couleurs, espace, LARGEUR_COACH, LARGEUR_LG } from '@/ui/theme';
 
-const quand = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-
-function ListeClients({
-  clients,
-  selection,
-  onChoisir,
-}: {
-  clients: ClientResume[];
-  selection?: string;
-  onChoisir: (c: ClientResume) => void;
-}) {
-  return (
-    <View style={{ gap: espace(3) }}>
-      {clients.map((c) => (
-        <Pressable key={c.id} onPress={() => onChoisir(c)}>
-          <Carte style={selection === c.id ? { borderColor: couleurs.rouge, borderWidth: 2 } : undefined}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <SousTitre>
-                {c.prenom} {c.nom}
-              </SousTitre>
-              {c.derniereSeance && <Pastille libelle={quand(c.derniereSeance.fin)} couleur={couleurs.vert} />}
-            </View>
-            <Texte doux style={{ fontSize: 14 }}>
-              {c.derniereSeance ? `Dernière séance : ${c.derniereSeance.titre}` : 'Pas encore de séance réalisée'}
-            </Texte>
-            {c.derniereSeance?.commentaire && (
-              <Texte style={{ fontSize: 14 }} >« {c.derniereSeance.commentaire} »</Texte>
-            )}
-          </Carte>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
-type Onglet = 'journee' | 'contacts' | 'clients' | 'programmes' | 'recettes';
-type Selection = { type: 'contact' | 'client'; id: string } | undefined;
-
-const ONGLETS: { cle: Onglet; libelle: string }[] = [
-  { cle: 'journee', libelle: 'Aujourd’hui' },
-  { cle: 'contacts', libelle: 'Contacts' },
-  { cle: 'clients', libelle: 'Clients' },
-  { cle: 'programmes', libelle: 'Programmes' },
-  { cle: 'recettes', libelle: 'Recettes' },
+type Onglet = 'crm' | 'airtable' | 'suivis' | 'bilan' | 'hebdo';
+const ONGLETS: OngletDef<Onglet>[] = [
+  { cle: 'crm', libelle: 'Tableau de bord' },
+  { cle: 'airtable', libelle: 'Programmes' },
+  { cle: 'suivis', libelle: 'Cycles clients' },
+  { cle: 'bilan', libelle: 'Séances réalisées' },
+  { cle: 'hebdo', libelle: 'Bilans hebdo' },
 ];
 
+type Rubrique = 'Accueil' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Automations';
+const RUBRIQUES: OngletDef<Rubrique>[] = [
+  { cle: 'Accueil', libelle: 'Vue d’ensemble', icone: LayoutDashboard },
+  { cle: 'Contacts', libelle: 'Contacts', icone: Users },
+  { cle: 'Boosters', libelle: 'Boosters', icone: CalendarCheck },
+  { cle: 'Coachings', libelle: 'Coachings', icone: Activity },
+  { cle: 'Bilans', libelle: 'Bilans', icone: Activity },
+  { cle: 'Documents', libelle: 'Documents', icone: FileText },
+  { cle: 'Taches', libelle: 'Tâches', icone: ListTodo },
+  { cle: 'Paiements', libelle: 'Paiements', icone: Wallet },
+  { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
+];
+const LOT: Partial<Record<Rubrique, number>> = { Boosters: 2, Coachings: 2, Bilans: 4, Documents: 2, Taches: 2, Paiements: 2, Automations: 6 };
+
+const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
+const quand = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
+
 export default function EspaceCoach() {
-  const { profil, deconnecter } = useSession();
+  const { profil, email, deconnecter } = useSession();
   const { width } = useWindowDimensions();
-  const large = width >= LARGEUR_LARGE;
+  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string }>();
+  const onglet = ONGLETS.find((o) => o.cle === params.onglet)?.cle ?? 'crm';
+  const rubrique = RUBRIQUES.find((r) => r.cle === params.rubrique)?.cle ?? 'Accueil';
+  const [apercu, setApercu] = useState<'coach' | 'client'>('coach');
+  const [apercuClient, setApercuClient] = useState<string>();
   const coachId = profil?.role === 'coach' ? profil.coachId : '';
-  const { donnee: clients, erreur, recharger } = useCharger(() => depot.clientsDuCoach(coachId), coachId);
-  const [onglet, setOnglet] = useState<Onglet>('journee');
-  const [selection, setSelection] = useState<Selection>();
-  useFocusEffect(recharger);
-  useRechargerSur(recharger, ecouterCrm);
+  const clients = useCharger(() => depot.clientsDuCoach(coachId), coachId);
+  useFocusEffect(clients.recharger);
 
   if (profil?.role !== 'coach') return <Redirect href="/" />;
 
-  // Ordinateur ou tablette : la liste à gauche, la fiche à droite. Téléphone : on ouvre un nouvel écran.
-  const ouvrirContact = (id: string) =>
-    large ? setSelection({ type: 'contact', id }) : router.push({ pathname: '/coach/contact/[id]', params: { id } });
-  const ouvrirClient = (id: string, prenom: string) => {
-    if (large) {
-      setOnglet('clients');
-      setSelection({ type: 'client', id });
-    } else router.push({ pathname: '/coach/client/[id]', params: { id, prenom } });
-  };
-  const voirQuestionnaire = (lien: string) => router.push({ pathname: '/questionnaire/[lien]', params: { lien } });
+  // L'onglet et la rubrique vivent dans l'adresse : Retour et rechargement gardent le contexte.
+  const naviguer = (o: Onglet, r?: Rubrique) => router.setParams({ onglet: o, rubrique: o === 'crm' ? (r ?? rubrique) : undefined });
+  const ouvrirContact = (id: string) => router.push({ pathname: '/coach/contact/[id]', params: { id } });
+  const ouvrirClient = (c: ClientResume) => router.push({ pathname: '/coach/client/[id]', params: { id: c.id, prenom: c.prenom } });
 
-  const liste = (
-    <>
-      <Titre>Bonjour {profil.nom}</Titre>
-      {depot.mode === 'demo' && (
-        <Texte doux style={{ fontSize: 14 }}>
-          Mode démo : contacts fictifs, tout reste sur cet appareil.
-        </Texte>
-      )}
-      <Puces>
-        {ONGLETS.map((o) => (
-          <Puce key={o.cle} libelle={o.libelle} actif={onglet === o.cle} onPress={() => setOnglet(o.cle)} />
-        ))}
-      </Puces>
-      {onglet === 'journee' && <Journee onOuvrirContact={ouvrirContact} onVoirQuestionnaire={voirQuestionnaire} />}
-      {onglet === 'contacts' && (
-        <Contacts selection={selection?.type === 'contact' ? selection.id : undefined} onOuvrir={ouvrirContact} />
-      )}
-      {onglet === 'clients' && (
+  const enTete = (
+    <EnTete
+      largeur={LARGEUR_COACH}
+      badge="Espace coach"
+      email={email ?? (depot.mode === 'demo' ? 'Démonstration, sans compte' : '')}
+      droite={
         <>
-          {erreur && <Erreur message={erreur} />}
-          {!clients && !erreur && <Chargement />}
-          {clients && (
-            <ListeClients
-              clients={clients}
-              selection={selection?.type === 'client' ? selection.id : undefined}
-              onChoisir={(c) => ouvrirClient(c.id, c.prenom)}
-            />
-          )}
+          <CommutateurApercu valeur={apercu} onChange={setApercu} />
+          {/* Zite gérait la session hors de l'app : sans ce bouton, impossible de changer de compte. */}
+          <BoutonIcone icone={LogOut} nom="Se déconnecter" onPress={deconnecter} />
         </>
-      )}
-      {onglet === 'programmes' && <Modeles coachId={coachId} />}
-      {onglet === 'recettes' && <BanqueRecettes coachId={coachId} />}
-      <Bouton variante="discret" libelle="Se déconnecter" onPress={deconnecter} />
-    </>
+      }
+    />
   );
 
-  if (!large) return <Ecran>{liste}</Ecran>;
+  if (apercu === 'client') {
+    const liste = clients.donnee ?? [];
+    const choisi = liste.find((c) => c.id === apercuClient) ?? liste[0];
+    return (
+      <View style={{ flex: 1, backgroundColor: couleurs.fond }}>
+        {enTete}
+        {clients.erreur && <Erreur message={clients.erreur} />}
+        {!clients.donnee && !clients.erreur && <Chargement />}
+        {clients.donnee && !choisi && (
+          <View style={{ padding: espace(4) }}>
+            <Vide titre="Aucun dossier client à prévisualiser" texte="Préparez d’abord l’accès d’un client depuis sa fiche contact." />
+          </View>
+        )}
+        {choisi && (
+          <EspaceClient
+            key={choisi.id}
+            clientId={choisi.id}
+            prenom={choisi.prenom}
+            apercu={{ clients: liste.map((c) => ({ id: c.id, prenom: `${c.prenom} ${c.nom}`.trim() })), onChoisir: setApercuClient }}
+          />
+        )}
+      </View>
+    );
+  }
 
-  const clientChoisi = selection?.type === 'client' ? clients?.find((c) => c.id === selection.id) : undefined;
   return (
-    <View style={styles.colonnes}>
-      <ScrollView style={styles.gauche} contentContainerStyle={{ padding: espace(6), gap: espace(4) }}>
-        {liste}
-      </ScrollView>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: espace(6), gap: espace(4), maxWidth: 820 }}>
-        {selection?.type === 'contact' && (
-          <FicheContactVue key={selection.id} id={selection.id} onVoirClient={ouvrirClient} />
-        )}
-        {selection?.type === 'client' && (
-          <>
-            <Titre>{clientChoisi?.prenom ?? 'Client'}</Titre>
-            <FicheClient key={selection.id} clientId={selection.id} coachId={coachId} />
-          </>
-        )}
-        {!selection && <Texte doux>Choisis un contact ou un client pour voir sa fiche.</Texte>}
+    <View style={{ flex: 1, backgroundColor: couleurs.fond }}>
+      {enTete}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: espace(4), paddingTop: width <= 640 ? 18.4 : width >= 640 ? 32 : 24, paddingBottom: 48 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={{ width: '100%', maxWidth: LARGEUR_COACH, alignSelf: 'center' }}>
+          {depot.mode === 'demo' && (
+            <View style={{ marginBottom: espace(4) }}>
+              <BandeauDemo />
+            </View>
+          )}
+          <OngletsCoach onglets={ONGLETS} valeur={onglet} onChange={(o) => naviguer(o)} />
+          {onglet === 'crm' && (
+            <Crm
+              rubrique={rubrique}
+              large={width >= LARGEUR_LG}
+              onRubrique={(r) => naviguer('crm', r)}
+              onOuvrirContact={ouvrirContact}
+              onCycles={() => naviguer('suivis')}
+            />
+          )}
+          {onglet === 'airtable' && (
+            <View style={{ gap: espace(6) }}>
+              <Modeles coachId={coachId} />
+              <View style={{ gap: espace(3) }}>
+                <LibelleSection>Banque de recettes (placement à confirmer)</LibelleSection>
+                <BanqueRecettes coachId={coachId} />
+              </View>
+            </View>
+          )}
+          {onglet === 'suivis' && (
+            <View style={{ gap: espace(3) }}>
+              <EnTeteRubrique kicker="Suivi des clients" titre="Cycles clients" sousTitre="Planification des cycles : lot 3. En attendant, chaque dossier ouvre le suivi existant." />
+              {clients.erreur && <Erreur message={clients.erreur} />}
+              {!clients.donnee && !clients.erreur && <Chargement />}
+              {clients.donnee?.length === 0 && <Vide titre="Aucun client" texte="Un contact devient client depuis sa fiche." />}
+              {clients.donnee?.map((c) => (
+                <Pressable key={c.id} onPress={() => ouvrirClient(c)}>
+                  <Carte>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: espace(2) }}>
+                      <SousTitre>
+                        {c.prenom} {c.nom}
+                      </SousTitre>
+                      {c.derniereSeance && <Pastille libelle={quand(c.derniereSeance.fin)} couleur={couleurs.vert} />}
+                    </View>
+                    <Texte doux style={{ fontSize: 14 }}>
+                      {c.derniereSeance ? `Dernière séance : ${c.derniereSeance.titre}` : 'Pas encore de séance réalisée'}
+                    </Texte>
+                  </Carte>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          {onglet === 'bilan' && <NonRepris ecran="Séances réalisées" lot={3} detail="Les séances de chaque client restent visibles dans Cycles clients." />}
+          {onglet === 'hebdo' && <NonRepris ecran="Bilans hebdo" lot={4} />}
+        </View>
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  colonnes: { flex: 1, flexDirection: 'row', backgroundColor: couleurs.fond },
-  gauche: { width: 400, flexGrow: 0, borderRightWidth: 1, borderRightColor: couleurs.bordure },
-});
+function Crm({
+  rubrique,
+  large,
+  onRubrique,
+  onOuvrirContact,
+  onCycles,
+}: {
+  rubrique: Rubrique;
+  large: boolean;
+  onRubrique: (r: Rubrique) => void;
+  onOuvrirContact: (id: string) => void;
+  onCycles: () => void;
+}) {
+  const [maj, setMaj] = useState(() => new Date());
+  const charger = useCallback(async () => {
+    const [contacts, journee] = await Promise.all([crm.contacts(), crm.journee()]);
+    setMaj(new Date());
+    return { contacts, relances: journee.relances };
+  }, []);
+  const vue = useCharger(charger, 'vue-ensemble');
+  useFocusEffect(vue.recharger);
+  useRechargerSur(vue.recharger, ecouterCrm);
+  const titre = RUBRIQUES.find((r) => r.cle === rubrique)!.libelle;
+
+  return (
+    <View style={{ flexDirection: large ? 'row' : 'column', gap: 24, alignItems: large ? 'flex-start' : 'stretch' }}>
+      <MenuRubriques rubriques={RUBRIQUES} valeur={rubrique} onChange={onRubrique} large={large} />
+      <View style={{ flex: large ? 1 : undefined, minWidth: 0 }}>
+        <EnTeteRubrique
+          kicker="Gestion du coaching"
+          titre={titre}
+          sousTitre={`Dernière actualisation · ${heure(maj)}`}
+          action={<BoutonContour libelle="Actualiser" icone={RefreshCw} iconeAGauche onPress={vue.recharger} />}
+        />
+        {vue.erreur && (
+          <Carte style={{ borderColor: couleurs.rouge, marginBottom: espace(4) }}>
+            <Texte>{vue.erreur}</Texte>
+            <BoutonContour libelle="Réessayer" onPress={vue.recharger} />
+          </Carte>
+        )}
+        {rubrique === 'Accueil' &&
+          (vue.donnee ? (
+            <VueEnsemble
+              donnees={vue.donnee}
+              maintenant={maj}
+              onRubrique={onRubrique}
+              onOuvrirContact={onOuvrirContact}
+              onCycles={onCycles}
+            />
+          ) : (
+            !vue.erreur && <Chargement />
+          ))}
+        {rubrique === 'Contacts' && <Contacts onOuvrir={onOuvrirContact} />}
+        {LOT[rubrique] && <NonRepris ecran={titre} lot={LOT[rubrique]!} />}
+      </View>
+    </View>
+  );
+}

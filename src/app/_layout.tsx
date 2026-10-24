@@ -1,10 +1,11 @@
 import { BebasNeue_400Regular } from '@expo-google-fonts/bebas-neue';
+import { JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono';
 import { Jost_400Regular, Jost_500Medium, Jost_600SemiBold, useFonts } from '@expo-google-fonts/jost';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { AppState } from 'react-native';
+import { AppState, View } from 'react-native';
 
 import { envoyerEnAttente } from '@/data/file-envoi';
 import { SessionProvider, useSession } from '@/data/session';
@@ -15,7 +16,7 @@ SplashScreen.preventAutoHideAsync();
 
 function Navigation() {
   const { pret } = useSession();
-  const [policesPretes] = useFonts({ BebasNeue_400Regular, Jost_400Regular, Jost_500Medium, Jost_600SemiBold });
+  const [policesPretes] = useFonts({ JetBrainsMono_500Medium, BebasNeue_400Regular, Jost_400Regular, Jost_500Medium, Jost_600SemiBold });
 
   useEffect(() => {
     if (pret && policesPretes) SplashScreen.hideAsync();
@@ -26,7 +27,8 @@ function Navigation() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: couleurs.noir },
+        // En-tête d'origine : dégradé sombre et ligne rouge de 2px.
+        headerBackground: () => <View style={enTete} />,
         headerTintColor: '#FFFFFF',
         headerTitleStyle: { fontFamily: polices.titre, fontSize: 24 },
         contentStyle: { backgroundColor: couleurs.fond },
@@ -34,12 +36,12 @@ function Navigation() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="client/index" options={{ title: 'Mes séances' }} />
+      <Stack.Screen name="client/index" options={{ headerShown: false, title: 'Mon espace coaching' }} />
       <Stack.Screen name="client/seance/[id]" options={{ title: 'Séance' }} />
       <Stack.Screen name="client/minuteur" options={{ title: 'Minuteur' }} />
       <Stack.Screen name="client/suivi" options={{ title: 'Mon suivi' }} />
       <Stack.Screen name="client/nutrition" options={{ title: 'Nutrition' }} />
-      <Stack.Screen name="coach/index" options={{ title: 'Coach OS' }} />
+      <Stack.Screen name="coach/index" options={{ headerShown: false, title: 'Coach OS' }} />
       <Stack.Screen name="coach/client/[id]" options={{ title: 'Suivi' }} />
       <Stack.Screen name="coach/contact/[id]" options={{ title: 'Fiche contact' }} />
       <Stack.Screen name="coach/seance/[id]" options={{ title: 'Séance' }} />
@@ -50,6 +52,14 @@ function Navigation() {
     </Stack>
   );
 }
+
+const enTete = {
+  flex: 1,
+  backgroundColor: '#18191D',
+  backgroundImage: 'linear-gradient(110deg, #111216, #202126)',
+  borderBottomWidth: 2,
+  borderBottomColor: couleurs.rougeMarque,
+} as const;
 
 export default function RootLayout() {
   useEffect(() => {
