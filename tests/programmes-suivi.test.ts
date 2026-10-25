@@ -174,6 +174,22 @@ describe('mensurations, records et nutrition', () => {
     expect((await en(ids.userCoach2, 'select id from public.records')).rows).toEqual([]);
   });
 
+  it('Léa choisit une seule référence par exercice ; Thomas ne peut pas la changer ; un temps ne sert pas de référence', async () => {
+    const r2 = (
+      await en(ids.userLea, `insert into public.records (client_id, exercice_id, libelle, valeur, unite, repetitions) values ($1, $2, 'Développé couché', 45, 'kg', 5) returning id`, [
+        ids.lea,
+        ids.exo,
+      ])
+    ).rows[0].id;
+    const r1 = (await en(ids.userLea, `select id from public.records where valeur = 50`)).rows[0].id;
+    await en(ids.userLea, 'select public.definir_reference_record($1)', [r1]);
+    await en(ids.userLea, 'select public.definir_reference_record($1)', [r2]);
+    expect((await en(ids.userLea, 'select valeur from public.records where reference')).rows).toEqual([{ valeur: '45' }]);
+    await expect(en(ids.userThomas, 'select public.definir_reference_record($1)', [r1])).rejects.toThrow(/introuvable/);
+    const t = (await en(ids.userLea, `insert into public.records (client_id, libelle, valeur, unite) values ($1, 'Rameur 500 m', 118, 's') returning id`, [ids.lea])).rows[0].id;
+    await expect(en(ids.userLea, 'select public.definir_reference_record($1)', [t])).rejects.toThrow(/Seule une charge/);
+  });
+
   it('Léa ne peut pas écrire au nom de Thomas, ni une mesure vide', async () => {
     await expect(en(ids.userLea, `insert into public.mensurations (client_id, poids_kg) values ($1, 80)`, [ids.thomas])).rejects.toThrow(
       /row-level security/,

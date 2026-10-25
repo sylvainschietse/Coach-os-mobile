@@ -120,7 +120,7 @@ export default function EspaceCoach() {
     return (
       <View style={{ flex: 1, backgroundColor: couleurs.fond }}>
         {enTete}
-        {clients.erreur && <Erreur message={clients.erreur} />}
+        {clients.erreur && <Erreur message={clients.erreur} onReessayer={clients.recharger} />}
         {!clients.donnee && !clients.erreur && <Chargement />}
         {clients.donnee && !choisi && (
           <View style={{ padding: espace(4) }}>
@@ -280,7 +280,7 @@ function Crm({
           sousTitre={`Dernière actualisation · ${heure(maj)}`}
           action={<BoutonContour libelle="Actualiser" icone={RefreshCw} iconeAGauche onPress={vue.recharger} />}
         />
-        {vue.erreur && (
+        {vue.erreur && rubrique === 'Accueil' && (
           <Carte style={{ borderColor: couleurs.rouge, marginBottom: espace(4) }}>
             <Texte>{vue.erreur}</Texte>
             <BoutonContour libelle="Réessayer" onPress={vue.recharger} />

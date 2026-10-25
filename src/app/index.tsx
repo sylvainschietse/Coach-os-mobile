@@ -11,8 +11,9 @@ import { Bouton, Texte } from '@/ui/composants';
 import { couleurs, espace, polices } from '@/ui/theme';
 
 export default function Accueil() {
-  const { profil, motDePasseProvisoire } = useSession();
+  const { profil, motDePasseProvisoire, sansDossier } = useSession();
   if (profil && motDePasseProvisoire) return <Cadre><NouveauMotDePasse /></Cadre>;
+  if (!profil && sansDossier) return <Cadre><SansDossier /></Cadre>;
   if (profil?.role === 'client') return <Redirect href="/client" />;
   if (profil?.role === 'coach') return <Redirect href="/coach" />;
 
@@ -32,6 +33,45 @@ function Cadre({ children }: { children: ReactNode }) {
         {children}
       </View>
     </SafeAreaView>
+  );
+}
+
+/** U01 : connecté, mais aucun dossier relié à ce compte. « Actualiser mon accès » montre la vérification puis son résultat. */
+function SansDossier() {
+  const { email, actualiser, deconnecter } = useSession();
+  const [verification, setVerification] = useState(false);
+  const [resultat, setResultat] = useState<string | null>(null);
+
+  async function verifier() {
+    setVerification(true);
+    setResultat(null);
+    try {
+      await actualiser();
+      // Si le dossier est trouvé, l'accueil redirige ; sinon on le dit, avec l'heure, pour qu'aucun clic ne paraisse muet.
+      const heure = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      setResultat(`Vérifié à ${heure} : toujours aucun dossier relié à cette adresse. Demande à ton coach de vérifier l’e-mail inscrit sur ta fiche.`);
+    } catch {
+      setResultat('La vérification n’a pas abouti. Vérifie ta connexion et réessaie.');
+    } finally {
+      setVerification(false);
+    }
+  }
+
+  return (
+    <View style={{ gap: espace(3) }}>
+      <Text style={styles.libelle}>Bienvenue dans Coach OS</Text>
+      <Texte style={{ color: '#C9C9CF' }}>
+        Ton accès n’est pas encore relié à ton dossier. Vérifie que tu utilises l’adresse e-mail communiquée à ton coach.
+      </Texte>
+      {email && <Texte style={{ color: '#FFFFFF' }}>{email}</Texte>}
+      <Bouton libelle={verification ? 'Vérification…' : 'Actualiser mon accès'} onPress={verifier} chargement={verification} />
+      {resultat && (
+        <Text style={styles.resultat} accessibilityLiveRegion="polite" role="status">
+          {resultat}
+        </Text>
+      )}
+      <Bouton variante="contour" libelle="Se déconnecter" onPress={deconnecter} />
+    </View>
   );
 }
 
@@ -195,6 +235,7 @@ function Connexion() {
 }
 
 const styles = StyleSheet.create({
+  resultat: { fontFamily: polices.texte, fontSize: 15, lineHeight: 21, color: '#C9C9CF' },
   fond: { flex: 1, backgroundColor: couleurs.noir },
   contenu: { flex: 1, justifyContent: 'space-between', padding: espace(6), paddingTop: espace(20), width: '100%', maxWidth: 480, alignSelf: 'center' },
   marque: { fontFamily: polices.titre, fontSize: 64, color: '#FFFFFF', letterSpacing: 1 },

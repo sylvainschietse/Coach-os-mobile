@@ -104,7 +104,7 @@ export function FicheContactModale({
   if (id && !fiche)
     return (
       <Modale titre="Fiche client" onFermer={onFermer}>
-        {charge.erreur ? <Erreur message={charge.erreur} /> : <Chargement />}
+        {charge.erreur ? <Erreur message={charge.erreur} onReessayer={charge.recharger} /> : <Chargement />}
       </Modale>
     );
   return (

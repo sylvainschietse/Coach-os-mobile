@@ -26,8 +26,8 @@ function ligneSerie(s: SerieRealisee) {
 
 /** Ce que le coach voit d'un client : ses séances réalisées, série par série, et son ressenti. */
 export function DetailClient({ clientId }: { clientId: string }) {
-  const { donnee: realisations, erreur } = useCharger(() => depot.realisationsDuClient(clientId), clientId);
-  if (erreur) return <Erreur message={erreur} />;
+  const { donnee: realisations, erreur, recharger } = useCharger(() => depot.realisationsDuClient(clientId), clientId);
+  if (erreur) return <Erreur message={erreur} onReessayer={recharger} />;
   if (!realisations) return <Chargement />;
   if (realisations.length === 0) return <Texte doux>Aucune séance réalisée pour l’instant.</Texte>;
 

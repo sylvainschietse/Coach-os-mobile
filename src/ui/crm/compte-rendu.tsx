@@ -24,7 +24,7 @@ import { dateCourte, TitreSection, useCoachNom } from './commun';
 /** Le compte rendu à remettre au client : aperçu, mot du coach, puis PDF partagé par e-mail ou messagerie. */
 export function CompteRenduVue({ contactId, boosterId, onModifierSeance }: { contactId: string; boosterId: string; onModifierSeance: () => void }) {
   const { donnee: fiche, erreur, recharger } = useCharger(() => crm.fiche(contactId), `${contactId}-${boosterId}`);
-  if (erreur) return <Erreur message={erreur} />;
+  if (erreur) return <Erreur message={erreur} onReessayer={recharger} />;
   if (!fiche) return <Chargement />;
   const booster = fiche.boosters.find((b) => b.id === boosterId);
   if (!booster) return <Erreur message="Ce Booster n’existe plus." />;

@@ -14,6 +14,8 @@ interface ValeurSession {
   profil: Profil | null;
   /** Adresse du compte connecté, affichée dans l'en-tête ; absente en démo. */
   email?: string;
+  /** Connecté mais relié à aucun dossier (coach ou client) : l'accueil propose « Actualiser mon accès ». */
+  sansDossier: boolean;
   pret: boolean;
   choisirProfilDemo: (p: Profil) => Promise<void>;
   connecter: (email: string, motDePasse: string) => Promise<string | null>;
@@ -36,6 +38,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [pret, setPret] = useState(false);
   const [motDePasseProvisoire, setProvisoire] = useState(false);
   const [email, setEmail] = useState<string>();
+  const [sansDossier, setSansDossier] = useState(false);
 
   const lireProvisoire = useCallback(async () => {
     if (!supabase) return setProvisoire(false);
@@ -48,8 +51,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         if (supabase) {
-          setProfil(await profilConnecte(supabase));
+          const p = await profilConnecte(supabase);
+          setProfil(p);
           await lireProvisoire();
+          const { data } = await supabase.auth.getSession();
+          setSansDossier(!p && !!data.session);
         }
         else {
           const brut = await AsyncStorage.getItem(CLE);
@@ -68,16 +74,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setProfil(p);
   }, []);
 
-  /** Une fois connecté, quel que soit le moyen : le compte doit correspondre à un coach ou à un client. */
+  /**
+   * Une fois connecté, quel que soit le moyen : le compte doit correspondre à un coach ou à un client.
+   * Sans dossier relié, on reste connecté sur l'accueil « Bienvenue », qui permet d'actualiser l'accès (U01).
+   */
   const actualiser = useCallback(async () => {
     if (!supabase) return null;
     const { data } = await supabase.auth.getUser();
     if (!data.user) return null;
+    setEmail(data.user.email ?? undefined);
     const p = await profilConnecte(supabase);
-    if (!p) {
-      await supabase.auth.signOut();
-      return `Aucune fiche client avec l’e-mail ${data.user.email ?? ''}. Demande à ton coach de vérifier l’adresse inscrite sur ta fiche.`;
-    }
+    setSansDossier(!p);
+    if (!p) return null;
     await lireProvisoire();
     setProfil(p);
     return null;
@@ -141,11 +149,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.removeItem(CLE);
     setProfil(null);
     setProvisoire(false);
+    setSansDossier(false);
   }, []);
 
   return (
     <Contexte.Provider value={{
       email,
+        sansDossier,
         profil,
         pret,
         choisirProfilDemo,

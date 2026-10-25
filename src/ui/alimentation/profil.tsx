@@ -58,7 +58,7 @@ export function Besoins({ profil, dernierPoids }: { profil: ProfilNutrition | nu
 /** Le profil nutrition : rempli par le client (ou par le coach), il donne les besoins calculés. */
 export function ProfilNutritionCarte({ clientId, onEnregistre }: { clientId: string; onEnregistre?: () => void }) {
   const { donnee, erreur, recharger } = useCharger(() => chargerProfil(clientId), `profil-${clientId}`);
-  if (erreur) return <Erreur message={erreur} />;
+  if (erreur) return <Erreur message={erreur} onReessayer={recharger} />;
   if (!donnee) return <Chargement />;
   return (
     <FormulaireProfil

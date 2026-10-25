@@ -93,7 +93,10 @@ begin
     values (d.coach_id, 'compte_rendu', v_cle, 'en_cours', d.contact_id, d.id, p_version, 'Transmission à Make');
     return 'ok';
   end if;
-  if v_etat in ('echec', 'bloque') and p_relancer then
+  -- Une transmission restée « en cours » plus de 15 minutes a été interrompue (fonction arrêtée) : relançable comme un échec.
+  if p_relancer and (v_etat in ('echec', 'bloque') or (v_etat = 'en_cours' and exists (
+    select 1 from journal_automatisations where coach_id = d.coach_id and flux = 'compte_rendu' and cle = v_cle and maj_le < now() - interval '15 minutes'
+  ))) then
     update journal_automatisations set etat = 'en_cours', detail = 'Nouvelle transmission demandée par le coach',
       tentatives = tentatives + 1, maj_le = now()
     where coach_id = d.coach_id and flux = 'compte_rendu' and cle = v_cle;

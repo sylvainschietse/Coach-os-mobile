@@ -79,7 +79,7 @@ export function NutritionCoach({
         }}
       />
     ) : suivis.erreur ? (
-      <Erreur message={suivis.erreur} />
+      <Erreur message={suivis.erreur} onReessayer={suivis.recharger} />
     ) : (
       <Chargement />
     );

@@ -78,6 +78,15 @@ const programmesStockes = collection<Programme & { archive?: boolean }>('program
 const exercicesAjoutes = collection<Exercice>('exercices', [], (e) => e.id);
 const mensurationsStockees = collection<Mensuration>('mensurations', MENSURATIONS_DEMO, (m) => m.id);
 const recordsStockes = collection<RecordPerso>('records', RECORDS_DEMO, (r) => r.id);
+
+/** Une seule référence par exercice et par client : choisir un record retire la marque des autres du même exercice. */
+async function definirReferenceDemo(id: string) {
+  const tous = await recordsStockes.lire();
+  const r = tous.find((x) => x.id === id);
+  if (!r?.exerciceId || r.unite !== 'kg') throw new Error('Seule une charge rattachée à un exercice de la liste peut servir de référence.');
+  for (const x of tous.filter((y) => y.clientId === r.clientId && y.exerciceId === r.exerciceId))
+    if (!!x.reference !== (x.id === id)) await recordsStockes.mettre({ ...x, reference: x.id === id });
+}
 const plansStockes = collection<PlanNutrition>('plans-nutrition', PLANS_DEMO, (p) => p.clientId);
 const journalStocke = collection<JournalNutrition>('journal-nutrition', JOURNAL_DEMO, (j) => `${j.clientId}|${j.date}`);
 
@@ -219,8 +228,12 @@ export const depotDemo: Depot = {
   async records(clientId) {
     return (await recordsStockes.lire()).filter((r) => r.clientId === clientId).sort((a, b) => b.date.localeCompare(a.date));
   },
-  ajouterRecord: (r) => recordsStockes.mettre(r),
+  async ajouterRecord(r) {
+    await recordsStockes.mettre(r);
+    if (r.reference) await definirReferenceDemo(r.id);
+  },
   supprimerRecord: (id) => recordsStockes.retirer(id),
+  definirReference: (id) => definirReferenceDemo(id),
 
   async planNutrition(clientId) {
     return (await plansStockes.lire()).find((p) => p.clientId === clientId) ?? null;

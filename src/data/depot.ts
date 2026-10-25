@@ -47,6 +47,8 @@ export interface Depot {
   records(clientId: string): Promise<RecordPerso[]>;
   ajouterRecord(r: RecordPerso): Promise<void>;
   supprimerRecord(id: string): Promise<void>;
+  /** Fait de ce record la référence de son exercice ; l'ancienne référence du même exercice cesse de l'être. */
+  definirReference(id: string): Promise<void>;
   planNutrition(clientId: string): Promise<PlanNutrition | null>;
   enregistrerPlanNutrition(plan: PlanNutrition): Promise<void>;
   journalNutrition(clientId: string): Promise<JournalNutrition[]>;

@@ -4,7 +4,8 @@ import { Pressable, View } from 'react-native';
 import { depot } from '@/data';
 import { jourLocal } from '@/domain/crm';
 import { formaterDate, lireDate } from '@/domain/programmes';
-import { erreursRecord, formaterRecord, lireNombre, meilleuresChargesDesSeances, meilleursRecords, UNITES_RECORD } from '@/domain/suivi';
+import { unRm } from '@/domain/entrainement';
+import { erreursRecord, formaterNombre, formaterRecord, lireNombre, meilleuresChargesDesSeances, meilleursRecords, UNITES_RECORD } from '@/domain/suivi';
 import type { RecordPerso, UniteRecord } from '@/domain/types';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
@@ -13,8 +14,17 @@ import { Bouton, Carte, Chargement, ChampTexte, Erreur, Puce, Puces, SousTitre, 
 import { ChoixExercice } from '../programmes/choix-exercice';
 import { couleurs, espace } from '../theme';
 
-type Brouillon = { libelle: string; exerciceId?: string; unite: UniteRecord; valeur: string; repetitions: string; date: string; note: string };
-const vide = (): Brouillon => ({ libelle: '', unite: 'kg', valeur: '', repetitions: '1', date: formaterDate(jourLocal(new Date())), note: '' });
+type Brouillon = {
+  libelle: string;
+  exerciceId?: string;
+  unite: UniteRecord;
+  valeur: string;
+  repetitions: string;
+  date: string;
+  note: string;
+  reference: boolean;
+};
+const vide = (): Brouillon => ({ libelle: '', unite: 'kg', valeur: '', repetitions: '1', date: formaterDate(jourLocal(new Date())), note: '', reference: false });
 
 function Saisie({ clientId, onAjoute }: { clientId: string; onAjoute: () => void }) {
   const realisations = useCharger(() => depot.realisationsDuClient(clientId), clientId);
@@ -36,6 +46,7 @@ function Saisie({ clientId, onAjoute }: { clientId: string; onAjoute: () => void
       repetitions: b.unite === 'kg' ? lireNombre(b.repetitions) : undefined,
       date,
       note: b.note.trim() || undefined,
+      reference: b.reference && b.unite === 'kg' && !!b.exerciceId,
     };
     const liste = erreursRecord(r);
     if (!date) liste.push('Date illisible : écris-la comme 20/10/2026.');
@@ -102,6 +113,25 @@ function Saisie({ clientId, onAjoute }: { clientId: string; onAjoute: () => void
       </View>
       <ChampTexte libelle="Date" valeur={b.date} onChange={(date) => setB({ ...b, date })} />
       <ChampTexte libelle="Note (facultatif)" valeur={b.note} onChange={(note) => setB({ ...b, note })} />
+      {b.unite === 'kg' && (
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: b.reference, disabled: !b.exerciceId }}
+          disabled={!b.exerciceId}
+          onPress={() => setB({ ...b, reference: !b.reference })}
+          style={{ flexDirection: 'row', gap: espace(2), alignItems: 'flex-start', opacity: b.exerciceId ? 1 : 0.6 }}
+        >
+          <Texte style={{ fontSize: 18 }}>{b.reference ? '☑' : '☐'}</Texte>
+          <View style={{ flex: 1 }}>
+            <Texte style={{ fontSize: 15 }}>Utiliser cette performance comme référence pour mes programmes</Texte>
+            <Texte doux style={{ fontSize: 13 }}>
+              {b.exerciceId
+                ? 'Elle sert au calcul des charges en % du 1RM de cet exercice seulement.'
+                : 'Choisis d’abord l’exercice dans la liste : une référence ne s’applique qu’à son mouvement.'}
+            </Texte>
+          </View>
+        </Pressable>
+      )}
       {erreurs.length > 0 && <Erreur message={erreurs.join('\n')} />}
       <Bouton libelle="Enregistrer le record" onPress={enregistrer} chargement={enCours} />
     </Carte>
@@ -112,14 +142,28 @@ function Saisie({ clientId, onAjoute }: { clientId: string; onAjoute: () => void
 export function Records({ clientId, saisie = true }: { clientId: string; saisie?: boolean }) {
   const { donnee, erreur, recharger } = useCharger(() => depot.records(clientId), clientId);
   const [confirmer, setConfirmer] = useState<string>();
+  const [erreurReference, setErreurReference] = useState<string>();
+  async function choisirReference(id: string) {
+    setErreurReference(undefined);
+    try {
+      await depot.definirReference(id);
+      recharger();
+    } catch (e) {
+      setErreurReference(e instanceof Error ? e.message : 'Référence non enregistrée');
+    }
+  }
   return (
     <View style={{ gap: espace(4) }}>
       {saisie && <Saisie clientId={clientId} onAjoute={recharger} />}
-      {erreur && <Erreur message={erreur} />}
+      {erreur && <Erreur message={erreur} onReessayer={recharger} />}
+      {erreurReference && <Erreur message={erreurReference} />}
       {!donnee && !erreur && <Chargement />}
       {donnee?.length === 0 && <Texte doux>Aucun record enregistré pour l’instant.</Texte>}
       {donnee &&
-        meilleursRecords(donnee).map(({ meilleur, historique }) => (
+        meilleursRecords(donnee).map(({ meilleur, historique }) => {
+          const charge = meilleur.unite === 'kg' && !!meilleur.exerciceId;
+          const ref = charge ? donnee.find((x) => x.reference && x.exerciceId === meilleur.exerciceId) : undefined;
+          return (
           <Carte key={meilleur.id}>
             <SousTitre>{meilleur.libelle}</SousTitre>
             <Texte style={{ fontSize: 18, fontWeight: '600' }}>
@@ -128,12 +172,25 @@ export function Records({ clientId, saisie = true }: { clientId: string; saisie?
                 {'  '}le {formaterDate(meilleur.date)}
               </Texte>
             </Texte>
+            {charge && (
+              <Texte doux style={{ fontSize: 14 }}>
+                {ref
+                  ? `Référence programme : ${formaterNombre(unRm(ref.valeur, ref.repetitions ?? 1))} kg (${(ref.repetitions ?? 1) > 1 ? `estimée d’après ${formaterRecord(ref)}` : 'réalisée'} · ${formaterDate(ref.date)})`
+                  : 'Aucune référence choisie : les programmes n’afficheront pas de charge calculée pour cet exercice.'}
+              </Texte>
+            )}
             {historique.map((r) => (
-              <View key={r.id} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: espace(2) }}>
+              <View key={r.id} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: espace(2), flexWrap: 'wrap' }}>
                 <Texte doux style={{ fontSize: 14, flex: 1 }}>
                   {formaterDate(r.date)} · {formaterRecord(r)}
+                  {r.reference ? ' · Référence programme' : ''}
                   {r.note ? ` · ${r.note}` : ''}
                 </Texte>
+                {r.unite === 'kg' && r.exerciceId && !r.reference && (
+                  <Pressable accessibilityRole="button" hitSlop={8} onPress={() => choisirReference(r.id)}>
+                    <Texte style={{ fontSize: 13, color: couleurs.rouge }}>Utiliser comme référence</Texte>
+                  </Pressable>
+                )}
                 {confirmer === r.id ? (
                   <Pressable
                     accessibilityRole="button"
@@ -154,7 +211,8 @@ export function Records({ clientId, saisie = true }: { clientId: string; saisie?
               </View>
             ))}
           </Carte>
-        ))}
+          );
+        })}
     </View>
   );
 }

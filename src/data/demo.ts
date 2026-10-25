@@ -163,7 +163,7 @@ export const MENSURATIONS_DEMO: Mensuration[] = [
 ];
 
 export const RECORDS_DEMO: RecordPerso[] = [
-  { id: 'demo-pr-1', clientId: 'client-lea', exerciceId: 'ex-dc', libelle: 'Développé couché barre', valeur: 45, unite: 'kg', repetitions: 5, date: '2026-10-12' },
+  { id: 'demo-pr-1', clientId: 'client-lea', exerciceId: 'ex-dc', libelle: 'Développé couché barre', valeur: 45, unite: 'kg', repetitions: 5, date: '2026-10-12', reference: true },
   { id: 'demo-pr-2', clientId: 'client-lea', libelle: 'Rameur 500 m', valeur: 118, unite: 's', date: '2026-10-05' },
 ];
 

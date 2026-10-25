@@ -332,7 +332,7 @@ export function RecettesClient({ clientId }: { clientId: string }) {
   const [toutes, setToutes] = useState(false);
   const filtre = useFiltre();
 
-  if (erreur) return <Erreur message={erreur} />;
+  if (erreur) return <Erreur message={erreur} onReessayer={recharger} />;
   if (!donnee) return <Chargement />;
 
   if (edition) {

@@ -197,10 +197,12 @@ export function Chargement() {
   );
 }
 
-export function Erreur({ message }: { message: string }) {
+/** Message d'erreur ; avec `onReessayer`, un chargement raté se distingue d'une liste vide et se relance. */
+export function Erreur({ message, onReessayer }: { message: string; onReessayer?: () => void }) {
   return (
     <Carte style={{ borderColor: couleurs.rouge }}>
       <Texte>{message}</Texte>
+      {onReessayer && <Bouton libelle="Réessayer" variante="secondaire" onPress={onReessayer} />}
     </Carte>
   );
 }

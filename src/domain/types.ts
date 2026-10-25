@@ -197,6 +197,8 @@ export interface RecordPerso {
   repetitions?: number;
   date: string;
   note?: string;
+  /** Choisie par le client comme référence des charges calculées (% du 1RM) pour cet exercice, et seulement lui. */
+  reference?: boolean;
 }
 
 export interface PlanNutrition {

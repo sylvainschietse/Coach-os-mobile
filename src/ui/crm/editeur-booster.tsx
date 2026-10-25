@@ -120,7 +120,7 @@ export function EditeurBoosterModale({
   if (!charge.donnee)
     return (
       <Modale titre={boosterId ? 'Modifier · Boosters' : 'Créer · Boosters'} onFermer={onFermer}>
-        {charge.erreur ? <Erreur message={charge.erreur} /> : <Chargement />}
+        {charge.erreur ? <Erreur message={charge.erreur} onReessayer={charge.recharger} /> : <Chargement />}
       </Modale>
     );
   const { contacts, fiche, booster } = charge.donnee;

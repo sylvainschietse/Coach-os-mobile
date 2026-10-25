@@ -48,7 +48,7 @@ function Attribuer({ programme, coachId }: { programme: Programme; coachId: stri
       <Texte doux style={{ fontSize: 14 }}>
         Le client reçoit une copie : modifier ce modèle ensuite ne change pas ses séances.
       </Texte>
-      {clients.erreur && <Erreur message={clients.erreur} />}
+      {clients.erreur && <Erreur message={clients.erreur} onReessayer={clients.recharger} />}
       <Puces>
         {clients.donnee?.map((c) => (
           <Puce key={c.id} libelle={`${c.prenom} ${c.nom}`.trim()} actif={client === c.id} onPress={() => setClient(c.id)} />

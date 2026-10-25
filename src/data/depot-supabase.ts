@@ -449,6 +449,7 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
         repetitions: number | null;
         date: string;
         note: string | null;
+        reference?: boolean;
       }[];
       return lignes.map((r) => ({
         id: r.id,
@@ -460,6 +461,7 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
         repetitions: sansNull(r.repetitions),
         date: r.date,
         note: sansNull(r.note),
+        reference: r.reference === true,
       }));
     },
 
@@ -477,10 +479,15 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
           note: r.note ?? null,
         }),
       );
+      if (r.reference) echec(await db.rpc('definir_reference_record', { p_record: r.id }));
     },
 
     async supprimerRecord(id) {
       echec(await db.from('records').delete().eq('id', id));
+    },
+
+    async definirReference(id) {
+      echec(await db.rpc('definir_reference_record', { p_record: id }));
     },
 
     async planNutrition(clientId) {

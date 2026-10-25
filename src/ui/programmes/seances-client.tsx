@@ -121,7 +121,7 @@ export function SeancesClientCoach({ clientId, coachId }: { clientId: string; co
           {erreur && <Erreur message={erreur} />}
         </Carte>
       )}
-      {seances.erreur && <Erreur message={seances.erreur} />}
+      {seances.erreur && <Erreur message={seances.erreur} onReessayer={seances.recharger} />}
       {!seances.donnee && !seances.erreur && <Chargement />}
       {seances.donnee?.length === 0 && <Texte doux>Aucune séance pour l’instant.</Texte>}
       {seances.donnee?.map((s) => <CarteSeance key={s.id} s={s} onChange={seances.recharger} />)}

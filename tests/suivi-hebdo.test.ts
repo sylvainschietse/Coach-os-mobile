@@ -42,6 +42,14 @@ describe('bilan de la semaine', () => {
     expect(syntheseAutomatique(r({ seances: 1 }), null, 3).priorite).toMatch('Bloquer dans ton agenda les 3 créneaux');
   });
 
+  it('énergie ou sommeil ≤ 3 et stress ≥ 8 passent le bilan « à vérifier », pas les valeurs voisines', () => {
+    expect(syntheseAutomatique(r({ energie: 3 }), null, 3).aRevoir).toBe(true);
+    expect(syntheseAutomatique(r({ sommeil: 3 }), null, 3).aRevoir).toBe(true);
+    expect(syntheseAutomatique(r({ stress: 8 }), null, 3).aRevoir).toBe(true);
+    expect(syntheseAutomatique(r({ energie: 4, sommeil: 4, stress: 7 }), null, 3).aRevoir).toBe(false);
+    expect(syntheseAutomatique(r({ stress: 9 }), null, 3).sourceRetour).toBe('Automatique');
+  });
+
   it('la file du coach montre d’abord ce qui est à vérifier', () => {
     const b = (id: string, semaine: string, aRevoir: boolean, reponduLe = 'x') => ({ id, semaine, aRevoir, reponduLe }) as BilanHebdo;
     expect(trierBilansCoach([b('a', '2026-10-19', false), b('b', '2026-10-12', true), b('c', '2026-10-05', false, '')]).map((x) => x.id)).toEqual(['b', 'c', 'a']);

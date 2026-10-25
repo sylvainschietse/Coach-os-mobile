@@ -100,7 +100,8 @@ export function EntrainementClient({
   const [version, setVersion] = useState(0);
   const [ouverture, setOuverture] = useState<{ seanceId: string; planificationId?: string; jeton: number } | null>(null);
   const references: Reference[] = (records.donnee ?? [])
-    .filter((r) => r.unite === 'kg' && r.exerciceId)
+    // Comme à l'origine : seule la performance choisie comme référence sert au calcul, et pour son exercice seulement.
+    .filter((r) => r.reference && r.unite === 'kg' && r.exerciceId)
     .map((r) => ({ exerciceId: r.exerciceId!, charge: r.valeur, repetitions: r.repetitions ?? 1, date: r.date }));
 
   const historique = vue === 'historique';

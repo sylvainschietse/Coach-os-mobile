@@ -55,7 +55,7 @@ export function Automatisations() {
   useFocusEffect(charge.recharger);
   useRechargerSur(charge.recharger, ecouterDocuments);
   useRechargerSur(charge.recharger, ecouterCrm);
-  if (charge.erreur) return <Erreur message={charge.erreur} />;
+  if (charge.erreur) return <Erreur message={charge.erreur} onReessayer={charge.recharger} />;
   if (!charge.donnee) return <Chargement />;
   const { etat, docs, lien, contacts } = charge.donnee;
 

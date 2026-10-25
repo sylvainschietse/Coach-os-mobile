@@ -81,6 +81,17 @@ describe('réception Tally', () => {
     expect((await coach(`select count(*)::int n from public.contacts where prenom = 'Nora'`)).rows[0].n).toBe(1);
   });
 
+  it('même téléphone et nouvel e-mail : la fiche existante est complétée, aucune nouvelle fiche', async () => {
+    expect((await recevoir('sylvain', 'tally:ines2', { prenom: 'Inès', telephone: '+33 6 55 44 33 99', email: 'ines.pro@exemple.test' })).rows[0].r).toBe('recu');
+    const c = await coach(`select id, email from public.contacts where telephone = '33655443399'`);
+    expect(c.rows).toHaveLength(1);
+    // La fiche avait déjà un e-mail : il n'est pas écrasé, la différence est signalée au coach.
+    expect(c.rows[0].email).toBe('ines@exemple.test');
+    const q = await coach(`select contact_id, alertes from public.questionnaires where envoi_id = 'tally:ines2'`);
+    expect(q.rows[0].contact_id).toBe(ids.contact);
+    expect(String(q.rows[0].alertes)).toMatch(/E-mail différent/);
+  });
+
   it('refuse un identifiant de réponse qui ne vient pas de Tally et un lien inconnu', async () => {
     await expect(recevoir('sylvain', 'autre:1', reponses)).rejects.toThrow(/Identifiant/);
     await expect(recevoir('inconnu', 'tally:zz', reponses)).rejects.toThrow(/introuvable/);
@@ -146,6 +157,18 @@ describe('envoi du compte rendu par Make', () => {
     await expect(reserver(ids.userCoach2, 2)).rejects.toThrow(/introuvable/);
     await expect(noter(ids.userCoach2, 2, 'echec')).rejects.toThrow(/introuvable/);
     await expect(en('anon', null, `select public.noter_envoi_compte_rendu($1, 2, 'envoye', '')`, [ids.document])).rejects.toThrow(/permission/);
+  });
+
+  it('une transmission interrompue (« en cours » depuis plus de 15 minutes) se relance à la demande, pas avant', async () => {
+    await db.exec(`insert into public.documents (id, coach_id, contact_id, nom, type, chemin) values
+      ('60000000-0000-4000-8000-000000000002', '${ids.coach1}', '${ids.contact}', 'Bilan · Inès', 'Bilan', 'x/b.pdf')`);
+    const r = (relancer: boolean) =>
+      coach(`select public.reserver_envoi_compte_rendu('60000000-0000-4000-8000-000000000002', 1, $1) as r`, [relancer]).then((x) => x.rows[0].r);
+    expect(await r(false)).toBe('ok');
+    expect(await r(true)).toBe('en_cours');
+    await db.exec(`update public.journal_automatisations set maj_le = now() - interval '20 minutes' where cle like '60000000-0000-4000-8000-000000000002:%'`);
+    expect(await r(false)).toBe('en_cours');
+    expect(await r(true)).toBe('ok');
   });
 
   it('on ne note pas un résultat sans transmission réservée', async () => {

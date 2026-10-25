@@ -46,7 +46,7 @@ export function JournalRepas({ clientId, saisie, coachId }: { clientId: string; 
   const [erreurAjout, setErreurAjout] = useState<string>();
   const [confirmer, setConfirmer] = useState<string>();
 
-  if (erreur) return <Erreur message={erreur} />;
+  if (erreur) return <Erreur message={erreur} onReessayer={recharger} />;
   if (!donnee) return <Chargement />;
   const { total, parMoment } = totauxDuJour(donnee.repas, jour);
   const aujourdhui = jourLocal(new Date());

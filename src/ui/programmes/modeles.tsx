@@ -14,7 +14,7 @@ export function Modeles({ coachId }: { coachId: string }) {
   return (
     <View style={{ gap: espace(3) }}>
       <Bouton libelle="Nouveau programme" onPress={() => router.push({ pathname: '/coach/modele/[id]', params: { id: 'nouveau' } })} />
-      {erreur && <Erreur message={erreur} />}
+      {erreur && <Erreur message={erreur} onReessayer={recharger} />}
       {!donnee && !erreur && <Chargement />}
       {donnee?.length === 0 && (
         <Texte doux>Crée un programme une fois (ses séances, ses exercices), puis attribue-le à autant de clients que tu veux.</Texte>
