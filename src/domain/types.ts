@@ -281,7 +281,7 @@ export interface Aliment extends Macros {
 export interface Ingredient extends Macros {
   alimentId?: string;
   nom: string;
-  /** Grammes qui servent au calcul des macros ; 0 quand la quantité n'est pas en grammes (pièce, ml, selon goût). */
+  /** Grammes qui servent au calcul des macros (estimés pour une pièce ou une cuillère, égouttés pour une conserve) ; 0 quand la quantité est selon goût. */
   quantiteG: number;
   contient: Contient[];
   /** Valeurs pour 100 g inconnues : les macros de la recette viennent alors des valeurs publiées par portion. */
