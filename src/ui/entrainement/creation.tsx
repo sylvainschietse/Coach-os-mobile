@@ -4,8 +4,12 @@ import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { entrainement, gererProgramme, type ActionCreation } from '@/data/entrainement';
+import { proposerSeance } from '@/data/redaction';
+import { blocsProposes, type PropositionSeance } from '@/domain/assistant-seance';
 import { LIBELLES_CYCLES, NIVEAUX, OBJECTIFS } from '@/domain/entrainement';
 import type { ModeleResume } from '@/domain/entrainement-etat';
+import type { Bloc } from '@/domain/types';
+import { nouvelId } from '@/lib/identifiant';
 
 import { Choix, Modale, Repliable, Saisie } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
@@ -70,6 +74,8 @@ export function CreationEntrainement({
   const depart = useRef(JSON.stringify(f));
   const verrou = useRef(false);
   const [enregistre, setEnregistre] = useState({ nom: '', consignes: '' });
+  const [demande, setDemande] = useState('');
+  const [proposition, setProposition] = useState<{ p: PropositionSeance; blocs: Bloc[] }>();
 
   const prog = action === 'programme' || action === 'editProgramme';
   const copie = action === 'copyProgramme' || action === 'copySeance';
@@ -110,6 +116,50 @@ export function CreationEntrainement({
         onEnregistre(r);
         onFermer();
       }
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Enregistrement impossible');
+    } finally {
+      verrou.current = false;
+      setOccupe(false);
+    }
+  };
+
+  const proposer = async () => {
+    if (verrou.current || demande.trim().length < 5) return;
+    verrou.current = true;
+    setOccupe(true);
+    setErreur('');
+    setProposition(undefined);
+    try {
+      const p = await proposerSeance(demande.trim());
+      const blocs = blocsProposes(p, nouvelId);
+      if (!blocs.length) throw new Error('L’assistant n’a proposé aucun exercice de ta bibliothèque. Reformule ta demande.');
+      setProposition({ p, blocs });
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Proposition impossible');
+    } finally {
+      verrou.current = false;
+      setOccupe(false);
+    }
+  };
+
+  // La proposition n'est enregistrée qu'ici, quand le coach la retient ; il la retouche ensuite dans l'éditeur.
+  const utiliserProposition = async () => {
+    if (verrou.current || !proposition) return;
+    verrou.current = true;
+    setOccupe(true);
+    setErreur('');
+    try {
+      const nom = f.nom.trim() || proposition.p.titre?.trim() || 'Séance';
+      const consignes = f.consignes.trim() || proposition.p.consignes?.trim() || '';
+      const r = await gererProgramme(coachId, 'seance', { ...f, nom, consignes, frequence: 0, duree: 0 }, { programmeId: cible || undefined });
+      const { seance } = await entrainement.seance(r.id);
+      await entrainement.enregistrerSeance(coachId, { ...seance, blocs: proposition.blocs });
+      setF({ ...f, nom, consignes });
+      setCree(r);
+      setEnregistre({ nom, consignes });
+      setProposition(undefined);
+      setEtape(2);
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Enregistrement impossible');
     } finally {
@@ -178,6 +228,29 @@ export function CreationEntrainement({
         </>
       ) : (
         <>
+          {action === 'seance' && !cree && (
+            <Repliable resume="Décrire la séance à l’assistant">
+              <View style={{ gap: 8 }}>
+                <Saisie
+                  libelle="Ce que vous voulez dans la séance"
+                  long
+                  valeur={demande}
+                  aide="Ex. : full body 45 min pour une femme de 50 ans débutante, haltères et élastiques, genou sensible, finir par 10 min de vélo."
+                  onChange={(v) => !occupe && setDemande(v.slice(0, 2000))}
+                />
+                <Ligne style={{ justifyContent: 'flex-end' }}>
+                  <Action petit libelle={occupe && !proposition ? 'Proposition en cours…' : proposition ? 'Proposer à nouveau' : 'Proposer la séance'} desactive={occupe || demande.trim().length < 5} onPress={proposer} />
+                </Ligne>
+                {proposition && <ApercuProposition p={proposition.p} blocs={proposition.blocs} />}
+                {proposition && (
+                  <Ligne style={{ justifyContent: 'flex-end' }}>
+                    <Action petit variante="contour" libelle="Écarter" desactive={occupe} onPress={() => setProposition(undefined)} />
+                    <Action petit libelle={occupe ? 'Enregistrement…' : 'Utiliser cette séance'} desactive={occupe} onPress={utiliserProposition} />
+                  </Ligne>
+                )}
+              </View>
+            </Repliable>
+          )}
           {champ('nom', 'Nom')}
           {action === 'attachSeance' && (
             <View style={{ gap: 8 }}>
@@ -251,5 +324,37 @@ export function CreationEntrainement({
         />
       )}
     </Modale>
+  );
+}
+
+const prescription = (l: Bloc['lignes'][number]) =>
+  [
+    `${l.series} × ${l.dureeS ? `${l.dureeS} s` : (l.repetitions ?? '—')}`,
+    l.recuperationS !== undefined ? `récup ${l.recuperationS} s` : '',
+    l.rir !== undefined ? `RIR ${l.rir}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+/** Aperçu de la proposition : rien n'est enregistré tant que le coach ne l'a pas retenue. */
+function ApercuProposition({ p, blocs }: { p: PropositionSeance; blocs: Bloc[] }) {
+  return (
+    <View accessibilityLabel="Proposition de l’assistant" style={{ gap: 8, borderRadius: 8, padding: 12, backgroundColor: couleurs.discret }}>
+      <Text style={ts.doux}>Proposition, pas encore enregistrée. Vous pourrez tout modifier ensuite.</Text>
+      {p.titre ? <Text style={ts.titreChamp}>{p.titre}</Text> : null}
+      {p.consignes ? <Text style={ts.doux}>{p.consignes}</Text> : null}
+      {blocs.map((b) => (
+        <View key={b.id} style={{ gap: 2 }}>
+          <Text style={{ fontSize: 14, fontFamily: polices.texteGras, color: couleurs.texte }}>{b.titre}</Text>
+          {b.lignes.map((l) => (
+            <Text key={l.id} style={{ fontSize: 14, fontFamily: polices.texte, color: couleurs.texte }}>
+              {l.exercice.nom} · {prescription(l)}
+            </Text>
+          ))}
+        </View>
+      ))}
+      {p.remarque ? <Text style={ts.doux}>À noter : {p.remarque}</Text> : null}
+      {p.ecartes ? <Text style={ts.doux}>{p.ecartes} exercice{p.ecartes > 1 ? 's' : ''} hors bibliothèque écarté{p.ecartes > 1 ? 's' : ''}.</Text> : null}
+    </View>
   );
 }
