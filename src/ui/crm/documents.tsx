@@ -1,11 +1,12 @@
 // C07 — Rubrique Documents reprise de CRMWorkspace.tsx : recherche, « Ajouter un document », filtre « Dossier : X »,
-// cartes avec Ouvrir le fichier, « Partager dans l'espace client » et badge d'envoi. L'envoi via Make n'est pas
-// raccordé : le bouton reste désactivé et rien n'est marqué envoyé sans confirmation.
+// cartes avec Ouvrir le fichier, « Partager dans l'espace client » et badge d'envoi. « Envoyer via Make » n'est actif
+// que si le webhook est renseigné ; « Envoi confirmé » n'apparaît que si Make confirme l'e-mail (lot 6).
 import { useFocusEffect } from 'expo-router';
 import { ArrowUpRight } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { automatisations, type ResultatEnvoi } from '@/data/automatisations';
 import { crm, ecouterCrm } from '@/data/crm';
 import { documents, ecouterDocuments, type Fichier } from '@/data/documents';
 import { ecrireJour, jourLocal, lireJour, type BoosterDossier, type ContactResume } from '@/domain/crm';
@@ -34,7 +35,13 @@ const jour = (j: string) => new Date(`${j}T12:00:00Z`).toLocaleDateString('fr-FR
 
 function useDonnees() {
   const charge = useCharger(
-    async () => ({ docs: await documents.documents(), contacts: await crm.contacts(), boosters: await crm.boosters(), coachings: (await crm.carnet()).coachings }),
+    async () => ({
+      docs: await documents.documents(),
+      contacts: await crm.contacts(),
+      boosters: await crm.boosters(),
+      coachings: (await crm.carnet()).coachings,
+      make: await automatisations.make(),
+    }),
     'documents',
   );
   useFocusEffect(charge.recharger);
@@ -66,7 +73,7 @@ export function Documents({
       </View>
     );
   if (!charge.donnee) return <Chargement />;
-  const { docs, contacts } = charge.donnee;
+  const { docs, contacts, make } = charge.donnee;
   const visibles = filtrerDocuments(docs, contacts, recherche, contactId);
   const nom = (id?: string) => {
     const c = contacts.find((x) => x.id === id);
@@ -89,7 +96,13 @@ export function Documents({
       )}
       <View style={{ gap: espace(3) }}>
         {visibles.map((d) => (
-          <CarteDocument key={d.id} doc={d} contact={nom(d.contactId)} onOuvrir={() => onOuvrir(d.id)} onSupprimer={() => setSuppression(d)} />
+          <CarteDocument
+            key={d.id}
+            doc={d}
+            contact={nom(d.contactId)}
+            make={make === 'configure'}
+            onEnvoi={charge.recharger}
+            onOuvrir={() => onOuvrir(d.id)} onSupprimer={() => setSuppression(d)} />
         ))}
         {!visibles.length && <Vide titre="Aucun dossier pour ces filtres." />}
       </View>
@@ -106,9 +119,40 @@ export function Documents({
   );
 }
 
-function CarteDocument({ doc: d, contact, onOuvrir, onSupprimer }: { doc: Document; contact: string; onOuvrir: () => void; onSupprimer: () => void }) {
+function CarteDocument({
+  doc: d,
+  contact,
+  make,
+  onEnvoi,
+  onOuvrir,
+  onSupprimer,
+}: {
+  doc: Document;
+  contact: string;
+  make: boolean;
+  onEnvoi: () => void;
+  onOuvrir: () => void;
+  onSupprimer: () => void;
+}) {
   const [occupe, setOccupe] = useState(false);
   const [retour, setRetour] = useState<{ ok: boolean; texte: string }>();
+  const [envoi, setEnvoi] = useState<ResultatEnvoi>();
+
+  async function envoyer(relancer = false) {
+    setOccupe(true);
+    setRetour(undefined);
+    try {
+      const r = await automatisations.envoyerCompteRendu(d.id, relancer);
+      setEnvoi(r);
+      // Seul un e-mail confirmé est une réussite ; une demande reçue par Make reste « non confirmée ».
+      setRetour({ ok: r.etat === 'envoye', texte: r.message });
+      onEnvoi();
+    } catch (e) {
+      setRetour({ ok: false, texte: e instanceof Error ? e.message : 'Transmission non confirmée.' });
+    } finally {
+      setOccupe(false);
+    }
+  }
 
   async function agir(action: () => Promise<unknown>, succes?: string) {
     setOccupe(true);
@@ -164,9 +208,16 @@ function CarteDocument({ doc: d, contact, onOuvrir, onSupprimer }: { doc: Docume
         )}
         <Badge variante={d.envoye ? 'primaire' : 'contour'} libelle={d.envoye ? 'Envoi confirmé' : 'Non envoyé'} />
         <View>
-          <BoutonContour libelle="Make à raccorder" desactive onPress={() => undefined} />
-          <Text style={styles.raison}>Envoi automatique non raccordé</Text>
+          <BoutonContour
+            libelle={make ? 'Envoyer via Make' : 'Make à raccorder'}
+            desactive={occupe || !make || d.envoye || !d.chemin}
+            onPress={() => envoyer()}
+          />
+          {!make && <Text style={styles.raison}>Envoi automatique non raccordé</Text>}
         </View>
+        {make && !d.envoye && (envoi?.etat === 'echec' || envoi?.etat === 'bloque') && (
+          <BoutonContour libelle="Relancer après vérification dans Make" desactive={occupe} onPress={() => envoyer(true)} />
+        )}
       </View>
       {retour && <Text style={[styles.retour, !retour.ok && { color: couleurs.rouge }]}>{retour.texte}</Text>}
     </View>

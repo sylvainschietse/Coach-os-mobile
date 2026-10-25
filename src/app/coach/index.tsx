@@ -30,7 +30,6 @@ import {
   EnTete,
   EnTeteRubrique,
   MenuRubriques,
-  NonRepris,
   OngletsCoach,
   Vide,
   type OngletDef,
@@ -38,6 +37,7 @@ import {
 import { Carte, Chargement, Erreur, Texte } from '@/ui/composants';
 import { Bilans, EditeurBilan } from '@/ui/crm/bilans';
 import { Boosters } from '@/ui/crm/boosters';
+import { Automatisations } from '@/ui/crm/automatisations';
 import { nomComplet } from '@/ui/crm/commun';
 import { Contacts } from '@/ui/crm/contacts';
 import { Documents, EditeurDocumentModale } from '@/ui/crm/documents';
@@ -78,7 +78,6 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Paiements', libelle: 'Paiements', icone: Wallet },
   { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
 ];
-const LOT: Partial<Record<Rubrique, number>> = { Automations: 6 };
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 
@@ -346,7 +345,7 @@ function Crm({
             onSupprimer={(x) => setASupprimer({ quoi: 'ce bilan', nom: x.nom, contact: x.contact, action: () => crm.supprimerBilan(x.id) })}
           />
         )}
-        {LOT[rubrique] && <NonRepris ecran={titre} lot={LOT[rubrique]!} />}
+        {rubrique === 'Automations' && <Automatisations />}
       </View>
 
       {params.coaching || params.tache || params.paiement ? (
