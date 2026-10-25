@@ -100,6 +100,7 @@ export function Documents({
             key={d.id}
             doc={d}
             contact={nom(d.contactId)}
+            email={contacts.find((c) => c.id === d.contactId)?.email}
             make={make === 'configure'}
             onEnvoi={charge.recharger}
             onOuvrir={() => onOuvrir(d.id)} onSupprimer={() => setSuppression(d)} />
@@ -122,6 +123,7 @@ export function Documents({
 function CarteDocument({
   doc: d,
   contact,
+  email,
   make,
   onEnvoi,
   onOuvrir,
@@ -129,6 +131,7 @@ function CarteDocument({
 }: {
   doc: Document;
   contact: string;
+  email?: string;
   make: boolean;
   onEnvoi: () => void;
   onOuvrir: () => void;
@@ -137,8 +140,11 @@ function CarteDocument({
   const [occupe, setOccupe] = useState(false);
   const [retour, setRetour] = useState<{ ok: boolean; texte: string }>();
   const [envoi, setEnvoi] = useState<ResultatEnvoi>();
+  // Rien ne part sans une confirmation qui montre le PDF exact et le destinataire.
+  const [aConfirmer, setAConfirmer] = useState<{ relancer: boolean }>();
 
   async function envoyer(relancer = false) {
+    setAConfirmer(undefined);
     setOccupe(true);
     setRetour(undefined);
     try {
@@ -210,15 +216,34 @@ function CarteDocument({
         <View>
           <BoutonContour
             libelle={make ? 'Envoyer par e-mail' : 'Envoi à raccorder'}
-            desactive={occupe || !make || d.envoye || !d.chemin}
-            onPress={() => envoyer()}
+            desactive={occupe || !make || d.envoye || !d.chemin || !!aConfirmer}
+            onPress={() => setAConfirmer({ relancer: false })}
           />
           {!make && <Text style={styles.raison}>Envoi automatique non raccordé</Text>}
         </View>
         {make && !d.envoye && (envoi?.etat === 'echec' || envoi?.etat === 'bloque') && (
-          <BoutonContour libelle="Relancer après vérification" desactive={occupe} onPress={() => envoyer(true)} />
+          <BoutonContour libelle="Relancer après vérification" desactive={occupe || !!aConfirmer} onPress={() => setAConfirmer({ relancer: true })} />
         )}
       </View>
+      {aConfirmer && (
+        <View style={styles.confirmation}>
+          <Text style={styles.titre}>Vérifier avant l’envoi</Text>
+          <Text style={styles.detail}>
+            {`${d.nomFichier || d.nom || 'Le document'} · version ${d.version} sera envoyé à ${email || 'l’e-mail du contact'}${contact ? ` (${contact})` : ''}.`}
+          </Text>
+          <Text style={styles.detail}>Ouvre le PDF pour le relire : c’est exactement ce fichier qui partira en pièce jointe.</Text>
+          <View style={styles.ligne}>
+            <BoutonContour
+              libelle="Ouvrir le PDF"
+              icone={ArrowUpRight}
+              onPress={() => agir(() => ouvrirFichier(() => documents.lien(d.chemin!), d.nomFichier || 'document.pdf'))}
+            />
+            <BoutonContour libelle="Confirmer l’envoi" desactive={occupe || !email} onPress={() => envoyer(aConfirmer.relancer)} />
+            <BoutonContour libelle="Annuler" desactive={occupe} onPress={() => setAConfirmer(undefined)} />
+          </View>
+          {!email && <Text style={[styles.detail, { color: couleurs.rouge }]}>Ajoutez d’abord l’e-mail du contact.</Text>}
+        </View>
+      )}
       {retour && <Text style={[styles.retour, !retour.ok && { color: couleurs.rouge }]}>{retour.texte}</Text>}
     </View>
   );
@@ -492,6 +517,7 @@ function Editeur({
 }
 
 const styles = StyleSheet.create({
+  confirmation: { gap: espace(2), padding: espace(3), borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 12 },
   outils: { flexDirection: 'row', flexWrap: 'wrap', gap: espace(3), alignItems: 'flex-start' },
   filtre: { fontFamily: polices.texte, fontSize: 14, color: couleurs.texte },
   entete: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: espace(3) },

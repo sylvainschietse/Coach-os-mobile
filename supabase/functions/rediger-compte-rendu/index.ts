@@ -26,7 +26,7 @@ const CONSIGNES = `Tu rédiges, au nom d'un coach sportif, le compte rendu remis
 Ce que tu écris :
 - regard : le regard du coach sur la séance. Points forts réels, points à travailler (physique et habitudes de vie), lien avec l'objectif du client, encouragement. 4 à 6 phrases.
 - tests : pour chaque test qui a un résultat évalué, 2 à 4 phrases : ce que montre le résultat et les observations notées, ce que ça veut dire pour le client, puis la direction du travail à venir.
-- priorites : trois priorités. Si le coach en a déjà choisi, garde ses intitulés tels quels, dans son ordre, et complète seulement s'il en manque. Un intitulé tient en quelques mots. L'explication fait 2 ou 3 phrases : pourquoi c'est important pour ce client et ce qu'on va faire.
+- priorites : trois priorités. Elles sont déterminées par l'application à partir des tests et du bilan : garde leurs intitulés tels quels, dans leur ordre, et complète seulement s'il en manque. Un intitulé tient en quelques mots. L'explication fait 2 ou 3 phrases : pourquoi c'est important pour ce client et ce qu'on va faire.
 - semaine : des actions simples et concrètes que le client peut faire dès cette semaine, tirées de son bilan (sommeil, hydratation, alimentation, organisation des séances…). Formule-les à l'infinitif.
 - suite : les prochaines étapes de l'accompagnement, en quelques mots chacune.
 

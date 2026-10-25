@@ -8,10 +8,10 @@ import { crm } from '@/data/crm';
 import { depuisBase64, documents, ecouterDocuments, type Fichier } from '@/data/documents';
 import { iaDisponible, redigerCompteRendu } from '@/data/redaction';
 import { compteRenduHtml, construireCompteRendu, emailCompteRendu, messageCompteRenduEnvoye } from '@/domain/compte-rendu';
-import { lienEnvoi } from '@/domain/crm';
+import { lienEnvoi, troisPriorites } from '@/domain/crm';
 import type { Booster, FicheContact } from '@/domain/crm';
 import { TESTS } from '@/domain/evaluation';
-import { appliquerRedaction, redactionModele, type Redaction } from '@/domain/redaction';
+import { appliquerRedaction, prioritesAuto, redactionModele, type Redaction } from '@/domain/redaction';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
@@ -38,12 +38,20 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
   const [erreur, setErreur] = useState<string>();
   // Textes retouchés ou rédigés par l'IA ; tant qu'il n'y en a pas, le modèle suit les tests et les priorités.
   const [textes, setTextes] = useState<Redaction | undefined>(booster.redaction);
-  const [priorites, setPriorites] = useState(booster.priorites);
-  const [redaction, setRedaction] = useState(false);
   const reponses = fiche.questionnaires[0]?.reponses;
+  // Les priorités sont déterminées par l'application à partir des tests, du bilan et de l'objectif.
+  const priorites = troisPriorites(prioritesAuto(booster, reponses));
+  const [redaction, setRedaction] = useState(false);
   const cr = construireCompteRendu(fiche.contact, { ...booster, compteRendu: mot, redaction: textes, priorites }, reponses, coach);
   const affiches = textes ?? redactionModele(fiche.contact, { ...booster, priorites }, reponses);
-  const sansPriorite = !priorites.some((p) => p.trim());
+
+  // Garde la fiche et l'espace client alignés sur le calcul, sans attendre un enregistrement du Booster.
+  const prioritesTexte = JSON.stringify(priorites);
+  useEffect(() => {
+    if (prioritesTexte !== JSON.stringify(troisPriorites(booster.priorites))) {
+      crm.enregistrerBooster(booster.id, { priorites: JSON.parse(prioritesTexte) }).catch(() => undefined);
+    }
+  }, [prioritesTexte, booster.id, booster.priorites]);
 
   // Le mot du coach s'enregistre un instant après la frappe.
   useEffect(() => {
@@ -69,7 +77,6 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
       // Les priorités générées vont dans leurs champs, sans remplacer celles choisies par le coach.
       const r = appliquerRedaction({ ...booster, priorites }, genere);
       await crm.enregistrerBooster(booster.id, r);
-      setPriorites(r.priorites);
       setTextes(r.redaction);
       recharger();
     } catch (e) {
@@ -174,8 +181,8 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
           onChange={setMot}
           placeholder="Quelques lignes personnelles en ouverture du compte rendu"
         />
-        {sansPriorite && <Texte style={{ fontSize: 14, color: couleurs.orange }}>Les 3 priorités ne sont pas encore remplies.</Texte>}
-        <Bouton variante="discret" libelle="Modifier la séance (tests, priorités)" onPress={onModifierSeance} />
+        <Texte doux style={{ fontSize: 14 }}>{`Priorités déterminées par l’application : ${priorites.filter(Boolean).join(' · ')}.`}</Texte>
+        <Bouton variante="discret" libelle="Modifier la séance (tests, entretien)" onPress={onModifierSeance} />
       </Carte>
 
       <TitreSection>Textes du compte rendu</TitreSection>
@@ -314,7 +321,8 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
         <SousTitre>1. Le compte rendu par e-mail</SousTitre>
         {Platform.OS === 'web' ? (
           <Texte doux style={{ fontSize: 14 }}>
-            Sur le téléphone, un bouton ouvre un e-mail prêt à partir vers le client, avec en pièce jointe la version enregistrée dans Documents.
+            Une fois le PDF déposé, envoie-le depuis Documents avec « Envoyer par e-mail » : le PDF exact et l’adresse du client s’affichent, et
+            rien ne part avant ta confirmation.
           </Texte>
         ) : !doc?.chemin ? (
           <Texte style={{ fontSize: 14, color: couleurs.orange }}>Enregistrez d’abord le PDF dans Documents : c’est cette version qui sera envoyée.</Texte>

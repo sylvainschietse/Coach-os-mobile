@@ -131,9 +131,11 @@ function explicationTest(id: IdTest, resultat: string, observations: string[], r
   return phrases.join(' ');
 }
 
-type Theme = 'regularite' | 'alimentation' | 'sommeil' | 'stress' | 'hydratation' | 'mobilite' | 'cardio' | 'force';
+type Theme = 'douleur' | 'posture' | 'regularite' | 'alimentation' | 'sommeil' | 'stress' | 'hydratation' | 'mobilite' | 'cardio' | 'force';
 
 const THEMES: [Theme, RegExp][] = [
+  ['douleur', /douleur|gêne|sans mal/i],
+  ['posture', /posture|placement|symétri/i],
   ['sommeil', /sommeil|dorm|récup/i],
   ['stress', /stress|anxi|détente|mental/i],
   ['alimentation', /aliment|nutri|manger|repas|protéin|grignot/i],
@@ -145,6 +147,8 @@ const THEMES: [Theme, RegExp][] = [
 ];
 
 const EXPLICATION_THEME: Record<Theme, string> = {
+  douleur: 'Avant d’aller plus loin, on s’assure que chaque mouvement reste confortable. On adapte les exercices autour de la zone sensible et on surveille son évolution, pour progresser sans te blesser.',
+  posture: 'Un corps bien équilibré répartit mieux les efforts. On travaillera le placement et chaque côté du corps, pour des mouvements plus efficaces et moins de tensions au quotidien.',
   regularite: 'La régularité est la clé des résultats. Mieux vaut des séances accessibles et fréquentes que des efforts intenses mais irréguliers : c’est ce qui installe l’habitude.',
   alimentation: 'Une alimentation plus équilibrée t’aidera à avoir plus d’énergie et à progresser. L’idée n’est pas de tout changer, mais d’améliorer progressivement tes habitudes, repas après repas.',
   sommeil: 'Le sommeil est la base de la récupération et de l’énergie. Mieux dormir t’aidera à rester motivé(e), à mieux récupérer de tes séances et à mieux gérer ton quotidien.',
@@ -172,7 +176,84 @@ function habitudes(r: Record<string, string>) {
   };
 }
 
-/** Les textes proposés sans IA, à partir du bilan, des tests et des priorités saisies par le coach. */
+/** Intitulé de chaque priorité possible : court, et reconnu par THEMES pour retrouver son explication. */
+const TITRE_PRIORITE: Record<Theme, string> = {
+  douleur: 'Bouger sans douleur',
+  posture: 'Rééquilibrer ta posture',
+  force: 'Renforcer ton corps',
+  cardio: 'Développer ton endurance',
+  mobilite: 'Gagner en mobilité',
+  alimentation: 'Équilibrer ton alimentation',
+  sommeil: 'Mieux dormir pour mieux récupérer',
+  stress: 'Apprendre à relâcher le stress',
+  hydratation: 'Boire davantage d’eau',
+  regularite: 'Installer la régularité',
+};
+
+const ZONE_FORCE: Record<'poussee' | 'tirage' | 'jambes', string> = { poussee: 'le haut du corps', tirage: 'le dos', jambes: 'les jambes' };
+
+/** Poids donné par l'objectif du bilan à chaque thème. */
+const OBJECTIF_THEMES: [RegExp, Partial<Record<Theme, number>>][] = [
+  [/poids|mincir|affiner|silhouette|raffermi/i, { cardio: 1, alimentation: 1.5, regularite: 0.5 }],
+  [/muscle|force|tonicit/i, { force: 1.5, alimentation: 0.5 }],
+  [/forme|énergie|santé/i, { cardio: 1, regularite: 1, sommeil: 0.5 }],
+  [/performance|course|compétition|escalade|trail/i, { force: 1, cardio: 1, mobilite: 0.5 }],
+  [/mobilit|souplesse/i, { mobilite: 1.5, posture: 0.5 }],
+];
+
+/**
+ * Les 3 priorités du Booster, déterminées par l'application et non saisies par le coach :
+ * une douleur passe d'abord, puis les tests les plus fragiles, les habitudes du bilan et l'objectif départagent.
+ * Sans aucune donnée, la régularité reste la priorité de départ. Toujours le même résultat pour les mêmes données.
+ */
+export function prioritesAuto(booster: Pick<Booster, 'evaluation' | 'entretien'>, reponses: Record<string, string> | undefined): string[] {
+  const r = reponses ?? {};
+  const h = habitudes(r);
+  const e = booster.evaluation;
+  const score: Partial<Record<Theme, number>> = {};
+  const ajouter = (t: Theme, n: number) => (score[t] = (score[t] ?? 0) + n);
+  let zoneForce: { zone: string; poids: number } | undefined;
+
+  const douleurTests = TESTS.some((t) => e?.tests[t.id]?.observations.some((o) => /douleur|gêne/i.test(o)));
+  if (e?.douleur === 'Oui' || douleurTests || r.douleur === 'Oui') ajouter('douleur', 10);
+
+  for (const t of TESTS) {
+    const res = e?.tests[t.id]?.resultat;
+    if (!res || /^(Non |À approfondir|Test interrompu)/.test(res)) continue;
+    // Rang dans la liste des résultats : 0 et 1 sont des points d'appui, 2 à 4 de plus en plus fragiles.
+    const rang = t.resultats.indexOf(res);
+    if (rang < 2) continue;
+    const poids = 2 + (rang - 2) * 1.5;
+    if (t.id === 'poussee' || t.id === 'tirage' || t.id === 'jambes') {
+      ajouter('force', poids);
+      if (!zoneForce || poids > zoneForce.poids) zoneForce = { zone: ZONE_FORCE[t.id], poids };
+    } else ajouter(t.id === 'cardio' ? 'cardio' : t.id === 'mobilite' ? 'mobilite' : 'posture', poids);
+  }
+
+  if (h.alimentation || h.proteines || h.fruits || h.sucre) ajouter('alimentation', 1.5);
+  if (h.sommeil) ajouter('sommeil', 1.5);
+  if (h.stress) ajouter('stress', 1.5);
+  if (h.eau) ajouter('hydratation', 0.75);
+  const seances = Number(r.seancesActuelles?.match(/\d/)?.[0] ?? NaN);
+  if (r.activiteReguliere === 'Non' || r.seancesActuelles === 'Aucune' || seances <= 1) ajouter('regularite', 1.5);
+
+  const objectif = [r.objectif === 'Autre' ? r.objectifAutre : r.objectif, booster.entretien?.pourquoiMaintenant].filter(Boolean).join(' ');
+  for (const [motif, poids] of OBJECTIF_THEMES) {
+    if (!motif.test(objectif)) continue;
+    // L'objectif départage les thèmes déjà repérés ; il ne crée une priorité que s'il en manque.
+    for (const [t, n] of Object.entries(poids) as [Theme, number][]) ajouter(t, score[t] ? n : n / 4);
+  }
+
+  const ordre: Theme[] = ['douleur', 'force', 'cardio', 'mobilite', 'posture', 'alimentation', 'sommeil', 'stress', 'regularite', 'hydratation'];
+  const choisis = ordre
+    .filter((t) => (score[t] ?? 0) > 0)
+    .sort((a, b) => (score[b] ?? 0) - (score[a] ?? 0) || ordre.indexOf(a) - ordre.indexOf(b))
+    .slice(0, 3);
+  if (choisis.length < 3 && !choisis.includes('regularite')) choisis.push('regularite');
+  return choisis.map((t) => (t === 'force' && zoneForce ? `Renforcer ${zoneForce.zone}` : TITRE_PRIORITE[t]));
+}
+
+/** Les textes proposés sans IA, à partir du bilan, des tests et des priorités déterminées par l'application. */
 export function redactionModele(contact: Contact, booster: Booster, reponses: Record<string, string> | undefined): Redaction {
   const r = reponses ?? {};
   const h = habitudes(r);
@@ -257,7 +338,7 @@ export function dossierRedaction(contact: Contact, booster: Booster, reponses: R
     bloc('Motivation et attentes', b?.motivation ?? []),
     bloc('Entretien pendant le Booster', ENTRETIEN.map((q) => (booster.entretien?.[q.id]?.trim() ? `${q.libelle} ${booster.entretien[q.id].trim()}` : undefined))),
     `## Évaluation physique (résultat | effort perçu | observations du coach)\n${booster.evaluation ? syntheseEvaluation(booster.evaluation) : '(aucun test saisi)'}`,
-    bloc('Priorités choisies par le coach', booster.priorites),
+    bloc('Priorités déterminées par l’application', booster.priorites),
     bloc('Mot du coach', [booster.compteRendu]),
   ].join('\n\n');
 }

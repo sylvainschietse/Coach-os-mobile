@@ -24,6 +24,7 @@ import {
   type StatutBooster,
 } from '@/domain/crm';
 import { ENTRETIEN, evaluationVide, TESTS, type Evaluation, type IdTest } from '@/domain/evaluation';
+import { prioritesAuto } from '@/domain/redaction';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Selecteur, SousNav, type OngletDef } from '../coque';
@@ -52,7 +53,9 @@ interface Brouillon {
   notesInternes: string;
 }
 
-function brouillonDe(b: Booster | undefined, contact: Contact | undefined): Brouillon {
+function brouillonDe(b: Booster | undefined, contact: Contact | undefined, reponses: Record<string, string> | undefined): Brouillon {
+  const evaluation = b?.evaluation ?? evaluationVide();
+  const entretien = { ...(b?.entretien ?? {}) };
   return {
     nom: b?.nom ?? (contact ? nomBooster(contact) : ''),
     contactId: b?.contactId ?? contact?.id ?? '',
@@ -60,9 +63,10 @@ function brouillonDe(b: Booster | undefined, contact: Contact | undefined): Brou
     statut: b ? statutBooster(b) : 'À préparer',
     resumeIa: b?.resumeIa ?? '',
     pointsAttention: b?.pointsAttention ?? '',
-    entretien: { ...(b?.entretien ?? {}) },
-    evaluation: b?.evaluation ?? evaluationVide(),
-    priorites: troisPriorites(b?.priorites),
+    entretien,
+    evaluation,
+    // Déterminées par l'application d'après les tests, le bilan et l'objectif ; le coach ne les saisit pas.
+    priorites: troisPriorites(prioritesAuto({ evaluation, entretien }, reponses)),
     offreRecommandee: b?.offreRecommandee ?? '',
     resultatCommercial: b?.resultatCommercial ?? '',
     dateRelance: ecrireJour(b?.dateRelance),
@@ -152,8 +156,11 @@ function Editeur({
   onSupprimer: (b: Booster, contact: Contact) => void;
 }) {
   const [rubrique, setRubrique] = useState<Rubrique>('Préparation');
-  const [initial, setInitial] = useState(() => brouillonDe(booster, contact));
-  const [b, setB] = useState(initial);
+  const reponses = questionnaire?.reponses;
+  const [initial, setInitial] = useState(() => brouillonDe(booster, contact, reponses));
+  const [brut, setB] = useState(initial);
+  // Les priorités suivent les tests et l'entretien à chaque modification.
+  const b = { ...brut, priorites: troisPriorites(prioritesAuto(brut, reponses)) };
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string>();
   const [sortie, setSortie] = useState<(() => void) | null>(null);
@@ -178,6 +185,7 @@ function Editeur({
       if (!booster) {
         await crm.creerBooster(b.contactId, {
           ...saisie,
+          priorites: b.priorites,
           nom: vide(b.nom),
           date: date!,
           statutCrm: b.statut,
@@ -185,7 +193,9 @@ function Editeur({
         onFermer();
         return;
       }
-      await crm.modifierBooster(booster.id, saisie);
+      // Des priorités enregistrées avant le calcul automatique sont remplacées au premier enregistrement.
+      const priorites = JSON.stringify(b.priorites) !== JSON.stringify(troisPriorites(booster.priorites)) ? { priorites: b.priorites } : {};
+      await crm.modifierBooster(booster.id, { ...saisie, ...priorites });
       setInitial(b);
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Enregistrement non confirmé');
@@ -321,19 +331,18 @@ function Editeur({
 
       {rubrique === 'Conclusion' && (
         <Grille>
-          {[0, 1, 2].map((i) => (
-            <Cellule key={i}>
-              <Saisie
-                libelle={`Priorité ${i + 1}`}
-                valeur={b.priorites[i]}
-                onChange={(v) =>
-                  maj({
-                    priorites: b.priorites.map((p, j) => (j === i ? v : p)),
-                  })
-                }
-              />
-            </Cellule>
-          ))}
+          <Cellule pleine>
+            <View style={{ gap: espace(2) }}>
+              <Libelle>Priorités</Libelle>
+              {b.priorites.filter(Boolean).map((p, i) => (
+                <Text key={p} style={styles.contact}>{`${i + 1}. ${p}`}</Text>
+              ))}
+              <Text style={styles.aide}>
+                Déterminées par l’application d’après les tests, une douleur éventuelle, les habitudes du bilan et l’objectif. Elles se mettent à jour
+                quand les tests changent.
+              </Text>
+            </View>
+          </Cellule>
           <Cellule>
             <Choix
               libelle="Offre recommandée"
