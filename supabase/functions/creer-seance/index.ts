@@ -60,8 +60,6 @@ const entetes = {
 const repondre = (corps: unknown, status = 200) =>
   new Response(JSON.stringify(corps), { status, headers: { ...entetes, 'Content-Type': 'application/json' } });
 
-const claude = new Anthropic(); // lit ANTHROPIC_API_KEY dans les secrets
-
 interface ExerciceBase {
   id: string;
   nom: string;
@@ -81,6 +79,10 @@ Deno.serve(async (req) => {
   } catch {
     return repondre({ erreur: 'Requête illisible.' }, 400);
   }
+  const cle = Deno.env.get('ANTHROPIC_API_KEY');
+  if (!cle) return repondre({ erreur: 'La clé Claude n’est pas encore enregistrée sur le serveur (secret ANTHROPIC_API_KEY).' }, 503);
+  const claude = new Anthropic({ apiKey: cle });
+
   const demande = corps.demande?.trim() ?? '';
   if (demande.length < 5 || demande.length > 2000) return repondre({ erreur: 'Décris la séance en quelques phrases (2000 caractères au plus).' }, 400);
 
