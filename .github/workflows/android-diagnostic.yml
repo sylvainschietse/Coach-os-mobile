@@ -46,7 +46,8 @@ jobs:
             $HOME/.maestro/bin/maestro test .maestro/creer-programme.yaml --test-output-dir diagnostic || true
             sleep 3
             echo '::group::Écran après « Créer un programme »'; $HOME/.maestro/bin/maestro hierarchy | grep -oE '"(text|accessibilityText|resource-id)" : "[^"]+"' | head -80; echo '::endgroup::'
-            echo '::group::Journal de l app'; P=$(adb shell pidof com.coachos.app); echo "pid=$P"; adb logcat -d ${P:+--pid=$P} | grep -vE ' [VD] ' | tail -150; echo '::endgroup::'
+            echo '::group::Journal de l app'; adb logcat -d | grep -E 'ReactNative|SurfaceMounting|FabricUIManager|Exception|Caused by|^\s+at |ReactNativeJS|AndroidRuntime' | grep -vE 'gms|Finsky|bwfc|gsa|Cronet|AiAiEcho|AmbientMusic|PackageManager' | grep -m1 -A60 -E 'SurfaceMounting|IllegalState|IllegalArgument|RetryableMountingLayerException'; echo '::endgroup::'
+            echo '::group::Journal JS'; adb logcat -d -s ReactNativeJS:V | tail -40; echo '::endgroup::'
             echo '::group::Plantages'; adb logcat -d -b crash | tail -80; echo '::endgroup::'
             adb exec-out screencap -p > diagnostic/fin.png
             adb logcat -d > diagnostic/logcat.txt
