@@ -110,6 +110,7 @@ export function OngletsCoach<T extends string>({ onglets, valeur, onChange }: { 
               key={o.cle}
               accessibilityRole="tab"
               accessibilityState={{ selected: actif }}
+              aria-selected={actif}
               aria-current={actif ? 'page' : undefined}
               onPress={() => onChange(o.cle)}
               style={[styles.onglet, { paddingHorizontal: petit ? 13 : 18 }, actif && { backgroundColor: couleurs.rouge }]}
@@ -149,6 +150,7 @@ export function SousNav<T extends string>({
         key={o.cle}
         accessibilityRole="tab"
         accessibilityState={{ selected: actif }}
+        aria-selected={actif}
         aria-current={actif ? 'page' : undefined}
         onPress={() => onChange(o.cle)}
         style={[
@@ -327,6 +329,7 @@ export function BarreClient<T extends string>({ onglets, valeur, onChange }: { o
               key={o.cle}
               accessibilityRole="tab"
               accessibilityState={{ selected: actif }}
+              aria-selected={actif}
               aria-current={actif ? 'page' : undefined}
               onPress={() => !actif && onChange(o.cle)}
               style={[styles.barreBouton, actif && { backgroundColor: 'rgba(195, 24, 30, 0.065)' }]}
