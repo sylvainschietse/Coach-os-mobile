@@ -37,7 +37,8 @@ jobs:
       - run: npx expo prebuild --platform android --no-install
       - name: Compilation
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
+        # Mémoire de Gradle relevée : avec 2 Go et 512 Mo de métaspace, la mise en paquet échouait faute de mémoire.
+        run: ./gradlew assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g"
       - name: Mise en ligne
         env:
           GH_TOKEN: ${{ github.token }}
