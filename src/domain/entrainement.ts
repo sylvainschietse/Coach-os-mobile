@@ -338,7 +338,7 @@ export function copierProgramme(
     ? {
         ...commun,
         clientId: opts.clientId,
-        consignes: `${LIBELLES_CYCLES[cycle - 1]} · Cycle de 5 semaines.\n${modele.consignes ?? ''}`,
+        consignes: `${LIBELLES_CYCLES[cycle - 1]} · Cycle de ${modele.dureeSemaines ?? 5} semaines.\n${modele.consignes ?? ''}`,
         modeleOrigineId: modele.id,
         cycleApplique: cycle,
         seances: [],
