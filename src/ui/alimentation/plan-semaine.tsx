@@ -2,11 +2,12 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { depot } from '@/data';
 import { alimentation } from '@/data/alimentation';
+import { nutrition } from '@/data/nutrition';
 import { plansRepas } from '@/data/plan-repas';
-import { calculerBesoins, MOMENTS, objectifsDuJour, rechercherRecettes, totalRecette } from '@/domain/alimentation';
+import { MOMENTS, rechercherRecettes, totalRecette } from '@/domain/alimentation';
 import { jourLocal } from '@/domain/crm';
+import { macros } from '@/domain/nutrition/calcul';
 import {
   changerPortions,
   dateDuJour,
@@ -28,7 +29,6 @@ import { BoutonContour } from '../coque';
 import { Bouton, Carte, ChampTexte, Chargement, Erreur, Puce, Puces, Texte } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { LigneMacros } from './commun';
-import { chargerProfil } from './profil';
 
 const PORTIONS = [0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4];
 const ordreMoment = (m: MomentRepas) => MOMENTS.findIndex((x) => x.cle === m);
@@ -39,15 +39,18 @@ const dateLongue = (jour: string) =>
 const horodatage = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
 
+// Cible du jour : objectifs du coach ou estimation du profil alimentaire (lot 5, NutritionProfile d'origine).
 async function chargerContexte(clientId: string, coach: boolean) {
-  const [planNutrition, profil, banque, perso] = await Promise.all([
-    depot.planNutrition(clientId),
-    chargerProfil(clientId),
+  const [profil, banque, perso] = await Promise.all([
+    nutrition.profil(clientId),
     coach ? alimentation.banqueRecettes() : Promise.resolve([]),
     coach ? alimentation.recettesPerso(clientId) : Promise.resolve([]),
   ]);
-  const besoins = calculerBesoins(profil.profil, jourLocal(new Date()), profil.dernierPoids).besoins;
-  return { objectifs: objectifsDuJour(planNutrition, besoins), recettes: [...banque, ...perso] };
+  const cible = profil.objectifCoach || profil.calcul.cible;
+  const g = cible ? macros(cible) : null;
+  const objectifs =
+    cible && g ? { source: profil.objectifCoach ? ('coach' as const) : ('calcul' as const), kcal: cible.calories, proteines: g.proteines, glucides: g.glucides, lipides: g.lipides } : undefined;
+  return { objectifs, recettes: [...banque, ...perso] };
 }
 
 /** `modifiable` : le coach compose et enregistre ; sinon lecture seule (client). */

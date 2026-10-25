@@ -235,6 +235,6 @@ export const depotDemo: Depot = {
 
 export async function effacerDemo() {
   await AsyncStorage.multiRemove(
-    [CLE, ...['seances', 'programmes', 'exercices', 'mensurations', 'records', 'plans-nutrition', 'journal-nutrition', 'profils-nutrition', 'aliments', 'recettes', 'repas'].map((c) => `coachos.demo.${c}`)],
+    [CLE, ...['seances', 'programmes', 'exercices', 'mensurations', 'records', 'plans-nutrition', 'journal-nutrition', 'profils-nutrition', 'aliments', 'recettes', 'repas', 'nutrition'].map((c) => `coachos.demo.${c}`)],
   );
 }

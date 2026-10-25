@@ -10,18 +10,14 @@ import { envoyerEnAttente } from '@/data/file-envoi';
 import { demanderSortie } from '@/lib/brouillon';
 import { useCharger } from '@/lib/useCharger';
 
-import { JournalRepas } from './alimentation/journal-repas';
-import { PlanSemaine } from './alimentation/plan-semaine';
-import { ProfilNutritionCarte } from './alimentation/profil';
-import { RecettesClient } from './alimentation/recettes';
 import { EntrainementClient } from './entrainement/espace-entrainement';
 import { BoutonPanneauMinuteurs, useMinuteurs } from './entrainement/minuteurs';
 import { MesDocuments } from './mes-documents';
-import { BandeauDemo, BarreClient, NonRepris, Selecteur, SousNav, type OngletDef } from './coque';
+import { NutritionProfil } from './nutrition/nutrition';
+import { BandeauDemo, BarreClient, Selecteur, SousNav, type OngletDef } from './coque';
 import { Carte, Texte } from './composants';
 import { BilanSemaine } from './suivi/bilan-semaine';
 import { Mensurations } from './suivi/mensurations';
-import { JournalNutritionVue, PlanNutritionCarte } from './suivi/nutrition';
 import { Objectifs } from './suivi/objectifs';
 import { Photos } from './suivi/photos';
 import { Records } from './suivi/records';
@@ -29,7 +25,6 @@ import { couleurs, espace, LARGEUR_CLIENT, polices } from './theme';
 
 export type OngletClient = 'programme' | 'historique' | 'suivi' | 'nutrition' | 'documents';
 type RubriqueSuivi = 'hebdo' | 'mesures' | 'pr' | 'objectifs' | 'photos';
-type RubriqueNutrition = 'profil' | 'recettes' | 'semaine' | 'journal' | 'personnelles';
 
 const ONGLETS: OngletDef<OngletClient>[] = [
   { cle: 'programme', libelle: 'Programme', icone: Dumbbell },
@@ -44,13 +39,6 @@ const SUIVI: OngletDef<RubriqueSuivi>[] = [
   { cle: 'pr', libelle: 'Performances' },
   { cle: 'objectifs', libelle: 'Objectifs' },
   { cle: 'photos', libelle: 'Photos' },
-];
-const NUTRITION: OngletDef<RubriqueNutrition>[] = [
-  { cle: 'profil', libelle: 'Mon profil' },
-  { cle: 'recettes', libelle: 'Recettes' },
-  { cle: 'semaine', libelle: 'Ma semaine' },
-  { cle: 'journal', libelle: 'Journal' },
-  { cle: 'personnelles', libelle: 'Mes recettes' },
 ];
 
 export interface Apercu {
@@ -72,7 +60,6 @@ export function EspaceClient({
 }) {
   const [onglet, setOnglet] = useState<OngletClient>(ongletInitial);
   const [suivi, setSuivi] = useState<RubriqueSuivi>('hebdo');
-  const [nutrition, setNutrition] = useState<RubriqueNutrition>('profil');
   const minuteurs = useMinuteurs();
   const defilement = useRef<ComponentRef<typeof ScrollView>>(null);
 
@@ -127,25 +114,7 @@ export function EspaceClient({
               {suivi === 'photos' && <Photos key={clientId} clientId={clientId} proprietaire={!apercu} />}
             </>
           )}
-          {onglet === 'nutrition' && (
-            <>
-              <SousNav nom="Rubriques Nutrition" grille="nutrition" onglets={NUTRITION} valeur={nutrition} onChange={setNutrition} />
-              {nutrition === 'profil' && <ProfilNutritionCarte key={clientId} clientId={clientId} />}
-              {nutrition === 'recettes' && <RecettesClient key={clientId} clientId={clientId} />}
-              {nutrition === 'semaine' && (
-                <>
-                  <PlanSemaine key={`s${clientId}`} clientId={clientId} modifiable={false} />
-                  <NonRepris ecran="Liste de courses" lot={5} />
-                  <PlanNutritionCarte key={`p${clientId}`} clientId={clientId} modifiable={false} />
-                  <JournalNutritionVue key={`j${clientId}`} clientId={clientId} saisie={!apercu} />
-                </>
-              )}
-              {nutrition === 'journal' && <JournalRepas key={clientId} clientId={clientId} saisie={!apercu} />}
-              {nutrition === 'personnelles' && (
-                <NonRepris ecran="Mes recettes" lot={5} detail="Les recettes personnelles déjà créées restent dans Recettes." />
-              )}
-            </>
-          )}
+          {onglet === 'nutrition' && <NutritionProfil key={clientId} clientId={clientId} />}
           {onglet === 'documents' && (
             <MesDocuments key={clientId} clientId={clientId} />
           )}

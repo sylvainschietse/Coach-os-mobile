@@ -5,18 +5,16 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { depot } from '@/data';
-import { alimentation } from '@/data/alimentation';
+import { nutrition } from '@/data/nutrition';
 import { plansRepas } from '@/data/plan-repas';
 import type { ClientResume } from '@/domain/types';
 import { useCharger } from '@/lib/useCharger';
 
 import { BoutonContour, EnTeteRubrique, LibelleSection, SousNav, Vide, type OngletDef } from '../coque';
 import { Carte, Chargement, Erreur, Pastille, SousTitre, Texte } from '../composants';
-import { JournalNutritionVue, PlanNutritionCarte } from '../suivi/nutrition';
 import { couleurs, espace, polices } from '../theme';
-import { JournalRepas } from './journal-repas';
+import { NutritionProfil } from '../nutrition/nutrition';
 import { PlanSemaine } from './plan-semaine';
-import { ProfilNutritionCarte } from './profil';
 import { BanqueRecettes } from './recettes';
 
 type Rubrique = 'clients' | 'recettes';
@@ -24,12 +22,10 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'clients', libelle: 'Clients suivis' },
   { cle: 'recettes', libelle: 'Mes recettes' },
 ];
-type RubriqueClient = 'plan' | 'objectifs' | 'repas' | 'profil';
+type RubriqueClient = 'plan' | 'nutrition';
 const RUBRIQUES_CLIENT: OngletDef<RubriqueClient>[] = [
   { cle: 'plan', libelle: 'Plan de la semaine' },
-  { cle: 'objectifs', libelle: 'Objectifs' },
-  { cle: 'repas', libelle: 'Repas notés' },
-  { cle: 'profil', libelle: 'Profil' },
+  { cle: 'nutrition', libelle: 'Nutrition du client' },
 ];
 
 export interface SuiviAlimentaire {
@@ -43,14 +39,11 @@ export interface SuiviAlimentaire {
 /** Un client a un suivi alimentaire dès que le coach a fixé ses objectifs, planifié une semaine, ou qu'il a rempli son profil. */
 export async function chargerSuivis(coachId: string): Promise<SuiviAlimentaire[]> {
   const clients = await depot.clientsDuCoach(coachId);
-  const [semaines, details] = await Promise.all([
-    plansRepas.semaines(clients.map((c) => c.id)),
-    Promise.all(clients.map((c) => Promise.all([depot.planNutrition(c.id), alimentation.profil(c.id)]))),
-  ]);
+  const [semaines, profils] = await Promise.all([plansRepas.semaines(clients.map((c) => c.id)), Promise.all(clients.map((c) => nutrition.profil(c.id)))]);
   return clients.map((client, i) => ({
     client,
-    objectifsKcal: details[i][0]?.calories,
-    profil: !!details[i][1],
+    objectifsKcal: profils[i].objectifCoach?.calories,
+    profil: profils[i].enregistre,
     derniereSemaine: semaines[client.id]?.[0],
   }));
 }
@@ -166,14 +159,8 @@ export function NutritionDuClient({ clientId: id, coachId }: { clientId: string;
     <View style={{ gap: espace(4) }}>
       <SousNav nom="Nutrition du client" onglets={RUBRIQUES_CLIENT} valeur={rubrique} onChange={setRubrique} />
       {rubrique === 'plan' && <PlanSemaine key={id} clientId={id} modifiable />}
-      {rubrique === 'objectifs' && (
-        <>
-          <PlanNutritionCarte key={`o${id}`} clientId={id} modifiable />
-          <JournalNutritionVue key={`j${id}`} clientId={id} saisie={false} />
-        </>
-      )}
-      {rubrique === 'repas' && <JournalRepas key={id} clientId={id} coachId={coachId} saisie={false} />}
-      {rubrique === 'profil' && <ProfilNutritionCarte key={id} clientId={id} />}
+      {/* ContactNutrition d'origine : profil, objectifs à ajuster, recettes, semaine, journal et recettes du client. */}
+      {rubrique === 'nutrition' && <NutritionProfil key={id} clientId={id} coach />}
     </View>
   );
 }

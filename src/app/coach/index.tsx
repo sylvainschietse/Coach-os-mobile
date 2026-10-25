@@ -75,7 +75,7 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Paiements', libelle: 'Paiements', icone: Wallet },
   { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
 ];
-const LOT: Partial<Record<Rubrique, number>> = { Coachings: 2, Bilans: 5, Taches: 2, Paiements: 2, Automations: 6 };
+const LOT: Partial<Record<Rubrique, number>> = { Coachings: 2, Bilans: 2, Taches: 2, Paiements: 2, Automations: 6 };
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 
