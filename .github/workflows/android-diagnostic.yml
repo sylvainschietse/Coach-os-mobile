@@ -1,8 +1,11 @@
-# Diagnostic à la demande : version démo (sans base, données fictives) lancée sur un émulateur Android,
+# Diagnostic lancé quand le parcours .maestro/ ou ce fichier change : version démo (sans base, données fictives) lancée sur un émulateur Android,
 # parcours Maestro de .maestro/, captures d'écran et journal Android en pièces jointes du lancement.
 name: Diagnostic Android
 on:
   workflow_dispatch:
+  push:
+    branches: [prototype]
+    paths: ['.maestro/**', '.github/workflows/android-diagnostic.yml']
 jobs:
   emulateur:
     runs-on: ubuntu-latest
