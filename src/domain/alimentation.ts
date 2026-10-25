@@ -324,7 +324,7 @@ export function recetteDeVariante(r: Recette, v: VarianteRecette): Recette {
   };
 }
 
-const PLURIELS: Record<string, string> = { pièce: 'pièces', boîte: 'boîtes' };
+const PLURIELS: Record<string, string> = { pièce: 'pièces', boîte: 'boîtes', tranche: 'tranches' };
 
 /** « 120 g », « 2 pièces », « env. 1 c. à soupe », « selon goût ». */
 export function quantiteLisible(i: Ingredient): string {

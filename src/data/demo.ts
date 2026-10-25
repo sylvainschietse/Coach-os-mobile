@@ -15,6 +15,7 @@ import type {
   Seance,
 } from '@/domain/types';
 
+import recettesCoach from './recettes-coach.json';
 import recettesDemo from './recettes-demo.json';
 
 export const COACH_DEMO = { id: 'coach-sylvain', nom: 'Sylvain' };
@@ -190,9 +191,9 @@ export const PROFILS_DEMO: ProfilNutrition[] = [
 ];
 
 /**
- * Une recette sur cinq de l'ancienne app de Sylvain (sources Good Food et Feel Good Foodie), pour essayer la démo.
+ * Les recettes écrites pour Coach OS, et une recette sur cinq de l'ancienne app de Sylvain (sources Good Food et Feel Good Foodie), pour essayer la démo.
  * Dans la démo elles sont marquées approuvées pour que la cliente les voie ; dans la vraie banque, elles arrivent en brouillon.
  */
-export const RECETTES_DEMO: Recette[] = (recettesDemo as unknown as Recette[]).map((r) => ({ ...r, statut: 'approuvee' }));
+export const RECETTES_DEMO: Recette[] = ([...recettesCoach, ...recettesDemo] as unknown as Recette[]).map((r) => ({ ...r, statut: 'approuvee' }));
 
 export const REPAS_DEMO: EntreeRepas[] = [];
