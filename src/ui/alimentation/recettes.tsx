@@ -46,8 +46,8 @@ const nouvelleRecette = (clientId?: string): Recette => ({
 const TYPES: { cle: TypeRecette; libelle: string }[] = [
   { cle: 'plat', libelle: 'Plats' },
   { cle: 'collation', libelle: 'Collations' },
-  { cle: 'sucre', libelle: 'Sucré' },
-  { cle: 'sale', libelle: 'Salé' },
+  { cle: 'sucre', libelle: 'Petit-déj sucré' },
+  { cle: 'sale', libelle: 'Petit-déj salé' },
 ];
 const PAR_PAGE = 20;
 
