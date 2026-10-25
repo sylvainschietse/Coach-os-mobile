@@ -1,6 +1,5 @@
 // C02 — Liste Contacts reprise de CRMWorkspace.tsx : recherche, filtre de statut, Nouveau contact,
 // « Inclure les dossiers archivés », cartes à initiales et « Actions du dossier · Booster, accès et documents ».
-import * as Linking from 'expo-linking';
 import { useFocusEffect } from 'expo-router';
 import { ArrowUpRight, Plus } from 'lucide-react-native';
 import { useState } from 'react';
@@ -18,6 +17,7 @@ import {
   type ContactResume,
   type StatutContact,
 } from '@/domain/crm';
+import { adresseWeb } from '@/lib/adresse-web';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
@@ -27,7 +27,7 @@ import { arrondi, couleurs, espace, polices } from '../theme';
 import { adresseQuestionnaire, nomComplet, useCoachNom } from './commun';
 import { Badge, CaseACocher, Choix, Initiales, Recherche, Repliable } from './dossier';
 
-export const LIEN_APPLI = process.env.EXPO_PUBLIC_LIEN_APPLI || Linking.createURL('/');
+export const LIEN_APPLI = process.env.EXPO_PUBLIC_LIEN_APPLI || adresseWeb('/');
 
 export function Contacts({
   onOuvrir,

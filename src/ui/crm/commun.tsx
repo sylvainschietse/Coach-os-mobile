@@ -1,8 +1,8 @@
-import * as Linking from 'expo-linking';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useSession } from '@/data/session';
 import { formaterTelephone, lienEnvoi, MODELES, rediger, STATUTS, type Canal, type Contact, type Relance, type Statut } from '@/domain/crm';
+import { adresseWeb } from '@/lib/adresse-web';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 
 import { Pastille, Texte } from '../composants';
@@ -26,7 +26,7 @@ export const jourLisible = (jour: string) => {
 
 /** Adresse du questionnaire à envoyer aux prospects. */
 export function adresseQuestionnaire(lien: string) {
-  return Linking.createURL(`/questionnaire/${lien}`);
+  return adresseWeb(`/questionnaire/${lien}`);
 }
 
 export function useCoachNom() {

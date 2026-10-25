@@ -5,13 +5,14 @@ import { aUnAcces, creerAccesClient } from '@/data/acces-client';
 import { supabase } from '@/data/supabase';
 import { messageAcces, type AccesClient } from '@/domain/acces-client';
 import type { Contact } from '@/domain/crm';
+import { adresseWeb } from '@/lib/adresse-web';
 import { useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, SousTitre, Texte } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { BoutonsEnvoi, useCoachNom } from './commun';
 
-const LIEN_APPLI = process.env.EXPO_PUBLIC_LIEN_APPLI;
+const LIEN_APPLI = process.env.EXPO_PUBLIC_LIEN_APPLI || adresseWeb('/');
 
 /** Donne au client son propre compte : il ne verra que ses séances et son suivi. */
 export function AccesAppli({ contact }: { contact: Contact }) {
