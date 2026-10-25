@@ -1,0 +1,16 @@
+# Diagnostic Android (version démo, données fictives) : ouvre les fenêtres de création de programme et de séance.
+appId: com.coachos.app
+---
+- launchApp
+- tapOn: 'Je suis Sylvain, coach'
+- tapOn: 'Programmes'
+- takeScreenshot: 1-programmes
+- tapOn: 'Créer un programme'
+- waitForAnimationToEnd
+- takeScreenshot: 2-creer-programme
+- back
+- tapOn:
+    text: 'Créer une séance seule'
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 3-creer-seance

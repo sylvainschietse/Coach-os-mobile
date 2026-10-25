@@ -1,0 +1,49 @@
+# Diagnostic à la demande : version démo (sans base, données fictives) lancée sur un émulateur Android,
+# parcours Maestro de .maestro/, captures d'écran et journal Android en pièces jointes du lancement.
+name: Diagnostic Android
+on:
+  workflow_dispatch:
+jobs:
+  emulateur:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install
+      - name: Compilation (x86_64 pour l'émulateur)
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=x86_64
+      - name: Accélération de l'émulateur
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - run: curl -Ls https://get.maestro.mobile.dev | bash
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            mkdir -p diagnostic
+            adb install android/app/build/outputs/apk/release/app-release.apk
+            adb logcat -c
+            $HOME/.maestro/bin/maestro test .maestro/creer-programme.yaml --test-output-dir diagnostic || true
+            adb exec-out screencap -p > diagnostic/fin.png
+            adb logcat -d > diagnostic/logcat.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: diagnostic
+          path: |
+            diagnostic
+            *.png
