@@ -42,7 +42,8 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
   // Les priorités sont déterminées par l'application à partir des tests, du bilan et de l'objectif.
   const priorites = troisPriorites(prioritesAuto(booster, reponses));
   const [redaction, setRedaction] = useState(false);
-  const cr = construireCompteRendu(fiche.contact, { ...booster, compteRendu: mot, redaction: textes, priorites }, reponses, coach);
+  const titresAffiches = priorites.map((p) => (p && textes?.titres?.[p]?.trim()) || p);
+  const cr = construireCompteRendu(fiche.contact, { ...booster, compteRendu: mot, redaction: textes, priorites: titresAffiches }, reponses, coach);
   const affiches = textes ?? redactionModele(fiche.contact, { ...booster, priorites }, reponses);
 
   // Garde la fiche et l'espace client alignés sur le calcul, sans attendre un enregistrement du Booster.
@@ -217,13 +218,19 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
         ))}
         {priorites.map((p, i) =>
           p.trim() ? (
-            <ChampTexte
-              key={i}
-              libelle={`Priorité ${i + 1} · ${p}`}
-              multiligne
-              valeur={affiches.priorites?.[i] ?? ''}
-              onChange={(v) => retoucher({ priorites: priorites.map((_, j) => (j === i ? v : (affiches.priorites?.[j] ?? ''))) })}
-            />
+            <View key={i} style={{ gap: espace(2) }}>
+              <ChampTexte
+                libelle={`Titre de la priorité ${i + 1}`}
+                valeur={affiches.titres?.[p] ?? p}
+                onChange={(v) => retoucher({ titres: { ...affiches.titres, [p]: v } })}
+              />
+              <ChampTexte
+                libelle={`Texte de la priorité ${i + 1}`}
+                multiligne
+                valeur={affiches.priorites?.[i] ?? ''}
+                onChange={(v) => retoucher({ priorites: priorites.map((_, j) => (j === i ? v : (affiches.priorites?.[j] ?? ''))) })}
+              />
+            </View>
           ) : null,
         )}
         <ChampTexte

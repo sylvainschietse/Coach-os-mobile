@@ -14,6 +14,8 @@ export interface Redaction {
   tests?: Partial<Record<IdTest, string>>;
   /** Explication de chaque priorité, dans l'ordre de booster.priorites. */
   priorites?: string[];
+  /** Titre retouché par le coach pour ce compte rendu, rangé sous le titre calculé par l'application. */
+  titres?: Record<string, string>;
   semaine?: string[];
   suite?: string[];
   source?: 'ia' | 'modele' | 'coach';
