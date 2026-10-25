@@ -1,10 +1,13 @@
-// Transmet le PDF d'un compte rendu au scénario Make qui envoie l'e-mail au client (contrat repris de l'original).
-// Le webhook reste dans les secrets Supabase (ZITE_MAKE_REPORT_WEBHOOK_URL, nom historique), jamais dans l'app.
-// Un accusé de réception de Make n'est pas un e-mail envoyé : « Envoyé » n'est coché que si Make confirme
-// sent=true pour ce document avec l'identifiant du message. Une tentative existante bloque tout nouvel envoi.
+// Envoie le PDF d'un compte rendu au client par e-mail. Deux services possibles, réglés dans les secrets Supabase :
+// - Brevo, en direct (BREVO_API_KEY + EXPEDITEUR_EMAIL, EXPEDITEUR_NOM facultatif) : prioritaire quand il est renseigné ;
+// - le scénario Make de l'original (ZITE_MAKE_REPORT_WEBHOOK_URL, nom historique), gardé pour qui a encore des crédits.
+// Un accusé de réception n'est pas un e-mail envoyé : « Envoyé » n'est coché que si Brevo rend un messageId, ou si Make
+// confirme sent=true pour ce document avec l'identifiant du message. Une tentative existante bloque tout nouvel envoi.
 // Appelée avec le jeton du coach : les règles d'accès de la base vérifient que le document est le sien.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+
+import { API_BREVO, corpsBrevo, lireReponseBrevo } from '../_shared/envoi-email.ts';
 
 const entetes = {
   'Access-Control-Allow-Origin': '*',
@@ -17,9 +20,16 @@ const MESSAGES: Record<string, string> = {
   envoye: 'Envoi déjà confirmé : le compte rendu ne sera pas renvoyé.',
   en_cours: 'Une transmission est déjà en cours pour cette version.',
   transmis: 'Make a déjà reçu cette version. Vérifiez son résultat dans Make avant tout nouvel envoi.',
-  echec: 'La dernière transmission n’a pas abouti. Vérifiez Make, puis relancez si aucun e-mail n’est parti.',
-  bloque: 'Make a refusé la demande (crédits ou opérations épuisés). Relancez une fois Make rétabli.',
+  echec: 'La dernière transmission n’a pas abouti. Vérifiez le service d’envoi, puis relancez si aucun e-mail n’est parti.',
+  bloque: 'Le service d’envoi a refusé la demande (crédits ou quota épuisés). Relancez une fois rétabli.',
 };
+
+/** Brevo est pris dès que sa clé et l'adresse d'expédition sont renseignées. */
+function brevo() {
+  const cle = Deno.env.get('BREVO_API_KEY');
+  const email = Deno.env.get('EXPEDITEUR_EMAIL');
+  return cle && email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? { cle, email, nom: Deno.env.get('EXPEDITEUR_NOM') ?? '' } : null;
+}
 
 function webhook() {
   const brut = Deno.env.get('ZITE_MAKE_REPORT_WEBHOOK_URL');
@@ -46,10 +56,11 @@ Deno.serve(async (req) => {
   const { data: moi } = await db.auth.getUser();
   if (!moi.user) return repondre({ erreur: 'Connexion requise.' }, 401);
 
-  const url = webhook();
-  // Pour l'écran Automatisations : dit seulement si le raccordement est renseigné, sans jamais renvoyer l'adresse.
-  if (corps.verifier) return repondre({ configure: !!url });
-  if (!url) return repondre({ erreur: 'Make non raccordé : le webhook des comptes rendus n’est pas renseigné.' }, 503);
+  const service = brevo();
+  const url = service ? null : webhook();
+  // Pour l'écran Automatisations : dit seulement quel service est renseigné, sans jamais renvoyer de clé ni d'adresse.
+  if (corps.verifier) return repondre({ configure: !!(service || url), service: service ? 'brevo' : url ? 'make' : null });
+  if (!service && !url) return repondre({ erreur: 'Envoi non raccordé : ni Brevo ni le webhook Make ne sont renseignés.' }, 503);
   if (!corps.documentId) return repondre({ erreur: 'Document manquant.' }, 400);
 
   const { data: d } = await db.from('documents').select('id, nom, version, chemin, nom_fichier, contact_id, booster_id, coaching_id').eq('id', corps.documentId).maybeSingle();
@@ -66,14 +77,38 @@ Deno.serve(async (req) => {
   const noter = (etat: string, detail: string) => db.rpc('noter_envoi_compte_rendu', { p_document: d.id, p_version: d.version, p_etat: etat, p_detail: detail });
   const { data: signe } = await db.storage.from('documents').createSignedUrl(d.chemin, 3600);
   if (!signe) {
-    await noter('echec', 'PDF inaccessible : rien n’a été transmis à Make.');
+    await noter('echec', 'PDF inaccessible : rien n’a été envoyé.');
     return repondre({ etat: 'echec', message: 'PDF inaccessible : rien n’a été transmis.' }, 500);
   }
 
   const cle = `${d.id}:${d.version}`;
+  if (service) {
+    const demande = corpsBrevo({
+      expediteur: { email: service.email, nom: service.nom }, destinataire: { email: c.email, prenom: c.prenom ?? '' },
+      sujet: d.nom || 'Votre compte rendu', pdfUrl: signe.signedUrl, nomFichier: d.nom_fichier || 'compte-rendu.pdf', documentId: d.id, cle,
+    });
+    let r: Response;
+    try {
+      r = await fetch(API_BREVO, {
+        method: 'POST',
+        signal: AbortSignal.timeout(20000),
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'api-key': service.cle },
+        body: JSON.stringify(demande),
+      });
+    } catch {
+      await noter('echec', 'Résultat incertain : pas de réponse de Brevo. Vérifiez ses journaux avant de relancer.');
+      return repondre({ etat: 'echec', message: 'Envoi non confirmé. Vérifiez les journaux Brevo pour éviter un doublon.' }, 502);
+    }
+    const lu = lireReponseBrevo(r.status, await r.text());
+    await noter(lu.etat, lu.detail);
+    if (lu.etat === 'envoye') return repondre({ etat: 'envoye', message: 'Compte rendu envoyé : Brevo a accepté l’e-mail.' });
+    if (lu.etat === 'transmis') return repondre({ etat: 'transmis', message: lu.detail });
+    return repondre({ etat: lu.etat, message: lu.etat === 'bloque' ? MESSAGES.bloque : lu.detail }, 502);
+  }
+
   let reponse: Response;
   try {
-    reponse = await fetch(url, {
+    reponse = await fetch(url!, {
       method: 'POST',
       redirect: 'error',
       signal: AbortSignal.timeout(20000),

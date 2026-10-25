@@ -1,6 +1,6 @@
 // C07 — Rubrique Documents reprise de CRMWorkspace.tsx : recherche, « Ajouter un document », filtre « Dossier : X »,
-// cartes avec Ouvrir le fichier, « Partager dans l'espace client » et badge d'envoi. « Envoyer via Make » n'est actif
-// que si le webhook est renseigné ; « Envoi confirmé » n'apparaît que si Make confirme l'e-mail (lot 6).
+// cartes avec Ouvrir le fichier, « Partager dans l'espace client » et badge d'envoi. « Envoyer par e-mail » n'est actif
+// que si un service d'envoi est renseigné ; « Envoi confirmé » n'apparaît que si Brevo ou Make confirme l'e-mail (lot 6).
 import { useFocusEffect } from 'expo-router';
 import { ArrowUpRight } from 'lucide-react-native';
 import { useState } from 'react';
@@ -144,7 +144,7 @@ function CarteDocument({
     try {
       const r = await automatisations.envoyerCompteRendu(d.id, relancer);
       setEnvoi(r);
-      // Seul un e-mail confirmé est une réussite ; une demande reçue par Make reste « non confirmée ».
+      // Seul un e-mail confirmé est une réussite ; une demande seulement reçue par Make reste « non confirmée ».
       setRetour({ ok: r.etat === 'envoye', texte: r.message });
       onEnvoi();
     } catch (e) {
@@ -209,14 +209,14 @@ function CarteDocument({
         <Badge variante={d.envoye ? 'primaire' : 'contour'} libelle={d.envoye ? 'Envoi confirmé' : 'Non envoyé'} />
         <View>
           <BoutonContour
-            libelle={make ? 'Envoyer via Make' : 'Make à raccorder'}
+            libelle={make ? 'Envoyer par e-mail' : 'Envoi à raccorder'}
             desactive={occupe || !make || d.envoye || !d.chemin}
             onPress={() => envoyer()}
           />
           {!make && <Text style={styles.raison}>Envoi automatique non raccordé</Text>}
         </View>
         {make && !d.envoye && (envoi?.etat === 'echec' || envoi?.etat === 'bloque') && (
-          <BoutonContour libelle="Relancer après vérification dans Make" desactive={occupe} onPress={() => envoyer(true)} />
+          <BoutonContour libelle="Relancer après vérification" desactive={occupe} onPress={() => envoyer(true)} />
         )}
       </View>
       {retour && <Text style={[styles.retour, !retour.ok && { color: couleurs.rouge }]}>{retour.texte}</Text>}

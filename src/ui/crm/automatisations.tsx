@@ -1,7 +1,7 @@
 // C08 — Automatisations, reprise de CRMWorkspace (module « Automations ») : questionnaire, envoi des comptes rendus
-// (badge Webhook renseigné / Raccordement manquant, contrat du scénario Make) et relances.
+// (badge du service d'envoi, Brevo en direct ou contrat du scénario Make historique) et relances.
 // Rien n'est présenté comme fonctionnel sans preuve : Tally n'est « reçu » qu'après une vraie réponse arrivée par le webhook,
-// et Make n'est « renseigné » que si la fonction serveur le confirme. Un épuisement des crédits Make est un blocage visible.
+// et l'envoi n'est « raccordé » que si la fonction serveur le confirme. Des crédits ou un quota épuisés sont un blocage visible.
 import { useFocusEffect } from 'expo-router';
 import { ArrowUpRight } from 'lucide-react-native';
 import { Linking, StyleSheet, Text, View } from 'react-native';
@@ -27,7 +27,7 @@ export const ETATS_ENVOI: Record<EtatJournal, string> = {
   transmis: 'Transmission acceptée',
   envoye: 'E-mail envoyé',
   echec: 'Échec',
-  bloque: 'Bloqué : crédits Make épuisés',
+  bloque: 'Bloqué : crédits ou quota épuisés',
 };
 
 const quand = (iso: string) => new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -123,18 +123,26 @@ export function Automatisations() {
           <Text style={styles.titre}>Envoi des comptes rendus</Text>
           <Badge
             variante={etat.make === 'configure' ? 'primaire' : 'contour'}
-            libelle={etat.make === 'configure' ? 'Webhook renseigné' : etat.make === 'inconnu' ? 'Raccordement non vérifiable' : 'Raccordement manquant'}
+            libelle={
+              etat.make === 'configure'
+                ? etat.service === 'brevo'
+                  ? 'Brevo raccordé'
+                  : 'Webhook Make renseigné'
+                : etat.make === 'inconnu'
+                  ? 'Raccordement non vérifiable'
+                  : 'Raccordement manquant'
+            }
           />
         </View>
         <Text style={styles.texte}>
-          Générez le PDF dans le Booster ou le bilan, puis transmettez-le au scénario Make dédié depuis Documents. Un accusé de réception Make ne
-          vaut pas confirmation d’envoi.
+          Générez le PDF dans le Booster ou le bilan, puis envoyez-le depuis Documents. Le compte rendu n’est marqué envoyé que si le service
+          d’envoi confirme l’e-mail.
         </Text>
         {etat.make !== 'configure' && (
           <Text style={styles.avertissement}>
             {etat.make === 'inconnu'
               ? 'La fonction serveur d’envoi ne répond pas : elle n’est peut-être pas encore déployée.'
-              : 'Renseigner ZITE_MAKE_REPORT_WEBHOOK_URL dans les secrets Supabase avec le webhook du scénario d’envoi de comptes rendus. Le webhook du questionnaire Tally ne doit pas être utilisé ici.'}
+              : 'Aucun service d’envoi renseigné. Raccorder Brevo (ci-dessous), ou renseigner ZITE_MAKE_REPORT_WEBHOOK_URL avec le webhook Make d’envoi des comptes rendus.'}
           </Text>
         )}
         <View style={styles.ligne}>
@@ -155,6 +163,19 @@ export function Automatisations() {
             </Text>
           </View>
         ))}
+        <Repliable resume="Raccorder Brevo (sans Make)">
+          <View style={{ gap: espace(2) }}>
+            <Text style={styles.texte}>
+              Créer un compte gratuit sur brevo.com, puis dans Expéditeurs ajouter l’adresse qui enverra les comptes rendus et la valider avec le
+              code reçu. Dans Clés API (SMTP et API), créer une clé.
+            </Text>
+            <Text style={styles.texte}>
+              Dans les secrets Supabase (Edge Functions), renseigner BREVO_API_KEY avec la clé, EXPEDITEUR_EMAIL avec l’adresse validée et
+              EXPEDITEUR_NOM avec le nom affiché au client. Brevo passe alors avant Make. Chaque envoi est marqué envoyé seulement quand Brevo
+              rend l’identifiant de l’e-mail.
+            </Text>
+          </View>
+        </Repliable>
         <Repliable resume="Contrat du scénario Make">
           <View style={{ gap: espace(2) }}>
             <Text style={styles.texte}>
