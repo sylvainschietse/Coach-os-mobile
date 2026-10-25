@@ -33,6 +33,9 @@ describe('évaluation du Booster', () => {
       questionnaires: [],
       boosters: [{ id: 'b', contactId: 'c', date: '2026-10-20T16:30:00Z', statut: 'prevu', priorites: [] }],
       relances: [],
+      coachings: [],
+      paiements: [],
+      bilans: [],
     };
     const ctx = { nouvelId: () => `id${Math.random()}`, maintenant: new Date('2026-10-20T18:00:00') };
     const e = choisirResultat(evaluationVide(), 'jambes', 'Correct');

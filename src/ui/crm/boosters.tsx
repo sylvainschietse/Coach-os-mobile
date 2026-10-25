@@ -1,5 +1,5 @@
 // Rubrique Boosters reprise de CRMWorkspace.tsx : liste filtrable, résultat commercial, briefing dépliable,
-// compte rendu, coaching (pas encore repris) et documents du client.
+// compte rendu, création du coaching et documents du client.
 import * as Linking from 'expo-linking';
 import { router, useFocusEffect } from 'expo-router';
 import { useState } from 'react';
@@ -127,6 +127,21 @@ function CarteBooster({
 }) {
   const coach = useCoachNom();
   const [briefing, setBriefing] = useState(false);
+  const [coaching, setCoaching] = useState<{ ok: boolean; texte: string }>();
+  const [occupe, setOccupe] = useState(false);
+  const offre = !!b.offreRecommandee && b.offreRecommandee !== 'Aucune';
+  async function creerCoaching() {
+    setOccupe(true);
+    setCoaching(undefined);
+    try {
+      const r = await crm.coachingDepuisBooster(b.id);
+      setCoaching({ ok: true, texte: r.existant ? 'Ce Booster a déjà son coaching, dans l’onglet Coachings.' : 'Coaching prêt dans l’onglet Coachings' });
+    } catch (e) {
+      setCoaching({ ok: false, texte: e instanceof Error ? e.message : 'Action non confirmée' });
+    } finally {
+      setOccupe(false);
+    }
+  }
   const questionnaire =
     lienQuestionnaire && b.contact.telephone
       ? lienEnvoi(
@@ -185,12 +200,13 @@ function CarteBooster({
           }
         />
         <View>
-          <BoutonContour libelle="Créer le coaching" desactive onPress={() => undefined} />
-          <Text style={styles.raison}>Rubrique Coachings pas encore reprise</Text>
+          <BoutonContour libelle="Créer le coaching" desactive={occupe || !offre} onPress={creerCoaching} />
+          {!offre && <Text style={styles.raison}>Choisissez d’abord l’offre recommandée dans le Booster</Text>}
         </View>
         {questionnaire && <BoutonContour libelle="Questionnaire WhatsApp" onPress={() => Linking.openURL(questionnaire)} />}
         <BoutonContour libelle="Documents du client" onPress={onDocuments} />
       </View>
+      {coaching && <Text style={[styles.raison, { fontSize: 13, color: coaching.ok ? couleurs.vert : couleurs.rouge }]}>{coaching.texte}</Text>}
     </View>
   );
 }

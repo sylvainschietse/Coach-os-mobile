@@ -145,13 +145,13 @@ const n = <T>(v: T | undefined) => (v === undefined ? null : v);
 const u = <T>(v: T | null) => (v === null ? undefined : v);
 
 const depuisLigne = (l: any): Document => ({
-  id: l.id, contactId: u(l.contact_id), boosterId: u(l.booster_id), nom: l.nom, type: l.type, date: l.date, version: l.version,
+  id: l.id, contactId: u(l.contact_id), boosterId: u(l.booster_id), coachingId: u(l.coaching_id), nom: l.nom, type: l.type, date: l.date, version: l.version,
   chemin: u(l.chemin), nomFichier: u(l.nom_fichier), typeFichier: u(l.type_fichier), taille: u(l.taille), partageClient: l.partage_client,
   envoye: l.envoye, commentaires: u(l.commentaires), creeLe: l.cree_le, modifieLe: l.modifie_le,
 });
 
 const versLigne = (d: Document) => ({
-  id: d.id, contact_id: n(d.contactId), booster_id: n(d.boosterId), nom: d.nom, type: d.type, date: d.date, version: d.version,
+  id: d.id, contact_id: n(d.contactId), booster_id: n(d.boosterId), coaching_id: n(d.coachingId), nom: d.nom, type: d.type, date: d.date, version: d.version,
   chemin: n(d.chemin), nom_fichier: n(d.nomFichier), type_fichier: n(d.typeFichier), taille: n(d.taille), partage_client: d.partageClient,
   envoye: d.envoye, commentaires: n(d.commentaires), modifie_le: d.modifieLe,
 });

@@ -3,24 +3,25 @@
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { MODELES, statutBooster, type BoosterDossier, type ContactResume, type RelanceAFaire } from '@/domain/crm';
+import { montantLisible } from '@/domain/gestion';
 
 import { BoutonContour, Stat } from '../coque';
 import { Carte } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { dateHeure, jourLisible, nomComplet } from './commun';
 
-export type DonneesVueEnsemble = { contacts: ContactResume[]; relances: RelanceAFaire[]; boosters: BoosterDossier[] };
+export type DonneesVueEnsemble = { contacts: ContactResume[]; relances: RelanceAFaire[]; boosters: BoosterDossier[]; encaissements: number };
 
 export function VueEnsemble({
   donnees,
   onRubrique,
-  onOuvrirContact,
+  onOuvrirTache,
   onOuvrirBooster,
   onCycles,
 }: {
   donnees: DonneesVueEnsemble;
   onRubrique: (r: 'Contacts' | 'Boosters' | 'Taches' | 'Paiements') => void;
-  onOuvrirContact: (id: string) => void;
+  onOuvrirTache: (id: string) => void;
   onOuvrirBooster: (b: BoosterDossier) => void;
   onCycles: () => void;
 }) {
@@ -40,8 +41,8 @@ export function VueEnsemble({
         <Stat style={{ flexBasis: base }} libelle="Contacts" valeur={String(actifs.length)} onPress={() => onRubrique('Contacts')} />
         <Stat style={{ flexBasis: base }} libelle="Boosters à réaliser" valeur={String(prochains.length)} onPress={() => onRubrique('Boosters')} />
         <Stat style={{ flexBasis: base }} libelle="Actions échues" valeur={String(donnees.relances.length)} onPress={() => onRubrique('Taches')} />
-        {/* Aucun paiement n'est encore enregistré dans la nouvelle app : on n'affiche pas 0 €. */}
-        <Stat style={{ flexBasis: base }} libelle="Encaissements ce mois" valeur="—" onPress={() => onRubrique('Paiements')} />
+        {/* Paiements « Payé » datés du mois en cours. */}
+        <Stat style={{ flexBasis: base }} libelle="Encaissements ce mois" valeur={montantLisible(donnees.encaissements)} onPress={() => onRubrique('Paiements')} />
       </View>
       <View style={{ flexDirection: width >= 1280 ? 'row' : 'column', gap: 20 }}>
         <Carte style={{ flex: 1, padding: 20 }}>
@@ -70,10 +71,10 @@ export function VueEnsemble({
             <Pressable
               key={r.id}
               accessibilityRole="button"
-              onPress={() => onOuvrirContact(r.contactId)}
+              onPress={() => onOuvrirTache(r.id)}
               style={[{ paddingVertical: 12 }, i < Math.min(donnees.relances.length, 6) - 1 && bordure]}
             >
-              <Text style={ligneTexte}>{r.note || MODELES[r.modele].libelle}</Text>
+              <Text style={ligneTexte}>{r.titre || r.note || MODELES[r.modele].libelle}</Text>
               <Text style={ligneDoux}>
                 {nomComplet(r.contact)} · {jourLisible(r.echeance)}
               </Text>

@@ -19,6 +19,7 @@ import { depot } from '@/data';
 import { crm, ecouterCrm } from '@/data/crm';
 import { useSession } from '@/data/session';
 import type { Booster, Contact } from '@/domain/crm';
+import { encaissementsDuMois } from '@/domain/gestion';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { NutritionCoach } from '@/ui/alimentation/nutrition-coach';
 import {
@@ -35,12 +36,14 @@ import {
   type OngletDef,
 } from '@/ui/coque';
 import { Carte, Chargement, Erreur, Texte } from '@/ui/composants';
+import { Bilans, EditeurBilan } from '@/ui/crm/bilans';
 import { Boosters } from '@/ui/crm/boosters';
 import { nomComplet } from '@/ui/crm/commun';
 import { Contacts } from '@/ui/crm/contacts';
 import { Documents, EditeurDocumentModale } from '@/ui/crm/documents';
 import { EditeurBoosterModale } from '@/ui/crm/editeur-booster';
 import { FicheContactModale, type VoletFiche } from '@/ui/crm/fiche-contact';
+import { EditeurGestion, Gestion, QUOI, type ASupprimer, type ModuleGestion } from '@/ui/crm/gestion';
 import { ConfirmerSuppression } from '@/ui/crm/suppression';
 import { VueEnsemble } from '@/ui/crm/vue-ensemble';
 import { BilansCoach } from '@/ui/suivi/bilans-coach';
@@ -75,7 +78,7 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Paiements', libelle: 'Paiements', icone: Wallet },
   { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
 ];
-const LOT: Partial<Record<Rubrique, number>> = { Coachings: 2, Bilans: 2, Taches: 2, Paiements: 2, Automations: 6 };
+const LOT: Partial<Record<Rubrique, number>> = { Automations: 6 };
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 
@@ -204,8 +207,31 @@ export default function EspaceCoach() {
  * Fiche ou éditeur ouverts : dans l'adresse, pour que le rechargement rouvre le même dossier et que fermer
  * l'éditeur Booster ramène à la fiche d'où il a été ouvert.
  */
-type ParamsDossier = { contact?: string; volet?: string; booster?: string; bc?: string; dossier?: string; doc?: string };
-const FERME = { contact: undefined, volet: undefined, booster: undefined, bc: undefined, doc: undefined };
+type ParamsDossier = {
+  contact?: string;
+  volet?: string;
+  booster?: string;
+  bc?: string;
+  dossier?: string;
+  doc?: string;
+  coaching?: string;
+  tache?: string;
+  paiement?: string;
+  bilan?: string;
+};
+const FERME = {
+  contact: undefined,
+  volet: undefined,
+  booster: undefined,
+  bc: undefined,
+  doc: undefined,
+  coaching: undefined,
+  tache: undefined,
+  paiement: undefined,
+  bilan: undefined,
+};
+/** Paramètre d'adresse de l'éditeur de chaque rubrique. */
+const PARAM_EDITEUR: Record<ModuleGestion, 'coaching' | 'tache' | 'paiement'> = { Coachings: 'coaching', Taches: 'tache', Paiements: 'paiement' };
 
 function Crm({
   rubrique,
@@ -222,10 +248,11 @@ function Crm({
 }) {
   const [maj, setMaj] = useState(() => new Date());
   const [suppression, setSuppression] = useState<{ booster: Booster; contact: Contact }>();
+  const [aSupprimer, setASupprimer] = useState<{ quoi: string; nom: string; contact?: string; action: () => Promise<void> }>();
   const charger = useCallback(async () => {
-    const [contacts, journee, boosters] = await Promise.all([crm.contacts(), crm.journee(), crm.boosters()]);
+    const [contacts, journee, boosters, carnet] = await Promise.all([crm.contacts(), crm.journee(), crm.boosters(), crm.carnet()]);
     setMaj(new Date());
-    return { contacts, relances: journee.relances, boosters };
+    return { contacts, relances: journee.relances, boosters, encaissements: encaissementsDuMois(carnet, new Date()) };
   }, []);
   const vue = useCharger(charger, 'vue-ensemble');
   useFocusEffect(vue.recharger);
@@ -236,6 +263,13 @@ function Crm({
   const ouvrirBooster = (b: Pick<Booster, 'id' | 'contactId'>) => router.setParams({ booster: b.id, bc: b.contactId });
   const nouveauBooster = (contactId?: string) => router.setParams({ booster: 'nouveau', bc: contactId });
   const volet = (['fiche', 'boosters', 'nutrition', 'photos'] as const).find((v) => v === params.volet) ?? 'fiche';
+  const supprimerGestion = (x: ASupprimer) =>
+    setASupprimer({
+      quoi: QUOI[x.module],
+      nom: x.nom,
+      contact: x.contact,
+      action: () => (x.module === 'Coachings' ? crm.supprimerCoaching(x.id) : x.module === 'Taches' ? crm.supprimerTache(x.id) : crm.supprimerPaiement(x.id)),
+    });
 
   return (
     <View style={{ flexDirection: large ? 'row' : 'column', gap: 24, alignItems: large ? 'flex-start' : 'stretch' }}>
@@ -258,7 +292,7 @@ function Crm({
             <VueEnsemble
               donnees={vue.donnee}
               onRubrique={onRubrique}
-              onOuvrirContact={ouvrirContact}
+              onOuvrirTache={(id) => router.setParams({ ...FERME, tache: id })}
               onOuvrirBooster={ouvrirBooster}
               onCycles={onCycles}
             />
@@ -291,10 +325,50 @@ function Crm({
             onNouveau={() => router.setParams({ ...FERME, doc: 'nouveau' })}
           />
         )}
+        {(rubrique === 'Coachings' || rubrique === 'Taches' || rubrique === 'Paiements') && (
+          <Gestion
+            key={rubrique}
+            module={rubrique}
+            contactId={params.dossier}
+            onToutAfficher={() => onRubrique(rubrique)}
+            onOuvrir={(id) => router.setParams({ ...FERME, [PARAM_EDITEUR[rubrique]]: id })}
+            onNouveau={() => router.setParams({ ...FERME, [PARAM_EDITEUR[rubrique]]: 'nouveau' })}
+            onSupprimer={supprimerGestion}
+            onCycles={onCycles}
+          />
+        )}
+        {rubrique === 'Bilans' && (
+          <Bilans
+            contactId={params.dossier}
+            onToutAfficher={() => onRubrique('Bilans')}
+            onOuvrir={(id) => router.setParams({ ...FERME, bilan: id })}
+            onNouveau={() => router.setParams({ ...FERME, bilan: 'nouveau' })}
+            onSupprimer={(x) => setASupprimer({ quoi: 'ce bilan', nom: x.nom, contact: x.contact, action: () => crm.supprimerBilan(x.id) })}
+          />
+        )}
         {LOT[rubrique] && <NonRepris ecran={titre} lot={LOT[rubrique]!} />}
       </View>
 
-      {params.doc ? (
+      {params.coaching || params.tache || params.paiement ? (
+        <EditeurGestion
+          key={`${params.coaching ?? ''}${params.tache ?? ''}${params.paiement ?? ''}`}
+          module={params.coaching ? 'Coachings' : params.tache ? 'Taches' : 'Paiements'}
+          id={[params.coaching, params.tache, params.paiement].find((x) => x && x !== 'nouveau')}
+          contactId={params.dossier}
+          onFermer={() => router.setParams({ coaching: undefined, tache: undefined, paiement: undefined })}
+          onSupprimer={(x) => {
+            router.setParams({ coaching: undefined, tache: undefined, paiement: undefined });
+            supprimerGestion(x);
+          }}
+        />
+      ) : params.bilan ? (
+        <EditeurBilan
+          key={params.bilan}
+          id={params.bilan === 'nouveau' ? undefined : params.bilan}
+          contactId={params.dossier}
+          onFermer={() => router.setParams({ bilan: undefined })}
+        />
+      ) : params.doc ? (
         <EditeurDocumentModale
           key={params.doc}
           id={params.doc === 'nouveau' ? undefined : params.doc}
@@ -322,6 +396,15 @@ function Crm({
           onSupprimerBooster={(booster, contact) => setSuppression({ booster, contact })}
         />
       ) : null}
+      {aSupprimer && (
+        <ConfirmerSuppression
+          quoi={aSupprimer.quoi}
+          nom={aSupprimer.nom}
+          contact={aSupprimer.contact}
+          onSupprimer={aSupprimer.action}
+          onFermer={() => setASupprimer(undefined)}
+        />
+      )}
       {suppression && (
         <ConfirmerSuppression
           quoi="ce Booster"

@@ -9,6 +9,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { crm, ecouterCrm } from '@/data/crm';
 import { documents, ecouterDocuments, type Fichier } from '@/data/documents';
 import { ecrireJour, jourLocal, lireJour, type BoosterDossier, type ContactResume } from '@/domain/crm';
+import type { Coaching } from '@/domain/gestion';
 import {
   filtrerDocuments,
   tailleLisible,
@@ -33,7 +34,7 @@ const jour = (j: string) => new Date(`${j}T12:00:00Z`).toLocaleDateString('fr-FR
 
 function useDonnees() {
   const charge = useCharger(
-    async () => ({ docs: await documents.documents(), contacts: await crm.contacts(), boosters: await crm.boosters() }),
+    async () => ({ docs: await documents.documents(), contacts: await crm.contacts(), boosters: await crm.boosters(), coachings: (await crm.carnet()).coachings }),
     'documents',
   );
   useFocusEffect(charge.recharger);
@@ -176,6 +177,7 @@ interface Brouillon {
   nom: string;
   contactId: string;
   boosterId: string;
+  coachingId: string;
   type: string;
   date: string;
   envoye: boolean;
@@ -186,13 +188,14 @@ const brouillonDe = (d: Document | undefined, contactId?: string): Brouillon => 
   nom: d?.nom ?? '',
   contactId: d?.contactId ?? contactId ?? '',
   boosterId: d?.boosterId ?? '',
+  coachingId: d?.coachingId ?? '',
   type: d?.type ?? '',
   date: ecrireJour(d?.date ?? jourLocal(new Date())),
   envoye: d?.envoye ?? false,
   commentaires: d?.commentaires ?? '',
 });
 
-/** Éditeur RecordEditor de la table Documents : champs de Champs-CRM.json, sauf Coaching (rubrique pas encore reprise). */
+/** Éditeur RecordEditor de la table Documents : champs de Champs-CRM.json. */
 export function EditeurDocumentModale({ id, contactId, onFermer }: { id?: string; contactId?: string; onFermer: () => void }) {
   const charge = useDonnees();
   if (charge.erreur && !charge.donnee)
@@ -221,6 +224,7 @@ export function EditeurDocumentModale({ id, contactId, onFermer }: { id?: string
       contactId={contactId}
       contacts={charge.donnee.contacts}
       boosters={charge.donnee.boosters}
+      coachings={charge.donnee.coachings}
       onFermer={onFermer}
     />
   );
@@ -231,12 +235,14 @@ function Editeur({
   contactId,
   contacts,
   boosters,
+  coachings,
   onFermer,
 }: {
   doc?: Document;
   contactId?: string;
   contacts: ContactResume[];
   boosters: BoosterDossier[];
+  coachings: Coaching[];
   onFermer: () => void;
 }) {
   const [initial] = useState(() => brouillonDe(doc, contactId));
@@ -258,6 +264,7 @@ function Editeur({
   };
   const invalide = Object.values(erreurs).some(Boolean);
   const boostersDuContact = boosters.filter((x) => x.contactId === b.contactId);
+  const coachingsDuContact = coachings.filter((x) => x.contactId === b.contactId);
 
   async function choisir() {
     setErreur(undefined);
@@ -279,6 +286,7 @@ function Editeur({
       nom: b.nom,
       contactId: b.contactId || null,
       boosterId: b.boosterId || null,
+      coachingId: b.coachingId || null,
       type: (b.type || 'Autre') as TypeDocument,
       date,
       envoye: b.envoye,
@@ -336,7 +344,7 @@ function Editeur({
               sansLibelle
               options={[{ cle: '', libelle: 'Choisir…' }, ...contacts.map((c) => ({ cle: c.id, libelle: nomComplet(c) }))]}
               valeur={b.contactId}
-              onChange={(id) => maj({ contactId: id, boosterId: '' })}
+              onChange={(id) => maj({ contactId: id, boosterId: '', coachingId: '' })}
             />
             {erreurs.contact && <Text style={styles.erreur}>{erreurs.contact}</Text>}
           </View>
@@ -350,6 +358,18 @@ function Editeur({
               options={[{ cle: '', libelle: 'Non renseigné' }, ...boostersDuContact.map((x) => ({ cle: x.id, libelle: x.nom || 'Booster' }))]}
               valeur={b.boosterId}
               onChange={(boosterId) => maj({ boosterId })}
+            />
+          </View>
+        </Cellule>
+        <Cellule>
+          <View style={{ gap: espace(2) }}>
+            <Libelle>Coaching</Libelle>
+            <Selecteur
+              libelle="Coaching"
+              sansLibelle
+              options={[{ cle: '', libelle: 'Non renseigné' }, ...coachingsDuContact.map((x) => ({ cle: x.id, libelle: x.nom }))]}
+              valeur={b.coachingId}
+              onChange={(coachingId) => maj({ coachingId })}
             />
           </View>
         </Cellule>

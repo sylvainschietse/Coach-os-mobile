@@ -14,6 +14,7 @@ export interface Document {
   id: string;
   contactId?: string;
   boosterId?: string;
+  coachingId?: string;
   nom: string;
   type: TypeDocument;
   /** AAAA-MM-JJ. */
@@ -40,6 +41,7 @@ export interface SaisieDocument {
   nom?: string;
   contactId?: string | null;
   boosterId?: string | null;
+  coachingId?: string | null;
   type?: TypeDocument;
   date?: string;
   envoye?: boolean;
@@ -93,6 +95,7 @@ export function nouveauDocument(id: string, saisie: SaisieDocument, maintenant: 
     nom,
     contactId: saisie.contactId,
     boosterId: saisie.boosterId ?? undefined,
+    coachingId: saisie.coachingId ?? undefined,
     type: saisie.type ?? 'Autre',
     date: saisie.date ?? jourLocal(maintenant),
     version: 1,
@@ -111,6 +114,7 @@ export function modifierDocument(d: Document, saisie: SaisieDocument, maintenant
   const suivant = { ...d, nom, modifieLe: maintenant.toISOString() };
   if (saisie.contactId !== undefined) suivant.contactId = saisie.contactId;
   if (saisie.boosterId !== undefined) suivant.boosterId = saisie.boosterId ?? undefined;
+  if (saisie.coachingId !== undefined) suivant.coachingId = saisie.coachingId ?? undefined;
   if (saisie.type) suivant.type = saisie.type;
   if (saisie.date) suivant.date = saisie.date;
   if (saisie.envoye !== undefined) suivant.envoye = saisie.envoye;

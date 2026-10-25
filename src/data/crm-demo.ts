@@ -93,7 +93,24 @@ export function carnetDemo(maintenant: Date): Carnet {
       { id: 'r-julie', contactId: 'contact-julie', echeance: ajouterJours(jour, -1), modele: 'questionnaire' },
       { id: 'r-karim', contactId: 'contact-karim', echeance: jour, modele: 'rappel_booster' },
       { id: 'r-sophie', contactId: 'contact-sophie', echeance: jour, modele: 'suivi_booster' },
+      {
+        id: 'r-lea-tache', contactId: 'contact-lea', echeance: ajouterJours(jour, 3), modele: 'tache', titre: 'Préparer le cycle 2 de Léa',
+        responsable: 'Sylvain', priorite: 'Moyenne', statutTache: 'À faire',
+      },
     ],
+    coachings: [
+      {
+        id: 'coaching-lea', contactId: 'contact-lea', nom: 'Coaching · Léa Martin', dateDebut: ajouterJours(jour, -50), dateFinPrevue: ajouterJours(jour, 40),
+        statut: 'Actif', formule: 'Essentiel', objectif: 'Courir 10 km et se renforcer', creeLe: ilYA(50),
+      },
+    ],
+    paiements: [
+      {
+        id: 'paiement-lea', titre: 'Coaching Essentiel · mois en cours', contactId: 'contact-lea', coachingId: 'coaching-lea', date: jour, montant: 150,
+        devise: 'EUR', moyen: 'Virement', statut: 'Payé', creeLe: ilYA(0),
+      },
+    ],
+    bilans: [],
   };
 }
 

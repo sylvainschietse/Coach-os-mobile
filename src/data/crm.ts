@@ -2,7 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import * as regles from '@/domain/crm';
+import * as gestion from '@/domain/gestion';
 import type { Booster, Carnet, Contact, ContactResume, Doublon, FicheContact, ModeleMessage, Questionnaire, Relance, RelanceAFaire } from '@/domain/crm';
+import type { BilanCoach, Coaching, Paiement } from '@/domain/gestion';
 import { nouvelId } from '@/lib/identifiant';
 
 import { carnetDemo } from './crm-demo';
@@ -46,6 +48,23 @@ export interface DepotCrm {
   soumettreQuestionnaire(lien: string, reponses: Record<string, string>): Promise<void>;
   /** Identifiant public du questionnaire du coach connecté (/questionnaire/<lien>). */
   lienQuestionnaire(): Promise<string | null>;
+  // Lot 6 · Coachings, Tâches, Paiements, Bilans (règles dans domain/gestion.ts).
+  carnet(): Promise<Carnet>;
+  creerCoaching(s: gestion.SaisieCoaching): Promise<string>;
+  modifierCoaching(id: string, s: gestion.SaisieCoaching): Promise<void>;
+  supprimerCoaching(id: string): Promise<void>;
+  coachingDepuisBooster(boosterId: string): Promise<{ id: string; existant: boolean }>;
+  creerTache(s: gestion.SaisieTache): Promise<string>;
+  modifierTache(id: string, s: gestion.SaisieTache): Promise<void>;
+  terminerTache(id: string): Promise<void>;
+  supprimerTache(id: string): Promise<void>;
+  creerPaiement(s: gestion.SaisiePaiement): Promise<string>;
+  modifierPaiement(id: string, s: gestion.SaisiePaiement): Promise<void>;
+  supprimerPaiement(id: string): Promise<void>;
+  creerBilan(s: gestion.SaisieBilan): Promise<string>;
+  modifierBilan(id: string, s: gestion.SaisieBilan, envoye: boolean): Promise<void>;
+  lierDocumentBilan(id: string, documentId: string): Promise<void>;
+  supprimerBilan(id: string): Promise<void>;
 }
 
 const contexte = (): regles.Contexte => ({ nouvelId, maintenant: new Date() });
@@ -78,6 +97,13 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
   async function appliquer(regle: (c: Carnet, ctx: regles.Contexte) => Carnet) {
     const avant = await lire();
     await ecrire(avant, regle(avant, contexte()));
+  }
+
+  async function creer(regle: (c: Carnet, ctx: regles.Contexte) => { carnet: Carnet; id: string }) {
+    const avant = await lire();
+    const r = regle(avant, contexte());
+    await ecrire(avant, r.carnet);
+    return r.id;
   }
 
   return {
@@ -149,6 +175,27 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
       prevenir();
     },
     lienQuestionnaire: extra.lienQuestionnaire,
+    carnet: lire,
+    creerCoaching: (saisie) => creer((c, ctx) => gestion.creerCoaching(c, saisie, ctx)),
+    modifierCoaching: (id, saisie) => appliquer((c) => gestion.modifierCoaching(c, id, saisie)),
+    supprimerCoaching: (id) => appliquer((c) => gestion.supprimerCoaching(c, id)),
+    async coachingDepuisBooster(boosterId) {
+      const avant = await lire();
+      const r = gestion.coachingDepuisBooster(avant, boosterId, contexte());
+      if (!r.existant) await ecrire(avant, r.carnet);
+      return { id: r.id, existant: r.existant };
+    },
+    creerTache: (saisie) => creer((c, ctx) => gestion.creerTache(c, saisie, ctx)),
+    modifierTache: (id, saisie) => appliquer((c, ctx) => gestion.modifierTache(c, id, saisie, ctx)),
+    terminerTache: (id) => appliquer((c, ctx) => gestion.terminerTache(c, id, ctx)),
+    supprimerTache: (id) => appliquer((c) => gestion.supprimerTache(c, id)),
+    creerPaiement: (saisie) => creer((c, ctx) => gestion.creerPaiement(c, saisie, ctx)),
+    modifierPaiement: (id, saisie) => appliquer((c) => gestion.modifierPaiement(c, id, saisie)),
+    supprimerPaiement: (id) => appliquer((c) => gestion.supprimerPaiement(c, id)),
+    creerBilan: (saisie) => creer((c, ctx) => gestion.creerBilan(c, saisie, ctx)),
+    modifierBilan: (id, saisie, envoye) => appliquer((c, ctx) => gestion.modifierBilan(c, id, saisie, ctx, envoye)),
+    lierDocumentBilan: (id, documentId) => appliquer((c) => gestion.lierDocumentBilan(c, id, documentId)),
+    supprimerBilan: (id) => appliquer((c) => gestion.supprimerBilan(c, id)),
   };
 }
 
@@ -160,7 +207,7 @@ export const CLE_CLIENTS_DEMO = 'coachos.demo.clients-ajoutes';
 async function lireDemo(): Promise<Carnet> {
   try {
     const brut = await AsyncStorage.getItem(CLE_CARNET);
-    if (brut) return JSON.parse(brut) as Carnet;
+    if (brut) return regles.completerCarnet(JSON.parse(brut) as Partial<Carnet>);
   } catch {
     // Stockage indisponible : on repart du carnet d'exemple.
   }
@@ -209,6 +256,7 @@ export async function effacerCrmDemo() {
 
 const n = <T>(v: T | undefined) => (v === undefined ? null : v);
 const u = <T>(v: T | null) => (v === null ? undefined : v);
+const num = (v: unknown) => (v === null || v === undefined ? undefined : Number(v));
 
 type Ligne = Record<string, unknown>;
 
@@ -229,6 +277,21 @@ const versLigne = {
   }),
   relances: (r: Relance): Ligne => ({
     id: r.id, contact_id: r.contactId, echeance: r.echeance, modele: r.modele, note: n(r.note), faite_le: n(r.faiteLe), auto: r.auto ?? false,
+    titre: n(r.titre), booster_id: n(r.boosterId), coaching_id: n(r.coachingId), responsable: n(r.responsable), priorite: n(r.priorite),
+    statut_tache: n(r.statutTache),
+  }),
+  coachings: (x: Coaching): Ligne => ({
+    id: x.id, contact_id: x.contactId, booster_id: n(x.boosterId), nom: x.nom, date_debut: n(x.dateDebut), date_fin_prevue: n(x.dateFinPrevue),
+    statut: n(x.statut), formule: n(x.formule), objectif: n(x.objectif), commentaires: n(x.commentaires), cree_le: x.creeLe,
+  }),
+  paiements: (x: Paiement): Ligne => ({
+    id: x.id, titre: x.titre, contact_id: n(x.contactId), coaching_id: n(x.coachingId), date: n(x.date), montant: n(x.montant), devise: x.devise,
+    moyen: n(x.moyen), statut: n(x.statut), reference: n(x.reference), notes: n(x.notes), cree_le: x.creeLe,
+  }),
+  bilans: (x: BilanCoach): Ligne => ({
+    id: x.id, contact_id: x.contactId, coaching_id: n(x.coachingId), date: x.date, poids: n(x.poids), taille: n(x.taille), tour_taille: n(x.tourTaille),
+    tour_hanches: n(x.tourHanches), piliers: x.piliers, synthese: x.synthese, priorites: x.priorites, document_id: n(x.documentId), cree_le: x.creeLe,
+    modifie_le: x.modifieLe,
   }),
 };
 
@@ -249,22 +312,43 @@ const depuisLigne = {
   }),
   relances: (l: any): Relance => ({
     id: l.id, contactId: l.contact_id, echeance: l.echeance, modele: l.modele, note: u(l.note), faiteLe: u(l.faite_le), auto: l.auto,
+    titre: u(l.titre), boosterId: u(l.booster_id), coachingId: u(l.coaching_id), responsable: u(l.responsable), priorite: u(l.priorite),
+    statutTache: u(l.statut_tache),
+  }),
+  coachings: (l: any): Coaching => ({
+    id: l.id, contactId: l.contact_id, boosterId: u(l.booster_id), nom: l.nom, dateDebut: u(l.date_debut), dateFinPrevue: u(l.date_fin_prevue),
+    statut: u(l.statut), formule: u(l.formule), objectif: u(l.objectif), commentaires: u(l.commentaires), creeLe: l.cree_le,
+  }),
+  paiements: (l: any): Paiement => ({
+    id: l.id, titre: l.titre, contactId: u(l.contact_id), coachingId: u(l.coaching_id), date: u(l.date), montant: l.montant === null ? undefined : Number(l.montant),
+    devise: l.devise, moyen: u(l.moyen), statut: u(l.statut), reference: u(l.reference), notes: u(l.notes), creeLe: l.cree_le,
+  }),
+  bilans: (l: any): BilanCoach => ({
+    id: l.id, contactId: l.contact_id, coachingId: u(l.coaching_id), date: l.date, poids: num(l.poids), taille: num(l.taille), tourTaille: num(l.tour_taille),
+    tourHanches: num(l.tour_hanches), piliers: l.piliers, synthese: l.synthese, priorites: l.priorites, documentId: u(l.document_id), creeLe: l.cree_le,
+    modifieLe: l.modifie_le,
   }),
 };
 
-const TABLES = ['contacts', 'questionnaires', 'boosters', 'relances'] as const;
+const TABLES = ['contacts', 'questionnaires', 'boosters', 'relances', 'coachings', 'paiements', 'bilans'] as const;
+/** Nom de la table en base quand il diffère de la collection du carnet. */
+const TABLE_BASE: Partial<Record<(typeof TABLES)[number], string>> = { bilans: 'bilans_coach' };
+const base = (t: (typeof TABLES)[number]) => TABLE_BASE[t] ?? t;
 
 export function creerCrmSupabase(db: SupabaseClient): DepotCrm {
   async function lire(): Promise<Carnet> {
-    const resultats = await Promise.all(TABLES.map((t) => db.from(t).select('*')));
+    const resultats = await Promise.all(TABLES.map((t) => db.from(base(t)).select('*')));
     const erreur = resultats.find((r) => r.error)?.error;
     if (erreur) throw new Error(erreur.message);
-    const [contacts, questionnaires, boosters, relances] = resultats.map((r) => r.data ?? []);
+    const [contacts, questionnaires, boosters, relances, coachings, paiements, bilans] = resultats.map((r) => r.data ?? []);
     return {
       contacts: contacts.map(depuisLigne.contacts),
       questionnaires: questionnaires.map(depuisLigne.questionnaires),
       boosters: boosters.map(depuisLigne.boosters),
       relances: relances.map(depuisLigne.relances),
+      coachings: coachings.map(depuisLigne.coachings),
+      paiements: paiements.map(depuisLigne.paiements),
+      bilans: bilans.map(depuisLigne.bilans),
     };
   }
 
@@ -275,14 +359,15 @@ export function creerCrmSupabase(db: SupabaseClient): DepotCrm {
       const restants = new Set((apres[t] as { id: string }[]).map((x) => x.id));
       const retires = (avant[t] as { id: string }[]).filter((x) => !restants.has(x.id)).map((x) => x.id);
       if (retires.length) {
-        const { data, error } = await db.from(t).delete().in('id', retires).select('id');
+        const { data, error } = await db.from(base(t)).delete().in('id', retires).select('id');
         if (error) throw new Error(error.message);
         if ((data ?? []).length !== retires.length) throw new Error('Suppression non confirmée par le serveur.');
       }
       const anciens = new Set<unknown>(avant[t]);
-      const changes = (apres[t] as (Contact & Questionnaire & Booster & Relance)[]).filter((x) => !anciens.has(x));
+      const changes = (apres[t] as { id: string }[]).filter((x) => !anciens.has(x));
       if (changes.length === 0) continue;
-      const { error } = await db.from(t).upsert(changes.map((x) => versLigne[t](x)), { onConflict: 'id' });
+      const versBase = versLigne[t] as (x: unknown) => Ligne;
+      const { error } = await db.from(base(t)).upsert(changes.map(versBase), { onConflict: 'id' });
       if (error) throw new Error(error.message);
     }
   }

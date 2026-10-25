@@ -2,6 +2,7 @@
 // Fonctions pures : la démo et les tests les appellent directement, la base reprend les mêmes règles.
 
 import { syntheseEvaluation, type Evaluation } from './evaluation';
+import type { BilanCoach, Coaching, Paiement, PrioriteTache, StatutTache } from './gestion';
 import type { Redaction } from './redaction';
 
 export type Statut = 'prospect' | 'booster_prevu' | 'booster_fait' | 'client' | 'archive';
@@ -110,6 +111,14 @@ export interface Relance {
   faiteLe?: string;
   /** Close automatiquement parce que l'étape suivante est arrivée. */
   auto?: boolean;
+  // Champs de la table Tâches d'origine (lot 6) : une relance est une tâche.
+  titre?: string;
+  boosterId?: string;
+  coachingId?: string;
+  responsable?: string;
+  priorite?: PrioriteTache;
+  /** Absent : « Terminée » si faite, sinon « À faire » (voir statutTache). */
+  statutTache?: StatutTache;
 }
 
 export interface Carnet {
@@ -117,6 +126,9 @@ export interface Carnet {
   questionnaires: Questionnaire[];
   boosters: Booster[];
   relances: Relance[];
+  coachings: Coaching[];
+  paiements: Paiement[];
+  bilans: BilanCoach[];
 }
 
 export interface Contexte {
@@ -124,7 +136,10 @@ export interface Contexte {
   maintenant: Date;
 }
 
-export const CARNET_VIDE: Carnet = { contacts: [], questionnaires: [], boosters: [], relances: [] };
+export const CARNET_VIDE: Carnet = { contacts: [], questionnaires: [], boosters: [], relances: [], coachings: [], paiements: [], bilans: [] };
+
+/** Carnet enregistré avant le lot 6 : les nouvelles collections partent vides. */
+export const completerCarnet = (c: Partial<Carnet>): Carnet => ({ ...CARNET_VIDE, ...c });
 
 // ---------- Téléphone, e-mail, dates ----------
 
