@@ -21,7 +21,7 @@ import { choisirFichier, ouvrirFichier } from '../fichiers';
 import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
-import { Badge, CaseACocher, Cellule, Grille, Libelle, Modale, PiedEditeur, Recherche, Saisie } from './dossier';
+import { Badge, CaseACocher, Cellule, Grille, Libelle, Modale, PiedEditeur, Recherche, Saisie, useBlocNomCarte } from './dossier';
 
 const jourLong = (j: string) => new Date(j + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' });
 const nomBilan = (b: BilanCoach, c: Carnet) => {
@@ -108,6 +108,7 @@ export function Bilans({
 }
 
 function CarteBilan({ bilan: b, carnet, doc, onOuvrir, onSupprimer }: { bilan: BilanCoach; carnet: Carnet; doc?: Document; onOuvrir: () => void; onSupprimer: () => void }) {
+  const blocNom = useBlocNomCarte();
   const contact = carnet.contacts.find((c) => c.id === b.contactId);
   const [occupe, setOccupe] = useState(false);
   const [retour, setRetour] = useState<{ ok: boolean; texte: string }>();
@@ -126,7 +127,7 @@ function CarteBilan({ bilan: b, carnet, doc, onOuvrir, onSupprimer }: { bilan: B
   return (
     <View style={carteDossier}>
       <View style={styles.entete}>
-        <View style={{ flexShrink: 1, minWidth: 0, flexBasis: 220, flexGrow: 1 }}>
+        <View style={[{ flexShrink: 1, minWidth: 0, flexBasis: 220, flexGrow: 1 }, blocNom]}>
           <Text style={styles.titre}>{nomBilan(b, carnet)}</Text>
           <Text style={styles.sous}>
             {contact ? nomComplet(contact) : 'Contact non lié'} · {jourLong(b.date)}

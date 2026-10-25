@@ -65,6 +65,15 @@ export function Modale({
 }
 
 /**
+ * Bloc du nom dans l'en-tête des cartes de liste (nom à gauche, badges et boutons à droite). Sur téléphone, Android
+ * écrasait ce bloc dans une colonne d'une lettre : sous 640 px, il prend toute la ligne et les badges passent dessous.
+ */
+export function useBlocNomCarte(): ViewStyle | null {
+  const { width } = useWindowDimensions();
+  return width < SM ? { flexBasis: '100%' } : null;
+}
+
+/**
  * Pied d'éditeur d'origine : « Modifications à enregistrer » / « Dossier à jour », Fermer, Enregistrer.
  * Quitter avec des modifications demande confirmation au lieu de les perdre.
  */

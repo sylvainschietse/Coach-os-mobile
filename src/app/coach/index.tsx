@@ -21,6 +21,7 @@ import { useSession } from '@/data/session';
 import type { Booster, Contact } from '@/domain/crm';
 import { encaissementsDuMois } from '@/domain/gestion';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
+import { useRetourAndroid } from '@/lib/retour-android';
 import { NutritionCoach } from '@/ui/alimentation/nutrition-coach';
 import {
   BandeauDemo,
@@ -92,6 +93,7 @@ export default function EspaceCoach() {
   const coachId = profil?.role === 'coach' ? profil.coachId : '';
   const clients = useCharger(() => depot.clientsDuCoach(coachId), coachId);
   useFocusEffect(clients.recharger);
+  useRetourAndroid(params);
 
   if (profil?.role !== 'coach') return <Redirect href="/" />;
 

@@ -14,7 +14,7 @@ import { Chargement, Erreur } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { adresseQuestionnaire, nomComplet, useCoachNom } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
-import { Badge, CaseACocher, Choix, Recherche } from './dossier';
+import { Badge, CaseACocher, Choix, Recherche, useBlocNomCarte } from './dossier';
 
 const quand = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', {
@@ -125,6 +125,7 @@ function CarteBooster({
   onSupprimer: () => void;
   onDocuments: () => void;
 }) {
+  const blocNom = useBlocNomCarte();
   const coach = useCoachNom();
   const [briefing, setBriefing] = useState(false);
   const [coaching, setCoaching] = useState<{ ok: boolean; texte: string }>();
@@ -156,7 +157,7 @@ function CarteBooster({
   return (
     <View style={carteDossier}>
       <View style={styles.entete}>
-        <View style={{ flexShrink: 1, minWidth: 0, flexBasis: 220, flexGrow: 1 }}>
+        <View style={[{ flexShrink: 1, minWidth: 0, flexBasis: 220, flexGrow: 1 }, blocNom]}>
           <Text style={styles.titre}>{b.nom || 'Sans nom'}</Text>
           <Text style={styles.sous}>
             {nomComplet(b.contact)} · {quand(b.date)}

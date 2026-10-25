@@ -31,7 +31,7 @@ import { Chargement, Erreur } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
-import { Badge, BoutonPied, CaseACocher, Cellule, Choix, Grille, Libelle, Modale, PiedEditeur, Recherche, Saisie } from './dossier';
+import { Badge, BoutonPied, CaseACocher, Cellule, Choix, Grille, Libelle, Modale, PiedEditeur, Recherche, Saisie, useBlocNomCarte } from './dossier';
 
 export type ModuleGestion = 'Coachings' | 'Taches' | 'Paiements';
 export type ASupprimer = { module: ModuleGestion; id: string; nom: string; contact?: string };
@@ -75,6 +75,7 @@ export function Gestion({
   onSupprimer: (x: ASupprimer) => void;
   onCycles: () => void;
 }) {
+  const blocNom = useBlocNomCarte();
   const charge = useCharger(() => crm.carnet(), `gestion-${module}`);
   useFocusEffect(charge.recharger);
   useRechargerSur(charge.recharger, ecouterCrm);
@@ -145,7 +146,7 @@ export function Gestion({
           return (
             <View key={l.id} style={carteDossier}>
               <View style={styles.entete}>
-                <View style={{ flexShrink: 1, minWidth: 0, flexBasis: 220, flexGrow: 1 }}>
+                <View style={[{ flexShrink: 1, minWidth: 0, flexBasis: 220, flexGrow: 1 }, blocNom]}>
                   <Text style={styles.titre}>{l.titre || 'Sans nom'}</Text>
                   <Text style={styles.sous}>
                     {nomContact(l.contactId)}

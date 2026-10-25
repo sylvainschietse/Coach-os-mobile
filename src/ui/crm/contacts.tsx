@@ -25,7 +25,7 @@ import { BoutonContour, Vide } from '../coque';
 import { Chargement, Erreur } from '../composants';
 import { arrondi, couleurs, espace, polices } from '../theme';
 import { adresseQuestionnaire, nomComplet, useCoachNom } from './commun';
-import { Badge, CaseACocher, Choix, Initiales, Recherche, Repliable } from './dossier';
+import { Badge, CaseACocher, Choix, Initiales, Recherche, Repliable, useBlocNomCarte } from './dossier';
 
 export const LIEN_APPLI = process.env.EXPO_PUBLIC_LIEN_APPLI || adresseWeb('/');
 
@@ -134,12 +134,13 @@ function CarteContact({
   onPlanifierBooster: () => void;
   onRubrique: (r: 'Documents' | 'Bilans') => void;
 }) {
+  const blocNom = useBlocNomCarte();
   return (
     <View style={carteDossier}>
       <View style={styles.entete}>
-        <View style={styles.identite}>
+        <View style={[styles.identite, blocNom]}>
           <Initiales prenom={c.prenom} nom={c.nom} />
-          <View style={{ flexShrink: 1, minWidth: 0 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.nom}>{nomComplet(c)}</Text>
             <Text style={styles.coordonnees}>{[c.email, formaterTelephone(c.telephone)].filter(Boolean).join(' · ')}</Text>
             {c.objectifPrincipal && <Text style={styles.objectif}>{c.objectifPrincipal}</Text>}

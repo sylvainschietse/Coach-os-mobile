@@ -11,11 +11,11 @@ import { crm, ecouterCrm } from '@/data/crm';
 import { documents, ecouterDocuments } from '@/data/documents';
 import { MODELES } from '@/domain/crm';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
+import { adresseWeb } from '@/lib/adresse-web';
 
 import { BoutonContour } from '../coque';
 import { Carte, Chargement, Erreur } from '../composants';
 import { couleurs, espace, polices } from '../theme';
-import { adresseQuestionnaire } from './commun';
 import { Badge, Repliable } from './dossier';
 
 const TALLY = 'https://tally.so/r/81Ye7r';
@@ -98,7 +98,7 @@ export function Automatisations() {
         ))}
         <View style={styles.ligne}>
           <BoutonContour libelle="Ouvrir le questionnaire Tally" icone={ArrowUpRight} onPress={() => Linking.openURL(TALLY)} />
-          {lien && <BoutonContour libelle="Ouvrir le questionnaire de l’app" icone={ArrowUpRight} onPress={() => Linking.openURL(adresseQuestionnaire(lien))} />}
+          {lien && <BoutonContour libelle="Ouvrir le questionnaire de l’app" icone={ArrowUpRight} onPress={() => Linking.openURL(adresseWeb(`/questionnaire/${lien}`))} />}
         </View>
         <Repliable resume="Raccorder Tally sans Make">
           {etat.webhookTally ? (

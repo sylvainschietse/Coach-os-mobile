@@ -28,7 +28,7 @@ import { choisirFichier, ouvrirFichier } from '../fichiers';
 import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
-import { Badge, BoutonPied, CaseACocher, Cellule, Choix, Grille, Libelle, Modale, PiedEditeur, Recherche, Saisie } from './dossier';
+import { Badge, BoutonPied, CaseACocher, Cellule, Choix, Grille, Libelle, Modale, PiedEditeur, Recherche, Saisie, useBlocNomCarte } from './dossier';
 import { ConfirmerSuppression } from './suppression';
 
 const jour = (j: string) => new Date(`${j}T12:00:00Z`).toLocaleDateString('fr-FR');
@@ -137,6 +137,7 @@ function CarteDocument({
   onOuvrir: () => void;
   onSupprimer: () => void;
 }) {
+  const blocNom = useBlocNomCarte();
   const [occupe, setOccupe] = useState(false);
   const [retour, setRetour] = useState<{ ok: boolean; texte: string }>();
   const [envoi, setEnvoi] = useState<ResultatEnvoi>();
@@ -176,7 +177,7 @@ function CarteDocument({
   return (
     <View style={carteDossier}>
       <View style={styles.entete}>
-        <View style={{ flexShrink: 1, minWidth: 0, flexBasis: 220, flexGrow: 1 }}>
+        <View style={[{ flexShrink: 1, minWidth: 0, flexBasis: 220, flexGrow: 1 }, blocNom]}>
           <Text style={styles.titre}>{d.nom || 'Sans nom'}</Text>
           <Text style={styles.sous}>
             {[contact, jour(d.date)].filter(Boolean).join(' · ')}

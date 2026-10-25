@@ -24,9 +24,12 @@ export const jourLisible = (jour: string) => {
   return new Date(a, m - 1, j).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 };
 
-/** Adresse du questionnaire à envoyer aux prospects. */
+/**
+ * Adresse du questionnaire à envoyer aux prospects : le formulaire Tally du coach quand il est renseigné
+ * (ses réponses arrivent dans l'app par le webhook), sinon le questionnaire intégré à l'app.
+ */
 export function adresseQuestionnaire(lien: string) {
-  return adresseWeb(`/questionnaire/${lien}`);
+  return process.env.EXPO_PUBLIC_QUESTIONNAIRE_TALLY || adresseWeb(`/questionnaire/${lien}`);
 }
 
 export function useCoachNom() {
