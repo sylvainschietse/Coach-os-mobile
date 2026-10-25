@@ -10,6 +10,9 @@ jobs:
   emulateur:
     runs-on: ubuntu-latest
     timeout-minutes: 75
+    env:
+      # Version démo : le fichier .env du dépôt (base réelle) est ignoré.
+      EXPO_NO_DOTENV: 1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,6 +44,8 @@ jobs:
             adb install android/app/build/outputs/apk/release/app-release.apk
             adb logcat -c
             $HOME/.maestro/bin/maestro test .maestro/creer-programme.yaml --test-output-dir diagnostic || true
+            echo '::group::Écran à la fin'; $HOME/.maestro/bin/maestro hierarchy | grep -oE '"(text|accessibilityText|bounds)" : "[^"]+"' | head -150; echo '::endgroup::'
+            echo '::group::Journal Android'; adb logcat -d '*:E' ReactNativeJS:V ReactNative:V | grep -vE 'netstack|chatty|GoogleApiManager|Finsky|gms' | tail -200; echo '::endgroup::'
             adb exec-out screencap -p > diagnostic/fin.png
             adb logcat -d > diagnostic/logcat.txt
       - uses: actions/upload-artifact@v4

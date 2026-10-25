@@ -2,6 +2,9 @@
 appId: com.coachos.app
 ---
 - launchApp
+- extendedWaitUntil:
+    visible: 'Je suis Sylvain, coach'
+    timeout: 60000
 - tapOn: 'Je suis Sylvain, coach'
 - tapOn: 'Programmes'
 - takeScreenshot: 1-programmes
