@@ -26,6 +26,7 @@ import {
   suggestionPourcentage,
   texteObjectif,
   titreClient,
+  codeModele,
   typeExercice,
 } from '@/domain/entrainement';
 import type { LignePrescription, Programme, Seance } from '@/domain/types';
@@ -66,6 +67,14 @@ describe('quatre cycles', () => {
     const l = appliquerCycle(ligne, 3);
     expect([l.series, l.repetitions, l.repetitionsMin, l.repetitionsMax, l.rir, l.progression]).toEqual([3, '8–12', 8, 12, 2, 'Progression 8–12']);
     expect(l.cycles).toBeUndefined();
+  });
+
+  it('un cycle peut changer de mouvement, en gardant les mesures de l’ancien', () => {
+    const cycles = CYCLES.map((c, i) => (i === 2 ? { ...c, exercice: { id: 'ex-9', nom: 'Rowing unilatéral — haltère' } } : c));
+    const l = appliquerCycle({ ...ligne, cycles }, 3);
+    expect([l.exercice.id, l.exercice.nom, l.exercice.mesures]).toEqual(['ex-9', 'Rowing unilatéral — haltère', ['charge', 'repetitions']]);
+    expect(appliquerCycle({ ...ligne, cycles }, 2).exercice.id).toBe('ex-1');
+    expect(cyclesValides(CYCLES.map((c) => ({ ...c, exercice: { id: 'x', nom: '' } })))).toBe(false);
   });
 
   it('variantes incomplètes : ligne inchangée', () => {
@@ -152,6 +161,10 @@ describe('collections et recherche', () => {
   it('titre montré au client sans codes internes', () => {
     expect(titreClient('MOD-SAL-13-4-S3 · Dos · Triceps')).toBe('Dos · Triceps');
     expect(titreClient('Copie · Léa · Cycle 1 · MOD-SAL-13-4 · Débutant')).toBe('Léa · Cycle 1 · Débutant');
+    expect(titreClient('CAL-TRACTIONS-2 · Vers les premières tractions · 2 séances · Adaptation Coach OS')).toBe('Vers les premières tractions · 2 séances');
+    expect(titreClient('REF-AX-2-S1 · Full body haltères A')).toBe('Full body haltères A');
+    expect(codeModele('MOD-SAL-23-3 · Intermédiaire')).toBe('MOD-SAL-23-3');
+    expect(codeModele('Perte de poids · Affiner et tonifier')).toBeUndefined();
   });
 });
 

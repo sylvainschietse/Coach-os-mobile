@@ -37,7 +37,8 @@ export function cyclesValides(v: unknown): v is Required<VarianteCycle>[] {
       typeof x.rir === 'number' &&
       x.rir >= 0 &&
       x.rir <= 5 &&
-      ['chargeIntensite', 'tempo', 'consignes', 'progressionPrevue'].every((k) => typeof x[k] === 'string'),
+      ['chargeIntensite', 'tempo', 'consignes', 'progressionPrevue'].every((k) => typeof x[k] === 'string') &&
+      (x.exercice === undefined || (typeof x.exercice?.id === 'string' && typeof x.exercice?.nom === 'string' && x.exercice.nom.length > 0)),
   );
 }
 
@@ -63,8 +64,17 @@ export function appliquerCycle(l: LignePrescription, cycle = 1): LignePrescripti
     tempo: v.tempo,
     consignes: v.consignes,
     progression: v.progressionPrevue,
+    exercice: v.exercice ? exerciceDuCycle(ligne.exercice, v.exercice) : ligne.exercice,
   };
 }
+
+/** Le mouvement du cycle remplace celui de la ligne ; sans mesures précisées, il garde celles de l'ancien (variante proche). */
+const exerciceDuCycle = (avant: Exercice, v: NonNullable<VarianteCycle['exercice']>): Exercice => ({
+  id: v.id,
+  nom: v.nom,
+  mesures: (v.mesures?.length ? v.mesures : avant.mesures) as Exercice['mesures'],
+  videoUrl: v.videoUrl,
+});
 
 export const aDesCycles = (s: Pick<Seance, 'blocs'>) => s.blocs.some((b) => b.lignes.some((l) => cyclesValides(l.cycles)));
 
@@ -265,12 +275,18 @@ export const correspondRecherche = (nom: string, q: string) =>
 export const NIVEAUX = ['Débutant', 'Intermédiaire', 'Confirmé', 'Expert'];
 export const OBJECTIFS = ['Remise en forme', 'Perte de poids', 'Prise de muscle', 'Prise de force'];
 
-/** Titres montrés au client : sans les codes internes du modèle (MOD-…, « Copie »). */
+/**
+ * Titre affiché (client et coach) : sans les codes internes du modèle (MOD-…, REF-…, CAL-…), « Copie » ni la mention
+ * d'adaptation. Le code reste dans le titre enregistré : il sert à la collection et à la recherche.
+ */
 export const titreClient = (nom: string) =>
   nom
     .split(' · ')
-    .filter((x) => !/^MOD-|^Copie$/.test(x))
-    .join(' · ');
+    .filter((x) => !/^(MOD|REF|CAL)-[A-Z0-9-]+$|^Copie$|^Adaptation Coach OS$/.test(x.trim()))
+    .join(' · ') || nom;
+
+/** Code interne d'un modèle (« MOD-SAL-23-3 »), montré en petit au coach seulement. */
+export const codeModele = (nom: string) => /^((?:MOD|REF|CAL)-[A-Z0-9-]+)(?: · |$)/.exec(nom)?.[1];
 
 // ---------- Copies indépendantes (copie.ts, programmeCreation.ts) ----------
 

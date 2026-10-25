@@ -100,3 +100,30 @@ export function lireMinuteur(brut: unknown): ConfigMinuteur | null {
   if (config.exercices === null || config.travailS === null) return null;
   return config as ConfigMinuteur;
 }
+
+interface LigneChrono {
+  exercice: { nom: string };
+  series: number;
+  dureeS?: number;
+  repetitions?: string;
+  recuperationS?: number;
+}
+
+/**
+ * Bloc de gainage « 4 min · 20/10 » à plusieurs exercices au temps : les exercices s'alternent à chaque intervalle
+ * (A, B, A, B…), au lieu d'enchaîner toutes les séries du premier puis du second. Le chrono réglé par le coach prime.
+ */
+export function circuitAlterne(bloc: { minuteur?: ConfigMinuteur; lignes: LigneChrono[] }): { config: ConfigMinuteur; noms: string[] } | null {
+  const l = bloc.lignes;
+  if (bloc.minuteur || l.length < 2) return null;
+  const auTemps = l.every((x) => (x.dureeS ?? 0) > 0 && !x.repetitions?.trim());
+  if (!auTemps || new Set(l.map((x) => x.series)).size > 1 || new Set(l.map((x) => x.dureeS)).size > 1) return null;
+  const repos = Math.max(0, l[0].recuperationS ?? 0);
+  return {
+    config: { exercices: l.length, travailS: l[0].dureeS!, reposS: repos, tours: Math.max(1, l[0].series), reposEntreToursS: repos },
+    noms: l.map((x) => x.exercice.nom),
+  };
+}
+
+/** « Dead bug ↔ Planche latérale · 4 tours » */
+export const resumeAlternance = (noms: string[], tours: number) => `${noms.join(' ↔ ')} · ${tours} tour${tours > 1 ? 's' : ''}`;

@@ -9,6 +9,8 @@ export interface VarianteCycle {
   tempo?: string;
   consignes?: string;
   progressionPrevue?: string;
+  /** Mouvement de ce cycle quand il change (variante proche : même schéma, autre angle ou autre matériel). */
+  exercice?: { id: string; nom: string; mesures?: string[]; videoUrl?: string };
 }
 
 const MARQUEUR_CYCLES = /\s*\[COACHOS_CYCLES:([\s\S]*)\]\s*$/;

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 
 import { entrainement } from '@/data/entrainement';
-import { sourceEntrainement } from '@/domain/entrainement';
+import { codeModele, sourceEntrainement, titreClient } from '@/domain/entrainement';
 import type { ElementCorbeille, ProgrammeDetail } from '@/domain/entrainement-etat';
 
 import { Kicker, TitreDisplay } from '../coque';
@@ -103,7 +103,8 @@ export function DetailProgramme({
     <View>
       {retour}
       <Kicker>Programme · espace coach</Kicker>
-      <TitreDisplay taille={30}>{p.titre}</TitreDisplay>
+      <TitreDisplay taille={30}>{titreClient(p.titre)}</TitreDisplay>
+      {codeModele(p.titre) && <Text style={[ts.doux, { fontSize: 12 }]}>Réf. {codeModele(p.titre)}</Text>}
       <Ligne style={{ marginTop: 12, alignItems: 'flex-start' }}>
         <Action libelle="Ajouter une séance" onPress={() => setDialogue({ action: 'seance', programmeId: id })} />
         <Action libelle="Modifier" variante="contour" onPress={modifier} />
@@ -156,7 +157,7 @@ export function DetailProgramme({
             {donnee.seances.map((s, i) => (
               <View key={s.id}>
                 <Text style={[ts.texte, { fontFamily: polices.texteMoyen }]}>
-                  {s.ordre || i + 1} · {s.titre}
+                  {s.ordre || i + 1} · {titreClient(s.titre)}
                 </Text>
                 {s.objectif && <Text style={[ts.texte, { color: couleurs.texteDoux }]}>{s.objectif}</Text>}
               </View>
@@ -225,7 +226,7 @@ export function DetailProgramme({
                 <Text style={ts.pastilleJourTexte}>J{s.ordre || '?'}</Text>
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={[ts.texte, { fontFamily: polices.texteMoyen }]}>{s.titre}</Text>
+                <Text style={[ts.texte, { fontFamily: polices.texteMoyen }]}>{titreClient(s.titre)}</Text>
                 <Text style={ts.doux}>{[s.dominante, s.dureeMin ? `${s.dureeMin} min` : '', `${s.nbExercices} exercices`].filter(Boolean).join(' · ')}</Text>
               </View>
               <ChevronRight size={20} color={couleurs.texteDoux} />

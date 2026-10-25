@@ -25,12 +25,15 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.ceil(s % 60) ==
 export default function Minuteur() {
   useKeepAwake();
   // Ouvert depuis une séance : le chrono réglé par le coach arrive en paramètre.
-  const params = useLocalSearchParams<{ config?: string; titre?: string }>();
+  const params = useLocalSearchParams<{ config?: string; titre?: string; noms?: string }>();
   const [prevu] = useState(() => lireMinuteur(params.config));
+  const [noms] = useState(() => lireNoms(params.noms));
   const [config, setConfig] = useState<ConfigMinuteur>(prevu ?? TABATA);
   const [marche, setMarche] = useState<Marche | null>(null);
   const [maintenant, setMaintenant] = useState(maintenantMs);
   const phases = useMemo(() => planifier(config), [config]);
+  /** Nom de l'exercice n quand le coach a prévu un circuit en alternance (même nombre d'exercices qu'au réglage). */
+  const nomDe = (n: number) => (noms.length === config.exercices ? noms[n - 1] : undefined);
   const derniereIndex = useRef(-1);
 
   useEffect(() => {
@@ -60,7 +63,7 @@ export default function Minuteur() {
           const suivante = phases[phases.indexOf(p) + 1];
           const corps = suivante
             ? suivante.type === 'travail'
-              ? `Go ! Exercice ${suivante.exercice} · tour ${suivante.tour}`
+              ? `Go ! ${nomDe(suivante.exercice) ?? `Exercice ${suivante.exercice}`} · tour ${suivante.tour}`
               : 'Repos'
             : 'Séance terminée, bravo !';
           return i === liste.length - 1 || fin > 0 ? programmerAlerte(fin, p.type === 'travail' ? 'Stop' : 'C’est reparti', corps) : null;
@@ -138,6 +141,9 @@ export default function Minuteur() {
         <>
           <Text style={styles.phase}>{travail ? 'Travail' : 'Repos'}</Text>
           <Text style={styles.compte}>{mmss(etat.restantS)}</Text>
+          {nomDe(etat.phase.exercice) && (
+            <Text style={styles.detail}>{travail ? nomDe(etat.phase.exercice) : `Ensuite : ${nomDe(suivant(phases, etat.indexPhase)) ?? ''}`}</Text>
+          )}
           <Text style={styles.detail}>
             Exercice {etat.phase.exercice}/{config.exercices} · Tour {etat.phase.tour}/{config.tours}
           </Text>
@@ -155,6 +161,18 @@ export default function Minuteur() {
       </View>
     </View>
   );
+}
+
+/** Exercice du prochain intervalle de travail. */
+const suivant = (phases: { type: string; exercice: number }[], i: number) => phases.slice(i + 1).find((p) => p.type === 'travail')?.exercice ?? 0;
+
+function lireNoms(brut?: string): string[] {
+  try {
+    const v = JSON.parse(brut ?? '[]');
+    return Array.isArray(v) && v.every((x) => typeof x === 'string') ? v : [];
+  } catch {
+    return [];
+  }
 }
 
 function Pas({ libelle, onPress }: { libelle: string; onPress: () => void }) {

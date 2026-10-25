@@ -5,13 +5,13 @@
 // watts au lieu de « charge × répétitions ».
 import { router } from 'expo-router';
 import { AlertCircle, CheckCircle2, ChevronDown, PlayCircle, Timer } from 'lucide-react-native';
-import { useEffect, useRef, useState, type ComponentRef } from 'react';
+import { Fragment, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { entrainement } from '@/data/entrainement';
 import { dureeCourte, formatDeLigne, lireObjectif, prescriptionClient, suggestionPourcentage, titreClient, typeDeLigne, type Reference } from '@/domain/entrainement';
 import type { RealisationLue } from '@/domain/entrainement-etat';
-import { resumeMinuteur } from '@/domain/minuteur';
+import { circuitAlterne, resumeAlternance, resumeMinuteur } from '@/domain/minuteur';
 import type { LignePrescription, Mesure, Seance, SerieRealisee, Valeurs } from '@/domain/types';
 import { demanderSortie, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { nouvelId } from '@/lib/identifiant';
@@ -208,7 +208,29 @@ export function SeanceLog({
       {ouvert && (
         <View style={{ borderTopWidth: 1, borderTopColor: couleurs.bordure, padding: 14, gap: 12 }}>
           <TexteLong texte={seance.consignes} />
-          {lignes.map((l) => (
+          {seance.blocs.map((b) => {
+            const alterne = circuitAlterne(b);
+            return (
+              <Fragment key={b.id}>
+                {alterne && (
+                  <View style={{ gap: 6 }}>
+                    <Text style={ts.doux}>
+                      {b.titre} · en alternance, un exercice par intervalle : {resumeAlternance(alterne.noms, alterne.config.tours)}.
+                    </Text>
+                    <Ligne>
+                      <Action
+                        petit
+                        variante="contour"
+                        icone={Timer}
+                        libelle={`Chrono · ${resumeMinuteur(alterne.config)}`}
+                        onPress={() =>
+                          router.push({ pathname: '/client/minuteur', params: { config: JSON.stringify(alterne.config), titre: b.titre, noms: JSON.stringify(alterne.noms) } })
+                        }
+                      />
+                    </Ligne>
+                  </View>
+                )}
+                {b.lignes.map((l) => (
             <LigneSaisie
               key={l.id}
               l={l}
@@ -231,7 +253,10 @@ export function SeanceLog({
                 });
               }}
             />
-          ))}
+                ))}
+              </Fragment>
+            );
+          })}
 
           <View style={{ gap: 8, marginTop: 4 }}>
             <Text nativeID={`note-${seance.id}`} style={ts.titreChamp}>

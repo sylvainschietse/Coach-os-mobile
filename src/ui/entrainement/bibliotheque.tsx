@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { entrainement } from '@/data/entrainement';
-import { collectionDe, COLLECTIONS, correspondRecherche, NIVEAUX, sourceEntrainement } from '@/domain/entrainement';
+import { codeModele, collectionDe, COLLECTIONS, correspondRecherche, NIVEAUX, sourceEntrainement, titreClient } from '@/domain/entrainement';
 import type { ElementCorbeille, ModeleResume } from '@/domain/entrainement-etat';
 import { useCharger } from '@/lib/useCharger';
 
@@ -193,7 +193,7 @@ function CarteModele({
         ]}
       >
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-          <Text style={{ flex: 1, fontFamily: polices.texteGras, fontSize: 16, lineHeight: 21, color: couleurs.texte, paddingRight: selection ? 32 : 0 }}>{p.titre}</Text>
+          <Text style={{ flex: 1, fontFamily: polices.texteGras, fontSize: 16, lineHeight: 21, color: couleurs.texte, paddingRight: selection ? 32 : 0 }}>{titreClient(p.titre)}</Text>
           {!selection && <ChevronRight size={20} color={couleurs.texteDoux} />}
         </View>
         <Ligne style={{ marginTop: 12, gap: 6 }}>
@@ -205,6 +205,7 @@ function CarteModele({
           {p.environnement && <Puce libelle={p.environnement} />}
         </Ligne>
         {source && <Text style={[ts.doux, { marginTop: 8 }]}>{source.author} · Adaptation Coach OS</Text>}
+        {codeModele(p.titre) && <Text style={[ts.doux, { marginTop: 4, fontSize: 12 }]}>Réf. {codeModele(p.titre)}</Text>}
         <Text style={[ts.doux, { marginTop: 12 }]}>
           {p.nbSeances} séance(s){p.statut ? ` · ${p.statut}` : ''}
         </Text>

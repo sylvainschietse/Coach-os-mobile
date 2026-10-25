@@ -7,7 +7,8 @@ import { depot } from '@/data';
 import { enregistrerSeance } from '@/data/file-envoi';
 import { useSession } from '@/data/session';
 import { champsPertinents, LIBELLES } from '@/domain/mesures';
-import { resumeMinuteur, type ConfigMinuteur } from '@/domain/minuteur';
+import { circuitAlterne, resumeAlternance, resumeMinuteur, type ConfigMinuteur } from '@/domain/minuteur';
+import { titreClient } from '@/domain/entrainement';
 import { annulerValidation, construireRealisation, modifierSerie, validerSerie } from '@/domain/realisation';
 import { preparerSeries } from '@/domain/suggestions';
 import type { LignePrescription, Seance, SerieSaisie } from '@/domain/types';
@@ -109,9 +110,9 @@ export default function RealiserSeance() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Stack.Screen options={{ title: seance.titre }} />
+      <Stack.Screen options={{ title: titreClient(seance.titre) }} />
       <Ecran>
-        <Titre>{seance.titre}</Titre>
+        <Titre>{titreClient(seance.titre)}</Titre>
         {seance.consignes && <Texte doux>{seance.consignes}</Texte>}
         <View style={styles.legende}>
           <Text style={styles.legendeSuggestion}>40</Text>
@@ -120,10 +121,18 @@ export default function RealiserSeance() {
           </Texte>
         </View>
 
-        {seance.blocs.map((bloc) => (
+        {seance.blocs.map((bloc) => {
+          const alterne = circuitAlterne(bloc);
+          return (
           <View key={bloc.id} style={{ gap: espace(3) }}>
             <Text style={styles.bloc}>{bloc.titre}</Text>
             {bloc.minuteur && <LancerChrono config={bloc.minuteur} titre={bloc.titre} />}
+            {alterne && (
+              <>
+                <Texte doux style={{ fontSize: 14 }}>En alternance, un exercice par intervalle : {resumeAlternance(alterne.noms, alterne.config.tours)}.</Texte>
+                <LancerChrono config={alterne.config} titre={bloc.titre} noms={alterne.noms} />
+              </>
+            )}
             {bloc.lignes.map((ligne) => {
               const champs = champsPertinents(ligne.exercice);
               return (
@@ -173,7 +182,8 @@ export default function RealiserSeance() {
               );
             })}
           </View>
-        ))}
+          );
+        })}
 
         <Carte>
           <SousTitre>Ton ressenti</SousTitre>
@@ -198,12 +208,12 @@ export default function RealiserSeance() {
 }
 
 /** Chrono réglé par le coach, sous un exercice ou un circuit : un appui ouvre le minuteur déjà configuré. */
-function LancerChrono({ config, titre }: { config: ConfigMinuteur; titre: string }) {
+function LancerChrono({ config, titre, noms }: { config: ConfigMinuteur; titre: string; noms?: string[] }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Lancer le chrono : ${resumeMinuteur(config)}`}
-      onPress={() => router.push({ pathname: '/client/minuteur', params: { config: JSON.stringify(config), titre } })}
+      onPress={() => router.push({ pathname: '/client/minuteur', params: { config: JSON.stringify(config), titre, ...(noms ? { noms: JSON.stringify(noms) } : {}) } })}
       style={({ pressed }) => [styles.chrono, pressed && { opacity: 0.85 }]}
     >
       <Text style={styles.chronoIcone}>⏱</Text>

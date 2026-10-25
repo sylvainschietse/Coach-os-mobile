@@ -6,7 +6,7 @@ import { Text, TextInput, View, useWindowDimensions } from 'react-native';
 
 import { entrainement, lierProgramme } from '@/data/entrainement';
 import { ecrireJour, lireJour } from '@/domain/crm';
-import { ajouterJours, aujourdhuiParis, correspondRecherche, dansDates, finSuivi, LIBELLES_CYCLES, type StatutCycle } from '@/domain/entrainement';
+import { ajouterJours, aujourdhuiParis, correspondRecherche, dansDates, finSuivi, LIBELLES_CYCLES, titreClient, type StatutCycle } from '@/domain/entrainement';
 import type { CycleClient, ModeLien, ModeleResume, SuiviClient } from '@/domain/entrainement-etat';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
@@ -295,7 +295,7 @@ function DialogueProgrammeCycle({
       <Text style={[ts.texte, { fontFamily: polices.texteMoyen }]}>
         {modele ? (
           <>
-            Choisi : <Text style={{ color: couleurs.rouge }}>{modele.titre}</Text>
+            Choisi : <Text style={{ color: couleurs.rouge }}>{titreClient(modele.titre)}</Text>
           </>
         ) : (
           'Choisir un modèle…'
@@ -307,7 +307,7 @@ function DialogueProgrammeCycle({
       <ListeChoix
         elements={modeles ? modeles.filter((m) => !m.seanceSeule && correspondRecherche(m.titre, q)) : null}
         cle={(m) => m.id}
-        libelle={(m) => m.titre}
+        libelle={(m) => titreClient(m.titre)}
         choisi={modeleId}
         onChoisir={(m) => {
           setModeleId(m.id);
@@ -322,7 +322,7 @@ function DialogueProgrammeCycle({
       )}
       {copie && modele && (
         <Text style={[ts.texte, { borderWidth: 1, borderColor: 'rgba(194,65,12,0.4)', backgroundColor: couleurs.orangeClair, color: '#7C2D12', borderRadius: 10, padding: 12 }]}>
-          Une copie de « {modele.titre} » (programme, séances, lignes) sera créée pour {client}, indépendante du modèle. Vous la réviserez ensuite.
+          Une copie de « {titreClient(modele.titre)} » (programme, séances, lignes) sera créée pour {client}, indépendante du modèle. Vous la réviserez ensuite.
         </Text>
       )}
       {erreur ? (

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Text, TextInput, View, useWindowDimensions } from 'react-native';
 
 import { entrainement } from '@/data/entrainement';
-import { aDesCycles, appliquerCycle, casesLigne, LIBELLES_CYCLES } from '@/domain/entrainement';
+import { aDesCycles, appliquerCycle, casesLigne, LIBELLES_CYCLES, titreClient } from '@/domain/entrainement';
 import type { SeanceCoach } from '@/domain/entrainement-etat';
 import type { Bloc, LignePrescription, Seance } from '@/domain/types';
 import { nouvelId } from '@/lib/identifiant';
@@ -139,13 +139,13 @@ export function EditeurSeance({
     <View>
       {!integre && (
         <View style={{ alignSelf: 'flex-start', marginLeft: -8, marginBottom: 12 }}>
-          <Action petit variante="fantome" icone={ArrowLeft} libelle={programme.titre} onPress={onRetour} />
+          <Action petit variante="fantome" icone={ArrowLeft} libelle={titreClient(programme.titre)} onPress={onRetour} />
         </View>
       )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
         <View style={{ flexShrink: 1, minWidth: 0 }}>
           {!integre && <Kicker>{modele ? 'Modèle de séance' : 'Séance du programme'}</Kicker>}
-          <TitreDisplay taille={30}>{seance.titre}</TitreDisplay>
+          <TitreDisplay taille={30}>{titreClient(seance.titre)}</TitreDisplay>
           <Text style={[ts.doux, { fontSize: 14, marginTop: 4 }]}>{[seance.dominante, seance.dureeMin ? `${seance.dureeMin} min` : '', seance.objectif].filter(Boolean).join(' · ')}</Text>
         </View>
         <Action libelle="Ajouter un bloc" icone={Plus} desactive={!!occupe || verrouCycle} onPress={() => setAjoutBloc(true)} />
