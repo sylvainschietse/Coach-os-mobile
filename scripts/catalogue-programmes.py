@@ -246,8 +246,8 @@ def programme(fichier, pcode, titre, obj, niveau_i, nb, seances, *, profil=None,
             vs = []
             for c in range(4):
                 reps, rir, rec = PRESC[obj][role][c]
-                v = dict(series=series, repetitions=reps, recuperationS=rec, rir=rir, chargeIntensite='Charge à ajuster au RIR cible',
-                         tempo='Contrôlé', consignes=cons_txt, progressionPrevue=PROG_COURT)
+                # Textes vides : l'app reprend ceux de la ligne (appliquerCycle), le SQL reste sous la limite du SQL Editor.
+                v = dict(series=series, repetitions=reps, recuperationS=rec, rir=rir, chargeIntensite='', tempo='', consignes='', progressionPrevue='')
                 alt = (VARIANTE_C34.get(nom) if niveau_i == 0 and c >= 2 and not profil and not maison else None) if role == 'ref' else (variantes.get(nom) if c == 2 else None)
                 if alt:
                     alt = swaps.get(alt, alt)
@@ -257,7 +257,7 @@ def programme(fichier, pcode, titre, obj, niveau_i, nb, seances, *, profil=None,
             reps, rir, rec = PRESC[obj][role][0]
             mn, mx = reps.split('–')
             return dict(repetitions=reps, repetitions_min=int(mn), repetitions_max=int(mx), rir=rir, recuperation_s=rec, tempo='Contrôlé',
-                        charge_intensite='Charge à ajuster au RIR cible', consignes=cons_txt, progression=PROG, cycles=vs)
+                        charge_intensite='Charge à ajuster au RIR cible', consignes=cons_txt, progression=PROG_COURT, cycles=vs)
 
         ref = swaps.get(s['ref'], s['ref'])
         if niveau_i == 0: ref = DEBUTANT_REF.get(ref, ref)
@@ -332,8 +332,30 @@ COLS = {
 }
 sortie = sys.argv[1] if len(sys.argv) > 1 else '.'
 os.makedirs(sortie, exist_ok=True)
-bilan = {}
+# Le SQL Editor refuse les requêtes trop longues : chaque fichier est découpé en parties de quelques programmes complets.
+LIMITE = 600_000
+def parties(rows):
+    par_prog = {p['id']: {'programmes': [p], 'seances': [], 'blocs': [], 'lignes': []} for p in rows['programmes']}
+    prog_de_seance = {s['id']: s['programme_id'] for s in rows['seances']}
+    prog_de_bloc = {b['id']: prog_de_seance[b['seance_id']] for b in rows['blocs']}
+    for s in rows['seances']: par_prog[s['programme_id']]['seances'].append(s)
+    for b in rows['blocs']: par_prog[prog_de_seance[b['seance_id']]]['blocs'].append(b)
+    for l in rows['lignes']: par_prog[prog_de_bloc[l['bloc_id']]]['lignes'].append(l)
+    courant, taille = None, 0
+    for morceau in par_prog.values():
+        t = len(json.dumps(morceau, ensure_ascii=False)) * 1.3
+        if courant is None or taille + t > LIMITE:
+            if courant: yield courant
+            courant, taille = {k: [] for k in COLS}, 0
+        for k in COLS: courant[k] += morceau[k]
+        taille += t
+    if courant: yield courant
+decoupes = {}
 for fichier, rows in sorted(fichiers.items()):
+    for i, partie in enumerate(parties(rows), 1):
+        decoupes[f'{fichier}-{i}'] = partie
+bilan = {}
+for fichier, rows in decoupes.items():
     out = [f'-- Coach OS · catalogue de programmes · {fichier} ({len(rows["programmes"])} programmes).',
            '-- À lancer dans le SQL Editor. Ajoute uniquement de nouveaux modèles (codes MOD-SAL-V3-…) ; aucun programme existant n’est modifié.',
            '-- Relançable : identifiants fixes, « on conflict do nothing ».', 'begin;']

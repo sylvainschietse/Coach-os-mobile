@@ -77,6 +77,12 @@ describe('quatre cycles', () => {
     expect(cyclesValides(CYCLES.map((c) => ({ ...c, exercice: { id: 'x', nom: '' } })))).toBe(false);
   });
 
+  it('un texte vide dans la variante reprend celui de la ligne', () => {
+    const cycles = CYCLES.map((c) => ({ ...c, consignes: '', progressionPrevue: '', tempo: '', chargeIntensite: '' }));
+    const l = appliquerCycle({ ...ligne, consignes: 'Dos plat', tempo: 'Contrôlé', cycles }, 2);
+    expect([l.consignes, l.progression, l.tempo, l.repetitions]).toEqual(['Dos plat', 'S1 : calibrer à 4 RIR', 'Contrôlé', '8–12']);
+  });
+
   it('variantes incomplètes : ligne inchangée', () => {
     expect(cyclesValides(CYCLES.slice(0, 3))).toBe(false);
     expect(appliquerCycle({ ...ligne, cycles: CYCLES.slice(0, 3) }, 3).repetitions).toBe('10–12');

@@ -60,10 +60,11 @@ export function appliquerCycle(l: LignePrescription, cycle = 1): LignePrescripti
     repetitionsMax: reps?.max,
     recuperationS: v.recuperationS,
     rir: Number(v.rir),
-    chargeIntensite: v.chargeIntensite,
-    tempo: v.tempo,
-    consignes: v.consignes,
-    progression: v.progressionPrevue,
+    // Texte vide dans la variante : on garde celui de la ligne (le catalogue ne le répète pas pour chaque cycle).
+    chargeIntensite: v.chargeIntensite || ligne.chargeIntensite,
+    tempo: v.tempo || ligne.tempo,
+    consignes: v.consignes || ligne.consignes,
+    progression: v.progressionPrevue || ligne.progression,
     exercice: v.exercice ? exerciceDuCycle(ligne.exercice, v.exercice) : ligne.exercice,
   };
 }
