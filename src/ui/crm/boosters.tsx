@@ -1,12 +1,12 @@
 // Rubrique Boosters reprise de CRMWorkspace.tsx : liste filtrable, résultat commercial, briefing dépliable,
 // compte rendu, création du coaching et documents du client.
-import * as Linking from 'expo-linking';
 import { router, useFocusEffect } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { crm, ecouterCrm } from '@/data/crm';
 import { filtrerBoosters, lienEnvoi, rediger, statutBooster, STATUTS_BOOSTER, type BoosterDossier, type StatutBooster } from '@/domain/crm';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Vide } from '../coque';
@@ -203,7 +203,7 @@ function CarteBooster({
           <BoutonContour libelle="Créer le coaching" desactive={occupe || !offre} onPress={creerCoaching} />
           {!offre && <Text style={styles.raison}>Choisissez d’abord l’offre recommandée dans le Booster</Text>}
         </View>
-        {questionnaire && <BoutonContour libelle="Questionnaire WhatsApp" onPress={() => Linking.openURL(questionnaire)} />}
+        {questionnaire && <BoutonContour libelle="Questionnaire WhatsApp" onPress={() => ouvrirLien(questionnaire)} />}
         <BoutonContour libelle="Documents du client" onPress={onDocuments} />
       </View>
       {coaching && <Text style={[styles.raison, { fontSize: 13, color: coaching.ok ? couleurs.vert : couleurs.rouge }]}>{coaching.texte}</Text>}

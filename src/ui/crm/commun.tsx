@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useSession } from '@/data/session';
 import { formaterTelephone, lienEnvoi, MODELES, rediger, STATUTS, type Canal, type Contact, type Relance, type Statut } from '@/domain/crm';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
 
 import { Pastille, Texte } from '../composants';
 import { couleurs, espace, polices } from '../theme';
@@ -50,7 +51,7 @@ export function BoutonsEnvoi({ contact, message, onEnvoye }: { contact: Contact;
           key={canal}
           accessibilityRole="button"
           onPress={async () => {
-            await Linking.openURL(lienEnvoi(canal, contact, message)!).catch(() => undefined);
+            await ouvrirLien(lienEnvoi(canal, contact, message)!).catch(() => undefined);
             onEnvoye?.();
           }}
           style={({ pressed }) => [styles.envoi, pressed && { opacity: 0.8 }]}

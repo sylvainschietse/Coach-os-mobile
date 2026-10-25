@@ -18,6 +18,7 @@ import {
   type ContactResume,
   type StatutContact,
 } from '@/domain/crm';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Vide } from '../coque';
@@ -202,7 +203,7 @@ function ActionsDossier({
   return (
     <Repliable resume="Actions du dossier · Booster, accès et documents">
       <View style={styles.actions}>
-        {questionnaire && <BoutonContour libelle="Questionnaire WhatsApp" icone={ArrowUpRight} onPress={() => Linking.openURL(questionnaire)} />}
+        {questionnaire && <BoutonContour libelle="Questionnaire WhatsApp" icone={ArrowUpRight} onPress={() => ouvrirLien(questionnaire)} />}
         <BoutonContour libelle="Planifier un Booster" onPress={onPlanifierBooster} desactive={archive} />
         <BoutonContour
           libelle={contact.clientId ? 'Actualiser l’accès client' : 'Préparer l’accès client'}
@@ -239,7 +240,7 @@ function BoutonEnvoyerAcces({ lien, raison }: { lien: string | null; raison: str
         accessibilityRole="button"
         accessibilityHint={lien ? undefined : raison}
         disabled={!lien}
-        onPress={() => lien && Linking.openURL(lien)}
+        onPress={() => lien && ouvrirLien(lien)}
         style={({ pressed }) => [styles.principal, { minHeight: 44 }, !lien && { opacity: 0.5 }, pressed && { opacity: 0.85 }]}
       >
         <Text style={styles.principalTexte}>Envoyer l’accès client</Text>

@@ -1,6 +1,5 @@
 // Rubriques Coachings, Tâches et Paiements reprises de CRMWorkspace.tsx (liste filtrable, cartes, RecordEditor) :
 // recherche, filtre de statut, « Inclure les dossiers archivés », filtre « Dossier : X », Ouvrir et Supprimer.
-import * as Linking from 'expo-linking';
 import { useFocusEffect } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -24,6 +23,7 @@ import {
   type StatutPaiement,
   type StatutTache,
 } from '@/domain/gestion';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Selecteur, Vide } from '../coque';
@@ -191,7 +191,7 @@ function RelanceWhatsApp({ contact }: { contact: Contact }) {
   const lien = lienEnvoi('whatsapp', contact, `Bonjour ${contact.prenom}, `);
   if (!lien) return null;
   return (
-    <Text accessibilityRole="link" onPress={() => Linking.openURL(lien).catch(() => undefined)} style={styles.lien}>
+    <Text accessibilityRole="link" onPress={() => ouvrirLien(lien).catch(() => undefined)} style={styles.lien}>
       Relancer sur WhatsApp
     </Text>
   );

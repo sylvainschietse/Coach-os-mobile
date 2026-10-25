@@ -1,4 +1,3 @@
-import * as Linking from 'expo-linking';
 import * as MailComposer from 'expo-mail-composer';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -13,6 +12,7 @@ import { lienEnvoi } from '@/domain/crm';
 import type { Booster, FicheContact } from '@/domain/crm';
 import { TESTS } from '@/domain/evaluation';
 import { appliquerRedaction, redactionModele, type Redaction } from '@/domain/redaction';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
@@ -162,7 +162,7 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
     }
   }
 
-  const prevenir = () => Linking.openURL(lienEnvoi('whatsapp', contact, messageCompteRenduEnvoye(cr))!).catch(() => undefined);
+  const prevenir = () => ouvrirLien(lienEnvoi('whatsapp', contact, messageCompteRenduEnvoye(cr))!).catch(() => undefined);
 
   return (
     <View style={{ gap: espace(3) }}>
