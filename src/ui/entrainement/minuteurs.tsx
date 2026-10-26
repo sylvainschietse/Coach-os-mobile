@@ -8,6 +8,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import { Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { CONFIG_DEFAUT, configValide, duree, ecoule, etape, horloge, mettreEnPause, relireMarche, reprendre, type ConfigMinuteurs, type Marche } from '@/domain/minuteurs';
+import { roleWeb } from '@/lib/role-web';
 import { maintenantMs } from '@/lib/temps';
 import { vibrer } from '@/lib/vibrer';
 
@@ -266,7 +267,7 @@ export function Minuteurs({ utilisateurId, children }: { utilisateurId: string; 
 
       <Modal visible={ouvert} transparent animationType="fade" onRequestClose={() => setOuvert(false)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 16 }}>
-          <View accessibilityRole={'dialog' as never} accessibilityLabel="Mes minuteurs" style={{ width: '100%', maxWidth: 512, maxHeight: '90%', alignSelf: 'center', backgroundColor: couleurs.carte, borderRadius: 16 }}>
+          <View {...roleWeb('dialog')} accessibilityLabel="Mes minuteurs" style={{ width: '100%', maxWidth: 512, maxHeight: '90%', alignSelf: 'center', backgroundColor: couleurs.carte, borderRadius: 16 }}>
             <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
                 <View style={{ flex: 1, gap: 4 }}>
@@ -292,7 +293,7 @@ export function Minuteurs({ utilisateurId, children }: { utilisateurId: string; 
                     backgroundColor: courant.type === 'work' ? 'rgba(195,24,30,0.05)' : 'rgba(237,239,242,0.4)',
                   }}
                 >
-                  <Text accessibilityRole={'status' as never} style={[ts.texte, { fontFamily: polices.texteGras }]}>
+                  <Text {...roleWeb('status')} style={[ts.texte, { fontFamily: polices.texteGras }]}>
                     {enPause ? `En pause · ${titre}` : titre}
                   </Text>
                   <Text role="timer" style={{ fontFamily: polices.chiffres, fontSize: 60, color: couleurs.texte, marginVertical: 8 }}>

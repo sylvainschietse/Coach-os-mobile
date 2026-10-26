@@ -44,6 +44,7 @@ import { totalJour, type PlanRepas } from '@/domain/plan-repas';
 import type { MomentRepas } from '@/domain/types';
 import { brouillonsOuverts, demanderSortie, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { nouvelId } from '@/lib/identifiant';
+import { roleWeb } from '@/lib/role-web';
 
 import { BoutonContour, Selecteur } from '../coque';
 import { CaseACocher, Modale, Repliable, Saisie } from '../crm/dossier';
@@ -330,7 +331,7 @@ export function Planificateur({
         </View>
       )}
       {!!notice && (
-        <View accessibilityRole={'status' as never} style={{ borderRadius: 12, backgroundColor: 'rgba(195,24,30,0.05)', padding: 12 }}>
+        <View {...roleWeb('status')} style={{ borderRadius: 12, backgroundColor: 'rgba(195,24,30,0.05)', padding: 12 }}>
           <Text style={ts.texte}>{notice}</Text>
         </View>
       )}

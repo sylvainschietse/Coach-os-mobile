@@ -9,3 +9,12 @@ appId: com.coachos.app
 - tapOn: 'Programmes'
 - tapOn: 'Créer un programme'
 - waitForAnimationToEnd
+# La fenêtre doit vraiment s'afficher (avant correctif : écran gris).
+- extendedWaitUntil:
+    visible: 'Annuler'
+    timeout: 15000
+- tapOn: 'Annuler'
+- tapOn: 'Créer une séance seule'
+- extendedWaitUntil:
+    visible: 'Annuler'
+    timeout: 15000

@@ -10,6 +10,7 @@ import { aDesCycles, appliquerCycle, casesLigne, LIBELLES_CYCLES, titreClient } 
 import type { SeanceCoach } from '@/domain/entrainement-etat';
 import type { Bloc, LignePrescription, Seance } from '@/domain/types';
 import { nouvelId } from '@/lib/identifiant';
+import { roleWeb } from '@/lib/role-web';
 
 import { Kicker, TitreDisplay } from '../coque';
 import { Badge, Choix, Modale, Repliable } from '../crm/dossier';
@@ -162,7 +163,7 @@ export function EditeurSeance({
           />
           <Text style={ts.doux}>Aperçu uniquement. Choisissez ce cycle lors de la duplication ou de l’attribution en copie pour enregistrer ses réglages.</Text>
           {verrouCycle && (
-            <Text accessibilityRole={'status' as never} style={[ts.doux, { color: couleurs.orange }]}>
+            <Text {...roleWeb('status')} style={[ts.doux, { color: couleurs.orange }]}>
               {MESSAGE_CYCLE}
             </Text>
           )}

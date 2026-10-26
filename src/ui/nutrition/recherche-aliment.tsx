@@ -7,6 +7,7 @@ import { Pressable, Text, View } from 'react-native';
 import { rechercherProduits } from '@/data/nutrition';
 import { ciqualFoods, ciqualGroups, searchCiqual, type CiqualFood } from '@/domain/nutrition/ciqual';
 import type { NamedProduct } from '@/domain/nutrition/personnel';
+import { roleWeb } from '@/lib/role-web';
 
 import { Selecteur } from '../coque';
 import { CaseACocher, Repliable, Saisie } from '../crm/dossier';
@@ -134,7 +135,7 @@ export function RechercheAliment({
         <View style={{ gap: 8 }}>
           <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: couleurs.rouge }}>Produits de marque · Open Food Facts</Text>
           {busy ? (
-            <Text accessibilityRole={'status' as never} style={doux}>
+            <Text {...roleWeb('status')} style={doux}>
               Recherche des produits…
             </Text>
           ) : (

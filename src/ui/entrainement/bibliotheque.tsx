@@ -7,6 +7,7 @@ import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { entrainement } from '@/data/entrainement';
 import { codeModele, collectionDe, COLLECTIONS, correspondRecherche, NIVEAUX, sourceEntrainement, titreClient } from '@/domain/entrainement';
 import type { ElementCorbeille, ModeleResume } from '@/domain/entrainement-etat';
+import { roleWeb } from '@/lib/role-web';
 import { useCharger } from '@/lib/useCharger';
 
 import { TitreDisplay } from '../coque';
@@ -89,7 +90,7 @@ export function Bibliotheque({ coachId, onOuvrir }: { coachId: string; onOuvrir:
         )}
       </Ligne>
       {message ? (
-        <Text accessibilityRole={'status' as never} style={[ts.doux, { color: couleurs.vert, marginTop: 8 }]}>
+        <Text {...roleWeb('status')} style={[ts.doux, { color: couleurs.vert, marginTop: 8 }]}>
           {message}
         </Text>
       ) : null}

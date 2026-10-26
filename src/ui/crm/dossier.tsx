@@ -10,6 +10,8 @@ import { Selecteur } from '../coque';
 import { Bouton } from '../composants';
 import { arrondi, couleurs, espace, polices } from '../theme';
 
+import { roleWeb } from '@/lib/role-web';
+
 /** Largeur `sm` de Tailwind : en dessous, une seule colonne. */
 const SM = 640;
 
@@ -44,7 +46,7 @@ export function Modale({
           },
         ]}
       >
-        <View accessibilityRole={'dialog' as never} accessibilityLabel={titre} style={[styles.boite, largeur ? { maxWidth: largeur } : null, etroit && { borderRadius: arrondi.global }]}>
+        <View {...roleWeb('dialog')} accessibilityLabel={titre} style={[styles.boite, largeur ? { maxWidth: largeur } : null, etroit && { borderRadius: arrondi.global }]}>
           <View style={styles.titreLigne}>
             <Text style={styles.titre} numberOfLines={2}>
               {titre}

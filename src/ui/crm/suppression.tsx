@@ -2,6 +2,8 @@
 import { useRef, useState } from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
 
+import { roleWeb } from '@/lib/role-web';
+
 import { couleurs, espace, polices } from '../theme';
 import { BoutonPied } from './dossier';
 
@@ -48,7 +50,7 @@ export function ConfirmerSuppression({
       }}
     >
       <View style={styles.voile}>
-        <View accessibilityRole={'alertdialog' as never} style={styles.boite}>
+        <View {...roleWeb('alertdialog')} style={styles.boite}>
           <Text style={styles.titre}>Supprimer {quoi} ?</Text>
           <Text style={styles.nom}>{nom}</Text>
           {contact && <Text style={styles.texte}>{contact}</Text>}

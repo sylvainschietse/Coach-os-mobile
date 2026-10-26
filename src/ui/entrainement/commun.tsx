@@ -18,6 +18,8 @@ import {
 
 import { arrondi, couleurs, espace, polices } from '../theme';
 
+import { roleWeb } from '@/lib/role-web';
+
 const survol = (e: PressableStateCallbackType) => !!(e as { hovered?: boolean }).hovered;
 
 type VarianteAction = 'plein' | 'contour' | 'fantome' | 'danger';
@@ -148,7 +150,7 @@ export function Confirmation({
         if (!occupe) onFermer();
       }}>
       <View style={styles.voile}>
-        <View accessibilityRole={'alertdialog' as never} accessibilityLabel={titre} style={styles.boite}>
+        <View {...roleWeb('alertdialog')} accessibilityLabel={titre} style={styles.boite}>
           <Text style={styles.titre}>{titre}</Text>
           {texte && <Text style={styles.texteDoux}>{texte}</Text>}
           {children}
@@ -188,7 +190,7 @@ export function ListeChoix<T>({
   hauteur?: number;
 }) {
   return (
-    <View accessibilityRole={'listbox' as never} style={[styles.liste, { maxHeight: hauteur }]}>
+    <View {...roleWeb('listbox')} style={[styles.liste, { maxHeight: hauteur }]}>
       <View style={{ overflow: 'scroll' as never, maxHeight: hauteur }}>
         {!elements && (
           <View style={{ padding: 12, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -203,7 +205,7 @@ export function ListeChoix<T>({
           return (
             <Pressable
               key={cle(x)}
-              accessibilityRole={'option' as never}
+              {...roleWeb('option')}
               accessibilityState={{ selected: actif }}
               onPress={() => onChoisir(x)}
               style={(e) => [styles.option, survol(e) && { backgroundColor: couleurs.discret }, actif && { backgroundColor: couleurs.rougeClair }]}
@@ -231,7 +233,7 @@ export function Etat({ message, erreur }: { message?: string; erreur?: string })
     );
   if (message)
     return (
-      <Text accessibilityRole={'status' as never} aria-live="polite" style={styles.ok}>
+      <Text {...roleWeb('status')} aria-live="polite" style={styles.ok}>
         {message}
       </Text>
     );

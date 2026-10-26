@@ -5,6 +5,7 @@ import { Text, View } from 'react-native';
 
 import { entrainement } from '@/data/entrainement';
 import type { ElementCorbeille } from '@/domain/entrainement-etat';
+import { roleWeb } from '@/lib/role-web';
 
 import { couleurs, polices } from '../theme';
 import { Action, Confirmation, ts } from './commun';
@@ -91,7 +92,7 @@ export function Corbeille({ coachId, onRestaure }: { coachId: string; onRestaure
             </Text>
           ) : null}
           {message ? (
-            <Text accessibilityRole={'status' as never} style={[ts.doux, { color: couleurs.vert }]}>
+            <Text {...roleWeb('status')} style={[ts.doux, { color: couleurs.vert }]}>
               {message}
             </Text>
           ) : null}
