@@ -98,6 +98,8 @@ export function CreationEntrainement({
   const valide = !!f.nom.trim() && (action !== 'attachSeance' || !!cible) && nombreValide(f.frequence, 14) && nombreValide(f.duree, 104);
 
   const soumettre = async () => {
+    // Une proposition de l'assistant encore affichée est reprise par le bouton du bas, sinon ses blocs seraient perdus.
+    if (action === 'seance' && !cree && proposition) return utiliserProposition();
     if (verrou.current || !valide) return;
     verrou.current = true;
     setOccupe(true);
@@ -194,7 +196,7 @@ export function CreationEntrainement({
             <Action libelle={cree ? 'Fermer le brouillon' : 'Annuler'} variante="contour" desactive={occupe} onPress={fermer} />
             <Action
               libelle={occupe ? 'Enregistrement…' : action === 'seance' ? 'Suivant : blocs et exercices' : 'Enregistrer'}
-              desactive={!valide || occupe}
+              desactive={(!valide && !(action === 'seance' && proposition)) || occupe}
               onPress={soumettre}
             />
           </Ligne>
