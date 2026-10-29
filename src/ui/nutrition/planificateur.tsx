@@ -5,9 +5,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChefHat, ChevronLeft, ChevronRight, Flame, Leaf, Plus, RefreshCw, ShoppingBasket, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';
 
 import { nutrition, type DonneesNutrition } from '@/data/nutrition';
+import { PHOTOS_RECETTES } from '@/data/nutrition/photos-recettes';
 import correspondance from '@/data/nutrition/recettes-uuid.json';
 import { plansRepas } from '@/data/plan-repas';
 import { applySwaps, proteinEquivalent, replacementFoods, replacementOptions } from '@/domain/nutrition/operations';
@@ -74,6 +75,9 @@ const planValide = (p: unknown): p is Plan =>
 
 // Semaine du coach (plans_repas) : ses recettes viennent des 200 recettes importées (identifiants uuid v5).
 const ORIGINE = correspondance as Record<string, string>;
+// Et dans l'autre sens, pour retrouver la photo d'une recette (rangée par uuid).
+const UUID_DE = Object.fromEntries(Object.entries(ORIGINE).map(([uuid, cle]) => [cle, uuid]));
+const photoDe = (id: string): number | undefined => PHOTOS_RECETTES[UUID_DE[id]];
 const MOMENT_SLOT: Record<MomentRepas, Slot> = { petit_dejeuner: 'breakfast', dejeuner: 'lunch', diner: 'dinner', collation: 'snack' };
 function planDuCoach(p: PlanRepas) {
   const horsCatalogue = new Set<string>();
@@ -370,7 +374,7 @@ export function Planificateur({
                 <Text style={[doux, { color: couleurs.texte }]}>
                   Chaque recette source a une note d’au moins 4/5 et au moins 10 avis relevés le 12 octobre 2026. Ces avis concernent la recette
                   originale, pas nos adaptations. Les préparations sont reformulées en français dans chaque fiche. Les photos d’illustration de l’app
-                  d’origine n’ont pas été fournies : un pictogramme les remplace.
+                  d’origine n’ont pas été fournies : les photos affichées sont des illustrations créées pour Coach OS, pas celles des sources.
                 </Text>
                 <Text style={[doux, { color: couleurs.texte }]}>
                   Les calories et macros originales sont celles de l’éditeur. Les adaptations sont estimées par différence à partir de Ciqual 2025 ; les
@@ -401,9 +405,15 @@ export function Planificateur({
                     (e as { hovered?: boolean }).hovered && { borderColor: couleurs.rouge },
                   ]}
                 >
-                  <View style={{ marginBottom: 12, aspectRatio: 16 / 10, width: '100%', borderRadius: 12, backgroundColor: 'rgba(195,24,30,0.05)', alignItems: 'center', justifyContent: 'center' }}>
-                    <ChefHat size={48} color="rgba(195,24,30,0.3)" />
-                  </View>
+                  {photoDe(r.id) ? (
+                    <View style={{ marginBottom: 12, aspectRatio: 16 / 10, width: '100%', borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(195,24,30,0.05)' }}>
+                      <Image source={photoDe(r.id)} accessible={false} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+                    </View>
+                  ) : (
+                    <View style={{ marginBottom: 12, aspectRatio: 16 / 10, width: '100%', borderRadius: 12, backgroundColor: 'rgba(195,24,30,0.05)', alignItems: 'center', justifyContent: 'center' }}>
+                      <ChefHat size={48} color="rgba(195,24,30,0.3)" />
+                    </View>
+                  )}
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <View style={{ flexShrink: 1, borderRadius: 999, backgroundColor: 'rgba(195,24,30,0.1)', paddingHorizontal: 8, paddingVertical: 4 }}>
                       <Text style={{ fontFamily: polices.texteGras, fontSize: 10, textTransform: 'uppercase', color: couleurs.rouge }}>{r.cuisine}</Text>
@@ -597,6 +607,11 @@ export function Planificateur({
       )}
       {selected && v && (
         <Modale titre={selected.name} onFermer={() => setSelected(null)}>
+          {photoDe(selected.id) && (
+            <View style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 12, overflow: 'hidden' }}>
+              <Image source={photoDe(selected.id)} accessible={false} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+            </View>
+          )}
           <Text style={doux}>
             {selected.cuisine} · {selected.minutes} min · ★ {selected.rating}/5 ({selected.votes} avis sur la recette source)
           </Text>
