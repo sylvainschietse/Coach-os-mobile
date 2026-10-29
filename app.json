@@ -2,7 +2,7 @@
   "expo": {
     "name": "Coach OS",
     "slug": "coach-os",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "coachos",
@@ -19,7 +19,16 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.coachos.app"
+      "package": "com.coachos.app",
+      "permissions": [
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_ELEVATION_GAINED",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_SLEEP"
+      ]
     },
     "web": {
       "output": "single",
@@ -56,6 +65,15 @@
         {
           "photosPermission": "Coach OS ouvre tes photos pour estimer ce qu’il y a dans ton assiette.",
           "cameraPermission": "Coach OS utilise l’appareil photo pour photographier tes repas."
+        }
+      ],
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
         }
       ]
     ],
