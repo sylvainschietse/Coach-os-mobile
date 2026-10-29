@@ -1,12 +1,13 @@
-import { View } from 'react-native';
+import { Image, View } from 'react-native';
 
 import { alimentation } from '@/data/alimentation';
+import { IDS_PAR_TITRE, PHOTOS_RECETTES } from '@/data/nutrition/photos-recettes';
 import { REGIMES } from '@/domain/alimentation';
 import { formaterNombre } from '@/domain/suivi';
-import type { Aliment, Macros, Regime } from '@/domain/types';
+import type { Aliment, Macros, Recette, Regime } from '@/domain/types';
 
 import { Texte } from '../composants';
-import { couleurs, espace } from '../theme';
+import { arrondi, couleurs, espace } from '../theme';
 
 // La liste des aliments ne change qu'à l'ajout d'un aliment : on la garde en mémoire pour tous les écrans.
 let cache: Promise<Aliment[]> | undefined;
@@ -57,5 +58,20 @@ export function Jauges({ mange, objectif }: { mange: Macros; objectif: Macros })
         );
       })}
     </View>
+  );
+}
+
+/** La photo de la recette (banque ou copie personnelle, retrouvée par son titre) ; rien pour une recette écrite à la main. */
+export function PhotoRecette({ recette, hauteur = 160 }: { recette: Pick<Recette, 'id' | 'titre'>; hauteur?: number }) {
+  const source = PHOTOS_RECETTES[recette.id] ?? PHOTOS_RECETTES[IDS_PAR_TITRE[recette.titre.trim()]];
+  if (!source) return null;
+  return (
+    <Image
+      source={source}
+      accessibilityIgnoresInvertColors
+      accessible={false}
+      resizeMode="cover"
+      style={{ width: '100%', height: hauteur, borderRadius: arrondi.global, backgroundColor: couleurs.bordure }}
+    />
   );
 }

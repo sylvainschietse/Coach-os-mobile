@@ -29,7 +29,7 @@ import { useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, Pastille, Puce, Puces, SousTitre, Texte } from '../composants';
 import { couleurs, espace } from '../theme';
-import { libelleRegime, LigneMacros } from './commun';
+import { libelleRegime, LigneMacros, PhotoRecette } from './commun';
 import { EditeurRecette } from './editeur-recette';
 import { chargerProfil } from './profil';
 
@@ -95,6 +95,7 @@ function CarteRecette({ r, note, onPress }: { r: Recette; note?: string; onPress
   return (
     <Pressable accessibilityRole="button" onPress={onPress}>
       <Carte>
+        <PhotoRecette recette={r} />
         <View
           style={{
             flexDirection: 'row',
@@ -200,6 +201,7 @@ function DetailRecette({
     <View style={{ gap: espace(4) }}>
       <Bouton variante="discret" libelle="← Toutes les recettes" onPress={onFermer} />
       <Carte>
+        <PhotoRecette recette={recette} hauteur={220} />
         <SousTitre>{recette.titre}</SousTitre>
         {recette.description && (
           <Texte doux style={{ fontSize: 14 }}>
@@ -482,6 +484,7 @@ export function BanqueRecettes({ coachId }: { coachId: string }) {
       {visibles.map((r) => (
         <Carte key={r.id}>
           <Pressable accessibilityRole="button" onPress={() => setEdition(r)} style={{ gap: espace(1) }}>
+            <PhotoRecette recette={r} hauteur={120} />
             <View
               style={{
                 flexDirection: 'row',
