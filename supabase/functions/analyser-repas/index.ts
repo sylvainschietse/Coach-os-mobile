@@ -54,12 +54,12 @@ Deno.serve(async (req) => {
   // Environ 3,5 Mo d'image au plus : l'app envoie une photo réduite à 1024 px.
   if (!corps.image || !type || corps.image.length > 5_000_000) return repondre({ erreur: 'Photo manquante ou trop lourde.' }, 400);
 
-  // Réservé aux clients connectés (le jeton de l'app est vérifié par Supabase).
+  // Réservé aux clients et aux coachs connectés (le jeton de l'app est vérifié par Supabase).
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
     global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
   });
-  const { data: client } = await db.rpc('mon_client_id');
-  if (!client) return repondre({ erreur: 'Connecte-toi avec ton compte client pour analyser une photo.' }, 401);
+  const [{ data: client }, { data: coach }] = await Promise.all([db.rpc('mon_client_id'), db.rpc('mon_coach_id')]);
+  if (!client && !coach) return repondre({ erreur: 'Connecte-toi avec ton compte Coach OS pour analyser une photo.' }, 401);
 
   const cle = Deno.env.get('ANTHROPIC_API_KEY');
   if (!cle) return repondre({ erreur: 'L’analyse des photos n’est pas encore activée : la clé Claude manque sur le serveur.' }, 503);

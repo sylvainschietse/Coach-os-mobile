@@ -14,13 +14,15 @@ import { BoutonContour, EnTeteRubrique, LibelleSection, SousNav, Vide, type Ongl
 import { Carte, Chargement, Erreur, Pastille, SousTitre, Texte } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { NutritionProfil } from '../nutrition/nutrition';
+import { AnalyseAssiette } from './analyse-assiette';
 import { PlanSemaine } from './plan-semaine';
 import { BanqueRecettes } from './recettes';
 
-type Rubrique = 'clients' | 'recettes';
+type Rubrique = 'clients' | 'recettes' | 'photo';
 const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'clients', libelle: 'Clients suivis' },
   { cle: 'recettes', libelle: 'Mes recettes' },
+  { cle: 'photo', libelle: 'Photo d’assiette' },
 ];
 type RubriqueClient = 'plan' | 'nutrition';
 const RUBRIQUES_CLIENT: OngletDef<RubriqueClient>[] = [
@@ -90,6 +92,7 @@ export function NutritionCoach({
       <SousNav nom="Rubriques Nutrition coach" onglets={RUBRIQUES} valeur={rubrique} onChange={setRubrique} />
       {rubrique === 'recettes' && <BanqueRecettes coachId={coachId} />}
       {rubrique === 'clients' && <ListeSuivis suivis={suivis} onOuvrir={onClient} />}
+      {rubrique === 'photo' && <AnalyseAssiette />}
     </View>
   );
 }

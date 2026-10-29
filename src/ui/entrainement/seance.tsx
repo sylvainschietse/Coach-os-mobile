@@ -138,9 +138,16 @@ export function EditeurSeance({
   };
 
   const ecrireDescriptif = () => silencieux(enregistrer('descriptif', { ...seance, consignes: descriptifSeance(seance) }, 'Descriptif écrit d’après la séance'));
-  const enregistrerBloc = (b: Partial<Bloc> & { titre: string }) => {
-    const suivants = b.id ? blocs.map((x) => (x.id === b.id ? { ...x, ...b } : x)) : [...blocs, { lignes: [], ...b, id: nouvelId() }];
-    return enregistrer('blocs', avecBlocs(suivants), b.id ? 'Bloc mis à jour' : 'Bloc ajouté').then(() => setDialogueBloc(undefined));
+  const enregistrerBloc = async (b: Partial<Bloc> & { titre: string }) => {
+    const blocId = b.id ?? nouvelId();
+    const suivants = b.id ? blocs.map((x) => (x.id === b.id ? { ...x, ...b } : x)) : [...blocs, { lignes: [], ...b, id: blocId }];
+    await enregistrer('blocs', avecBlocs(suivants), b.id ? 'Bloc mis à jour' : 'Bloc ajouté');
+    setDialogueBloc(undefined);
+    // Tant que la mise à jour de la base n'est pas passée, le format, le tempo, la contraction et le descriptif sont ignorés.
+    const relu = (await entrainement.seance(id)).seance.blocs.find((x) => x.id === blocId);
+    const perdus = (['format', 'tempo', 'contraction', 'description'] as const).filter((k) => b[k] && relu?.[k] !== b[k]);
+    if (perdus.length)
+      setEtat({ erreur: 'Le nom du bloc est enregistré, mais pas ses détails (format, tempo, contraction, descriptif) : la base n’est pas encore à jour pour les recevoir.' });
   };
 
   const debuts = blocs.map((_, i) => blocs.slice(0, i).reduce((n, b) => n + b.lignes.length, 0));

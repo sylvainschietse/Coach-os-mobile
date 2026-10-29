@@ -20,7 +20,15 @@ const CONFIANCE = { haute: 'sûr', moyenne: 'à vérifier', basse: 'incertain' }
  * Photo du repas : Claude estime les aliments et les quantités, le client corrige avant d'enregistrer.
  * L'image est réduite sur le téléphone, envoyée une fois pour l'analyse, et n'est pas gardée.
  */
-export function PhotoRepas({ onValider, onFermer }: { onValider: (aliments: Omit<Ingredient, 'contient'>[]) => void; onFermer: () => void }) {
+export function PhotoRepas({
+  onValider,
+  onFermer,
+  libelleValider = 'Ajouter au repas',
+}: {
+  onValider: (aliments: Omit<Ingredient, 'contient'>[]) => void;
+  onFermer: () => void;
+  libelleValider?: string;
+}) {
   const [apercu, setApercu] = useState<string>();
   const [lignes, setLignes] = useState<Ligne[]>();
   const [remarque, setRemarque] = useState<string>();
@@ -105,7 +113,7 @@ export function PhotoRepas({ onValider, onFermer }: { onValider: (aliments: Omit
               <LigneMacros m={additionner(valides.map((v) => macrosPour(v, v.quantiteG)))} />
             </>
           )}
-          <Bouton libelle="Ajouter au repas" onPress={() => onValider(valides)} desactive={valides.length === 0} />
+          <Bouton libelle={libelleValider} onPress={() => onValider(valides)} desactive={valides.length === 0} />
           <Bouton variante="discret" libelle="Reprendre une photo" onPress={() => (setLignes(undefined), setApercu(undefined))} />
         </>
       )}
