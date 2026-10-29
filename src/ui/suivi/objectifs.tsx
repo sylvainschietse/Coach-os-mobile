@@ -179,8 +179,13 @@ export function Objectifs({ clientId, apercu }: { clientId: string; apercu?: boo
         </>
       )}
 
+      {apercu && (
+        <Text style={ts.doux}>Aperçu coach : seul le client ajoute ses objectifs et note ses progrès, depuis son propre compte.</Text>
+      )}
       {!apercu && (
         <Repliable
+          key={donnee ? 'pret' : 'attente'}
+          ouvert={!!donnee && actifs.length === 0}
           resume={<Text style={ts.titre}>Ajouter un objectif</Text>}
           style={{ borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 16, backgroundColor: couleurs.carte, padding: 16 }}
         >

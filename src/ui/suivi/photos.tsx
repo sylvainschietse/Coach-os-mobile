@@ -76,7 +76,11 @@ export function Photos({ clientId, proprietaire }: { clientId: string; proprieta
           Prenez face, profil et dos, idéalement au même moment de la journée avant l’entraînement.
         </Text>
       </View>
-      {proprietaire && <AjoutPhoto clientId={clientId} onEnregistre={recharger} />}
+      {proprietaire ? (
+        <AjoutPhoto clientId={clientId} onEnregistre={recharger} />
+      ) : (
+        <Text style={ts.doux}>Vue coach : les photos s’ajoutent depuis le compte du client. Vous voyez ici celles qu’il choisit de partager.</Text>
+      )}
       <Etat erreur={erreur || erreurChargement || undefined} />
       {!photos && !erreurChargement ? (
         <Text style={ts.texte}>Chargement…</Text>
@@ -88,42 +92,46 @@ export function Photos({ clientId, proprietaire }: { clientId: string; proprieta
                 ? 'Vos photos sont privées, sauf celles que vous partagez volontairement avec votre coach.'
                 : 'Seules les photos partagées par le client apparaissent ici.'}
             </Text>
-            <Selecteur
-              libelle="Angle de vue"
-              options={OPTIONS_VUE}
-              valeur={vue}
-              onChange={(v) => {
-                setVue(v);
-                setA('');
-                setB('');
-              }}
-            />
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              {(
-                [
-                  [a, setA, 'Première photo'],
-                  [b, setB, 'Deuxième photo'],
-                ] as const
-              ).map(([valeur, choisir, libelle]) => (
-                <View key={libelle} style={{ flex: 1, minWidth: 0, gap: 12 }}>
-                  <Selecteur libelle={libelle} options={options} valeur={valeur} onChange={choisir} />
-                  {!!valeur && (
-                    <View style={{ borderRadius: 12, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.discret, padding: 4 }}>
-                      {images[valeur] ? (
-                        <Image
-                          source={{ uri: images[valeur] }}
-                          accessibilityLabel={`${vue} du ${photos.find((p) => p.id === valeur)?.date}`}
-                          style={{ width: '100%', aspectRatio: 3 / 4, maxHeight: 520 }}
-                          resizeMode="contain"
-                        />
-                      ) : (
-                        <Text style={[ts.texte, { padding: 16 }]}>Chargement de la photo…</Text>
+            {photos.length > 0 && (
+              <>
+                <Selecteur
+                  libelle="Angle de vue"
+                  options={OPTIONS_VUE}
+                  valeur={vue}
+                  onChange={(v) => {
+                    setVue(v);
+                    setA('');
+                    setB('');
+                  }}
+                />
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  {(
+                    [
+                      [a, setA, 'Première photo'],
+                      [b, setB, 'Deuxième photo'],
+                    ] as const
+                  ).map(([valeur, choisir, libelle]) => (
+                    <View key={libelle} style={{ flex: 1, minWidth: 0, gap: 12 }}>
+                      <Selecteur libelle={libelle} options={options} valeur={valeur} onChange={choisir} />
+                      {!!valeur && (
+                        <View style={{ borderRadius: 12, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.discret, padding: 4 }}>
+                          {images[valeur] ? (
+                            <Image
+                              source={{ uri: images[valeur] }}
+                              accessibilityLabel={`${vue} du ${photos.find((p) => p.id === valeur)?.date}`}
+                              style={{ width: '100%', aspectRatio: 3 / 4, maxHeight: 520 }}
+                              resizeMode="contain"
+                            />
+                          ) : (
+                            <Text style={[ts.texte, { padding: 16 }]}>Chargement de la photo…</Text>
+                          )}
+                        </View>
                       )}
                     </View>
-                  )}
+                  ))}
                 </View>
-              ))}
-            </View>
+              </>
+            )}
             <View style={{ gap: 8 }}>
               {photos.map((p) => (
                 <View key={p.id} style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12, borderRadius: 12, borderWidth: 1, borderColor: couleurs.bordure, padding: 12 }}>
