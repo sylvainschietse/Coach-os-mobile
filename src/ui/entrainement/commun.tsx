@@ -6,6 +6,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  ScrollView,
   Pressable,
   StyleSheet,
   Text,
@@ -191,7 +192,8 @@ export function ListeChoix<T>({
 }) {
   return (
     <View {...roleWeb('listbox')} style={[styles.liste, { maxHeight: hauteur }]}>
-      <View style={{ overflow: 'scroll' as never, maxHeight: hauteur }}>
+      {/* Sur téléphone, une vue ne défile pas : la liste défile d'elle-même, dans la fenêtre qui défile aussi. */}
+      <ScrollView nestedScrollEnabled style={{ maxHeight: hauteur }} keyboardShouldPersistTaps="handled">
         {!elements && (
           <View style={{ padding: 12, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             <ActivityIndicator size="small" color={couleurs.texteDoux} />
@@ -218,7 +220,7 @@ export function ListeChoix<T>({
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 }

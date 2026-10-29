@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { entrainement, gererProgramme, type ActionCreation } from '@/data/entrainement';
+import { descriptifSeance } from '@/domain/descriptif-seance';
 import { proposerSeance } from '@/data/redaction';
 import { blocsProposes, type PropositionSeance } from '@/domain/assistant-seance';
 import { LIBELLES_CYCLES, NIVEAUX, OBJECTIFS } from '@/domain/entrainement';
@@ -81,10 +82,25 @@ export function CreationEntrainement({
   const copie = action === 'copyProgramme' || action === 'copySeance';
   const etape2 = action === 'seance' && etape === 2 && !!cree;
 
-  const terminer = () => {
+  const terminer = async () => {
     if (occupe || enfantOccupe) return;
+    if (cree && action === 'seance') {
+      setOccupe(true);
+      await completerDescriptif(cree.id);
+      setOccupe(false);
+    }
     if (cree) onEnregistre(cree);
     onFermer();
+  };
+  /** Une séance terminée sans descriptif en reçoit un, écrit d'après ses blocs ; celui du coach n'est jamais remplacé. */
+  const completerDescriptif = async (seanceId: string) => {
+    try {
+      const { seance } = await entrainement.seance(seanceId);
+      const texte = seance.consignes?.trim() ? '' : descriptifSeance(seance);
+      if (texte) await entrainement.enregistrerSeance(coachId, { ...seance, consignes: texte });
+    } catch {
+      // Le brouillon est déjà enregistré : le descriptif pourra être écrit depuis l'éditeur de la séance.
+    }
   };
   const fermer = () => {
     if (occupe || enfantOccupe) return;
@@ -189,7 +205,7 @@ export function CreationEntrainement({
         etape2 ? (
           <Ligne style={{ justifyContent: 'flex-end' }}>
             <Action libelle="Retour au titre" variante="contour" desactive={enfantOccupe} onPress={() => setEtape(1)} />
-            <Action libelle="Terminer la séance" desactive={enfantOccupe} onPress={terminer} />
+            <Action libelle={occupe ? 'Écriture du descriptif…' : 'Terminer la séance'} desactive={enfantOccupe || occupe} onPress={terminer} />
           </Ligne>
         ) : (
           <Ligne style={{ justifyContent: 'flex-end' }}>
@@ -218,7 +234,7 @@ export function CreationEntrainement({
 
       {etape2 ? (
         <>
-          <Text style={ts.doux}>Votre brouillon est enregistré au fur et à mesure. Ajoutez vos blocs puis leurs exercices.</Text>
+          <Text style={ts.doux}>Votre brouillon est enregistré au fur et à mesure. Ajoutez vos blocs puis leurs exercices. Sans consignes de votre part, un descriptif est écrit d’après la séance quand vous la terminez.</Text>
           <EditeurSeance
             key={`${cree.id}:${enregistre.nom}:${enregistre.consignes}`}
             coachId={coachId}

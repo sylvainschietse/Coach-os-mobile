@@ -11,9 +11,11 @@ import type { ElementCorbeille, ProgrammeDetail } from '@/domain/entrainement-et
 import { Kicker, TitreDisplay } from '../coque';
 import { Repliable } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
+import { AttributionClient } from './attribution';
 import { Action, CaseSelection, Etat, Ligne, Puce, TexteLong, ts } from './commun';
 import { SuppressionEntrainement } from './corbeille';
 import { CreationEntrainement, type DemandeCreation } from './creation';
+import { RepriseSeance } from './reprise';
 
 export function DetailProgramme({
   coachId,
@@ -33,6 +35,8 @@ export function DetailProgramme({
   const [choisis, setChoisis] = useState<string[]>([]);
   const [suppression, setSuppression] = useState<ElementCorbeille[]>();
   const [message, setMessage] = useState('');
+  const [reprise, setReprise] = useState(false);
+  const [attribution, setAttribution] = useState(false);
 
   const charger = useCallback(
     () =>
@@ -106,8 +110,10 @@ export function DetailProgramme({
       <TitreDisplay taille={30}>{titreClient(p.titre)}</TitreDisplay>
       {codeModele(p.titre) && <Text style={[ts.doux, { fontSize: 12 }]}>Réf. {codeModele(p.titre)}</Text>}
       <Ligne style={{ marginTop: 12, alignItems: 'flex-start' }}>
-        <Action libelle="Ajouter une séance" onPress={() => setDialogue({ action: 'seance', programmeId: id })} />
+        <Action libelle="Créer une séance" onPress={() => setDialogue({ action: 'seance', programmeId: id })} />
+        <Action libelle="Reprendre une séance existante" variante="contour" onPress={() => setReprise(true)} />
         <Action libelle="Modifier" variante="contour" onPress={modifier} />
+        {!p.clientId && <Action libelle="Attribuer à un client" variante="contour" onPress={() => setAttribution(true)} />}
         <Repliable resume="Autres actions" style={{ borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 10, paddingHorizontal: 10, backgroundColor: couleurs.carte }}>
           <Ligne style={{ paddingBottom: 10 }}>
             <Action variante="contour" libelle="Dupliquer le programme" onPress={() => setDialogue({ action: 'copyProgramme', id, initial: { nom: `${p.titre} · Copie` } })} />
@@ -247,6 +253,18 @@ export function DetailProgramme({
               setSelection(false);
               charger();
             }
+          }}
+        />
+      )}
+      {attribution && <AttributionClient coachId={coachId} source={{ programmeId: id }} nom={titreClient(p.titre)} onFermer={() => setAttribution(false)} />}
+      {reprise && (
+        <RepriseSeance
+          coachId={coachId}
+          programmeId={id}
+          onFermer={() => setReprise(false)}
+          onReprise={() => {
+            setMessage('Séance copiée dans ce programme. Vous pouvez la modifier sans toucher à l’originale.');
+            charger();
           }}
         />
       )}

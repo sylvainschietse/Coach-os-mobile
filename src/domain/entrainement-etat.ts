@@ -193,6 +193,23 @@ export function bibliotheque(e: Etat, coachId: string): ModeleResume[] {
     .sort((a, b) => a.titre.localeCompare(b.titre, 'fr'));
 }
 
+/** Une séance de la bibliothèque, à reprendre dans un autre programme. */
+export interface SeanceResume {
+  id: string;
+  titre: string;
+  programmeId: string;
+  programmeTitre: string;
+  nbExercices: number;
+}
+
+export function seancesBibliotheque(e: Etat, coachId: string): SeanceResume[] {
+  const programmes = new Map(bibliotheque(e, coachId).map((p) => [p.id, p.titre]));
+  return e.seances
+    .filter((s) => s.coachId === coachId && !s.clientId && !s.supprimeLe && s.programmeId && programmes.has(s.programmeId))
+    .map((s) => ({ id: s.id, titre: s.titre, programmeId: s.programmeId!, programmeTitre: programmes.get(s.programmeId!)!, nbExercices: s.blocs.reduce((n, b) => n + b.lignes.length, 0) }))
+    .sort((a, b) => a.titre.localeCompare(b.titre, 'fr'));
+}
+
 const sansStockage = <T extends { coachId: string; supprimeLe?: string }>({ coachId: _c, supprimeLe: _s, ...reste }: T) => reste;
 
 export function detailProgramme(e: Etat, id: string): ProgrammeDetail {

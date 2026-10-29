@@ -6,6 +6,7 @@ import { espaceClient, type Etat } from '@/domain/entrainement-etat';
 import { lireMinuteur } from '@/domain/minuteur';
 import type { Exercice, LignePrescription, Mesure, Phase, Seance, Valeurs } from '@/domain/types';
 
+import { detailsBlocJson, lireDetailsBloc, type DetailsBlocBase } from './details-bloc';
 import type { Entrainement } from './entrainement';
 
 const sansNull = <T>(v: T | null | undefined): T | undefined => (v === null ? undefined : v);
@@ -42,7 +43,7 @@ type LigneBase = {
   retiree: boolean;
   exercices: { id: string; nom: string; mesures: Mesure[]; video_url: string | null; famille: string | null; materiel: string[] | null; muscles: string[] | null };
 };
-type BlocBase = { id: string; ordre: number; titre: string; minuteur: unknown; retire: boolean; lignes: LigneBase[] };
+type BlocBase = DetailsBlocBase & { id: string; ordre: number; titre: string; minuteur: unknown; retire: boolean; lignes: LigneBase[] };
 type SeanceBase = {
   id: string;
   coach_id: string;
@@ -109,13 +110,14 @@ function versSeance(s: SeanceBase): SeanceStockee {
       id: b.id,
       titre: b.titre,
       minuteur: lireMinuteur(b.minuteur) ?? undefined,
+      ...lireDetailsBloc(b),
       lignes: b.lignes.filter((l) => !l.retiree).sort((x, y) => x.ordre - y.ordre).map(versLigne),
     })),
     retraits: blocs.flatMap((b) => b.lignes.filter((l) => l.retiree).map((l) => ({ blocId: b.id, ligne: versLigne(l) }))),
   };
 }
 
-const SEANCE = '*, blocs(id, ordre, titre, minuteur, retire, lignes(*, exercices(id, nom, mesures, video_url, famille, materiel, muscles)))';
+const SEANCE = '*, blocs(*, lignes(*, exercices(id, nom, mesures, video_url, famille, materiel, muscles)))';
 
 type ProgrammeBase = {
   id: string;
@@ -181,6 +183,7 @@ const seanceJson = (s: Seance) => ({
     id: b.id,
     titre: b.titre,
     minuteur: b.minuteur ?? null,
+    ...detailsBlocJson(b),
     lignes: b.lignes.map(({ exercice, ...l }) => ({ ...l, exerciceId: exercice.id, minuteur: l.minuteur ?? null, cycles: l.cycles ?? null })),
   })),
 });
@@ -341,6 +344,33 @@ export function creerEntrainementSupabase(db: SupabaseClient): Entrainement {
           nbExercices: s.blocs.reduce((n, b) => n + b.lignes.length, 0),
         })),
       };
+    },
+
+    async seancesBibliotheque(coachId) {
+      const [programmes, ss] = await Promise.all([
+        this.bibliotheque(coachId),
+        tout<{ id: string; titre: string; programme_id: string; blocs: { retire: boolean; lignes: { retiree: boolean }[] }[] }>((a, b) =>
+          db
+            .from('seances')
+            .select('id, titre, programme_id, blocs(retire, lignes(retiree))')
+            .eq('coach_id', coachId)
+            .is('client_id', null)
+            .is('supprime_le', null)
+            .not('programme_id', 'is', null)
+            .order('titre')
+            .range(a, b),
+        ),
+      ]);
+      const noms = new Map(programmes.map((p) => [p.id, p.titre]));
+      return ss
+        .filter((s) => noms.has(s.programme_id))
+        .map((s) => ({
+          id: s.id,
+          titre: s.titre,
+          programmeId: s.programme_id,
+          programmeTitre: noms.get(s.programme_id)!,
+          nbExercices: s.blocs.filter((b) => !b.retire).reduce((n, b) => n + b.lignes.filter((l) => !l.retiree).length, 0),
+        }));
     },
 
     seancesDuProgramme: async (id) => (await seancesDe(id)).map(sans),

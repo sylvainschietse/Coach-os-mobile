@@ -18,6 +18,7 @@ import { attribuerModele } from '@/domain/programmes';
 import { nouvelId } from '@/lib/identifiant';
 
 import { derniersParExercice, type Depot, type Profil } from './depot';
+import { detailsBlocJson, lireDetailsBloc, type DetailsBlocBase } from './details-bloc';
 
 type LigneBase = {
   id: string;
@@ -116,6 +117,7 @@ function versJson(s: Seance) {
       id: b.id,
       titre: b.titre,
       minuteur: b.minuteur ?? null,
+      ...detailsBlocJson(b),
       lignes: b.lignes.map(({ exercice, ...l }) => ({ ...l, exerciceId: exercice.id, minuteur: l.minuteur ?? null })),
     })),
   };
@@ -215,7 +217,7 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
       const s = verifier(
         await db
           .from('seances')
-          .select('id, client_id, titre, date_prevue, consignes, programme_id, ordre, blocs(id, ordre, titre, minuteur, retire, lignes(*, exercices(*)))')
+          .select('id, client_id, titre, date_prevue, consignes, programme_id, ordre, blocs(*, lignes(*, exercices(*)))')
           .eq('id', id)
           .single(),
       ) as unknown as {
@@ -226,7 +228,7 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
         consignes: string | null;
         programme_id: string | null;
         ordre: number | null;
-        blocs: { id: string; ordre: number; titre: string; minuteur: unknown; retire: boolean; lignes: LigneBase[] }[];
+        blocs: (DetailsBlocBase & { id: string; ordre: number; titre: string; minuteur: unknown; retire: boolean; lignes: LigneBase[] })[];
       };
       const seance: Seance = {
         id: s.id,
@@ -243,6 +245,7 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
             id: b.id,
             titre: b.titre,
             minuteur: lireMinuteur(b.minuteur) ?? undefined,
+            ...lireDetailsBloc(b),
             lignes: b.lignes
               .filter((l) => !l.retiree)
               .sort((x, y) => x.ordre - y.ordre)

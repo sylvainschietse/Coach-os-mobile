@@ -1,7 +1,8 @@
 // Accès aux données d'entraînement du lot 3 (bibliothèque, éditeur, cycles clients, calendrier, réalisations),
 // en démo sur l'appareil ou dans Supabase. Les écrans ne parlent qu'à cette interface.
-import { copierProgramme, copierSeance, LIBELLES_CYCLES, nomCopieClient } from '@/domain/entrainement';
+import { ajouterJours, aujourdhuiParis, copierProgramme, copierSeance, LIBELLES_CYCLES, nomCopieClient } from '@/domain/entrainement';
 import type {
+  CycleClient,
   CycleStocke,
   DemandeCreneau,
   ElementCorbeille,
@@ -13,6 +14,7 @@ import type {
   ProgrammeDetail,
   RealisationCycle,
   RealisationLue,
+  SeanceResume,
   SeanceCoach,
   Suivi,
   SuiviClient,
@@ -30,6 +32,8 @@ export interface Entrainement {
   /** Les séances complètes d'un programme, pour une copie. */
   seancesDuProgramme(id: string): Promise<Seance[]>;
   seance(id: string): Promise<SeanceCoach>;
+  /** Toutes les séances des programmes de la bibliothèque, pour en reprendre une ailleurs. */
+  seancesBibliotheque(coachId: string): Promise<SeanceResume[]>;
   /** En-tête seul (création, modification), ou en-tête et séances en une fois (copie : tout ou rien). */
   enregistrerProgramme(coachId: string, p: EnTeteProgramme, seances?: Seance[]): Promise<void>;
   /** La séance complète : ce qui n'y est plus est retiré (restaurable), jamais effacé. */
@@ -159,3 +163,68 @@ export async function gererProgramme(
     );
   return { id: seance.id, programmeId };
 }
+
+/** Où ranger ce qui est attribué : un cycle existant encore vide, ou un nouveau cycle de quatre semaines. */
+export type CibleAttribution = { cycleId: string } | { nouveau: true; activer: boolean };
+
+/**
+ * Attribuer un programme ou une séance de la bibliothèque à un client : une copie à son nom (le modèle ne change pas),
+ * liée à un cycle de son suivi. Sans suivi, il est créé d'abord. Rien n'est lié tant que la copie n'est pas enregistrée.
+ */
+export async function attribuerAuClient(
+  coachId: string,
+  source: { programmeId: string } | { seanceId: string },
+  client: SuiviClient,
+  cible: CibleAttribution,
+  nouveauSuivi?: { debut: string; dureeMois: number },
+): Promise<{ cycle: string; active: boolean }> {
+  let suivi = client.suivi;
+  if (!suivi) {
+    if (!nouveauSuivi) throw new Error('Créez d’abord le suivi du client');
+    suivi = { id: nouvelId(), clientId: client.clientId, ...nouveauSuivi };
+    await entrainement.enregistrerSuivi(coachId, suivi);
+  }
+
+  const existant = 'cycleId' in cible ? client.cycles.find((c) => c.id === cible.cycleId) : undefined;
+  if ('cycleId' in cible && !existant) throw new Error('Ce cycle n’existe plus');
+  const dernier = [...client.cycles].sort((a, b) => a.ordre - b.ordre).at(-1);
+  const debut = existant?.debut ?? (dernier?.fin && dernier.fin >= aujourdhuiParis() ? ajouterJours(dernier.fin, 1) : aujourdhuiParis());
+  const nomCycle = existant?.nom ?? `Cycle ${client.cycles.length + 1}`;
+
+  const programmeId = nouvelId();
+  if ('programmeId' in source) {
+    const [{ programme: modele }, seances] = await Promise.all([entrainement.programme(source.programmeId), entrainement.seancesDuProgramme(source.programmeId)]);
+    const copie = copierProgramme({ ...modele, seances: [] }, seances, { titre: nomCopieClient(client.nom, nomCycle, modele.titre), clientId: client.clientId }, () => nouvelId());
+    await entrainement.enregistrerProgramme(coachId, { ...copie.programme, id: programmeId }, copie.seances);
+  } else {
+    const { seance } = await entrainement.seance(source.seanceId);
+    const copie = copierSeance(seance, { programmeId, ordre: 1, clientId: client.clientId }, nouvelId);
+    await entrainement.enregistrerProgramme(
+      coachId,
+      { id: programmeId, titre: nomCopieClient(client.nom, nomCycle, seance.titre), clientId: client.clientId, statut: 'Brouillon', version: 'coachos-single', seanceSeule: true },
+      [copie],
+    );
+  }
+
+  const actif = client.cycles.some((c) => c.statut === 'Actif');
+  const cycle: CycleStocke = existant
+    ? { ...sansCalculs(existant), programmeId, mode: 'Copie personnalisée' }
+    : {
+        id: nouvelId(),
+        suiviId: suivi.id,
+        clientId: client.clientId,
+        ordre: 0,
+        nom: nomCycle,
+        debut,
+        fin: ajouterJours(debut, 27),
+        statut: 'Prêt',
+        programmeId,
+        mode: 'Copie personnalisée',
+      };
+  await entrainement.enregistrerCycle(coachId, cycle);
+  const activer = 'nouveau' in cible && cible.activer && !actif && debut <= aujourdhuiParis();
+  if (activer) await entrainement.activerCycle(cycle.id);
+  return { cycle: nomCycle, active: activer || existant?.statut === 'Actif' };
+}
+
+const sansCalculs = ({ programmeNom: _n, nbResultats: _r, ...c }: CycleClient): CycleStocke => c;

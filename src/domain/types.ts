@@ -55,12 +55,22 @@ export interface LignePrescription {
   minuteur?: ConfigMinuteur;
 }
 
+/** Façon d'enchaîner les exercices d'un bloc. */
+export type FormatBloc = 'Classique' | 'Biset' | 'Superset' | 'Triset' | 'Circuit';
+
 export interface Bloc {
   id: string;
   titre: string;
   lignes: LignePrescription[];
   /** Chrono réglé par le coach pour tout le bloc, quand c'est un circuit. */
   minuteur?: ConfigMinuteur;
+  format?: FormatBloc;
+  /** Descriptif libre du coach pour ce bloc. */
+  description?: string;
+  /** Tempo commun aux exercices du bloc, comme « 3-1-1-0 ». */
+  tempo?: string;
+  /** Mode de contraction : excentrique lente, pause isométrique… */
+  contraction?: string;
 }
 
 export interface Seance {

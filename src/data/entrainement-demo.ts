@@ -17,6 +17,7 @@ import {
   planifier,
   restaurerLigne,
   seanceCoach,
+  seancesBibliotheque,
   verifierCorbeille,
   verifierCycle,
   type CycleStocke,
@@ -95,6 +96,7 @@ export const entrainementDemo: Entrainement = {
     return detailProgramme(e, id).seances.map((s) => seanceCoach(e, s.id).seance);
   },
   seance: async (id) => seanceCoach(await etat(), id),
+  seancesBibliotheque: async (coachId) => seancesBibliotheque(await etat(), coachId),
 
   async enregistrerProgramme(coachId, p, seances = []) {
     const e = await etat();
