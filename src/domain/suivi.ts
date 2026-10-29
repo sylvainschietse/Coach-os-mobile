@@ -34,6 +34,19 @@ export function erreursMensuration(m: Partial<Mensuration>): string[] {
   return erreurs;
 }
 
+/** La taille est rangée dans le profil : une seule valeur, en centimètres (mêmes bornes que le profil nutrition). */
+export function erreursTaille(cm: number | undefined): string[] {
+  if (cm === undefined) return ['Indique ta taille en centimètres.'];
+  if (Number.isNaN(cm) || cm < 100 || cm > 250) return ['Taille en centimètres, entre 100 et 250.'];
+  return [];
+}
+
+/** Indice de masse corporelle, arrondi au dixième ; rien sans poids ou sans taille. */
+export function imc(poidsKg?: number, tailleCm?: number): number | undefined {
+  if (!poidsKg || !tailleCm) return undefined;
+  return Math.round((poidsKg / (tailleCm / 100) ** 2) * 10) / 10;
+}
+
 /** Première et dernière valeur d'une mesure, et l'écart entre les deux. */
 export function evolution(mensurations: Mensuration[], cle: ChampMensuration) {
   const points = mensurations

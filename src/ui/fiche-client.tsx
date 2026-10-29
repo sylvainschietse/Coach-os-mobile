@@ -9,14 +9,16 @@ import { DetailClient } from './detail-client';
 import { SeancesClientCoach } from './programmes/seances-client';
 import { Mensurations } from './suivi/mensurations';
 import { JournalNutritionVue, PlanNutritionCarte } from './suivi/nutrition';
+import { Quotidien } from './suivi/quotidien';
 import { Records } from './suivi/records';
 import { espace } from './theme';
 
-type Onglet = 'seances' | 'historique' | 'mesures' | 'records' | 'nutrition';
+type Onglet = 'seances' | 'historique' | 'mesures' | 'quotidien' | 'records' | 'nutrition';
 const ONGLETS: { cle: Onglet; libelle: string }[] = [
   { cle: 'seances', libelle: 'Séances' },
   { cle: 'historique', libelle: 'Réalisé' },
   { cle: 'mesures', libelle: 'Mensurations' },
+  { cle: 'quotidien', libelle: 'Quotidien' },
   { cle: 'records', libelle: 'Records' },
   { cle: 'nutrition', libelle: 'Nutrition' },
 ];
@@ -63,6 +65,7 @@ export function FicheClient({ clientId, coachId }: { clientId: string; coachId: 
       {onglet === 'seances' && <SeancesClientCoach clientId={clientId} coachId={coachId} />}
       {onglet === 'historique' && <DetailClient clientId={clientId} />}
       {onglet === 'mesures' && <Mensurations clientId={clientId} saisie={false} />}
+      {onglet === 'quotidien' && <Quotidien clientId={clientId} saisie={false} cibles parCoach />}
       {onglet === 'records' && <Records clientId={clientId} saisie={false} />}
       {onglet === 'nutrition' && <Nutrition clientId={clientId} coachId={coachId} />}
     </View>

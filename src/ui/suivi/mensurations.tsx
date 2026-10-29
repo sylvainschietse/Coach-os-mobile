@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { depot } from '@/data';
+import { alimentation } from '@/data/alimentation';
 import { jourLocal } from '@/domain/crm';
 import { formaterDate, lireDate } from '@/domain/programmes';
-import { CHAMPS_MENSURATIONS, erreursMensuration, evolution, formaterNombre, lireNombre } from '@/domain/suivi';
+import { CHAMPS_MENSURATIONS, erreursMensuration, erreursTaille, evolution, formaterNombre, imc, lireNombre } from '@/domain/suivi';
 import type { Mensuration } from '@/domain/types';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
@@ -68,6 +69,67 @@ function Saisie({ clientId, onAjoute }: { clientId: string; onAjoute: () => void
   );
 }
 
+/**
+ * Taille : rangée dans le profil (elle sert aussi aux besoins caloriques), pas à chaque mesure puisqu'elle ne bouge pas.
+ * Avec la dernière pesée, elle donne l'IMC.
+ */
+function Taille({ clientId, saisie, poidsKg }: { clientId: string; saisie: boolean; poidsKg?: number }) {
+  // Enveloppé : un profil absent (null) ne doit pas se confondre avec un chargement en cours.
+  const { donnee, erreur: erreurChargement, recharger } = useCharger(() => alimentation.profil(clientId).then((p) => ({ p })), `taille-${clientId}`);
+  const profil = donnee?.p;
+  const [texte, setTexte] = useState<string>();
+  const [erreur, setErreur] = useState('');
+  const [enCours, setEnCours] = useState(false);
+  if (!donnee && !erreurChargement) return null;
+  const taille = profil?.tailleCm;
+  const valeurIMC = imc(poidsKg, taille);
+
+  async function enregistrer() {
+    const cm = lireNombre(texte ?? '');
+    const liste = erreursTaille(cm);
+    setErreur(liste.join('\n'));
+    if (liste.length) return;
+    setEnCours(true);
+    try {
+      await alimentation.enregistrerProfil({ ...(profil ?? { clientId, regimes: [] }), tailleCm: cm });
+      setTexte(undefined);
+      recharger();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Enregistrement impossible');
+    } finally {
+      setEnCours(false);
+    }
+  }
+
+  return (
+    <Carte>
+      <SousTitre>Taille</SousTitre>
+      {erreurChargement && <Erreur message={erreurChargement} />}
+      <Texte style={{ fontSize: 15 }}>
+        {taille ? `${formaterNombre(taille)} cm` : 'Pas encore renseignée.'}
+        {valeurIMC !== undefined && (
+          <Texte doux style={{ fontSize: 14 }}>
+            {'  '}· IMC {formaterNombre(valeurIMC)} (avec la dernière pesée)
+          </Texte>
+        )}
+      </Texte>
+      {saisie && (
+        <>
+          <ChampTexte
+            libelle={taille ? 'Corriger la taille (cm)' : 'Taille (cm)'}
+            type="nombre"
+            valeur={texte ?? ''}
+            placeholder={taille ? String(taille) : '170'}
+            onChange={setTexte}
+          />
+          {erreur !== '' && <Erreur message={erreur} />}
+          <Bouton libelle="Enregistrer la taille" variante="discret" desactive={!texte?.trim()} onPress={enregistrer} chargement={enCours} />
+        </>
+      )}
+    </Carte>
+  );
+}
+
 function Ligne({ m, onSupprime }: { m: Mensuration; onSupprime: () => void }) {
   const [confirmer, setConfirmer] = useState(false);
   const valeurs = CHAMPS_MENSURATIONS.filter((c) => m[c.cle] !== undefined).map(
@@ -107,6 +169,7 @@ export function Mensurations({ clientId, saisie = true }: { clientId: string; sa
 
   return (
     <View style={{ gap: espace(4) }}>
+      <Taille clientId={clientId} saisie={saisie} poidsKg={donnee ? evolution(donnee, 'poidsKg')?.dernier.valeur : undefined} />
       {saisie && <Saisie clientId={clientId} onAjoute={recharger} />}
       {erreur && <Erreur message={erreur} />}
       {!donnee && !erreur && <Chargement />}
