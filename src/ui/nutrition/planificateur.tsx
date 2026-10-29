@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';
 
 import { nutrition, type DonneesNutrition } from '@/data/nutrition';
-import { PHOTOS_RECETTES } from '@/data/nutrition/photos-recettes';
+import { IDS_PAR_TITRE, PHOTOS_RECETTES } from '@/data/nutrition/photos-recettes';
 import correspondance from '@/data/nutrition/recettes-uuid.json';
 import { plansRepas } from '@/data/plan-repas';
 import { applySwaps, proteinEquivalent, replacementFoods, replacementOptions } from '@/domain/nutrition/operations';
@@ -78,6 +78,19 @@ const ORIGINE = correspondance as Record<string, string>;
 // Et dans l'autre sens, pour retrouver la photo d'une recette (rangée par uuid).
 const UUID_DE = Object.fromEntries(Object.entries(ORIGINE).map(([uuid, cle]) => [cle, uuid]));
 const photoDe = (id: string): number | undefined => PHOTOS_RECETTES[UUID_DE[id]];
+// Recette du plan du coach : rangée par uuid, ou retrouvée par son titre pour une copie personnelle.
+const photoPlan = (r: { recetteId: string; titre: string }): number | undefined =>
+  PHOTOS_RECETTES[r.recetteId] ?? PHOTOS_RECETTES[IDS_PAR_TITRE[r.titre.trim()]];
+
+// Miniature au-dessus d'un plat de la journée, pour donner envie.
+function Miniature({ source }: { source?: number }) {
+  if (!source) return null;
+  return (
+    <View style={{ width: '100%', aspectRatio: 16 / 7, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(195,24,30,0.05)' }}>
+      <Image source={source} accessible={false} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+    </View>
+  );
+}
 const MOMENT_SLOT: Record<MomentRepas, Slot> = { petit_dejeuner: 'breakfast', dejeuner: 'lunch', diner: 'dinner', collation: 'snack' };
 function planDuCoach(p: PlanRepas) {
   const horsCatalogue = new Set<string>();
@@ -538,6 +551,7 @@ export function Planificateur({
                 {coachPlan
                   ? coachPlan.jours[day].map((r) => (
                       <Bloc key={r.id}>
+                        <Miniature source={photoPlan(r)} />
                         <Text style={[ts.kicker, { fontSize: 12 }]}>{slotLabels[MOMENT_SLOT[r.moment]]}</Text>
                         <Text style={ts.titre}>{r.titre}</Text>
                         <Text style={doux}>{r.portions.toLocaleString('fr-FR')} portion(s) · choisie par votre coach</Text>
@@ -549,6 +563,9 @@ export function Planificateur({
                       const mv = variantOf(m)!;
                       return (
                         <Bloc key={index}>
+                          <Pressable accessibilityRole="button" accessibilityLabel={'Voir ' + r.name} onPress={() => open(r, m.variantId, m.portions, index)}>
+                            <Miniature source={photoDe(r.id)} />
+                          </Pressable>
                           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                             <Pressable accessibilityRole="button" style={{ flexShrink: 1 }} onPress={() => open(r, m.variantId, m.portions, index)}>
                               <Text style={[ts.kicker, { fontSize: 12 }]}>{m.slot ? slotLabels[m.slot] : mealLabels[r.meal]}</Text>

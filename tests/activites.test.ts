@@ -48,9 +48,9 @@ describe('affichage', () => {
   it('totaux par semaine', () => {
     const t = totauxParSemaine(
       [
-        { debut: '2026-10-26T07:00:00Z', dureeS: 1800, distanceM: 5000, deniveleM: 20 },
-        { debut: '2026-10-28T07:00:00Z', dureeS: 3600, distanceM: 10000 },
-        { debut: '2026-10-20T07:00:00Z', dureeS: 1200, distanceM: 3000 },
+        { sport: 'course', debut: '2026-10-26T07:00:00Z', dureeS: 1800, distanceM: 5000, deniveleM: 20 },
+        { sport: 'velo', debut: '2026-10-28T07:00:00Z', dureeS: 3600, distanceM: 10000 },
+        { sport: 'course', debut: '2026-10-20T07:00:00Z', dureeS: 1200, distanceM: 3000 },
       ],
       (i) => lundiDe(jourParis(i)),
     );
@@ -58,6 +58,7 @@ describe('affichage', () => {
       ['2026-10-26', 2, 15000],
       ['2026-10-19', 1, 3000],
     ]);
+    expect(t[0].distanceParSport).toEqual({ course: 5000, velo: 10000 });
   });
   it('contrôles', () => {
     expect(erreursActivite({ source: 'health_connect', idExterne: 'a', sport: 'course', titre: '', debut: '2026-10-28T07:00:00Z', dureeS: 1800, fcMoy: 300 })).toEqual(['Fréquence cardiaque invalide.']);
