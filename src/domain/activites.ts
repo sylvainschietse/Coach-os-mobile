@@ -171,18 +171,21 @@ export interface BilanSemaine {
   distanceM: number;
   dureeS: number;
   deniveleM: number;
+  /** Distance par sport : on n'additionne pas les kilomètres de vélo à ceux de course. */
+  distanceParSport: Partial<Record<Sport, number>>;
 }
 
 /** Totaux par semaine (lundi à Paris), les plus récentes d'abord. */
-export function totauxParSemaine(activites: Pick<Activite, 'debut' | 'dureeS' | 'distanceM' | 'deniveleM'>[], lundiDe: (instant: string) => string): BilanSemaine[] {
+export function totauxParSemaine(activites: Pick<Activite, 'sport' | 'debut' | 'dureeS' | 'distanceM' | 'deniveleM'>[], lundiDe: (instant: string) => string): BilanSemaine[] {
   const m = new Map<string, BilanSemaine>();
   for (const a of activites) {
     const l = lundiDe(a.debut);
-    const b = m.get(l) ?? { lundi: l, nombre: 0, distanceM: 0, dureeS: 0, deniveleM: 0 };
+    const b = m.get(l) ?? { lundi: l, nombre: 0, distanceM: 0, dureeS: 0, deniveleM: 0, distanceParSport: {} };
     b.nombre += 1;
     b.distanceM += a.distanceM ?? 0;
     b.dureeS += a.dureeS;
     b.deniveleM += a.deniveleM ?? 0;
+    if (a.distanceM) b.distanceParSport[a.sport] = (b.distanceParSport[a.sport] ?? 0) + a.distanceM;
     m.set(l, b);
   }
   return [...m.values()].sort((a, b) => b.lundi.localeCompare(a.lundi));

@@ -22,10 +22,11 @@ import { Objectifs } from './suivi/objectifs';
 import { Photos } from './suivi/photos';
 import { Quotidien } from './suivi/quotidien';
 import { Records } from './suivi/records';
+import { Sport } from './suivi/sport';
 import { couleurs, espace, LARGEUR_CLIENT, polices } from './theme';
 
 export type OngletClient = 'programme' | 'historique' | 'suivi' | 'nutrition' | 'documents';
-type RubriqueSuivi = 'hebdo' | 'mesures' | 'quotidien' | 'pr' | 'objectifs' | 'photos';
+type RubriqueSuivi = 'hebdo' | 'mesures' | 'quotidien' | 'pr' | 'sport' | 'objectifs' | 'photos';
 
 const ONGLETS: OngletDef<OngletClient>[] = [
   { cle: 'programme', libelle: 'Programme', icone: Dumbbell },
@@ -39,6 +40,7 @@ const SUIVI: OngletDef<RubriqueSuivi>[] = [
   { cle: 'mesures', libelle: 'Mesures' },
   { cle: 'quotidien', libelle: 'Quotidien' },
   { cle: 'pr', libelle: 'Performances' },
+  { cle: 'sport', libelle: 'Sport' },
   { cle: 'objectifs', libelle: 'Objectifs' },
   { cle: 'photos', libelle: 'Photos' },
 ];
@@ -113,6 +115,7 @@ export function EspaceClient({
               {suivi === 'mesures' && <Mensurations key={clientId} clientId={clientId} />}
               {suivi === 'quotidien' && <Quotidien key={clientId} clientId={clientId} saisie={!apercu} />}
               {suivi === 'pr' && <Records key={clientId} clientId={clientId} />}
+              {suivi === 'sport' && <Sport key={clientId} clientId={clientId} proprietaire={!apercu} />}
               {suivi === 'objectifs' && <Objectifs key={clientId} clientId={clientId} apercu={!!apercu} />}
               {suivi === 'photos' && <Photos key={clientId} clientId={clientId} proprietaire={!apercu} />}
             </>
