@@ -344,3 +344,16 @@ export function resumer(suivi: Pick<IndicateurSuivi, 'def' | 'cible'>, releves: 
     tendance: m7 !== undefined && mAvant !== undefined ? Math.round((m7 - mAvant) * 100) / 100 : undefined,
   };
 }
+
+/** Indicateurs lus sur le téléphone ou la montre (Health Connect). */
+export const LUS_SUR_TELEPHONE: Indicateur[] = ['pas', 'sommeil'];
+
+/**
+ * Une valeur lue sur le téléphone remplace-t-elle le relevé du jour ? Jamais une saisie à la main
+ * (le client a corrigé), seulement un relevé vide ou une lecture précédente devenue différente.
+ */
+export function aImporter(releves: Releve[], jour: string, indicateur: Indicateur, valeur: number | null): valeur is number {
+  if (valeur === null || !Number.isFinite(valeur)) return false;
+  const actuel = releves.find((r) => r.jour === jour && r.indicateur === indicateur);
+  return !actuel || (actuel.source === 'telephone' && actuel.valeur !== valeur);
+}

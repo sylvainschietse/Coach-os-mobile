@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  aImporter,
   DEFINITION,
   erreurCible,
   erreurValeur,
@@ -89,5 +90,18 @@ describe('taille et IMC', () => {
     expect(erreursTaille(172)).toEqual([]);
     expect(erreursTaille(1.72)).toHaveLength(1);
     expect(erreursTaille(undefined)).toHaveLength(1);
+  });
+});
+
+describe('lecture sur le téléphone', () => {
+  const tel = (jour: string, valeur: number): Releve => ({ ...r(jour, 'pas', valeur), source: 'telephone' });
+  it('remplit un jour vide et met à jour une lecture précédente', () => {
+    expect(aImporter([], '2026-10-29', 'pas', 9000)).toBe(true);
+    expect(aImporter([tel('2026-10-29', 4000)], '2026-10-29', 'pas', 9000)).toBe(true);
+    expect(aImporter([tel('2026-10-29', 9000)], '2026-10-29', 'pas', 9000)).toBe(false);
+  });
+  it('ne remplace jamais une saisie à la main ni par du vide', () => {
+    expect(aImporter([r('2026-10-29', 'pas', 7000)], '2026-10-29', 'pas', 9000)).toBe(false);
+    expect(aImporter([], '2026-10-29', 'pas', null)).toBe(false);
   });
 });

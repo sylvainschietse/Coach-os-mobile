@@ -1,7 +1,7 @@
 // Suivis du quotidien (objectifs secondaires) : une saisie rapide par jour, une cible et une courbe sur 30 jours
 // par indicateur. Le client choisit ses suivis ; le coach voit la même chose et peut régler les cibles.
-import { Activity, ChevronLeft, ChevronRight, Minus, Plus, RefreshCw } from 'lucide-react-native';
-import { useState } from 'react';
+import { Activity, ChevronLeft, ChevronRight, Minus, Plus, RefreshCw, Watch } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import Svg, { Line, Path } from 'react-native-svg';
 
@@ -9,6 +9,7 @@ import { quotidien } from '@/data/quotidien';
 import { ecrireJour } from '@/domain/crm';
 import { aujourdhuiParis } from '@/domain/entrainement';
 import {
+  aImporter,
   atteint,
   decalerJour,
   erreurCible,
@@ -17,6 +18,7 @@ import {
   formaterValeur,
   indicateursDuClient,
   lireValeur,
+  LUS_SUR_TELEPHONE,
   resumer,
   type DefinitionIndicateur,
   type Indicateur,
@@ -24,6 +26,7 @@ import {
   type Releve,
   type Resume,
 } from '@/domain/quotidien';
+import { accesAccordes, demanderAcces, etatHealthConnect, lirePas, lireSommeil, ouvrirReglages, type EtatHealthConnect } from '@/lib/health-connect';
 import { useCharger } from '@/lib/useCharger';
 
 import { BoutonContour } from '../coque';
@@ -145,6 +148,16 @@ export function Quotidien({
         </View>
       )}
 
+      {saisie && donnee && (
+        <Telephone
+          clientId={clientId}
+          aujourdhui={aujourdhui}
+          releves={donnee.releves}
+          suivis={donnee.suivis.filter((x) => x.actif && LUS_SUR_TELEPHONE.includes(x.def.cle)).map((x) => x.def.cle)}
+          onImporte={recharger}
+        />
+      )}
+
       <Etat erreur={erreur || erreurChargement || undefined} message={message} />
       {!donnee && !erreurChargement && <Text style={ts.doux}>Chargement…</Text>}
 
@@ -178,6 +191,124 @@ export function Quotidien({
       )}
 
       {donnee && cibles && <Reglages clientId={clientId} suivis={donnee.suivis} parCoach={parCoach} onChange={recharger} />}
+    </View>
+  );
+}
+
+/** Jours relus sur le téléphone à chaque import : une semaine oubliée se rattrape d'elle-même. */
+const JOURS_IMPORT = 7;
+
+/**
+ * Pas et sommeil lus dans Health Connect (Samsung Health, Google Fit, Garmin, Fitbit… y déposent leurs données).
+ * Une fois l'accès donné, l'import se fait à l'ouverture ; une saisie à la main n'est jamais écrasée.
+ */
+function Telephone({
+  clientId,
+  aujourdhui,
+  releves,
+  suivis,
+  onImporte,
+}: {
+  clientId: string;
+  aujourdhui: string;
+  releves: Releve[];
+  suivis: Indicateur[];
+  onImporte: () => void;
+}) {
+  const [etat, setEtat] = useState<EtatHealthConnect>();
+  const [relie, setRelie] = useState(false);
+  const [occupe, setOccupe] = useState(false);
+  const [message, setMessage] = useState('');
+  const [erreur, setErreur] = useState('');
+  const fait = useRef(false);
+
+  async function importer(silencieux: boolean) {
+    setOccupe(true);
+    setErreur('');
+    try {
+      const nouveaux: Partial<Record<string, Partial<Record<Indicateur, number>>>> = {};
+      for (let i = 0; i < JOURS_IMPORT; i++) {
+        const jour = decalerJour(aujourdhui, -i);
+        const lus: [Indicateur, number | null][] = [];
+        if (suivis.includes('pas')) lus.push(['pas', await lirePas(jour)]);
+        if (suivis.includes('sommeil')) lus.push(['sommeil', await lireSommeil(jour)]);
+        for (const [k, v] of lus) {
+          const valeur = v === null ? null : k === 'sommeil' ? Math.round(v * 4) / 4 : Math.round(v);
+          if (aImporter(releves, jour, k, valeur)) nouveaux[jour] = { ...nouveaux[jour], [k]: valeur };
+        }
+      }
+      for (const [jour, valeurs] of Object.entries(nouveaux)) await quotidien.enregistrerReleves(clientId, jour, valeurs!, 'telephone');
+      const n = Object.values(nouveaux).reduce((t, v) => t + Object.keys(v!).length, 0);
+      if (n) onImporte();
+      if (!silencieux || n) setMessage(n ? `${n} valeur${n > 1 ? 's' : ''} importée${n > 1 ? 's' : ''} du téléphone.` : 'Rien de nouveau sur le téléphone.');
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Lecture impossible');
+    } finally {
+      setOccupe(false);
+    }
+  }
+
+  useEffect(() => {
+    let annule = false;
+    etatHealthConnect().then(async (e) => {
+      if (annule) return;
+      setEtat(e);
+      if (e !== 'disponible') return;
+      const ok = await accesAccordes();
+      if (annule || !ok.some((t) => t === 'Steps' || t === 'SleepSession')) return;
+      setRelie(true);
+      if (!fait.current) {
+        fait.current = true;
+        importer(true);
+      }
+    });
+    return () => {
+      annule = true;
+    };
+    // Une fois à l'ouverture : les relevés rechargés après l'import ne doivent pas relancer la lecture.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
+  if (!suivis.length || !etat || etat === 'indisponible') return null;
+  return (
+    <View style={[ts.carte, { padding: 16, gap: 8, borderRadius: 16 }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Watch size={18} color={couleurs.rouge} />
+        <Text style={ts.titre}>Montre et téléphone</Text>
+      </View>
+      {etat === 'a_installer' ? (
+        <Text style={ts.texte}>Installez ou mettez à jour l’application Health Connect pour importer vos pas et votre sommeil automatiquement.</Text>
+      ) : (
+        <>
+          <Text style={ts.doux}>
+            {relie
+              ? 'Vos pas et votre sommeil des 7 derniers jours sont importés à chaque ouverture. Une valeur que vous avez saisie vous-même n’est jamais remplacée.'
+              : 'Importez vos pas et votre sommeil depuis Health Connect, où Samsung Health, Google Fit, Garmin, Fitbit ou votre montre déposent leurs données.'}
+          </Text>
+          <Etat erreur={erreur || undefined} message={message} />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <Action
+              petit
+              variante={relie ? 'contour' : 'plein'}
+              libelle={occupe ? 'Lecture…' : relie ? 'Importer maintenant' : 'Relier ma montre ou mon téléphone'}
+              chargement={occupe}
+              desactive={occupe}
+              onPress={async () => {
+                if (!relie) {
+                  const ok = await demanderAcces().catch(() => []);
+                  if (!ok.some((t) => t === 'Steps' || t === 'SleepSession')) {
+                    setErreur('Accès refusé : autorisez les pas et le sommeil dans Health Connect.');
+                    return;
+                  }
+                  setRelie(true);
+                }
+                importer(false);
+              }}
+            />
+            {relie && <Action petit variante="fantome" libelle="Réglages Health Connect" onPress={ouvrirReglages} />}
+          </View>
+        </>
+      )}
     </View>
   );
 }
