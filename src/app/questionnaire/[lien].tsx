@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { crm } from '@/data/crm';
+import { VERSION_POLITIQUE } from '@/domain/consentement';
 import { normaliserEmail, normaliserTelephone } from '@/domain/crm';
 import {
   ACCUEIL,
@@ -17,6 +18,8 @@ import {
   type Question,
 } from '@/domain/questionnaire';
 import { Bouton, Carte, ChampTexte, Ecran, Erreur, Puce, Puces, Texte, Titre } from '@/ui/composants';
+import { LienPolitique } from '@/ui/consentement';
+import { CaseACocher } from '@/ui/crm/dossier';
 import { couleurs, espace, polices } from '@/ui/theme';
 
 const normaliser = { telephone: normaliserTelephone, email: normaliserEmail };
@@ -31,6 +34,7 @@ export default function QuestionnaireAccueil() {
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string>();
   const [envoye, setEnvoye] = useState(false);
+  const [accord, setAccord] = useState(false);
 
   const repondre = (id: string, v: string) => {
     setReponses((r) => ({ ...r, [id]: v }));
@@ -52,9 +56,15 @@ export default function QuestionnaireAccueil() {
       setPage(page + 1);
       return;
     }
+    if (!accord) {
+      setErreur('Coche la case d’accord pour envoyer tes réponses à ton coach.');
+      return;
+    }
     setEnvoi(true);
     try {
-      await crm.soumettreQuestionnaire(lien, nettoyerReponses(reponses));
+      // RGPD : l'accord sur les données de santé est gardé avec les réponses, daté, avec la version de la politique.
+      const _consentement = `${new Date().toISOString()} · politique ${VERSION_POLITIQUE}`;
+      await crm.soumettreQuestionnaire(lien, { ...nettoyerReponses(reponses), _consentement });
       setEnvoye(true);
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Envoi impossible, réessaie dans un instant.');
@@ -111,6 +121,16 @@ export default function QuestionnaireAccueil() {
           );
         })}
       </Carte>
+      {derniere && (
+        <View style={{ gap: espace(2) }}>
+          <CaseACocher
+            libelle="J’accepte que mes réponses, dont celles sur ma santé, soient transmises à mon coach et gardées pour mon coaching."
+            valeur={accord}
+            onChange={setAccord}
+          />
+          <LienPolitique />
+        </View>
+      )}
       {erreur && <Erreur message={erreur} />}
       <Bouton libelle={derniere ? 'Envoyer mes réponses' : 'Suivant'} onPress={suivant} chargement={envoi} />
       <Bouton
