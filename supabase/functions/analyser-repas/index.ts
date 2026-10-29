@@ -1,6 +1,6 @@
 // Estime, à partir de la photo d'un repas, les aliments et leurs quantités, avec leurs valeurs pour 100 g.
 // La clé Claude reste ici, dans les secrets Supabase (ANTHROPIC_API_KEY) : jamais dans l'app.
-// L'image n'est ni stockée ni journalisée : elle sert à cette seule analyse.
+// L'image n'est ni stockée ni journalisée : elle sert à cette seule analyse, et seulement si le client l'a accepté.
 
 import Anthropic from 'npm:@anthropic-ai/sdk@0.135.0';
 import { betaZodOutputFormat } from 'npm:@anthropic-ai/sdk@0.135.0/helpers/beta/zod';
@@ -60,6 +60,11 @@ Deno.serve(async (req) => {
   });
   const [{ data: client }, { data: coach }] = await Promise.all([db.rpc('mon_client_id'), db.rpc('mon_coach_id')]);
   if (!client && !coach) return repondre({ erreur: 'Connecte-toi avec ton compte Coach OS pour analyser une photo.' }, 401);
+  // RGPD : la photo d'un client ne part chez Anthropic qu'avec son accord, enregistré dans l'app (« Mes données »).
+  if (!coach) {
+    const { data: accord } = await db.rpc('mon_consentement');
+    if (!accord?.analyse_ia) return repondre({ erreur: 'Active d’abord l’analyse des photos par l’IA dans « Mes données ».' }, 403);
+  }
 
   const cle = Deno.env.get('ANTHROPIC_API_KEY');
   if (!cle) return repondre({ erreur: 'L’analyse des photos n’est pas encore activée : la clé Claude manque sur le serveur.' }, 503);

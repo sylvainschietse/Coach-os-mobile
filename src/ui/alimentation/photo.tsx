@@ -1,9 +1,11 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 
 import { alimentation, type EstimationPhoto } from '@/data/alimentation';
+import { consentements } from '@/data/consentement';
+import { useSession } from '@/data/session';
 import { additionner, macrosPour } from '@/domain/alimentation';
 import { lireNombre } from '@/domain/suivi';
 import type { Ingredient } from '@/domain/types';
@@ -34,6 +36,7 @@ export function PhotoRepas({
   const [remarque, setRemarque] = useState<string>();
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string>();
+  const accordIa = useAccordIa();
 
   async function prendre(source: 'camera' | 'galerie') {
     setErreur(undefined);
@@ -65,6 +68,20 @@ export function PhotoRepas({
     const q = lireNombre(l.quantite);
     return q && q > 0 ? [{ nom: l.nom, quantiteG: q, kcal: l.kcal, proteines: l.proteines, glucides: l.glucides, lipides: l.lipides }] : [];
   });
+
+  if (accordIa.refuse) {
+    return (
+      <View style={{ gap: espace(3) }}>
+        <Texte doux style={{ fontSize: 14 }}>
+          L’analyse des photos de repas est désactivée. Pour l’utiliser, ta photo sera envoyée à Claude (Anthropic, États-Unis), qui estime les
+          aliments et les quantités ; elle n’est pas gardée. Tu peux couper cet accord à tout moment dans « Mes données ».
+        </Texte>
+        <Bouton variante="secondaire" libelle="J’accepte l’analyse de mes photos par l’IA" onPress={accordIa.accepter} chargement={accordIa.envoi} />
+        {accordIa.erreur && <Erreur message={accordIa.erreur} />}
+        <Bouton variante="discret" libelle="Fermer" onPress={onFermer} />
+      </View>
+    );
+  }
 
   return (
     <View style={{ gap: espace(3) }}>
@@ -120,4 +137,32 @@ export function PhotoRepas({
       <Bouton variante="discret" libelle="Annuler" onPress={onFermer} />
     </View>
   );
+}
+
+/** RGPD : un client n'envoie une photo à l'IA qu'avec son accord (le coach, lui, analyse ses propres photos). */
+function useAccordIa() {
+  const { profil } = useSession();
+  const clientId = profil?.role === 'client' ? profil.clientId : undefined;
+  const [refuse, setRefuse] = useState(false);
+  const [envoi, setEnvoi] = useState(false);
+  const [erreur, setErreur] = useState<string>();
+
+  useEffect(() => {
+    if (clientId) consentements.lire(clientId).then((c) => setRefuse(!c?.analyseIa), () => undefined);
+  }, [clientId]);
+
+  async function accepter() {
+    if (!clientId) return;
+    setEnvoi(true);
+    setErreur(undefined);
+    try {
+      setRefuse(!(await consentements.accepter(clientId, true)).analyseIa);
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Ton accord n’a pas pu être enregistré. Réessaie.');
+    } finally {
+      setEnvoi(false);
+    }
+  }
+
+  return { refuse, envoi, erreur, accepter };
 }

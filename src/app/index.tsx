@@ -8,6 +8,7 @@ import { useSession } from '@/data/session';
 import { connexions, supabase, type Fournisseur } from '@/data/supabase';
 import { verifierMotDePasse } from '@/domain/acces-client';
 import { Bouton, Texte } from '@/ui/composants';
+import { LienPolitique } from '@/ui/consentement';
 import { couleurs, espace, polices } from '@/ui/theme';
 
 export default function Accueil() {
@@ -30,7 +31,12 @@ function Cadre({ children }: { children: ReactNode }) {
           </Text>
           <Texte style={{ color: '#C9C9CF' }}>Ton programme, ta séance, ta progression.</Texte>
         </View>
-        {children}
+        <View style={{ gap: espace(4) }}>
+          {children}
+          <View style={{ alignItems: 'center' }}>
+            <LienPolitique clair />
+          </View>
+        </View>
       </View>
     </SafeAreaView>
   );
