@@ -8,13 +8,14 @@ import { ProfilNutritionCarte } from './alimentation/profil';
 import { DetailClient } from './detail-client';
 import { SeancesClientCoach } from './programmes/seances-client';
 import { Mensurations } from './suivi/mensurations';
+import { Photos } from './suivi/photos';
 import { JournalNutritionVue, PlanNutritionCarte } from './suivi/nutrition';
 import { Quotidien } from './suivi/quotidien';
 import { Records } from './suivi/records';
 import { Sport } from './suivi/sport';
 import { espace } from './theme';
 
-type Onglet = 'seances' | 'historique' | 'mesures' | 'quotidien' | 'records' | 'sport' | 'nutrition';
+type Onglet = 'seances' | 'historique' | 'mesures' | 'quotidien' | 'records' | 'sport' | 'photos' | 'nutrition';
 const ONGLETS: { cle: Onglet; libelle: string }[] = [
   { cle: 'seances', libelle: 'Séances' },
   { cle: 'historique', libelle: 'Réalisé' },
@@ -22,6 +23,7 @@ const ONGLETS: { cle: Onglet; libelle: string }[] = [
   { cle: 'quotidien', libelle: 'Quotidien' },
   { cle: 'records', libelle: 'Records' },
   { cle: 'sport', libelle: 'Sport' },
+  { cle: 'photos', libelle: 'Photos' },
   { cle: 'nutrition', libelle: 'Nutrition' },
 ];
 
@@ -70,6 +72,7 @@ export function FicheClient({ clientId, coachId }: { clientId: string; coachId: 
       {onglet === 'quotidien' && <Quotidien clientId={clientId} cibles parCoach />}
       {onglet === 'records' && <Records clientId={clientId} saisie={false} />}
       {onglet === 'sport' && <Sport clientId={clientId} proprietaire={false} />}
+      {onglet === 'photos' && <Photos clientId={clientId} proprietaire={false} />}
       {onglet === 'nutrition' && <Nutrition clientId={clientId} coachId={coachId} />}
     </View>
   );

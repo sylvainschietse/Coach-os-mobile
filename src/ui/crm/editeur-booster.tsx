@@ -217,6 +217,12 @@ function Editeur({
               {erreur}
             </Text>
           )}
+          {/* Un champ invalide d'une autre rubrique bloque Enregistrer : on dit lequel, où qu'on soit. */}
+          {modifie && invalide && !erreur && (
+            <Text accessibilityRole="alert" style={styles.erreur}>
+              Enregistrement impossible : {erreurs.contact ?? (erreurs.date ? `date du Booster (Préparation). ${erreurs.date}` : `date de relance (Conclusion). ${erreurs.relance}`)}
+            </Text>
+          )}
           <PiedEditeur
             modifie={modifie}
             enregistrement={occupe}

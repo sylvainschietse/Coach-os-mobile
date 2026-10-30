@@ -12,6 +12,8 @@ export interface DepotAbonnements {
   ajouterPack(clientId: string, type: TypePack): Promise<void>;
   /** Décompte une séance faite avec le coach (+1) ou annule le dernier décompte (-1). */
   decompter(clientId: string, sens: 1 | -1): Promise<void>;
+  /** Pack ajouté par erreur : supprimé avec sa ligne de paiement encore « En attente ». */
+  supprimerPack(packId: string): Promise<void>;
   /** Coach : crée la ligne « En attente » du mois pour chaque abonnement appli qui n'en a pas encore. */
   preparerEcheances(): Promise<void>;
 }
@@ -53,6 +55,9 @@ const demo: DepotAbonnements = {
       prix: PACKS[type].prix,
       acheteLe: aujourdhui(),
     });
+  },
+  async supprimerPack(packId) {
+    memoire.packs = memoire.packs.filter((p) => p.id !== packId);
   },
   async decompter(clientId, sens) {
     const packs = await demo.packs(clientId);
@@ -123,6 +128,11 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
         statut: 'En attente',
         reference: `pack:${data.id}`,
       });
+    },
+    async supprimerPack(packId) {
+      const { error } = await db.from('packs_seances').delete().eq('id', packId);
+      if (error) throw new Error('Le pack n’a pas pu être supprimé. Réessaie.');
+      await db.from('paiements').delete().eq('reference', `pack:${packId}`).eq('statut', 'En attente');
     },
     async decompter(clientId, sens) {
       const packs = await depot.packs(clientId);

@@ -2571,3 +2571,10 @@ create policy "client : ses packs" on public.packs_seances for select
   using (client_id = public.mon_client_id());
 
 grant select, insert, update, delete on public.packs_seances to authenticated;
+
+
+-- ===== 20261030300000_formules_coaching.sql =====
+-- Formules du coaching alignées sur l'offre CoachGo ; Essentiel et Premium restent lisibles pour l'historique.
+alter table public.coachings drop constraint coachings_formule_check;
+alter table public.coachings add constraint coachings_formule_check
+  check (formule in ('Appli', 'Appli + nutrition', 'Séances', 'Essentiel', 'Premium'));

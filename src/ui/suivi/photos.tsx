@@ -3,7 +3,7 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 
 import { suiviHebdo } from '@/data/suivi-hebdo';
 import { ecrireJour, lireJour } from '@/domain/crm';
@@ -27,6 +27,7 @@ export function Photos({ clientId, proprietaire }: { clientId: string; proprieta
   const [images, setImages] = useState<Record<string, string>>({});
   const [erreur, setErreur] = useState('');
   const [supprimer, setSupprimer] = useState<string>();
+  const [ouverte, setOuverte] = useState<string>();
 
   // Une nouvelle liste (rechargement) vide la comparaison, comme load() d'origine.
   const [liste, setListe] = useState(photos);
@@ -135,6 +136,7 @@ export function Photos({ clientId, proprietaire }: { clientId: string; proprieta
             <View style={{ gap: 8 }}>
               {photos.map((p) => (
                 <View key={p.id} style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12, borderRadius: 12, borderWidth: 1, borderColor: couleurs.bordure, padding: 12 }}>
+                  <Vignette clientId={clientId} id={p.id} proprietaire={proprietaire} grande={ouverte === p.id} onPress={() => setOuverte(ouverte === p.id ? undefined : p.id)} />
                   <Text style={[ts.texte, { flexGrow: 1, flexShrink: 1 }]}>
                     {p.date} · {p.vue} · {p.partage ? 'Partagée avec le coach' : 'Privée'}
                   </Text>
@@ -176,6 +178,25 @@ export function Photos({ clientId, proprietaire }: { clientId: string; proprieta
         />
       )}
     </View>
+  );
+}
+
+/** Miniature de la photo dans la liste ; un appui l'affiche en grand. */
+function Vignette({ clientId, id, proprietaire, grande, onPress }: { clientId: string; id: string; proprietaire: boolean; grande: boolean; onPress: () => void }) {
+  const { donnee: image, erreur } = useCharger(() => suiviHebdo.image(clientId, id, proprietaire), `photo-${id}`);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={grande ? 'Réduire la photo' : 'Agrandir la photo'}
+      onPress={onPress}
+      style={[{ borderRadius: 8, overflow: 'hidden', backgroundColor: couleurs.discret }, grande ? { width: '100%' } : { width: 64, height: 85 }]}
+    >
+      {image ? (
+        <Image source={{ uri: image }} style={grande ? { width: '100%', aspectRatio: 3 / 4, maxHeight: 520 } : { width: 64, height: 85 }} resizeMode={grande ? 'contain' : 'cover'} />
+      ) : (
+        <Text style={[ts.doux, { padding: 6, fontSize: 11 }]}>{erreur ? 'Indisponible' : '…'}</Text>
+      )}
+    </Pressable>
   );
 }
 

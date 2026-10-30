@@ -247,9 +247,15 @@ export const OFFRES_VENDUES = ['Séance Coaching', 'Formule Essentielle', 'Formu
 
 export const STATUTS_BOOSTER = ['À préparer', 'Questionnaire reçu', 'En cours', 'Terminée', 'Annulée'] as const;
 export type StatutBooster = (typeof STATUTS_BOOSTER)[number];
-/** Tarifs historiques de la base d'origine : à confirmer par Sylvain avant tout paiement. */
-export const OFFRES_RECOMMANDEES = ['Coaching Essentiel – 150 €', 'Coaching Premium – 250 €', 'Aucune'];
-export const RESULTATS_COMMERCIAUX = ['Vendu', 'En réflexion', 'À relancer', 'Refus', 'À recontacter plus tard'];
+/** Offres de CoachGo (voir domain/abonnements.ts). */
+export const OFFRES_RECOMMANDEES = [
+  'Appli – 59 €/mois',
+  'Appli + nutrition – 99 €/mois',
+  'Séance à l’unité – 60 €',
+  'Pack 10 séances + 1 offerte – 600 €',
+  'Aucune',
+];
+export const RESULTATS_COMMERCIAUX = ['Vendu', 'En réflexion', 'À relancer', 'Refus'];
 
 const STATUT_DE_L_ETAPE: Record<Exclude<Statut, 'archive'>, StatutContact> = {
   prospect: 'Nouveau Prospect',
