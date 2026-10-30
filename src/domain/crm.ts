@@ -748,7 +748,7 @@ export function ecrireDateHeure(iso: string | undefined): string {
  * Message d'origine « Envoyer l'accès client » : le client se connecte avec l'e-mail donné au coach
  * (Google, Microsoft ou son propre mot de passe), et son compte est relié à sa fiche par cet e-mail.
  */
-export function messageAccesClient(prenom: string, coach: string, lienAppli: string): string {
+export function messageAccesClient(prenom: string, coach: string, lienAppli: string, lienTuto?: string): string {
   return [
     `Salut${prenom ? ` ${prenom}` : ''} ! Voici le lien pour accéder à ton espace CoachGo : ${lienAppli}`,
     '',
@@ -756,6 +756,7 @@ export function messageAccesClient(prenom: string, coach: string, lienAppli: str
     '',
     'Tu peux aussi ajouter le lien à l’écran d’accueil de ton téléphone pour y accéder facilement.',
     '',
+    ...(lienTuto ? [`Pour bien démarrer, regarde la vidéo (1 min 30) : ${lienTuto}`, ''] : []),
     `À bientôt, ${coach}`,
   ].join('\n');
 }
@@ -764,7 +765,7 @@ export function messageAccesClient(prenom: string, coach: string, lienAppli: str
  * Lien WhatsApp « Envoyer l'accès client », seulement quand l'accès est prêt (fiche client avec e-mail),
  * le dossier actif et le numéro valide. Ouvrir ce lien ne prouve pas que le message est parti.
  */
-export function lienAccesWhatsApp(contact: Contact, coach: string, lienAppli: string): string | null {
+export function lienAccesWhatsApp(contact: Contact, coach: string, lienAppli: string, lienTuto?: string): string | null {
   if (!contact.clientId || !contact.email || contact.statut === 'archive' || !contact.telephone) return null;
-  return lienEnvoi('whatsapp', contact, messageAccesClient(contact.prenom, coach, lienAppli));
+  return lienEnvoi('whatsapp', contact, messageAccesClient(contact.prenom, coach, lienAppli, lienTuto));
 }
