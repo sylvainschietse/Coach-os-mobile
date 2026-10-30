@@ -55,6 +55,7 @@ export function Bilans({
   useRechargerSur(charge.recharger, ecouterCrm);
   useRechargerSur(charge.recharger, ecouterDocuments);
   const [recherche, setRecherche] = useState('');
+  const dansFiche = !!contactId && !onToutAfficher;
   const [archives, setArchives] = useState(false);
 
   if (charge.erreur && !charge.donnee)
@@ -77,10 +78,18 @@ export function Bilans({
 
   return (
     <View style={{ gap: espace(4) }}>
-      <View style={styles.outils}>
-        <Recherche valeur={recherche} onChange={setRecherche} />
-        <BoutonPrincipal libelle="Nouveau bilan" onPress={onNouveau} />
-      </View>
+      {/* Dans la fiche (pas de « Afficher tous ») : la liste du contact, sans recherche. */}
+      {dansFiche ? (
+        <View style={[styles.outils, { justifyContent: 'space-between', alignItems: 'center' }]}>
+          <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: couleurs.texte }}>Bilans complets</Text>
+          <BoutonPrincipal libelle="Nouveau bilan" onPress={onNouveau} />
+        </View>
+      ) : (
+        <View style={styles.outils}>
+          <Recherche valeur={recherche} onChange={setRecherche} />
+          <BoutonPrincipal libelle="Nouveau bilan" onPress={onNouveau} />
+        </View>
+      )}
       {contactId && onToutAfficher && (
         <Text style={styles.filtre}>
           Dossier : {filtre ? nomComplet(filtre) : 'ce contact'}{' '}
@@ -89,7 +98,7 @@ export function Bilans({
           </Text>
         </Text>
       )}
-      <CaseACocher petite libelle="Inclure les dossiers archivés" valeur={archives} onChange={setArchives} />
+      {!dansFiche && <CaseACocher petite libelle="Inclure les dossiers archivés" valeur={archives} onChange={setArchives} />}
       <View style={{ gap: espace(3) }}>
         {visibles.map((b) => (
           <CarteBilan
@@ -104,7 +113,7 @@ export function Bilans({
             }}
           />
         ))}
-        {!visibles.length && <Vide titre="Aucun dossier pour ces filtres." />}
+        {!visibles.length && <Vide titre={dansFiche ? 'Aucun bilan complet pour ce contact.' : 'Aucun dossier pour ces filtres.'} />}
       </View>
     </View>
   );
