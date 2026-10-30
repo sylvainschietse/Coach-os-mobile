@@ -55,6 +55,8 @@ beforeAll(async () => {
     insert into public.clients (id, coach_id, user_id, prenom) values
       ('${ids.lea}', '${ids.coach1}', '${ids.userLea}', 'Léa'), ('${ids.thomas}', '${ids.coach1}', '${ids.userThomas}', 'Thomas'),
       ('${ids.autre}', '${ids.coach2}', '${ids.userAutre}', 'Client de l’autre coach');
+    -- Les recettes sont réservées à l'option nutrition (voir abonnements-acces.test.ts).
+    update public.clients set option_nutrition = true;
     insert into public.aliments (source, nom, kcal, proteines, glucides, lipides) values ('base', 'Riz blanc cuit', 130, 2.7, 28, 0.3);
   `);
 });

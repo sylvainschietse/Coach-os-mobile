@@ -31,6 +31,7 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { NutritionDuClient } from '../alimentation/nutrition-coach';
 import { BoutonContour, SousNav, type OngletDef } from '../coque';
+import { AbonnementClient } from '../abonnement';
 import { AccesAppli } from './acces';
 import { Photos } from '../suivi/photos';
 import { Chargement, Erreur } from '../composants';
@@ -149,6 +150,7 @@ function Editeur({
   const [erreur, setErreur] = useState<string>();
   const [doublon, setDoublon] = useState<Doublon>();
   const [sortie, setSortie] = useState<(() => void) | null>(null);
+  const [versionAbo, setVersionAbo] = useState(0);
   const modifies = CLES.filter((k) => brouillon[k] !== initial[k]);
   const modifie = modifies.length > 0;
   const demanderSortie = (suite: () => void) => (modifie ? setSortie(() => suite) : suite());
@@ -265,8 +267,9 @@ function Editeur({
       )}
       {/* Le compte du client pour se connecter à l'appli : e-mail et mot de passe provisoire à lui envoyer. */}
       {volet === 'fiche' && contact && (
-        <View style={{ marginTop: espace(4) }}>
-          <AccesAppli contact={contact} />
+        <View style={{ marginTop: espace(4), gap: espace(4) }}>
+          {contact.clientId && <AbonnementClient clientId={contact.clientId} prenom={contact.prenom} onChange={() => setVersionAbo((v) => v + 1)} />}
+          <AccesAppli contact={contact} versionAbo={versionAbo} />
         </View>
       )}
       {volet === 'boosters' && fiche && (

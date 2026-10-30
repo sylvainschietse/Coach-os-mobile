@@ -106,8 +106,12 @@ const manuel = (t: Target | null) => ({
 type Manuel = ReturnType<typeof manuel>;
 type Brouillon = { f: Form; m: Manuel; version: string; envoiId: string };
 
-export function NutritionProfil({ clientId, coach = false }: { clientId: string; coach?: boolean }) {
-  const [section, setSection] = useState<SectionNutrition>('profil');
+/** Sans l'option nutrition, le client garde son profil (macros) et son journal, sans recettes ni plan de repas. */
+const SECTIONS_MACROS: SectionNutrition[] = ['profil', 'journal'];
+
+export function NutritionProfil({ clientId, coach = false, optionNutrition = true }: { clientId: string; coach?: boolean; optionNutrition?: boolean }) {
+  const [sectionChoisie, setSection] = useState<SectionNutrition>('profil');
+  const section = optionNutrition || SECTIONS_MACROS.includes(sectionChoisie) ? sectionChoisie : 'profil';
   const cle = `coachos-nutrition:${clientId}:${coach ? 'coach' : 'client'}`;
   const [data, setData] = useState<DonneesNutrition | null>(null);
   const [f, setF] = useState<Form>(() => toForm(blankPreferences()));
@@ -268,7 +272,7 @@ export function NutritionProfil({ clientId, coach = false }: { clientId: string;
           <SousNav
             nom="Rubriques Nutrition"
             grille="nutrition"
-            onglets={SECTIONS}
+            onglets={optionNutrition ? SECTIONS : SECTIONS.filter((o) => SECTIONS_MACROS.includes(o.cle))}
             valeur={section}
             onChange={(v) => v !== section && demanderSortie(() => setSection(v))}
           />

@@ -8,6 +8,7 @@ import { useSession } from '@/data/session';
 import { accordAttendu, type Consentement } from '@/domain/consentement';
 import { demanderSortie } from '@/lib/brouillon';
 import { messageErreur } from '@/lib/useCharger';
+import { AccesSuspendu } from '@/ui/abonnement';
 import { Chargement, Erreur } from '@/ui/composants';
 import { AccordDonnees } from '@/ui/consentement';
 import { BoutonIcone, EnTete } from '@/ui/coque';
@@ -24,6 +25,19 @@ export default function AccueilClient() {
   const accord = useAccord(clientId);
   if (profil?.role !== 'client') return <Redirect href="/" />;
   const initial = ONGLETS.find((o) => o === onglet) ?? 'programme';
+
+  if (profil.suspendu) {
+    return (
+      <View style={{ flex: 1, backgroundColor: couleurs.fond }}>
+        <EnTete largeur={LARGEUR_CLIENT} sousTitre="Mon espace coaching" droite={<BoutonIcone icone={LogOut} nom="Se déconnecter" onPress={deconnecter} />} />
+        <ScrollView contentContainerStyle={{ padding: espace(4) }}>
+          <View style={{ width: '100%', maxWidth: LARGEUR_CLIENT, alignSelf: 'center' }}>
+            <AccesSuspendu prenom={profil.prenom} />
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
 
   // RGPD : rien ne s'affiche ni ne s'enregistre avant l'accord du client sur ses données de santé.
   if (accord.donnee === undefined || accordAttendu(accord.donnee)) {

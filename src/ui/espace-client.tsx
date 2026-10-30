@@ -6,10 +6,12 @@ import { useCallback, useRef, useState, type ComponentRef } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { depot } from '@/data';
+import { abonnements } from '@/data/abonnements';
 import { envoyerEnAttente } from '@/data/file-envoi';
 import { demanderSortie } from '@/lib/brouillon';
 import { useCharger } from '@/lib/useCharger';
 
+import { SeancesRestantes } from './abonnement';
 import { EntrainementClient } from './entrainement/espace-entrainement';
 import { useMinuteurs } from './entrainement/minuteurs';
 import { MesDocuments } from './mes-documents';
@@ -65,6 +67,7 @@ export function EspaceClient({
   const [suivi, setSuivi] = useState<RubriqueSuivi>('hebdo');
   const minuteurs = useMinuteurs();
   const defilement = useRef<ComponentRef<typeof ScrollView>>(null);
+  const abo = useCharger(() => abonnements.lire(clientId), `abo-${clientId}`);
 
   const enHaut = useCallback(() => defilement.current?.scrollTo({ y: 0, animated: false }), []);
   const aller = (o: OngletClient) => {
@@ -91,6 +94,7 @@ export function EspaceClient({
           {(onglet === 'programme' || onglet === 'historique') && (
             <>
               <EnAttente clientId={clientId} apercu={!!apercu} />
+              {onglet === 'programme' && <SeancesRestantes clientId={clientId} />}
               <EntrainementClient
                 key={`${clientId}:${onglet}`}
                 clientId={clientId}
@@ -113,7 +117,7 @@ export function EspaceClient({
               {suivi === 'photos' && <Photos key={clientId} clientId={clientId} proprietaire={!apercu} />}
             </>
           )}
-          {onglet === 'nutrition' && <NutritionProfil key={clientId} clientId={clientId} />}
+          {onglet === 'nutrition' && abo.donnee && <NutritionProfil key={clientId} clientId={clientId} optionNutrition={abo.donnee.optionNutrition} />}
           {onglet === 'documents' && (
             <MesDocuments key={clientId} clientId={clientId} />
           )}

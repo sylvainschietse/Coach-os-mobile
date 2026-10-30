@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 
+import { abonnements } from '@/data/abonnements';
 import { aUnAcces, creerAccesClient } from '@/data/acces-client';
 import { supabase } from '@/data/supabase';
 import { messageAcces, type AccesClient } from '@/domain/acces-client';
@@ -16,9 +17,14 @@ const LIEN_APPLI = process.env.EXPO_PUBLIC_LIEN_APPLI || adresseWeb('/');
 const LIEN_TUTO = process.env.EXPO_PUBLIC_LIEN_TUTO || adresseWeb('/tuto-coachgo.mp4');
 
 /** Donne au client son propre compte : il ne verra que ses séances et son suivi. */
-export function AccesAppli({ contact }: { contact: Contact }) {
+export function AccesAppli({ contact, versionAbo = 0 }: { contact: Contact; versionAbo?: number }) {
   const coach = useCoachNom();
   const { donnee: dejaAcces, recharger } = useCharger(() => aUnAcces(contact.clientId!), contact.clientId ?? '');
+  // Client « séances seulement » : pas de compte à créer tant que l'accès appli n'est pas coché.
+  const { donnee: abo } = useCharger(
+    () => (contact.clientId ? abonnements.lire(contact.clientId) : Promise.resolve(null)),
+    `${contact.clientId ?? ''}:${versionAbo}`,
+  );
   const [acces, setAcces] = useState<AccesClient>();
   const [erreur, setErreur] = useState<string>();
   const [envoi, setEnvoi] = useState(false);
@@ -44,6 +50,8 @@ export function AccesAppli({ contact }: { contact: Contact }) {
       </Carte>
     );
   }
+
+  if (abo && !abo.accesAppli) return null;
 
   if (acces) {
     return (

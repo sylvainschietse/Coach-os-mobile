@@ -573,5 +573,8 @@ export async function profilConnecte(db: SupabaseClient): Promise<Profil | null>
     if (rattache) client = await db.from('clients').select('id, prenom').eq('id', rattache).maybeSingle();
   }
   if (client.data) return { role: 'client', clientId: client.data.id, prenom: client.data.prenom };
+  // Abonnement appli arrêté : la base ne lui montre plus sa fiche, seulement son prénom.
+  const { data: prenom } = await db.rpc('mon_acces_suspendu');
+  if (typeof prenom === 'string') return { role: 'client', clientId: '', prenom, suspendu: true };
   return null;
 }

@@ -57,7 +57,8 @@ export interface Depot {
 }
 
 export type Profil =
-  | { role: 'client'; clientId: string; prenom: string }
+  /** suspendu : le coach a coupé son accès appli, l'accueil lui dit de le contacter. */
+  | { role: 'client'; clientId: string; prenom: string; suspendu?: boolean }
   | { role: 'coach'; coachId: string; nom: string };
 
 /** Garde, pour chaque exercice, la réalisation la plus récente. */
