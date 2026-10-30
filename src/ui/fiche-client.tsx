@@ -20,7 +20,7 @@ const ONGLETS: { cle: Onglet; libelle: string }[] = [
   { cle: 'historique', libelle: 'Réalisé' },
   { cle: 'mesures', libelle: 'Mensurations' },
   { cle: 'quotidien', libelle: 'Quotidien' },
-  { cle: 'records', libelle: 'Records' },
+  { cle: 'records', libelle: 'Performances' },
   { cle: 'sport', libelle: 'Sport' },
   { cle: 'photos', libelle: 'Photos' },
   { cle: 'nutrition', libelle: 'Nutrition' },
@@ -54,6 +54,55 @@ function Nutrition({ clientId, coachId }: { clientId: string; coachId: string })
   );
 }
 
+const PROGRAMME = [
+  { cle: 'seances', libelle: 'Séances' },
+  { cle: 'historique', libelle: 'Réalisé' },
+] as const;
+/** Mêmes mots que l'onglet Suivi du client. */
+const SUIVI = [
+  { cle: 'mesures', libelle: 'Mensurations' },
+  { cle: 'quotidien', libelle: 'Quotidien' },
+  { cle: 'records', libelle: 'Performances' },
+  { cle: 'sport', libelle: 'Sport' },
+  { cle: 'photos', libelle: 'Photos' },
+] as const;
+
+/** Volet Programme de la fiche : séances du client et ce qu'il a réalisé. */
+export function ProgrammeClient({ clientId, coachId }: { clientId: string; coachId: string }) {
+  const [onglet, setOnglet] = useState<(typeof PROGRAMME)[number]['cle']>('seances');
+  return (
+    <View style={{ gap: espace(4), marginTop: espace(4) }}>
+      <Puces>
+        {PROGRAMME.map((o) => (
+          <Puce key={o.cle} libelle={o.libelle} actif={onglet === o.cle} onPress={() => setOnglet(o.cle)} />
+        ))}
+      </Puces>
+      {onglet === 'seances' && <SeancesClientCoach clientId={clientId} coachId={coachId} />}
+      {onglet === 'historique' && <DetailClient clientId={clientId} />}
+    </View>
+  );
+}
+
+/** Volet Suivi de la fiche : ce que le client saisit dans son onglet Suivi. */
+export function SuiviClient({ clientId }: { clientId: string }) {
+  const [onglet, setOnglet] = useState<(typeof SUIVI)[number]['cle']>('mesures');
+  return (
+    <View style={{ gap: espace(4), marginTop: espace(4) }}>
+      <Puces>
+        {SUIVI.map((o) => (
+          <Puce key={o.cle} libelle={o.libelle} actif={onglet === o.cle} onPress={() => setOnglet(o.cle)} />
+        ))}
+      </Puces>
+      {onglet === 'mesures' && <Mensurations clientId={clientId} saisie={false} />}
+      {onglet === 'quotidien' && <Quotidien clientId={clientId} cibles parCoach />}
+      {onglet === 'records' && <Records clientId={clientId} saisie={false} />}
+      {onglet === 'sport' && <Sport clientId={clientId} proprietaire={false} />}
+      {onglet === 'photos' && <Photos clientId={clientId} proprietaire={false} />}
+    </View>
+  );
+}
+
+/** Adresse de secours (client sans fiche contact) : tout le suivi d'un client sur une page. */
 export function FicheClient({ clientId, coachId }: { clientId: string; coachId: string }) {
   const [onglet, setOnglet] = useState<Onglet>('seances');
   return (

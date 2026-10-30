@@ -44,7 +44,7 @@ import { nomComplet } from '@/ui/crm/commun';
 import { Contacts } from '@/ui/crm/contacts';
 import { Documents, EditeurDocumentModale } from '@/ui/crm/documents';
 import { EditeurBoosterModale } from '@/ui/crm/editeur-booster';
-import { FicheContactModale, type VoletFiche } from '@/ui/crm/fiche-contact';
+import { FicheContactModale, VOLETS_FICHE, type VoletFiche } from '@/ui/crm/fiche-contact';
 import { EditeurGestion, Gestion, QUOI, type ASupprimer, type ModuleGestion } from '@/ui/crm/gestion';
 import { ConfirmerSuppression } from '@/ui/crm/suppression';
 import { VueEnsemble } from '@/ui/crm/vue-ensemble';
@@ -95,11 +95,9 @@ const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Par
 export default function EspaceCoach() {
   const { profil, email, deconnecter } = useSession();
   const { width } = useWindowDimensions();
-  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; client?: string; programme?: string; seance?: string } & ParamsDossier>();
+  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; client?: string; programme?: string; seance?: string; apercu?: string } & ParamsDossier>();
   const onglet = TOUS.find((o) => o === params.onglet) ?? 'crm';
   const rubrique = RUBRIQUES.find((r) => r.cle === params.rubrique)?.cle ?? 'Accueil';
-  const [apercu, setApercu] = useState<'coach' | 'client'>('coach');
-  const [apercuClient, setApercuClient] = useState<string>();
   const coachId = profil?.role === 'coach' ? profil.coachId : '';
   const clients = useCharger(() => depot.clientsDuCoach(coachId), coachId);
   useFocusEffect(clients.recharger);
@@ -125,7 +123,8 @@ export default function EspaceCoach() {
       email={email ?? (depot.mode === 'demo' ? 'Démonstration, sans compte' : '')}
       droite={
         <>
-          <CommutateurApercu valeur={apercu} onChange={setApercu} />
+          {/* « Voir son appli » depuis la fiche : l'appli telle que ce client la voit, et le retour à l'espace coach. */}
+          {params.apercu && <CommutateurApercu valeur="client" onChange={() => router.setParams({ apercu: undefined })} />}
           {/* Zite gérait la session hors de l'app : sans ce bouton, impossible de changer de compte. */}
           <BoutonIcone icone={LogOut} nom="Se déconnecter" onPress={deconnecter} />
         </>
@@ -133,9 +132,9 @@ export default function EspaceCoach() {
     />
   );
 
-  if (apercu === 'client') {
+  if (params.apercu) {
     const liste = clients.donnee ?? [];
-    const choisi = liste.find((c) => c.id === apercuClient) ?? liste[0];
+    const choisi = liste.find((c) => c.id === params.apercu) ?? liste[0];
     return (
       <View style={{ flex: 1, backgroundColor: couleurs.fond }}>
         {enTete}
@@ -151,7 +150,7 @@ export default function EspaceCoach() {
             key={choisi.id}
             clientId={choisi.id}
             prenom={choisi.prenom}
-            apercu={{ clients: liste.map((c) => ({ id: c.id, prenom: `${c.prenom} ${c.nom}`.trim() })), onChoisir: setApercuClient }}
+            apercu={{ clients: liste.map((c) => ({ id: c.id, prenom: `${c.prenom} ${c.nom}`.trim() })), onChoisir: (id) => router.setParams({ apercu: id }) }}
           />
         )}
       </View>
@@ -295,7 +294,7 @@ function Crm({
   const ouvrirContact = (id: string, volet?: VoletFiche) => router.setParams({ ...FERME, contact: id, volet });
   const ouvrirBooster = (b: Pick<Booster, 'id' | 'contactId'>) => router.setParams({ booster: b.id, bc: b.contactId });
   const nouveauBooster = (contactId?: string) => router.setParams({ booster: 'nouveau', bc: contactId });
-  const volet = (['fiche', 'boosters', 'nutrition', 'photos'] as const).find((v) => v === params.volet) ?? 'fiche';
+  const volet = VOLETS_FICHE.find((v) => v === params.volet) ?? 'fiche';
   const supprimerGestion = (x: ASupprimer) =>
     setASupprimer({
       quoi: QUOI[x.module],
@@ -398,14 +397,14 @@ function Crm({
         <EditeurBilan
           key={params.bilan}
           id={params.bilan === 'nouveau' ? undefined : params.bilan}
-          contactId={params.dossier}
+          contactId={params.dossier ?? params.contact}
           onFermer={() => router.setParams({ bilan: undefined })}
         />
       ) : params.doc ? (
         <EditeurDocumentModale
           key={params.doc}
           id={params.doc === 'nouveau' ? undefined : params.doc}
-          contactId={params.dossier}
+          contactId={params.dossier ?? params.contact}
           onFermer={() => router.setParams({ doc: undefined })}
         />
       ) : params.booster ? (
@@ -427,6 +426,10 @@ function Crm({
           onBooster={ouvrirBooster}
           onNouveauBooster={(id) => nouveauBooster(id)}
           onSupprimerBooster={(booster, contact) => setSuppression({ booster, contact })}
+          onDocument={(id) => router.setParams({ doc: id })}
+          onBilan={(id) => router.setParams({ bilan: id })}
+          onSupprimerBilan={(x) => setASupprimer({ quoi: 'ce bilan', nom: x.nom, contact: x.contact, action: () => crm.supprimerBilan(x.id) })}
+          onVoirAppli={(clientId) => router.setParams({ apercu: clientId })}
         />
       ) : null}
       {aSupprimer && (

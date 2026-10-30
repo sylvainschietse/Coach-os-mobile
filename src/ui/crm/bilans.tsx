@@ -42,7 +42,8 @@ export function Bilans({
   onSupprimer,
 }: {
   contactId?: string;
-  onToutAfficher: () => void;
+  /** Absent dans la fiche : la liste y est déjà celle de ce contact. */
+  onToutAfficher?: () => void;
   onOuvrir: (id: string) => void;
   onNouveau: () => void;
   onSupprimer: (x: { id: string; nom: string; contact?: string }) => void;
@@ -78,7 +79,7 @@ export function Bilans({
         <Recherche valeur={recherche} onChange={setRecherche} />
         <BoutonPrincipal libelle="Nouveau bilan" onPress={onNouveau} />
       </View>
-      {contactId && (
+      {contactId && onToutAfficher && (
         <Text style={styles.filtre}>
           Dossier : {filtre ? nomComplet(filtre) : 'ce contact'}{' '}
           <Text accessibilityRole="button" onPress={onToutAfficher} style={{ textDecorationLine: 'underline' }}>

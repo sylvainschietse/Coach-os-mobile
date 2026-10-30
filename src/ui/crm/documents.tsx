@@ -57,7 +57,8 @@ export function Documents({
   onNouveau,
 }: {
   contactId?: string;
-  onToutAfficher: () => void;
+  /** Absent dans la fiche : la liste y est déjà celle de ce contact. */
+  onToutAfficher?: () => void;
   onOuvrir: (id: string) => void;
   onNouveau: () => void;
 }) {
@@ -86,7 +87,7 @@ export function Documents({
         <Recherche valeur={recherche} onChange={setRecherche} />
         <BoutonPrincipal libelle="Ajouter un document" onPress={onNouveau} />
       </View>
-      {contactId && (
+      {contactId && onToutAfficher && (
         <Text style={styles.filtre}>
           Dossier : {nom(contactId) || 'ce contact'}{' '}
           <Text accessibilityRole="button" onPress={onToutAfficher} style={{ textDecorationLine: 'underline' }}>
