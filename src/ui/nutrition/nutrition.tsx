@@ -15,6 +15,7 @@ import { CaseACocher, Cellule, Grille, Repliable, Saisie } from '../crm/dossier'
 import { Action, Etat, ts } from '../entrainement/commun';
 import { couleurs, polices } from '../theme';
 import { doux, Lien } from './commun';
+import { InvitationOptionNutrition } from './invitation-option';
 import { PersonnelNutrition } from './personnel';
 import { Planificateur } from './planificateur';
 
@@ -339,6 +340,8 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
                   </View>
                 </Repliable>
               </View>
+
+              {!coach && !optionNutrition && <InvitationOptionNutrition />}
 
               {coach && (
                 <View style={[ts.carte, { padding: 16 }]}>

@@ -97,6 +97,14 @@ describe('accès appli et option nutrition', () => {
   });
 });
 
+describe('numéro du coach', () => {
+  it('le client lit le prénom et le numéro de son coach, pas ceux des autres', async () => {
+    await db.exec(`update public.coachs set telephone = '33648640845' where id = '${ids.coach1}'; update public.coachs set telephone = '33600000000' where id = '${ids.coach2}';`);
+    expect((await en(ids.userClientA, `select * from public.mon_coach()`)).rows).toEqual([{ nom: 'Sylvain', telephone: '33648640845' }]);
+    expect((await en(ids.userCoach2, `select * from public.mon_coach()`)).rows).toHaveLength(0);
+  });
+});
+
 describe('packs de séances', () => {
   it('le coach vend un pack de 10 + 1 offerte et décompte les séances, même pour un client sans appli', async () => {
     const { rows } = await en(ids.userCoach1, `insert into public.packs_seances (client_id, seances_total, prix) values ($1, 11, 600) returning id, coach_id`, [
