@@ -123,8 +123,14 @@ const versActivite = (l: Ligne): Activite => ({
   importeeLe: l.importee_le,
 });
 
-function verifier<T>(r: { data: T | null; error: { message: string } | null }): T {
-  if (r.error) throw new Error(r.error.message);
+/** Table ou fonctions absentes de la base (mise à jour SQL pas encore passée) : PostgREST répond 404 / PGRST205 / PGRST202. */
+export const SPORT_PAS_ACTIVE = 'La rubrique Sport n’est pas encore activée sur le serveur. Ton coach doit d’abord mettre à jour la base.';
+function verifier<T>(r: { data: T | null; error: { message: string; code?: string } | null }): T {
+  if (r.error) {
+    if (['PGRST205', 'PGRST202', '42P01', '42883'].includes(r.error.code ?? '') || /activites_sport|enregistrer_activites|retirer_activite/.test(r.error.message))
+      throw new Error(SPORT_PAS_ACTIVE);
+    throw new Error(r.error.message);
+  }
   return r.data as T;
 }
 
