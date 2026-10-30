@@ -144,6 +144,8 @@ describe('Booster et relances', () => {
     expect(new Date(lireDateHeure('05/01 8:00', maintenant)!).getFullYear()).toBe(2027);
     expect(lireDateHeure('31/02 10:00', maintenant)).toBeUndefined();
     expect(lireDateHeure('demain', maintenant)).toBeUndefined();
+    // Sans heure : midi, le jour reste le bon.
+    expect(new Date(lireDateHeure('24/10/2026', maintenant)!).toString()).toBe(new Date(2026, 9, 24, 12, 0).toString());
   });
 
   it('planifier le Booster change le statut et prévoit un rappel la veille', () => {

@@ -139,10 +139,11 @@ function CarteContact({
   const blocNom = useBlocNomCarte();
   return (
     <View style={carteDossier}>
-      <View style={styles.entete}>
+      {/* Sur téléphone, l'en-tête passe en colonne : le nom sur toute la largeur, les badges dessous. */}
+      <View style={[styles.entete, blocNom && { flexDirection: 'column', alignItems: 'stretch' }]}>
         <View style={[styles.identite, blocNom]}>
           <Initiales prenom={c.prenom} nom={c.nom} />
-          <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
             <Text style={styles.nom}>{nomComplet(c)}</Text>
             <Text style={styles.coordonnees}>{[c.email, formaterTelephone(c.telephone)].filter(Boolean).join(' · ')}</Text>
             {c.objectifPrincipal && <Text style={styles.objectif}>{c.objectifPrincipal}</Text>}

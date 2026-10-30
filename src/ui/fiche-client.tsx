@@ -3,7 +3,6 @@ import { View } from 'react-native';
 
 import { Puce, Puces } from './composants';
 import { JournalRepas } from './alimentation/journal-repas';
-import { PlanSemaine } from './alimentation/plan-semaine';
 import { ProfilNutritionCarte } from './alimentation/profil';
 import { DetailClient } from './detail-client';
 import { SeancesClientCoach } from './programmes/seances-client';
@@ -29,7 +28,6 @@ const ONGLETS: { cle: Onglet; libelle: string }[] = [
 
 /** Tout ce que le coach suit d'un client, au même endroit. */
 const SOUS_ONGLETS = [
-  { cle: 'semaine', libelle: 'Plan de la semaine' },
   { cle: 'repas', libelle: 'Repas' },
   { cle: 'plan', libelle: 'Plan et ressenti' },
   { cle: 'profil', libelle: 'Profil et besoins' },
@@ -44,7 +42,6 @@ function Nutrition({ clientId, coachId }: { clientId: string; coachId: string })
           <Puce key={o.cle} libelle={o.libelle} actif={onglet === o.cle} onPress={() => setOnglet(o.cle)} />
         ))}
       </Puces>
-      {onglet === 'semaine' && <PlanSemaine clientId={clientId} modifiable />}
       {onglet === 'repas' && <JournalRepas clientId={clientId} coachId={coachId} saisie={false} />}
       {onglet === 'plan' && (
         <>

@@ -176,9 +176,10 @@ export function ajouterJours(jour: string, n: number): string {
 
 /** « 24/10 18:30 », « 24/10/2026 18h30 » → date ISO ; l'année manquante est la prochaine occurrence. */
 export function lireDateHeure(texte: string, maintenant: Date): string | undefined {
-  const m = texte.trim().match(/^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\s+(\d{1,2})\s*[:h]\s*(\d{2})?$/i);
+  const m = texte.trim().match(/^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?(?:\s+(\d{1,2})\s*[:h]\s*(\d{2})?)?$/i);
   if (!m) return undefined;
-  const [, j, mo, a, h, mi] = m;
+  // Sans heure, midi : la date ne bouge pas d'un fuseau à l'autre.
+  const [, j, mo, a, h = '12', mi] = m;
   let annee = a ? Number(a.length === 2 ? `20${a}` : a) : maintenant.getFullYear();
   let d = new Date(annee, Number(mo) - 1, Number(j), Number(h), Number(mi ?? 0));
   if (!a && d.getTime() < maintenant.getTime() - 86_400_000) d = new Date(++annee, Number(mo) - 1, Number(j), Number(h), Number(mi ?? 0));
@@ -740,12 +741,12 @@ export function lireJour(texte: string): string | undefined {
 /** « 2026-10-30 » → « 30/10/2026 ». */
 export const ecrireJour = (jour: string | undefined) => (jour ? jour.split('-').reverse().join('/') : '');
 
-/** Date ISO → « 24/10/2026 18:30 » (heure locale), relisible par lireDateHeure. */
+/** Date ISO → « 24/10/2026 » (date locale, sans l'heure), relisible par lireDateHeure. */
 export function ecrireDateHeure(iso: string | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return `${deux(d.getDate())}/${deux(d.getMonth() + 1)}/${d.getFullYear()} ${deux(d.getHours())}:${deux(d.getMinutes())}`;
+  return `${deux(d.getDate())}/${deux(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 // ---------- Accès du client à son espace ----------
