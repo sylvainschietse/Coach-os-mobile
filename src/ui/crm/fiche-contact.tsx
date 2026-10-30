@@ -366,12 +366,10 @@ function Coordonnees({
 }
 
 const dateBooster = (iso: string) =>
-  new Date(iso).toLocaleString('fr-FR', {
+  new Date(iso).toLocaleDateString('fr-FR', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   });
 const jour = (j: string | undefined) =>
   j

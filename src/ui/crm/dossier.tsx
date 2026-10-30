@@ -72,7 +72,8 @@ export function Modale({
  */
 export function useBlocNomCarte(): ViewStyle | null {
   const { width } = useWindowDimensions();
-  return width < SM ? { flexBasis: '100%' } : null;
+  // Largeur à 100 % plutôt que flexBasis : Android ne résout pas toujours un flexBasis en % dans une ligne qui passe à la ligne.
+  return width < SM ? { width: '100%', flexBasis: 'auto', flexGrow: 0, flexShrink: 0 } : null;
 }
 
 /**

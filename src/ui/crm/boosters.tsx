@@ -17,12 +17,10 @@ import { BoutonPrincipal, carteDossier } from './contacts';
 import { Badge, CaseACocher, Choix, Recherche, useBlocNomCarte } from './dossier';
 
 const quand = (iso: string) =>
-  new Date(iso).toLocaleString('fr-FR', {
+  new Date(iso).toLocaleDateString('fr-FR', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   });
 
 export function Boosters({

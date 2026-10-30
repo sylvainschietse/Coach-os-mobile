@@ -8,7 +8,7 @@ import { montantLisible } from '@/domain/gestion';
 import { BoutonContour, Stat } from '../coque';
 import { Carte } from '../composants';
 import { couleurs, espace, polices } from '../theme';
-import { dateHeure, jourLisible, nomComplet } from './commun';
+import { dateCourte, jourLisible, nomComplet } from './commun';
 
 export type DonneesVueEnsemble = { contacts: ContactResume[]; relances: RelanceAFaire[]; boosters: BoosterDossier[]; encaissements: number; aEncaisser: number };
 
@@ -58,7 +58,7 @@ export function VueEnsemble({
             >
               <View style={{ flexShrink: 1 }}>
                 <Text style={ligneTexte}>{nomComplet(b.contact)}</Text>
-                <Text style={ligneDoux}>{dateHeure(b.date)}</Text>
+                <Text style={ligneDoux}>{dateCourte(b.date)}</Text>
               </View>
               <View style={badge}>
                 <Text style={badgeTexte}>{statutBooster(b)}</Text>

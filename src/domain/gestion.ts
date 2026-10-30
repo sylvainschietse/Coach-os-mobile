@@ -6,8 +6,17 @@ import { jourLocal, type Carnet, type Contexte, type Relance } from './crm';
 
 export const STATUTS_COACHING = ['À démarrer', 'Actif', 'En pause', 'Terminé', 'Abandonné'] as const;
 export type StatutCoaching = (typeof STATUTS_COACHING)[number];
-export const FORMULES = ['Essentiel', 'Premium'] as const;
-export type Formule = (typeof FORMULES)[number];
+export const FORMULES = ['Appli', 'Appli + nutrition', 'Séances'] as const;
+/** Essentiel et Premium : anciennes formules, gardées lisibles sur les coachings déjà créés. */
+export type Formule = (typeof FORMULES)[number] | 'Essentiel' | 'Premium';
+
+/** Formule du coaching d'après l'offre choisie dans le Booster. */
+export function formuleDeLOffre(offre: string): Formule {
+  if (/nutrition/i.test(offre)) return 'Appli + nutrition';
+  if (/appli/i.test(offre)) return 'Appli';
+  if (/séance/i.test(offre)) return 'Séances';
+  return /premium/i.test(offre) ? 'Premium' : 'Essentiel';
+}
 
 export const PRIORITES_TACHE = ['Haute', 'Moyenne', 'Basse'] as const;
 export type PrioriteTache = (typeof PRIORITES_TACHE)[number];
@@ -166,7 +175,7 @@ export function coachingDepuisBooster(c: Carnet, boosterId: string, ctx: Context
       contactId: contact.id,
       boosterId: b.id,
       statut: 'À démarrer',
-      formule: b.offreRecommandee.includes('Premium') ? 'Premium' : 'Essentiel',
+      formule: formuleDeLOffre(b.offreRecommandee),
       objectif: contact.objectifPrincipal || b.entretien?.projection || undefined,
     },
     ctx,

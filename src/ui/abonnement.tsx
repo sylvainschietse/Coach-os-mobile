@@ -1,7 +1,7 @@
 // Abonnements côté coach (formule du client, packs de séances) et côté client (séances restantes).
 // Rien ne s'achète dans l'appli : le client ne voit aucun prix ni bouton d'achat (règles Apple et Google).
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { abonnements } from '@/data/abonnements';
 import { mensualite, PACKS, restantes, soldeSeances, TARIFS, type Abonnement, type TypePack } from '@/domain/abonnements';
@@ -9,7 +9,7 @@ import { useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Erreur, SousTitre, Texte } from './composants';
 import { CaseACocher } from './crm/dossier';
-import { couleurs, espace } from './theme';
+import { couleurs, espace, polices } from './theme';
 
 const euros = (n: number) => `${n.toLocaleString('fr-FR')} €`;
 
@@ -19,6 +19,7 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
   const packs = useCharger(() => abonnements.packs(clientId), `packs-${clientId}`);
   const [erreur, setErreur] = useState<string>();
   const [occupe, setOccupe] = useState(false);
+  const [aSupprimer, setASupprimer] = useState<string>();
 
   async function faire(action: () => Promise<void>, apres: () => void) {
     setErreur(undefined);
@@ -43,6 +44,14 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
     );
   const ajouter = (type: TypePack) => faire(() => abonnements.ajouterPack(clientId, type), packs.recharger);
   const decompter = (sens: 1 | -1) => faire(() => abonnements.decompter(clientId, sens), packs.recharger);
+  const supprimer = (packId: string) =>
+    faire(
+      () => abonnements.supprimerPack(packId),
+      () => {
+        setASupprimer(undefined);
+        packs.recharger();
+      },
+    );
 
   if (abo.erreur) return <Erreur message={abo.erreur} onReessayer={abo.recharger} />;
   const a = abo.donnee;
@@ -84,10 +93,16 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
       {liste
         .filter((p) => restantes(p) > 0)
         .map((p) => (
-          <Texte key={p.id} doux style={{ fontSize: 13 }}>
-            {p.seancesTotal === 1 ? 'Séance à l’unité' : `Pack de ${p.seancesTotal}`} du {p.acheteLe.split('-').reverse().join('/')} : {p.seancesFaites} faite
-            {p.seancesFaites > 1 ? 's' : ''}
-          </Texte>
+          <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: espace(2) }}>
+            <Texte doux style={{ fontSize: 13, flexShrink: 1 }}>
+              {p.seancesTotal === 1 ? 'Séance à l’unité' : `Pack de ${p.seancesTotal}`} du {p.acheteLe.split('-').reverse().join('/')} : {p.seancesFaites} faite
+              {p.seancesFaites > 1 ? 's' : ''}
+            </Texte>
+            {/* Deux appuis : le premier demande confirmation. */}
+            <Pressable accessibilityRole="button" onPress={() => (aSupprimer === p.id ? supprimer(p.id) : setASupprimer(p.id))} disabled={occupe} style={{ padding: espace(2) }}>
+              <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.rouge }}>{aSupprimer === p.id ? 'Confirmer la suppression' : 'Supprimer'}</Text>
+            </Pressable>
+          </View>
         ))}
       <Bouton libelle="Séance faite (−1)" onPress={() => decompter(1)} desactive={!solde.restantes} chargement={occupe} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>

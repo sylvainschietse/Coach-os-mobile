@@ -99,7 +99,7 @@ export type SaisieBooster = Partial<
 >;
 
 /** « tache » : une chose à faire pour ce contact, sans message à envoyer (le texte est dans la note). */
-export type ModeleMessage = 'questionnaire' | 'booster' | 'rappel_booster' | 'suivi_booster' | 'libre' | 'tache';
+export type ModeleMessage = 'questionnaire' | 'booster' | 'rappel_booster' | 'suivi_booster' | 'nouvelles_10j' | 'nouvelles_1mois' | 'libre' | 'tache';
 
 export interface Relance {
   id: string;
@@ -176,9 +176,10 @@ export function ajouterJours(jour: string, n: number): string {
 
 /** « 24/10 18:30 », « 24/10/2026 18h30 » → date ISO ; l'année manquante est la prochaine occurrence. */
 export function lireDateHeure(texte: string, maintenant: Date): string | undefined {
-  const m = texte.trim().match(/^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\s+(\d{1,2})\s*[:h]\s*(\d{2})?$/i);
+  const m = texte.trim().match(/^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?(?:\s+(\d{1,2})\s*[:h]\s*(\d{2})?)?$/i);
   if (!m) return undefined;
-  const [, j, mo, a, h, mi] = m;
+  // Sans heure, midi : la date ne bouge pas d'un fuseau à l'autre.
+  const [, j, mo, a, h = '12', mi] = m;
   let annee = a ? Number(a.length === 2 ? `20${a}` : a) : maintenant.getFullYear();
   let d = new Date(annee, Number(mo) - 1, Number(j), Number(h), Number(mi ?? 0));
   if (!a && d.getTime() < maintenant.getTime() - 86_400_000) d = new Date(++annee, Number(mo) - 1, Number(j), Number(h), Number(mi ?? 0));
@@ -247,9 +248,15 @@ export const OFFRES_VENDUES = ['Séance Coaching', 'Formule Essentielle', 'Formu
 
 export const STATUTS_BOOSTER = ['À préparer', 'Questionnaire reçu', 'En cours', 'Terminée', 'Annulée'] as const;
 export type StatutBooster = (typeof STATUTS_BOOSTER)[number];
-/** Tarifs historiques de la base d'origine : à confirmer par Sylvain avant tout paiement. */
-export const OFFRES_RECOMMANDEES = ['Coaching Essentiel – 150 €', 'Coaching Premium – 250 €', 'Aucune'];
-export const RESULTATS_COMMERCIAUX = ['Vendu', 'En réflexion', 'À relancer', 'Refus', 'À recontacter plus tard'];
+/** Offres de CoachGo (voir domain/abonnements.ts). */
+export const OFFRES_RECOMMANDEES = [
+  'Appli – 59 €/mois',
+  'Appli + nutrition – 99 €/mois',
+  'Séance à l’unité – 60 €',
+  'Pack 10 séances + 1 offerte – 600 €',
+  'Aucune',
+];
+export const RESULTATS_COMMERCIAUX = ['Vendu', 'En réflexion', 'À relancer', 'Refus'];
 
 const STATUT_DE_L_ETAPE: Record<Exclude<Statut, 'archive'>, StatutContact> = {
   prospect: 'Nouveau Prospect',
@@ -437,6 +444,9 @@ export function terminerBooster(
     carnet = majContact(carnet, contact.id, { statut: 'booster_fait', statutCrm: undefined });
     carnet = fermerRelances(carnet, contact.id, ctx, ['rappel_booster']);
     carnet = relancer(carnet, contact.id, 'suivi_booster', ajouterJours(jourLocal(ctx.maintenant), 2), ctx);
+    // Prendre des nouvelles s'il n'a toujours pris aucun suivi : devenir client ferme ces relances.
+    carnet = relancer(carnet, contact.id, 'nouvelles_10j', ajouterJours(jourLocal(ctx.maintenant), 10), ctx);
+    carnet = relancer(carnet, contact.id, 'nouvelles_1mois', ajouterJours(jourLocal(ctx.maintenant), 30), ctx);
   }
   return carnet;
 }
@@ -687,6 +697,16 @@ export const MODELES: Record<ModeleMessage, { libelle: string; texte: string }> 
     texte:
       'Bonjour {prenom}, merci pour la séance Booster ! Tu as tes 3 priorités pour avancer. Veux-tu qu’on en parle pour la suite de ton accompagnement ?',
   },
+  nouvelles_10j: {
+    libelle: 'Prendre des nouvelles (10 jours)',
+    texte:
+      'Bonjour {prenom}, c’est {coach}. Comment ça se passe de ton côté avec l’entraînement ? Tu as réussi à garder le rythme ? Dis-moi où tu en es, ça m’intéresse 🙂',
+  },
+  nouvelles_1mois: {
+    libelle: 'Prendre des nouvelles (1 mois)',
+    texte:
+      'Bonjour {prenom}, ça fait un petit moment ! Tu en es où avec ton entraînement ? Tu commences à voir des résultats ? Si tu as des questions ou que tu bloques sur quelque chose, n’hésite pas. Et si tu as envie qu’on avance ensemble, je suis là pour t’accompagner, ça me fait plaisir.',
+  },
   libre: { libelle: 'Relance', texte: 'Bonjour {prenom}, ' },
   tache: { libelle: 'Tâche', texte: '' },
 };
@@ -734,12 +754,12 @@ export function lireJour(texte: string): string | undefined {
 /** « 2026-10-30 » → « 30/10/2026 ». */
 export const ecrireJour = (jour: string | undefined) => (jour ? jour.split('-').reverse().join('/') : '');
 
-/** Date ISO → « 24/10/2026 18:30 » (heure locale), relisible par lireDateHeure. */
+/** Date ISO → « 24/10/2026 » (date locale, sans l'heure), relisible par lireDateHeure. */
 export function ecrireDateHeure(iso: string | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return `${deux(d.getDate())}/${deux(d.getMonth() + 1)}/${d.getFullYear()} ${deux(d.getHours())}:${deux(d.getMinutes())}`;
+  return `${deux(d.getDate())}/${deux(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 // ---------- Accès du client à son espace ----------

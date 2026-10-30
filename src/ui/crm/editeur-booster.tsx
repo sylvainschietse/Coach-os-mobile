@@ -172,7 +172,7 @@ function Editeur({
   const date = lireDateHeure(b.date, new Date());
   const relance = b.dateRelance.trim() ? lireJour(b.dateRelance) : undefined;
   const erreurs = {
-    date: !b.date.trim() ? 'La date et l’heure sont nécessaires.' : !date ? 'Écrivez la date comme 24/10/2026 18:30' : undefined,
+    date: !b.date.trim() ? 'La date est nécessaire.' : !date ? 'Écrivez la date comme 24/10/2026' : undefined,
     relance: b.dateRelance.trim() && !relance ? 'Écrivez la date comme 30/10/2026' : undefined,
     contact: !b.contactId ? 'Choisissez le contact de ce Booster.' : undefined,
   };
@@ -215,6 +215,12 @@ function Editeur({
           {erreur && (
             <Text accessibilityRole="alert" style={styles.erreur}>
               {erreur}
+            </Text>
+          )}
+          {/* Un champ invalide d'une autre rubrique bloque Enregistrer : on dit lequel, où qu'on soit. */}
+          {modifie && invalide && !erreur && (
+            <Text accessibilityRole="alert" style={styles.erreur}>
+              Enregistrement impossible : {erreurs.contact ?? (erreurs.date ? `date du Booster (Préparation). ${erreurs.date}` : `date de relance (Conclusion). ${erreurs.relance}`)}
             </Text>
           )}
           <PiedEditeur
@@ -276,18 +282,17 @@ function Editeur({
               libelle="Date de la Booster"
               valeur={b.date}
               onChange={(d) => maj({ date: d })}
-              placeholder="24/10/2026 18:30"
+              placeholder="24/10/2026"
               erreur={b.date || booster ? erreurs.date : undefined}
               aide={
                 date
-                  ? new Date(date).toLocaleString('fr-FR', {
+                  ? new Date(date).toLocaleDateString('fr-FR', {
                       weekday: 'long',
                       day: 'numeric',
                       month: 'long',
-                      hour: '2-digit',
-                      minute: '2-digit',
+                      year: 'numeric',
                     })
-                  : 'Jour/mois/année heure:minutes'
+                  : 'Jour/mois/année'
               }
             />
           </Cellule>
@@ -388,11 +393,9 @@ function ResumeLecture({ booster }: { booster: Booster }) {
   return (
     <Text style={styles.aide}>
       Enregistré : {statutBooster(booster)} ·{' '}
-      {new Date(booster.date).toLocaleString('fr-FR', {
+      {new Date(booster.date).toLocaleDateString('fr-FR', {
         day: 'numeric',
         month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
       })}
       {booster.planEnvoyeLe ? ` · plan marqué envoyé le ${new Date(booster.planEnvoyeLe).toLocaleDateString('fr-FR')}` : ''}
     </Text>

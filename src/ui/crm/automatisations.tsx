@@ -201,6 +201,7 @@ export function Automatisations() {
           `${MODELES.booster.libelle} : dès que ses réponses arrivent.`,
           `${MODELES.rappel_booster.libelle} : la veille de la séance.`,
           `${MODELES.suivi_booster.libelle} : deux jours après la séance.`,
+          `${MODELES.nouvelles_10j.libelle} et ${MODELES.nouvelles_1mois.libelle.toLowerCase()} : tant qu’aucun suivi n’est pris.`,
         ].map((t) => (
           <Text key={t} style={styles.texte}>
             • {t}

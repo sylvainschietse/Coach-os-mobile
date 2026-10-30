@@ -111,6 +111,13 @@ export default function EspaceCoach() {
   const naviguer = (o: Onglet, r?: Rubrique, dossier?: string) =>
     router.setParams({ onglet: o, rubrique: o === 'crm' ? (r ?? rubrique) : undefined, client: undefined, dossier, programme: undefined, seance: undefined, ...FERME });
 
+  // Depuis les suivis : la fiche du contact devenu client (coordonnées, abonnement, séances).
+  const ouvrirFicheClient = async (clientId: string) => {
+    const contact = (await crm.contacts()).find((c) => c.clientId === clientId);
+    if (contact) router.setParams({ onglet: 'crm', rubrique: 'Contacts', contact: contact.id, volet: undefined, programme: undefined, seance: undefined });
+    else router.push({ pathname: '/coach/client/[id]', params: { id: clientId } });
+  };
+
   const enTete = (
     <EnTete
       largeur={LARGEUR_COACH}
@@ -204,7 +211,11 @@ export default function EspaceCoach() {
               <Bibliotheque coachId={coachId} onOuvrir={(id) => router.setParams({ programme: id })} />
             ))}
           {onglet === 'suivis' && (
-            <CyclesClients coachId={coachId} onOuvrirProgramme={(id) => router.setParams({ onglet: 'airtable', programme: id, seance: undefined })} />
+            <CyclesClients
+              coachId={coachId}
+              onOuvrirProgramme={(id) => router.setParams({ onglet: 'airtable', programme: id, seance: undefined })}
+              onOuvrirFiche={ouvrirFicheClient}
+            />
           )}
           {onglet === 'bilan' && (
             <SeancesRealisees

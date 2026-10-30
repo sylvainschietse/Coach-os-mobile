@@ -12,7 +12,7 @@ import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
 
 import { TitreDisplay } from '../coque';
-import { Badge, Choix, Modale, Recherche, Saisie } from '../crm/dossier';
+import { Choix, Modale, Recherche, Saisie } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
 import { Action, Confirmation, Etat, jourCourt, Ligne, ListeChoix, TexteLong, ts, PhotoProgramme } from './commun';
 
@@ -341,12 +341,14 @@ function ProfilSuivi({
   modeles,
   recharger,
   onOuvrir,
+  onFiche,
 }: {
   coachId: string;
   p: SuiviClient;
   modeles: ModeleResume[] | null;
   recharger: () => void;
   onOuvrir: (programmeId: string) => void;
+  onFiche: () => void;
 }) {
   const { width } = useWindowDimensions();
   const [dialogue, setDialogue] = useState<{ type: 'cycle'; c?: CycleClient } | { type: 'prog'; c: CycleClient }>();
@@ -372,7 +374,7 @@ function ProfilSuivi({
     <View style={[ts.carte, { padding: width >= 640 ? 20 : 16, gap: 0, flexBasis: width >= 1024 ? '48%' : '100%', flexGrow: 1, minWidth: 0 }]}>
       <Ligne style={{ marginBottom: 12 }}>
         <Text style={{ fontFamily: polices.titre, fontSize: 22, letterSpacing: 0.8, color: couleurs.texte }}>{p.nom}</Text>
-        <Badge libelle="Profil client" />
+        <Action petit variante="contour" icone={ExternalLink} libelle="Voir la fiche" onPress={onFiche} />
       </Ligne>
       <SuiviForm coachId={coachId} p={p} onEnregistre={recharger} />
       {p.suivi && (
@@ -454,7 +456,15 @@ function ProfilSuivi({
   );
 }
 
-export function CyclesClients({ coachId, onOuvrirProgramme }: { coachId: string; onOuvrirProgramme: (id: string) => void }) {
+export function CyclesClients({
+  coachId,
+  onOuvrirProgramme,
+  onOuvrirFiche,
+}: {
+  coachId: string;
+  onOuvrirProgramme: (id: string) => void;
+  onOuvrirFiche: (clientId: string) => void;
+}) {
   const profils = useCharger(() => entrainement.suivis(coachId), `suivis-${coachId}`);
   const modeles = useCharger(() => entrainement.bibliotheque(coachId), `modeles-${coachId}`);
   const recharger = useCallback(() => profils.recharger(), [profils]);
@@ -476,7 +486,7 @@ export function CyclesClients({ coachId, onOuvrirProgramme }: { coachId: string;
         {!profils.donnee && !profils.erreur && [0, 1].map((i) => <View key={i} style={{ height: 320, borderRadius: 12, backgroundColor: couleurs.discret, flexBasis: '48%', flexGrow: 1 }} />)}
         {profils.donnee?.length === 0 && <Text style={[ts.doux, { fontSize: 14 }]}>Aucun client actif. Un contact devient client depuis sa fiche.</Text>}
         {profils.donnee?.map((p) => (
-          <ProfilSuivi key={p.clientId} coachId={coachId} p={p} modeles={modeles.donnee ?? null} recharger={recharger} onOuvrir={onOuvrirProgramme} />
+          <ProfilSuivi key={p.clientId} coachId={coachId} p={p} modeles={modeles.donnee ?? null} recharger={recharger} onOuvrir={onOuvrirProgramme} onFiche={() => onOuvrirFiche(p.clientId)} />
         ))}
       </View>
     </View>

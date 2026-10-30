@@ -23,3 +23,13 @@ describe('abonnements', () => {
     expect(packADecompter([pack('fini', 1, 1, '2026-01-01')])).toBeUndefined();
   });
 });
+
+describe('formule du coaching d’après l’offre du Booster', () => {
+  it('reconnaît les offres CoachGo et garde les anciennes', async () => {
+    const { formuleDeLOffre } = await import('../src/domain/gestion');
+    expect(formuleDeLOffre('Appli – 59 €/mois')).toBe('Appli');
+    expect(formuleDeLOffre('Appli + nutrition – 99 €/mois')).toBe('Appli + nutrition');
+    expect(formuleDeLOffre('Pack 10 séances + 1 offerte – 600 €')).toBe('Séances');
+    expect(formuleDeLOffre('Coaching Premium – 250 €')).toBe('Premium');
+  });
+});
