@@ -15,7 +15,6 @@ import { Carte, Chargement, Erreur, Pastille, SousTitre, Texte } from '../compos
 import { couleurs, espace, polices } from '../theme';
 import { NutritionProfil } from '../nutrition/nutrition';
 import { AnalyseAssiette } from './analyse-assiette';
-import { PlanSemaine } from './plan-semaine';
 import { BanqueRecettes } from './recettes';
 
 type Rubrique = 'clients' | 'recettes' | 'photo';
@@ -23,11 +22,6 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'clients', libelle: 'Clients suivis' },
   { cle: 'recettes', libelle: 'Mes recettes' },
   { cle: 'photo', libelle: 'Photo d’assiette' },
-];
-type RubriqueClient = 'plan' | 'nutrition';
-const RUBRIQUES_CLIENT: OngletDef<RubriqueClient>[] = [
-  { cle: 'plan', libelle: 'Plan de la semaine' },
-  { cle: 'nutrition', libelle: 'Nutrition du client' },
 ];
 
 export interface SuiviAlimentaire {
@@ -157,13 +151,10 @@ function FicheNutrition({ suivi, coachId, onRetour }: { suivi: SuiviAlimentaire;
 
 /** Le dossier nutrition d'un client (aussi ouvert depuis la fiche Contact, rubrique Nutrition). */
 export function NutritionDuClient({ clientId: id, coachId }: { clientId: string; coachId: string }) {
-  const [rubrique, setRubrique] = useState<RubriqueClient>('plan');
   return (
     <View style={{ gap: espace(4) }}>
-      <SousNav nom="Nutrition du client" onglets={RUBRIQUES_CLIENT} valeur={rubrique} onChange={setRubrique} />
-      {rubrique === 'plan' && <PlanSemaine key={id} clientId={id} modifiable />}
       {/* ContactNutrition d'origine : profil, objectifs à ajuster, recettes, semaine, journal et recettes du client. */}
-      {rubrique === 'nutrition' && <NutritionProfil key={id} clientId={id} coach />}
+      <NutritionProfil key={id} clientId={id} coach />
     </View>
   );
 }
