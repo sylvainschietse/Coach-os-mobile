@@ -19,3 +19,13 @@ export async function creerAccesClient(contactId: string, email: string): Promis
   }
   return data as AccesClient;
 }
+
+/** Le client supprime lui-même son compte et tout son suivi. */
+export async function supprimerMonCompte(): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.functions.invoke('supprimer-compte', { body: {} });
+  if (error) {
+    const corps = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(corps?.erreur ?? 'Impossible de supprimer ton compte pour le moment.');
+  }
+}
