@@ -717,7 +717,7 @@ export function rediger(
   infos: { coach: string; lienQuestionnaire?: string; booster?: string },
 ): string {
   const quand = infos.booster
-    ? new Date(infos.booster).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+    ? new Date(infos.booster).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
     : 'bientôt';
   return MODELES[modele].texte
     .replace('{prenom}', contact.prenom || 'à toi')

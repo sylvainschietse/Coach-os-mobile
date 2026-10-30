@@ -196,11 +196,27 @@ export function MenuRubriques<T extends string>({
   onChange: (v: T) => void;
   large: boolean;
 }) {
+  // Sur téléphone : une rangée de puces qui défile, plutôt qu'une liste déroulante qui cache les rubriques.
   if (!large)
     return (
-      <View style={[styles.sidebar, { alignSelf: 'stretch' }]}>
-        <Selecteur libelle="Rubrique" options={rubriques} valeur={valeur} onChange={onChange} />
-      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginHorizontal: -16 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
+        {rubriques.map((r) => {
+          const actif = r.cle === valeur;
+          const Icone = r.icone;
+          return (
+            <Pressable
+              key={r.cle}
+              accessibilityRole="button"
+              aria-current={actif ? 'page' : undefined}
+              onPress={() => onChange(r.cle)}
+              style={[styles.puceRubrique, actif && styles.rubriqueActive]}
+            >
+              {Icone && <Icone size={15} color={actif ? '#FFFFFF' : couleurs.texteDoux} />}
+              <Text style={[styles.rubriqueTexte, actif && { color: '#FFFFFF' }]}>{r.libelle}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
     );
   return (
     <View style={[styles.sidebar, { width: 220, position: 'sticky' as never, top: 130, gap: 4 }]}>
@@ -537,6 +553,17 @@ const styles = StyleSheet.create({
   listeLigne: { minHeight: 46, borderRadius: 12, paddingHorizontal: 12, justifyContent: 'center' },
   libelleSection: { fontSize: 11.5, fontFamily: polices.texteGras, textTransform: 'uppercase', letterSpacing: 1.15, color: couleurs.texteDoux },
   rubrique: { minHeight: 46, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  puceRubrique: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    backgroundColor: couleurs.carte,
+  },
   rubriqueActive: { backgroundColor: couleurs.rouge, boxShadow: '0 3px 12px rgba(215, 25, 32, 0.125)' } as ViewStyle,
   rubriqueTexte: { fontSize: 14, fontFamily: polices.texteMoyen, color: couleurs.texteDoux },
   barre: {

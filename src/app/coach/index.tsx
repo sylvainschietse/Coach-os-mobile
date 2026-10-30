@@ -71,24 +71,27 @@ const ONGLETS: OngletDef<OngletVisible>[] = [
 const SUIVI_CLIENTS: { cle: Onglet; libelle: string }[] = [
   { cle: 'suivis', libelle: 'Cycles en cours' },
   { cle: 'bilan', libelle: 'Séances réalisées' },
-  { cle: 'hebdo', libelle: 'Bilans hebdo' },
+  { cle: 'hebdo', libelle: 'Bilans de la semaine' },
 ];
 const visible = (o: Onglet): OngletVisible => (o === 'suivis' || o === 'bilan' || o === 'hebdo' ? 'clients' : o);
 
 type Rubrique = 'Accueil' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Automations';
 const RUBRIQUES: OngletDef<Rubrique>[] = [
-  { cle: 'Accueil', libelle: 'Vue d’ensemble', icone: LayoutDashboard },
+  { cle: 'Accueil', libelle: 'Accueil', icone: LayoutDashboard },
   { cle: 'Contacts', libelle: 'Contacts', icone: Users },
   { cle: 'Boosters', libelle: 'Boosters', icone: CalendarCheck },
   { cle: 'Coachings', libelle: 'Coachings', icone: Activity },
-  { cle: 'Bilans', libelle: 'Bilans', icone: Activity },
+  { cle: 'Bilans', libelle: 'Bilans complets', icone: Activity },
   { cle: 'Documents', libelle: 'Documents', icone: FileText },
   { cle: 'Taches', libelle: 'Tâches', icone: ListTodo },
   { cle: 'Paiements', libelle: 'Paiements', icone: Wallet },
   { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
 ];
-/** Le journal des automatisations reste joignable par son adresse, mais n'encombre plus le menu. */
-const MENU_RUBRIQUES = RUBRIQUES.filter((r) => r.cle !== 'Automations' && r.cle !== 'Coachings');
+/**
+ * Automatisations, Coachings, Tâches et Bilans restent joignables par leur adresse : les tâches vivent dans « À faire »
+ * de l'Accueil, les bilans complets dans le volet Documents de la fiche.
+ */
+const MENU_RUBRIQUES = RUBRIQUES.filter((r) => !['Automations', 'Coachings', 'Taches', 'Bilans'].includes(r.cle));
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 
@@ -282,9 +285,22 @@ function Crm({
   const charger = useCallback(async () => {
     // Les abonnements du mois deviennent des lignes « En attente » avant de lire les paiements.
     await abonnements.preparerEcheances().catch(() => undefined);
-    const [contacts, journee, boosters, carnet] = await Promise.all([crm.contacts(), crm.journee(), crm.boosters(), crm.carnet()]);
+    const [contacts, journee, boosters, carnet, lienQuestionnaire] = await Promise.all([
+      crm.contacts(),
+      crm.journee(),
+      crm.boosters(),
+      crm.carnet(),
+      crm.lienQuestionnaire(),
+    ]);
     setMaj(new Date());
-    return { contacts, relances: journee.relances, boosters, encaissements: encaissementsDuMois(carnet, new Date()), aEncaisser: aEncaisser(carnet) };
+    return {
+      contacts,
+      relances: journee.relances,
+      boosters,
+      encaissements: encaissementsDuMois(carnet, new Date()),
+      aEncaisser: aEncaisser(carnet),
+      lienQuestionnaire,
+    };
   }, []);
   const vue = useCharger(charger, 'vue-ensemble');
   useFocusEffect(vue.recharger);
@@ -325,6 +341,8 @@ function Crm({
               donnees={vue.donnee}
               onRubrique={onRubrique}
               onOuvrirTache={(id) => router.setParams({ ...FERME, tache: id })}
+              onNouvelleTache={() => router.setParams({ ...FERME, tache: 'nouveau' })}
+              onOuvrirContact={(id) => ouvrirContact(id)}
               onOuvrirBooster={ouvrirBooster}
               onCycles={onCycles}
             />
