@@ -8,7 +8,7 @@ import { activites } from '@/data/activites';
 import { derniereSynchro, synchroniserSport } from '@/data/synchro-sport';
 import { formaterDistance, formaterDuree, libelleSport, rythme, SPORTS, totauxParSemaine, type Activite } from '@/domain/activites';
 import { jourParis, lundiDe } from '@/domain/entrainement';
-import { accesAccordes, demanderAcces, etatHealthConnect, ouvrirReglages, type EtatHealthConnect } from '@/lib/health-connect';
+import { accesAccordes, demanderAcces, diagnostiquer, etatHealthConnect, ouvrirReglages, type DiagnosticHealthConnect, type EtatHealthConnect } from '@/lib/health-connect';
 import { messageErreur, useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, Erreur, SousTitre, Texte } from '../composants';
@@ -29,6 +29,56 @@ const nomAppli = (p?: string) => (p ? (APPLIS[p] ?? p) : '');
 const quand = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
 const jourCourt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
+
+const LIBELLES_ACCES: Record<string, string> = {
+  ExerciseSession: 'séances',
+  Distance: 'distance',
+  ElevationGained: 'dénivelé',
+  HeartRate: 'fréquence cardiaque',
+  TotalCaloriesBurned: 'calories',
+  Steps: 'pas',
+  SleepSession: 'sommeil',
+};
+const parAppli = (r: Record<string, number>, unite: (n: number) => string) => {
+  const l = Object.entries(r).sort((a, b) => b[1] - a[1]);
+  return l.length ? l.map(([o, n]) => `${nomAppli(o) || o} : ${unite(n)}`).join(' · ') : 'rien';
+};
+
+/** Ce que CoachGo voit dans Health Connect : pour comprendre une synchro qui ne ramène rien. */
+function Verification() {
+  const [d, setD] = useState<DiagnosticHealthConnect | null>(null);
+  const [occupe, setOccupe] = useState(false);
+  async function verifier() {
+    setOccupe(true);
+    try {
+      setD(await diagnostiquer());
+    } finally {
+      setOccupe(false);
+    }
+  }
+  const manquants = d ? Object.keys(LIBELLES_ACCES).filter((t) => !d.accordes.includes(t as never)) : [];
+  return (
+    <>
+      <Bouton variante="discret" libelle="Vérifier Health Connect" onPress={verifier} chargement={occupe} />
+      {d && (
+        <View style={{ gap: espace(1) }}>
+          <Texte style={{ fontSize: 13 }}>Health Connect : {d.etat === 'disponible' ? 'disponible' : d.etat === 'a_installer' ? 'à installer ou mettre à jour' : 'indisponible'}</Texte>
+          <Texte style={{ fontSize: 13 }}>
+            Accès accordés : {d.accordes.length ? d.accordes.map((t) => LIBELLES_ACCES[t]).join(', ') : 'aucun'}
+            {manquants.length && d.accordes.length ? ` (manquent : ${manquants.map((t) => LIBELLES_ACCES[t]).join(', ')})` : ''}
+          </Texte>
+          <Texte style={{ fontSize: 13 }}>Séances sur 30 jours : {parAppli(d.seances, (n) => String(n))}</Texte>
+          <Texte style={{ fontSize: 13 }}>Pas sur 7 jours : {parAppli(d.pas, (n) => n.toLocaleString('fr-FR'))}</Texte>
+          <Texte style={{ fontSize: 13 }}>Nuits sur 7 jours : {parAppli(d.nuits, (n) => String(n))}</Texte>
+          {!!d.erreur && <Erreur message={d.erreur} />}
+          <Texte doux style={{ fontSize: 12 }}>
+            Si ta montre n’apparaît pas ici, c’est l’appli de la montre qui n’envoie pas vers Health Connect : vérifie ses réglages, puis synchronise la montre.
+          </Texte>
+        </View>
+      )}
+    </>
+  );
+}
 
 /** Accès à Health Connect et synchronisation, sur le téléphone du client seulement. */
 function Connexion({ clientId, onSynchro }: { clientId: string; onSynchro: () => void }) {
@@ -129,6 +179,7 @@ function Connexion({ clientId, onSynchro }: { clientId: string; onSynchro: () =>
       )}
       {!!message && <Texte doux style={{ fontSize: 13 }}>{message}</Texte>}
       {!!erreur && <Erreur message={erreur} />}
+      <Verification />
     </Carte>
   );
 }

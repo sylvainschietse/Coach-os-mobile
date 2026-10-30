@@ -161,3 +161,40 @@ export async function lireSeances(depuis: string): Promise<NouvelleActivite[]> {
   }
   return sortie;
 }
+
+export interface DiagnosticHealthConnect {
+  etat: EtatHealthConnect;
+  accordes: Lecture[];
+  /** Par appli source : séances des 30 derniers jours, pas des 7 derniers jours, nuits des 7 derniers jours. */
+  seances: Record<string, number>;
+  pas: Record<string, number>;
+  nuits: Record<string, number>;
+  erreur?: string;
+}
+
+/** Ce que CoachGo trouve dans Health Connect, appli par appli, pour comprendre une synchro qui ne ramène rien. */
+export async function diagnostiquer(): Promise<DiagnosticHealthConnect> {
+  const d: DiagnosticHealthConnect = { etat: await etatHealthConnect(), accordes: [], seances: {}, pas: {}, nuits: {} };
+  const hc = charger();
+  if (d.etat !== 'disponible' || !hc || !(await initialiser(hc))) return d;
+  d.accordes = await accesAccordes();
+  const maintenant = new Date().toISOString();
+  const il = (jours: number) => new Date(Date.now() - jours * 864e5).toISOString();
+  const compter = <T extends { metadata?: { dataOrigin?: string } }>(liste: T[], dans: Record<string, number>, poids: (x: T) => number = () => 1) => {
+    for (const x of liste) {
+      const o = x.metadata?.dataOrigin || '?';
+      dans[o] = (dans[o] ?? 0) + poids(x);
+    }
+  };
+  try {
+    if (d.accordes.includes('ExerciseSession'))
+      compter((await hc.readRecords('ExerciseSession', { timeRangeFilter: { operator: 'between', startTime: il(30), endTime: maintenant }, pageSize: 500 })).records, d.seances);
+    if (d.accordes.includes('Steps'))
+      compter((await hc.readRecords('Steps', { timeRangeFilter: { operator: 'between', startTime: il(7), endTime: maintenant }, pageSize: 5000 })).records, d.pas, (x) => x.count);
+    if (d.accordes.includes('SleepSession'))
+      compter((await hc.readRecords('SleepSession', { timeRangeFilter: { operator: 'between', startTime: il(7), endTime: maintenant }, pageSize: 100 })).records, d.nuits);
+  } catch (e) {
+    d.erreur = e instanceof Error ? e.message : String(e);
+  }
+  return d;
+}
