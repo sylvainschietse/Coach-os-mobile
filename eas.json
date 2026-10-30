@@ -15,6 +15,7 @@
         "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_VYSmGJYR2CbC18vZERjODg_rGjfa54g",
         "EXPO_PUBLIC_CONNEXIONS": "google",
         "EXPO_PUBLIC_ADRESSE_WEB": "https://sylvainschietse.github.io/Coach-os-mobile",
+        "EXPO_PUBLIC_LIEN_APPLI": "https://github.com/sylvainschietse/Coach-os-mobile/releases/download/android-test/coach-os-test.apk",
         "EXPO_PUBLIC_QUESTIONNAIRE_TALLY": "https://tally.so/r/81Ye7r"
       }
     }

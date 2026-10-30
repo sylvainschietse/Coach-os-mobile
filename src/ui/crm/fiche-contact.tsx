@@ -31,6 +31,7 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { NutritionDuClient } from '../alimentation/nutrition-coach';
 import { BoutonContour, SousNav, type OngletDef } from '../coque';
+import { AccesAppli } from './acces';
 import { Photos } from '../suivi/photos';
 import { Chargement, Erreur } from '../composants';
 import { couleurs, espace, polices } from '../theme';
@@ -261,6 +262,12 @@ function Editeur({
           emailInvalide={emailInvalide}
           coordonneeManquante={coordonneeManquante && (!!contact || modifie)}
         />
+      )}
+      {/* Le compte du client pour se connecter à l'appli : e-mail et mot de passe provisoire à lui envoyer. */}
+      {volet === 'fiche' && contact && (
+        <View style={{ marginTop: espace(4) }}>
+          <AccesAppli contact={contact} />
+        </View>
       )}
       {volet === 'boosters' && fiche && (
         <BoostersDuContact
