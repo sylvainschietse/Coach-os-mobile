@@ -8,7 +8,7 @@
     "scheme": "coachos",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.coachos.app"
     },
     "android": {
