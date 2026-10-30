@@ -155,6 +155,7 @@ export function SousNav<T extends string>({
         ]}
       >
         <View style={[styles.sousOngletInterne, grille === 'nutrition' && { paddingHorizontal: 2 }, actif && styles.sousOngletActif]}>
+          {o.icone && <o.icone size={11} color={actif ? couleurs.rouge : couleurs.texteDoux} style={{ marginBottom: 2 }} />}
           <Text
             style={[
               styles.sousOngletTexte,
