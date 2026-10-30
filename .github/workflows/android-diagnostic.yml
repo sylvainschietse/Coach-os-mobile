@@ -46,7 +46,7 @@ jobs:
             $HOME/.maestro/bin/maestro test .maestro/creer-programme.yaml --test-output-dir diagnostic || true
             sleep 3
             echo '::group::Écran après « Créer un programme »'; $HOME/.maestro/bin/maestro hierarchy | grep -oE '"(text|accessibilityText|resource-id)" : "[^"]+"' | head -80; echo '::endgroup::'
-            echo '::group::Journal de l app'; P=$(adb shell pidof com.coachos.app); echo "pid=$P"; adb logcat -d --pid=$P '*:W' | grep -vE 'ViewManagerPropertyUpdater|ExpoModulesV2|radius property' | grep -B70 -m1 'Not flushing pending UI operations' | head -90; echo '::endgroup::'
+            echo '::group::Journal de l app'; P=$(adb shell pidof com.coachgo.app); echo "pid=$P"; adb logcat -d --pid=$P '*:W' | grep -vE 'ViewManagerPropertyUpdater|ExpoModulesV2|radius property' | grep -B70 -m1 'Not flushing pending UI operations' | head -90; echo '::endgroup::'
             echo '::group::Journal JS'; adb logcat -d -s ReactNativeJS:V | tail -40; echo '::endgroup::'
             echo '::group::Plantages'; adb logcat -d -b crash | tail -80; echo '::endgroup::'
             adb exec-out screencap -p > diagnostic/fin.png
