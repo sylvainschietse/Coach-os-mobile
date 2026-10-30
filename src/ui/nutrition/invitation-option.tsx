@@ -20,11 +20,47 @@ const APERCU = [
 ] as const;
 const photo = (titre: string): number | undefined => PHOTOS_RECETTES[IDS_PAR_TITRE[titre]];
 
-export function InvitationOptionNutrition() {
+function useContactCoach() {
   const { donnee: coach } = useCharger(() => monCoach(), 'mon-coach');
   const telephone = normaliserTelephone(coach?.telephone);
-  const nomCoach = coach?.nom ?? 'ton coach';
   const message = `Salut ${coach?.nom ?? ''} ! L’option nutrition avec les recettes et le plan de repas m’intéresse, on en parle ?`;
+  return {
+    nomCoach: coach?.nom ?? 'ton coach',
+    ecrire: telephone ? () => ouvrirLien(`https://wa.me/${telephone}?text=${encodeURIComponent(message)}`).catch(() => undefined) : undefined,
+  };
+}
+
+/**
+ * Compacte (sous les macros) : une rangée de photos et le bouton ; « Voir un exemple » ouvre la semaine type.
+ * Complète (onglets Recettes, Ma semaine, Mes recettes sous cadenas) : la semaine type en photos.
+ */
+export function InvitationOptionNutrition({ compacte, onDecouvrir }: { compacte?: boolean; onDecouvrir?: () => void }) {
+  const { nomCoach, ecrire } = useContactCoach();
+  if (compacte)
+    return (
+      <View style={{ borderRadius: 18, backgroundColor: couleurs.noir, padding: 18, gap: 14, overflow: 'hidden' }}>
+        <View style={{ gap: 4 }}>
+          <Text style={[ts.kicker, { fontSize: 11, letterSpacing: 1.6 }]}>Option nutrition</Text>
+          <Text style={{ fontFamily: polices.texteGras, fontSize: 18, color: '#FFFFFF' }}>Ta semaine de repas, prête à cuisiner</Text>
+          <Text style={{ fontFamily: polices.texte, fontSize: 13, color: '#B9BEC6' }}>Un plan construit sur tes macros, avec des recettes à ton goût.</Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          {APERCU.flatMap((j) => j.repas.map(([, titre]) => titre))
+            .slice(0, 4)
+            .map((titre) => (
+              <Image key={titre} source={photo(titre)!} style={{ flex: 1, height: 70, borderRadius: 10 }} resizeMode="cover" accessibilityIgnoresInvertColors />
+            ))}
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
+          {ecrire && <Action petit icone={MessageCircle} libelle="J’en parle à mon coach" onPress={ecrire} />}
+          {onDecouvrir && (
+            <Text accessibilityRole="button" onPress={onDecouvrir} style={{ fontFamily: polices.texteMoyen, fontSize: 14, color: '#FFFFFF', textDecorationLine: 'underline' }}>
+              Voir un exemple
+            </Text>
+          )}
+        </View>
+      </View>
+    );
   return (
     <View style={{ borderRadius: 16, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.carte, paddingVertical: 16, gap: 12, overflow: 'hidden' }}>
       <View style={{ paddingHorizontal: 16, gap: 6 }}>
@@ -59,13 +95,7 @@ export function InvitationOptionNutrition() {
           <Lock size={14} color={couleurs.texteDoux} />
           <Text style={{ flex: 1, fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux }}>Avec l’option nutrition. Ça t’intéresse ? Parles-en à {nomCoach}.</Text>
         </View>
-        {telephone && (
-          <Action
-            icone={MessageCircle}
-            libelle="J’en parle à mon coach"
-            onPress={() => ouvrirLien(`https://wa.me/${telephone}?text=${encodeURIComponent(message)}`).catch(() => undefined)}
-          />
-        )}
+        {ecrire && <Action icone={MessageCircle} libelle="J’en parle à mon coach" onPress={ecrire} />}
       </View>
     </View>
   );
