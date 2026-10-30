@@ -49,7 +49,7 @@ async function initialiser(hc: Module) {
   return pret;
 }
 
-/** Tout ce que Coach OS lit. Les mêmes lignes sont déclarées dans app.json (android.permissions). */
+/** Tout ce que CoachGo lit. Les mêmes lignes sont déclarées dans app.json (android.permissions). */
 const LECTURES = ['ExerciseSession', 'Distance', 'ElevationGained', 'HeartRate', 'TotalCaloriesBurned', 'Steps', 'SleepSession'] as const;
 type Lecture = (typeof LECTURES)[number];
 

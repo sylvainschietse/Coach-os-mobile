@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Coach OS",
+    "name": "CoachGo",
     "slug": "coach-os",
     "version": "1.2.0",
     "orientation": "portrait",
@@ -8,7 +8,7 @@
     "scheme": "coachos",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.coachos.app"
     },
     "android": {
@@ -33,7 +33,7 @@
     "web": {
       "output": "single",
       "favicon": "./assets/images/favicon.png",
-      "name": "Coach OS"
+      "name": "CoachGo"
     },
     "plugins": [
       "expo-router",
@@ -56,15 +56,15 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Coach OS utilise l’appareil photo pour scanner le code-barres de tes aliments et photographier tes repas.",
+          "cameraPermission": "CoachGo utilise l’appareil photo pour scanner le code-barres de tes aliments et photographier tes repas.",
           "recordAudioAndroid": false
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Coach OS ouvre tes photos pour estimer ce qu’il y a dans ton assiette.",
-          "cameraPermission": "Coach OS utilise l’appareil photo pour photographier tes repas."
+          "photosPermission": "CoachGo ouvre tes photos pour estimer ce qu’il y a dans ton assiette.",
+          "cameraPermission": "CoachGo utilise l’appareil photo pour photographier tes repas."
         }
       ],
       "react-native-health-connect",

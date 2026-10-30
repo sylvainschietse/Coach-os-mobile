@@ -124,7 +124,7 @@ const depotDemo: DepotAlimentation = {
     await repasDemo.sauver((await repasDemo.lire()).filter((e) => e.id !== id));
   },
   async analyserPhoto() {
-    throw new Error('L’analyse des photos fonctionne avec un compte Coach OS, pas en démo.');
+    throw new Error('L’analyse des photos fonctionne avec un compte CoachGo, pas en démo.');
   },
 };
 

@@ -62,7 +62,7 @@ export function AccordDonnees({
     <View style={{ gap: espace(4) }}>
       <Titre>{reglage ? 'Mes données' : `Bienvenue ${prenom}`}</Titre>
       <Texte>
-        Pour te suivre, ton coach et toi enregistrez dans Coach OS des données sur ta santé et ta forme. Elles servent uniquement à ton
+        Pour te suivre, ton coach et toi enregistrez dans CoachGo des données sur ta santé et ta forme. Elles servent uniquement à ton
         coaching, ne sont visibles que par toi et ton coach, et ne sont ni vendues ni utilisées pour de la publicité.
       </Texte>
       <Carte style={{ gap: espace(2) }}>

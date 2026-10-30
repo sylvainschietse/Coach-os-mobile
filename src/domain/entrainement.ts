@@ -283,7 +283,7 @@ export const OBJECTIFS = ['Remise en forme', 'Perte de poids', 'Prise de muscle'
 export const titreClient = (nom: string) =>
   nom
     .split(' · ')
-    .filter((x) => !/^(MOD|REF|CAL)-[A-Z0-9-]+$|^Copie$|^Adaptation Coach OS$/.test(x.trim()))
+    .filter((x) => !/^(MOD|REF|CAL)-[A-Z0-9-]+$|^Copie$|^Adaptation (?:CoachGo|Coach OS)$/.test(x.trim()))
     .join(' · ') || nom;
 
 /** Code interne d'un modèle (« MOD-SAL-23-3 »), montré en petit au coach seulement. */

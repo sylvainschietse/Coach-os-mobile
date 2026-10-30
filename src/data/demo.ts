@@ -191,7 +191,7 @@ export const PROFILS_DEMO: ProfilNutrition[] = [
 ];
 
 /**
- * Les recettes écrites pour Coach OS, et une recette sur cinq de l'ancienne app de Sylvain (sources Good Food et Feel Good Foodie), pour essayer la démo.
+ * Les recettes écrites pour CoachGo, et une recette sur cinq de l'ancienne app de Sylvain (sources Good Food et Feel Good Foodie), pour essayer la démo.
  * Dans la démo elles sont marquées approuvées pour que la cliente les voie ; dans la vraie banque, elles arrivent en brouillon.
  */
 export const RECETTES_DEMO: Recette[] = ([...recettesCoach, ...recettesDemo] as unknown as Recette[]).map((r) => ({ ...r, statut: 'approuvee' }));

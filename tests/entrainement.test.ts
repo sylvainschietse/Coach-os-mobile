@@ -152,7 +152,7 @@ describe('prescription selon la famille', () => {
 describe('collections et recherche', () => {
   it('classe selon le code', () => {
     expect(collectionDe('MOD-SAL-13-4 · Débutant · Prise de muscle · 4 séances')).toBe('Fondamentaux');
-    expect(collectionDe('REF-NIP-2 · Essentiel salle · 2 séances · Adaptation Coach OS')).toBe('Références');
+    expect(collectionDe('REF-NIP-2 · Essentiel salle · 2 séances · Adaptation CoachGo')).toBe('Références');
     expect(collectionDe('CAL-BASE-2 · Bases au poids du corps · 2 séances')).toBe('Calisthénie');
     expect(collectionDe('Séance seule · Séance Sylvain 1')).toBe('Mes créations');
     expect(sourceEntrainement('REF-NIP-2 · Essentiel salle · 2 séances')?.author).toBe('Jeff Nippard');
@@ -167,7 +167,7 @@ describe('collections et recherche', () => {
   it('titre montré au client sans codes internes', () => {
     expect(titreClient('MOD-SAL-13-4-S3 · Dos · Triceps')).toBe('Dos · Triceps');
     expect(titreClient('Copie · Léa · Cycle 1 · MOD-SAL-13-4 · Débutant')).toBe('Léa · Cycle 1 · Débutant');
-    expect(titreClient('CAL-TRACTIONS-2 · Vers les premières tractions · 2 séances · Adaptation Coach OS')).toBe('Vers les premières tractions · 2 séances');
+    expect(titreClient('CAL-TRACTIONS-2 · Vers les premières tractions · 2 séances · Adaptation CoachGo')).toBe('Vers les premières tractions · 2 séances');
     expect(titreClient('REF-AX-2-S1 · Full body haltères A')).toBe('Full body haltères A');
     expect(codeModele('MOD-SAL-23-3 · Intermédiaire')).toBe('MOD-SAL-23-3');
     expect(codeModele('Perte de poids · Affiner et tonifier')).toBeUndefined();

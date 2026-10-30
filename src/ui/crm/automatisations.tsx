@@ -180,7 +180,7 @@ export function Automatisations() {
           <View style={{ gap: espace(2) }}>
             <Text style={styles.texte}>
               Webhook → vérifier idempotencyKey → télécharger pdfUrl → envoyer l’e-mail à to. Stocker la clé traitée dans un Data Store Make pour
-              éviter les doublons. Coach OS coche Documents « Envoyé » et le plan d’action du Booster après succès réel.
+              éviter les doublons. CoachGo coche Documents « Envoyé » et le plan d’action du Booster après succès réel.
             </Text>
             <Text style={styles.texte}>
               Pour une réponse immédiate confirmée : renvoyer un JSON contenant sent=true, documentId identique et providerMessageId après succès du
@@ -195,7 +195,7 @@ export function Automatisations() {
 
       <Carte style={styles.carte}>
         <Text style={styles.titre}>Relances</Text>
-        <Text style={styles.texte}>Coach OS crée lui-même ces tâches de relance ; l’envoi du message reste fait par le coach.</Text>
+        <Text style={styles.texte}>CoachGo crée lui-même ces tâches de relance ; l’envoi du message reste fait par le coach.</Text>
         {[
           `${MODELES.questionnaire.libelle} : à la création d’un prospect.`,
           `${MODELES.booster.libelle} : dès que ses réponses arrivent.`,

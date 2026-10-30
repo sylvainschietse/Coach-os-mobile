@@ -42,7 +42,7 @@ function Navigation() {
       <Stack.Screen name="client/suivi" options={{ title: 'Mon suivi' }} />
       <Stack.Screen name="client/nutrition" options={{ title: 'Nutrition' }} />
       <Stack.Screen name="client/donnees" options={{ title: 'Mes données' }} />
-      <Stack.Screen name="coach/index" options={{ headerShown: false, title: 'Coach OS' }} />
+      <Stack.Screen name="coach/index" options={{ headerShown: false, title: 'CoachGo' }} />
       <Stack.Screen name="coach/client/[id]" options={{ title: 'Suivi' }} />
       <Stack.Screen name="coach/contact/[id]" options={{ title: 'Fiche contact' }} />
       <Stack.Screen name="coach/seance/[id]" options={{ title: 'Séance' }} />
