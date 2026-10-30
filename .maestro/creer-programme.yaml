@@ -1,0 +1,20 @@
+# Diagnostic Android (version démo, données fictives) : ouvre la fenêtre de création de programme.
+appId: com.coachgo.app
+---
+- launchApp
+- extendedWaitUntil:
+    visible: 'Je suis Sylvain, coach'
+    timeout: 60000
+- tapOn: 'Je suis Sylvain, coach'
+- tapOn: 'Programmes'
+- tapOn: 'Créer un programme'
+- waitForAnimationToEnd
+# La fenêtre doit vraiment s'afficher (avant correctif : écran gris).
+- extendedWaitUntil:
+    visible: 'Annuler'
+    timeout: 15000
+- tapOn: 'Annuler'
+- tapOn: 'Créer une séance seule'
+- extendedWaitUntil:
+    visible: 'Annuler'
+    timeout: 15000
