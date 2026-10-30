@@ -12,6 +12,12 @@ describe('accès client', () => {
     expect(m).toContain('À bientôt, Sylvain');
   });
 
+  it('le message donne le lien de la vidéo de mise en route', () => {
+    const m = messageAcces('Marc', 'Sylvain', { email: 'm@e.fr', motDePasse: 'x' }, 'https://exemple.fr/appli', 'https://exemple.fr/tuto.mp4');
+    expect(m).toContain('regarde la vidéo (1 min 30) : https://exemple.fr/tuto.mp4');
+    expect(m).not.toContain('\n\n');
+  });
+
   it('sans lien d’installation, pas de ligne vide', () => {
     const m = messageAcces('Marc', 'Sylvain', { email: 'm@e.fr', motDePasse: 'x' });
     expect(m).not.toContain('installer');

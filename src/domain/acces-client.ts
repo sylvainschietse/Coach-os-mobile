@@ -7,10 +7,11 @@ export interface AccesClient {
 }
 
 /** Message WhatsApp (ou SMS) qui transmet l'accès au client. */
-export function messageAcces(prenom: string, coach: string, acces: AccesClient, lienAppli?: string): string {
+export function messageAcces(prenom: string, coach: string, acces: AccesClient, lienAppli?: string, lienTuto?: string): string {
   return [
     `Salut ${prenom || 'à toi'} ! Voici ton accès à l’appli CoachGo, pour retrouver tes séances et noter ce que tu fais.`,
     lienAppli ? `Pour l’installer : ${lienAppli}` : '',
+    lienTuto ? `Pour bien démarrer, regarde la vidéo (1 min 30) : ${lienTuto}` : '',
     `E-mail : ${acces.email}`,
     `Mot de passe provisoire : ${acces.motDePasse}`,
     'À ta première connexion, l’appli te demandera de choisir ton propre mot de passe.',

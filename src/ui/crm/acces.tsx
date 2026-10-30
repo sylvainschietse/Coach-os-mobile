@@ -13,6 +13,7 @@ import { couleurs, espace, polices } from '../theme';
 import { BoutonsEnvoi, useCoachNom } from './commun';
 
 const LIEN_APPLI = process.env.EXPO_PUBLIC_LIEN_APPLI || adresseWeb('/');
+const LIEN_TUTO = process.env.EXPO_PUBLIC_LIEN_TUTO || adresseWeb('/tuto-coachgo.mp4');
 
 /** Donne au client son propre compte : il ne verra que ses séances et son suivi. */
 export function AccesAppli({ contact }: { contact: Contact }) {
@@ -57,7 +58,7 @@ export function AccesAppli({ contact }: { contact: Contact }) {
         <Texte doux style={{ fontSize: 13 }}>
           Envoie-le-lui maintenant : ce mot de passe provisoire ne sera plus affiché. À sa première connexion, {contact.prenom} choisira le sien.
         </Texte>
-        <BoutonsEnvoi contact={contact} message={messageAcces(contact.prenom, coach, acces, LIEN_APPLI)} />
+        <BoutonsEnvoi contact={contact} message={messageAcces(contact.prenom, coach, acces, LIEN_APPLI, LIEN_TUTO)} />
       </Carte>
     );
   }

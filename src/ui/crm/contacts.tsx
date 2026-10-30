@@ -28,6 +28,8 @@ import { adresseQuestionnaire, nomComplet, useCoachNom } from './commun';
 import { Badge, CaseACocher, Choix, Initiales, Recherche, Repliable, useBlocNomCarte } from './dossier';
 
 export const LIEN_APPLI = process.env.EXPO_PUBLIC_LIEN_APPLI || adresseWeb('/');
+/** Vidéo de mise en route (public/tuto-coachgo.mp4, publiée avec le site web). */
+export const LIEN_TUTO = process.env.EXPO_PUBLIC_LIEN_TUTO || adresseWeb('/tuto-coachgo.mp4');
 
 export function Contacts({
   onOuvrir,
@@ -183,7 +185,7 @@ function ActionsDossier({
           }),
         )
       : null;
-  const acces = lienAccesWhatsApp(contact, coach, LIEN_APPLI);
+  const acces = lienAccesWhatsApp(contact, coach, LIEN_APPLI, LIEN_TUTO);
 
   async function agir(action: () => Promise<void>, succes: string) {
     setOccupe(true);
