@@ -1,5 +1,5 @@
 // C01 — Vue d'ensemble, reprise de CRMWorkspace (module « Accueil ») : quatre cartes cliquables,
-// Prochains Boosters et Actions prioritaires (six au plus), bouton Programmes et cycles clients.
+// Prochains Boosters et Relances à faire (six au plus), bouton Programmes et cycles clients.
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { MODELES, statutBooster, type BoosterDossier, type ContactResume, type RelanceAFaire } from '@/domain/crm';
@@ -10,7 +10,7 @@ import { Carte } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { dateHeure, jourLisible, nomComplet } from './commun';
 
-export type DonneesVueEnsemble = { contacts: ContactResume[]; relances: RelanceAFaire[]; boosters: BoosterDossier[]; encaissements: number };
+export type DonneesVueEnsemble = { contacts: ContactResume[]; relances: RelanceAFaire[]; boosters: BoosterDossier[]; encaissements: number; aEncaisser: number };
 
 export function VueEnsemble({
   donnees,
@@ -40,9 +40,11 @@ export function VueEnsemble({
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         <Stat style={{ flexBasis: base }} libelle="Contacts" valeur={String(actifs.length)} onPress={() => onRubrique('Contacts')} />
         <Stat style={{ flexBasis: base }} libelle="Boosters à réaliser" valeur={String(prochains.length)} onPress={() => onRubrique('Boosters')} />
-        <Stat style={{ flexBasis: base }} libelle="Actions échues" valeur={String(donnees.relances.length)} onPress={() => onRubrique('Taches')} />
+        <Stat style={{ flexBasis: base }} libelle="Relances en retard" valeur={String(donnees.relances.length)} onPress={() => onRubrique('Taches')} />
         {/* Paiements « Payé » datés du mois en cours. */}
-        <Stat style={{ flexBasis: base }} libelle="Encaissements ce mois" valeur={montantLisible(donnees.encaissements)} onPress={() => onRubrique('Paiements')} />
+        <Stat style={{ flexBasis: base }} libelle="Encaissé ce mois" valeur={montantLisible(donnees.encaissements)} onPress={() => onRubrique('Paiements')} />
+        {/* Paiements « En attente » : abonnements du mois et packs vendus, à passer en « Payé » une fois reçus. */}
+        <Stat style={{ flexBasis: base }} libelle="À encaisser" valeur={montantLisible(donnees.aEncaisser)} onPress={() => onRubrique('Paiements')} />
       </View>
       <View style={{ flexDirection: width >= 1280 ? 'row' : 'column', gap: 20 }}>
         <Carte style={{ flex: 1, padding: 20 }}>
@@ -66,7 +68,7 @@ export function VueEnsemble({
           {!prochains.length && <Text style={ligneDoux}>Aucun Booster à venir.</Text>}
         </Carte>
         <Carte style={{ flex: 1, padding: 20 }}>
-          <Text style={titreCarte}>Actions prioritaires</Text>
+          <Text style={titreCarte}>Relances à faire</Text>
           {donnees.relances.slice(0, 6).map((r, i) => (
             <Pressable
               key={r.id}
