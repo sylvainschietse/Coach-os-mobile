@@ -155,7 +155,7 @@ describe('Booster et relances', () => {
     expect(ouvertes.map((r) => [r.modele, r.echeance])).toEqual([['rappel_booster', '2026-10-22']]);
   });
 
-  it('le compte rendu du Booster garde 3 priorités et prévoit le suivi deux jours après', () => {
+  it('le compte rendu du Booster garde 3 priorités, prévoit le suivi deux jours après et des nouvelles à 10 jours et 1 mois', () => {
     const { carnet, contact } = jusquAuBooster();
     const ctx = contexte('2026-10-23T19:30:00');
     const apres = terminerBooster(
@@ -169,7 +169,10 @@ describe('Booster et relances', () => {
     expect(apres.contacts[0].statut).toBe('booster_fait');
     expect(apres.relances.filter((r) => r.contactId === contact.id && !r.faiteLe).map((r) => [r.modele, r.echeance])).toEqual([
       ['suivi_booster', '2026-10-25'],
+      ['nouvelles_10j', '2026-11-02'],
+      ['nouvelles_1mois', '2026-11-22'],
     ]);
+    // Le contact devenu client (appli ou séances) ne reçoit plus ces relances.
     const client = devenirClient(apres, contact.id, 'client-julie', ctx);
     expect(client.contacts[0]).toMatchObject({ statut: 'client', clientId: 'client-julie' });
     expect(client.relances.every((r) => r.faiteLe)).toBe(true);

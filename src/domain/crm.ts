@@ -99,7 +99,7 @@ export type SaisieBooster = Partial<
 >;
 
 /** « tache » : une chose à faire pour ce contact, sans message à envoyer (le texte est dans la note). */
-export type ModeleMessage = 'questionnaire' | 'booster' | 'rappel_booster' | 'suivi_booster' | 'libre' | 'tache';
+export type ModeleMessage = 'questionnaire' | 'booster' | 'rappel_booster' | 'suivi_booster' | 'nouvelles_10j' | 'nouvelles_1mois' | 'libre' | 'tache';
 
 export interface Relance {
   id: string;
@@ -444,6 +444,9 @@ export function terminerBooster(
     carnet = majContact(carnet, contact.id, { statut: 'booster_fait', statutCrm: undefined });
     carnet = fermerRelances(carnet, contact.id, ctx, ['rappel_booster']);
     carnet = relancer(carnet, contact.id, 'suivi_booster', ajouterJours(jourLocal(ctx.maintenant), 2), ctx);
+    // Prendre des nouvelles s'il n'a toujours pris aucun suivi : devenir client ferme ces relances.
+    carnet = relancer(carnet, contact.id, 'nouvelles_10j', ajouterJours(jourLocal(ctx.maintenant), 10), ctx);
+    carnet = relancer(carnet, contact.id, 'nouvelles_1mois', ajouterJours(jourLocal(ctx.maintenant), 30), ctx);
   }
   return carnet;
 }
@@ -693,6 +696,16 @@ export const MODELES: Record<ModeleMessage, { libelle: string; texte: string }> 
     libelle: 'Suivi après le Booster',
     texte:
       'Bonjour {prenom}, merci pour la séance Booster ! Tu as tes 3 priorités pour avancer. Veux-tu qu’on en parle pour la suite de ton accompagnement ?',
+  },
+  nouvelles_10j: {
+    libelle: 'Prendre des nouvelles (10 jours)',
+    texte:
+      'Bonjour {prenom}, c’est {coach}. Comment ça se passe de ton côté avec l’entraînement ? Tu as réussi à garder le rythme ? Dis-moi où tu en es, ça m’intéresse 🙂',
+  },
+  nouvelles_1mois: {
+    libelle: 'Prendre des nouvelles (1 mois)',
+    texte:
+      'Bonjour {prenom}, ça fait un petit moment ! Tu en es où avec ton entraînement ? Tu commences à voir des résultats ? Si tu as des questions ou que tu bloques sur quelque chose, n’hésite pas. Et si tu as envie qu’on avance ensemble, je suis là pour t’accompagner, ça me fait plaisir.',
   },
   libre: { libelle: 'Relance', texte: 'Bonjour {prenom}, ' },
   tache: { libelle: 'Tâche', texte: '' },

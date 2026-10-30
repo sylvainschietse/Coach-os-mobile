@@ -2578,3 +2578,10 @@ grant select, insert, update, delete on public.packs_seances to authenticated;
 alter table public.coachings drop constraint coachings_formule_check;
 alter table public.coachings add constraint coachings_formule_check
   check (formule in ('Appli', 'Appli + nutrition', 'Séances', 'Essentiel', 'Premium'));
+
+
+-- ===== 20261030400000_relances_nouvelles.sql =====
+-- Relances « prendre des nouvelles » 10 jours et 1 mois après le Booster, tant que le contact n'a pris aucun suivi.
+alter table public.relances drop constraint relances_modele_check;
+alter table public.relances add constraint relances_modele_check
+  check (modele in ('questionnaire', 'booster', 'rappel_booster', 'suivi_booster', 'nouvelles_10j', 'nouvelles_1mois', 'libre', 'tache'));
