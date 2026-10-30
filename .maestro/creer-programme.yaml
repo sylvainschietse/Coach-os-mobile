@@ -1,5 +1,5 @@
 # Diagnostic Android (version démo, données fictives) : ouvre la fenêtre de création de programme.
-appId: com.coachos.app
+appId: com.coachgo.app
 ---
 - launchApp
 - extendedWaitUntil:
