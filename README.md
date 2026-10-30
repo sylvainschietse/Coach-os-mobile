@@ -76,7 +76,7 @@ C'est déjà fait pour le projet « Coach OS » (région Europe, offre gratuite)
 
 ### Accès des clients à l'appli
 
-Sur la fiche d'un client, « Créer son accès » crée son compte avec un mot de passe provisoire, que le coach lui envoie par WhatsApp ou SMS. À sa première connexion, le client choisit son propre mot de passe ; il ne voit que ses séances et son suivi. Le même bouton renouvelle le mot de passe provisoire en cas d'oubli. C'est la fonction `supabase/functions/acces-client` qui crée le compte (`npx supabase functions deploy acces-client`). Pour ajouter un lien d'installation au message, renseigner `EXPO_PUBLIC_LIEN_APPLI`.
+Sur la fiche d'un client, « Créer son accès » crée son compte avec un mot de passe provisoire, que le coach lui envoie par WhatsApp ou SMS. À sa première connexion, le client choisit son propre mot de passe ; il ne voit que ses séances et son suivi. Le même bouton renouvelle le mot de passe provisoire en cas d'oubli. C'est la fonction `supabase/functions/acces-client` qui crée le compte (`npx supabase functions deploy acces-client`). Le client peut supprimer lui-même son compte et son suivi depuis « Mes données », via la fonction `supabase/functions/supprimer-compte` (`npx supabase functions deploy supprimer-compte`). Pour ajouter un lien d'installation au message, renseigner `EXPO_PUBLIC_LIEN_APPLI`.
 
 ### Connexion avec Google, Microsoft, Apple ou inscription libre
 
