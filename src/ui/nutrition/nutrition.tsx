@@ -1,7 +1,7 @@
 // NutritionProfile.tsx d'origine (N01) : « Ma nutrition », sous-rubriques Mon profil / Recettes / Ma semaine / Journal /
 // Mes recettes, estimation Mifflin–St Jeor, profil alimentaire et, pour le coach, ajustement des objectifs.
 // Le brouillon du formulaire reste sur l'appareil ; Recettes et Ma semaine utilisent le dernier profil enregistré.
-import { RefreshCw } from 'lucide-react-native';
+import { Lock, RefreshCw } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
@@ -15,6 +15,7 @@ import { CaseACocher, Cellule, Grille, Repliable, Saisie } from '../crm/dossier'
 import { Action, Etat, ts } from '../entrainement/commun';
 import { couleurs, polices } from '../theme';
 import { doux, Lien } from './commun';
+import { InvitationOptionNutrition } from './invitation-option';
 import { PersonnelNutrition } from './personnel';
 import { Planificateur } from './planificateur';
 
@@ -111,7 +112,9 @@ const SECTIONS_MACROS: SectionNutrition[] = ['profil', 'journal'];
 
 export function NutritionProfil({ clientId, coach = false, optionNutrition = true }: { clientId: string; coach?: boolean; optionNutrition?: boolean }) {
   const [sectionChoisie, setSection] = useState<SectionNutrition>('profil');
-  const section = optionNutrition || SECTIONS_MACROS.includes(sectionChoisie) ? sectionChoisie : 'profil';
+  const section = sectionChoisie;
+  // Sans l'option, Recettes, Ma semaine et Mes recettes restent visibles, avec un cadenas : elles montrent ce qu'elles apportent.
+  const verrouillee = !optionNutrition && !SECTIONS_MACROS.includes(section);
   const cle = `coachos-nutrition:${clientId}:${coach ? 'coach' : 'client'}`;
   const [data, setData] = useState<DonneesNutrition | null>(null);
   const [f, setF] = useState<Form>(() => toForm(blankPreferences()));
@@ -272,7 +275,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
           <SousNav
             nom="Rubriques Nutrition"
             grille="nutrition"
-            onglets={optionNutrition ? SECTIONS : SECTIONS.filter((o) => SECTIONS_MACROS.includes(o.cle))}
+            onglets={optionNutrition ? SECTIONS : SECTIONS.map((o) => (SECTIONS_MACROS.includes(o.cle) ? o : { ...o, icone: Lock }))}
             valeur={section}
             onChange={(v) => v !== section && demanderSortie(() => setSection(v))}
           />
@@ -282,7 +285,9 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
               enregistrées.
             </Text>
           )}
-          {section === 'journal' || section === 'personnelles' ? (
+          {verrouillee ? (
+            <InvitationOptionNutrition />
+          ) : section === 'journal' || section === 'personnelles' ? (
             <PersonnelNutrition key={`${clientId}:${section}`} data={data} vue={section} />
           ) : section !== 'profil' ? (
             <Planificateur data={data} vue={section} onVue={setSection} />
@@ -339,6 +344,8 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
                   </View>
                 </Repliable>
               </View>
+
+              {!coach && !optionNutrition && <InvitationOptionNutrition compacte onDecouvrir={() => setSection('semaine')} />}
 
               {coach && (
                 <View style={[ts.carte, { padding: 16 }]}>

@@ -44,3 +44,17 @@ export async function mesInfos(clientId: string): Promise<MesInfos> {
   if (error) throw new Error('Impossible de lire tes informations. Vérifie ta connexion.');
   return { prenom: data?.prenom ?? undefined, nom: data?.nom ?? undefined, email: data?.email ?? undefined, telephone: data?.telephone ?? undefined };
 }
+
+export interface MonCoach {
+  nom: string;
+  telephone?: string;
+}
+
+/** Prénom et numéro du coach, pour lui écrire depuis l'espace client. En démo, Sylvain sans numéro. */
+export async function monCoach(): Promise<MonCoach | null> {
+  if (!supabase) return { nom: 'Sylvain' };
+  const { data, error } = await supabase.rpc('mon_coach');
+  if (error) throw new Error('Impossible de joindre ton coach pour le moment.');
+  const ligne = (data as { nom: string; telephone: string | null }[] | null)?.[0];
+  return ligne ? { nom: ligne.nom, telephone: ligne.telephone ?? undefined } : null;
+}
