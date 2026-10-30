@@ -8,6 +8,7 @@ import {
   ListTodo,
   LogOut,
   RefreshCw,
+  UserRound,
   Users,
   Wallet,
   Workflow,
@@ -40,11 +41,12 @@ import { Carte, Chargement, Erreur, Puce, Puces, Texte } from '@/ui/composants';
 import { Bilans, EditeurBilan } from '@/ui/crm/bilans';
 import { Boosters } from '@/ui/crm/boosters';
 import { Automatisations } from '@/ui/crm/automatisations';
+import { MonProfilCoach } from '@/ui/profil-coach';
 import { nomComplet } from '@/ui/crm/commun';
 import { Contacts } from '@/ui/crm/contacts';
 import { Documents, EditeurDocumentModale } from '@/ui/crm/documents';
 import { EditeurBoosterModale } from '@/ui/crm/editeur-booster';
-import { FicheContactModale, type VoletFiche } from '@/ui/crm/fiche-contact';
+import { FicheContactModale, VOLETS_FICHE, type VoletFiche } from '@/ui/crm/fiche-contact';
 import { EditeurGestion, Gestion, QUOI, type ASupprimer, type ModuleGestion } from '@/ui/crm/gestion';
 import { ConfirmerSuppression } from '@/ui/crm/suppression';
 import { VueEnsemble } from '@/ui/crm/vue-ensemble';
@@ -59,7 +61,7 @@ import { couleurs, espace, LARGEUR_COACH, LARGEUR_LG } from '@/ui/theme';
 
 type Onglet = 'crm' | 'airtable' | 'suivis' | 'bilan' | 'hebdo' | 'nutrition';
 const TOUS: Onglet[] = ['crm', 'airtable', 'suivis', 'bilan', 'hebdo', 'nutrition'];
-/** Quatre onglets : « Clients » regroupe cycles, séances réalisées et bilans hebdo, client par client. */
+/** Quatre onglets : « Clients » regroupe les cycles et les bilans de la semaine ; les séances réalisées sont dans la fiche. */
 type OngletVisible = 'crm' | 'clients' | 'nutrition' | 'airtable';
 const ONGLETS: OngletDef<OngletVisible>[] = [
   { cle: 'crm', libelle: 'Accueil' },
@@ -70,36 +72,37 @@ const ONGLETS: OngletDef<OngletVisible>[] = [
 ];
 const SUIVI_CLIENTS: { cle: Onglet; libelle: string }[] = [
   { cle: 'suivis', libelle: 'Cycles en cours' },
-  { cle: 'bilan', libelle: 'Séances réalisées' },
-  { cle: 'hebdo', libelle: 'Bilans hebdo' },
+  { cle: 'hebdo', libelle: 'Bilans de la semaine' },
 ];
 const visible = (o: Onglet): OngletVisible => (o === 'suivis' || o === 'bilan' || o === 'hebdo' ? 'clients' : o);
 
-type Rubrique = 'Accueil' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Automations';
+type Rubrique = 'Accueil' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Automations' | 'Profil';
 const RUBRIQUES: OngletDef<Rubrique>[] = [
-  { cle: 'Accueil', libelle: 'Vue d’ensemble', icone: LayoutDashboard },
+  { cle: 'Accueil', libelle: 'Accueil', icone: LayoutDashboard },
   { cle: 'Contacts', libelle: 'Contacts', icone: Users },
   { cle: 'Boosters', libelle: 'Boosters', icone: CalendarCheck },
   { cle: 'Coachings', libelle: 'Coachings', icone: Activity },
-  { cle: 'Bilans', libelle: 'Bilans', icone: Activity },
+  { cle: 'Bilans', libelle: 'Bilans complets', icone: Activity },
   { cle: 'Documents', libelle: 'Documents', icone: FileText },
   { cle: 'Taches', libelle: 'Tâches', icone: ListTodo },
   { cle: 'Paiements', libelle: 'Paiements', icone: Wallet },
   { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
+  { cle: 'Profil', libelle: 'Mon profil', icone: UserRound },
 ];
-/** Le journal des automatisations reste joignable par son adresse, mais n'encombre plus le menu. */
-const MENU_RUBRIQUES = RUBRIQUES.filter((r) => r.cle !== 'Automations' && r.cle !== 'Coachings');
+/**
+ * Automatisations, Coachings, Tâches et Bilans restent joignables par leur adresse : les tâches vivent dans « À faire »
+ * de l'Accueil, les bilans complets dans le volet Documents de la fiche.
+ */
+const MENU_RUBRIQUES = RUBRIQUES.filter((r) => !['Automations', 'Coachings', 'Taches', 'Bilans'].includes(r.cle));
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 
 export default function EspaceCoach() {
   const { profil, email, deconnecter } = useSession();
   const { width } = useWindowDimensions();
-  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; client?: string; programme?: string; seance?: string } & ParamsDossier>();
+  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; client?: string; programme?: string; seance?: string; apercu?: string } & ParamsDossier>();
   const onglet = TOUS.find((o) => o === params.onglet) ?? 'crm';
   const rubrique = RUBRIQUES.find((r) => r.cle === params.rubrique)?.cle ?? 'Accueil';
-  const [apercu, setApercu] = useState<'coach' | 'client'>('coach');
-  const [apercuClient, setApercuClient] = useState<string>();
   const coachId = profil?.role === 'coach' ? profil.coachId : '';
   const clients = useCharger(() => depot.clientsDuCoach(coachId), coachId);
   useFocusEffect(clients.recharger);
@@ -125,7 +128,8 @@ export default function EspaceCoach() {
       email={email ?? (depot.mode === 'demo' ? 'Démonstration, sans compte' : '')}
       droite={
         <>
-          <CommutateurApercu valeur={apercu} onChange={setApercu} />
+          {/* « Voir son appli » depuis la fiche : l'appli telle que ce client la voit, et le retour à l'espace coach. */}
+          {params.apercu && <CommutateurApercu valeur="client" onChange={() => router.setParams({ apercu: undefined })} />}
           {/* Zite gérait la session hors de l'app : sans ce bouton, impossible de changer de compte. */}
           <BoutonIcone icone={LogOut} nom="Se déconnecter" onPress={deconnecter} />
         </>
@@ -133,9 +137,9 @@ export default function EspaceCoach() {
     />
   );
 
-  if (apercu === 'client') {
+  if (params.apercu) {
     const liste = clients.donnee ?? [];
-    const choisi = liste.find((c) => c.id === apercuClient) ?? liste[0];
+    const choisi = liste.find((c) => c.id === params.apercu) ?? liste[0];
     return (
       <View style={{ flex: 1, backgroundColor: couleurs.fond }}>
         {enTete}
@@ -151,7 +155,7 @@ export default function EspaceCoach() {
             key={choisi.id}
             clientId={choisi.id}
             prenom={choisi.prenom}
-            apercu={{ clients: liste.map((c) => ({ id: c.id, prenom: `${c.prenom} ${c.nom}`.trim() })), onChoisir: setApercuClient }}
+            apercu={{ clients: liste.map((c) => ({ id: c.id, prenom: `${c.prenom} ${c.nom}`.trim() })), onChoisir: (id) => router.setParams({ apercu: id }) }}
           />
         )}
       </View>
@@ -283,9 +287,22 @@ function Crm({
   const charger = useCallback(async () => {
     // Les abonnements du mois deviennent des lignes « En attente » avant de lire les paiements.
     await abonnements.preparerEcheances().catch(() => undefined);
-    const [contacts, journee, boosters, carnet] = await Promise.all([crm.contacts(), crm.journee(), crm.boosters(), crm.carnet()]);
+    const [contacts, journee, boosters, carnet, lienQuestionnaire] = await Promise.all([
+      crm.contacts(),
+      crm.journee(),
+      crm.boosters(),
+      crm.carnet(),
+      crm.lienQuestionnaire(),
+    ]);
     setMaj(new Date());
-    return { contacts, relances: journee.relances, boosters, encaissements: encaissementsDuMois(carnet, new Date()), aEncaisser: aEncaisser(carnet) };
+    return {
+      contacts,
+      relances: journee.relances,
+      boosters,
+      encaissements: encaissementsDuMois(carnet, new Date()),
+      aEncaisser: aEncaisser(carnet),
+      lienQuestionnaire,
+    };
   }, []);
   const vue = useCharger(charger, 'vue-ensemble');
   useFocusEffect(vue.recharger);
@@ -295,7 +312,7 @@ function Crm({
   const ouvrirContact = (id: string, volet?: VoletFiche) => router.setParams({ ...FERME, contact: id, volet });
   const ouvrirBooster = (b: Pick<Booster, 'id' | 'contactId'>) => router.setParams({ booster: b.id, bc: b.contactId });
   const nouveauBooster = (contactId?: string) => router.setParams({ booster: 'nouveau', bc: contactId });
-  const volet = (['fiche', 'boosters', 'nutrition', 'photos'] as const).find((v) => v === params.volet) ?? 'fiche';
+  const volet = VOLETS_FICHE.find((v) => v === params.volet) ?? 'fiche';
   const supprimerGestion = (x: ASupprimer) =>
     setASupprimer({
       quoi: QUOI[x.module],
@@ -326,6 +343,8 @@ function Crm({
               donnees={vue.donnee}
               onRubrique={onRubrique}
               onOuvrirTache={(id) => router.setParams({ ...FERME, tache: id })}
+              onNouvelleTache={() => router.setParams({ ...FERME, tache: 'nouveau' })}
+              onOuvrirContact={(id) => ouvrirContact(id)}
               onOuvrirBooster={ouvrirBooster}
               onCycles={onCycles}
             />
@@ -380,6 +399,7 @@ function Crm({
           />
         )}
         {rubrique === 'Automations' && <Automatisations />}
+        {rubrique === 'Profil' && <MonProfilCoach />}
       </View>
 
       {params.coaching || params.tache || params.paiement ? (
@@ -398,14 +418,14 @@ function Crm({
         <EditeurBilan
           key={params.bilan}
           id={params.bilan === 'nouveau' ? undefined : params.bilan}
-          contactId={params.dossier}
+          contactId={params.dossier ?? params.contact}
           onFermer={() => router.setParams({ bilan: undefined })}
         />
       ) : params.doc ? (
         <EditeurDocumentModale
           key={params.doc}
           id={params.doc === 'nouveau' ? undefined : params.doc}
-          contactId={params.dossier}
+          contactId={params.dossier ?? params.contact}
           onFermer={() => router.setParams({ doc: undefined })}
         />
       ) : params.booster ? (
@@ -427,6 +447,10 @@ function Crm({
           onBooster={ouvrirBooster}
           onNouveauBooster={(id) => nouveauBooster(id)}
           onSupprimerBooster={(booster, contact) => setSuppression({ booster, contact })}
+          onDocument={(id) => router.setParams({ doc: id })}
+          onBilan={(id) => router.setParams({ bilan: id })}
+          onSupprimerBilan={(x) => setASupprimer({ quoi: 'ce bilan', nom: x.nom, contact: x.contact, action: () => crm.supprimerBilan(x.id) })}
+          onVoirAppli={(clientId) => router.setParams({ apercu: clientId })}
         />
       ) : null}
       {aSupprimer && (

@@ -10,12 +10,13 @@ import type { Mensuration } from '@/domain/types';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
 
-import { Bouton, Carte, Chargement, ChampTexte, Erreur, SousTitre, Texte } from '../composants';
-import { couleurs, espace } from '../theme';
+import { Bouton, Carte, Chargement, ChampTexte, Erreur, Puce, Puces, SousTitre, Texte } from '../composants';
+import { couleurs, espace, polices } from '../theme';
+import { Courbe } from './courbe';
 
 const signe = (n: number) => (n > 0 ? `+${formaterNombre(n)}` : formaterNombre(n));
 
-function Saisie({ clientId, onAjoute }: { clientId: string; onAjoute: () => void }) {
+function Saisie({ clientId, onAjoute, parCoach }: { clientId: string; onAjoute: () => void; parCoach?: boolean }) {
   const [date, setDate] = useState(formaterDate(jourLocal(new Date())));
   const [valeurs, setValeurs] = useState<Record<string, string>>({});
   const [note, setNote] = useState('');
@@ -47,7 +48,9 @@ function Saisie({ clientId, onAjoute }: { clientId: string; onAjoute: () => void
     <Carte>
       <SousTitre>Nouvelle mesure</SousTitre>
       <Texte doux style={{ fontSize: 14 }}>
-        Remplis seulement ce que tu as mesuré. Idéalement le matin, à jeun, toujours dans les mêmes conditions.
+        {parCoach
+          ? 'Les mesures prises en séance. Ton client les voit dans son suivi, avec ses courbes.'
+          : 'Remplis seulement ce que tu as mesuré. Idéalement le matin, à jeun, toujours dans les mêmes conditions.'}
       </Texte>
       <ChampTexte libelle="Date" valeur={date} onChange={setDate} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(3) }}>
@@ -132,16 +135,16 @@ function Taille({ clientId, saisie, poidsKg }: { clientId: string; saisie: boole
 
 function Ligne({ m, onSupprime }: { m: Mensuration; onSupprime: () => void }) {
   const [confirmer, setConfirmer] = useState(false);
-  const valeurs = CHAMPS_MENSURATIONS.filter((c) => m[c.cle] !== undefined).map(
-    (c) => `${c.libelle} ${formaterNombre(m[c.cle] as number)} ${c.unite}`,
-  );
+  const valeurs = CHAMPS_MENSURATIONS.filter((c) => m[c.cle] !== undefined).map((c) => `${c.libelle} ${formaterNombre(m[c.cle] as number)} ${c.unite}`);
   return (
     <View style={{ borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: espace(2), gap: espace(1) }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         <Texte style={{ fontWeight: '600' }}>{formaterDate(m.date)}</Texte>
         {!confirmer ? (
           <Pressable accessibilityRole="button" onPress={() => setConfirmer(true)} hitSlop={8}>
-            <Texte doux style={{ fontSize: 13 }}>Supprimer</Texte>
+            <Texte doux style={{ fontSize: 13 }}>
+              Supprimer
+            </Texte>
           </Pressable>
         ) : (
           <View style={{ flexDirection: 'row', gap: espace(4) }}>
@@ -149,43 +152,65 @@ function Ligne({ m, onSupprime }: { m: Mensuration; onSupprime: () => void }) {
               <Texte style={{ fontSize: 13, color: couleurs.rouge }}>Confirmer</Texte>
             </Pressable>
             <Pressable accessibilityRole="button" onPress={() => setConfirmer(false)} hitSlop={8}>
-              <Texte doux style={{ fontSize: 13 }}>Annuler</Texte>
+              <Texte doux style={{ fontSize: 13 }}>
+                Annuler
+              </Texte>
             </Pressable>
           </View>
         )}
       </View>
-      <Texte doux style={{ fontSize: 14 }}>{valeurs.join(' · ')}</Texte>
+      <Texte doux style={{ fontSize: 14 }}>
+        {valeurs.join(' · ')}
+      </Texte>
       {m.note && <Texte style={{ fontSize: 14 }}>« {m.note} »</Texte>}
     </View>
   );
 }
 
-/** Mensurations : saisie, évolution depuis la première mesure, historique. Le coach voit la même chose. */
-export function Mensurations({ clientId, saisie = true }: { clientId: string; saisie?: boolean }) {
+type EvolutionChamp = { c: (typeof CHAMPS_MENSURATIONS)[number]; e: NonNullable<ReturnType<typeof evolution>> };
+
+/** Une courbe à la fois : le client choisit la mesure, l'écart depuis la première mesure est en tête. */
+function Evolution({ evolutions }: { evolutions: EvolutionChamp[] }) {
+  const [cle, setCle] = useState(evolutions[0].c.cle);
+  const { c, e } = evolutions.find((x) => x.c.cle === cle) ?? evolutions[0];
+  return (
+    <Carte>
+      <SousTitre>Évolution</SousTitre>
+      <Puces>
+        {evolutions.map((x) => (
+          <Puce key={x.c.cle} libelle={x.c.libelle} actif={x.c.cle === c.cle} onPress={() => setCle(x.c.cle)} />
+        ))}
+      </Puces>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: espace(2), flexWrap: 'wrap' }}>
+        <Texte style={{ fontSize: 26, fontFamily: polices.texteGras }}>
+          {formaterNombre(e.dernier.valeur)} {c.unite}
+        </Texte>
+        <Texte doux style={{ fontSize: 14 }}>
+          {signe(e.ecart)} {c.unite} depuis le {formaterDate(e.premier.date)}
+        </Texte>
+      </View>
+      <Courbe key={c.cle} points={e.points} unite={c.unite} libelle={c.libelle} />
+    </Carte>
+  );
+}
+
+/** Mensurations : saisie, évolution depuis la première mesure, historique. Le coach voit la même chose et peut aussi saisir (mesures prises en séance). */
+export function Mensurations({ clientId, saisie = true, parCoach }: { clientId: string; saisie?: boolean; parCoach?: boolean }) {
   const { donnee, erreur, recharger } = useCharger(() => depot.mensurations(clientId), clientId);
   const evolutions = donnee
-    ? CHAMPS_MENSURATIONS.map((c) => ({ c, e: evolution(donnee, c.cle) })).filter((x) => x.e && x.e.points.length > 1)
+    ? CHAMPS_MENSURATIONS.flatMap((c): EvolutionChamp[] => {
+        const e = evolution(donnee, c.cle);
+        return e && e.points.length > 1 ? [{ c, e }] : [];
+      })
     : [];
 
   return (
     <View style={{ gap: espace(4) }}>
-      <Taille clientId={clientId} saisie={saisie} poidsKg={donnee ? evolution(donnee, 'poidsKg')?.dernier.valeur : undefined} />
-      {saisie && <Saisie clientId={clientId} onAjoute={recharger} />}
+      <Taille clientId={clientId} saisie={saisie && !parCoach} poidsKg={donnee ? evolution(donnee, 'poidsKg')?.dernier.valeur : undefined} />
+      {saisie && <Saisie clientId={clientId} onAjoute={recharger} parCoach={parCoach} />}
       {erreur && <Erreur message={erreur} />}
       {!donnee && !erreur && <Chargement />}
-      {evolutions.length > 0 && (
-        <Carte>
-          <SousTitre>Évolution</SousTitre>
-          {evolutions.map(({ c, e }) => (
-            <Texte key={c.cle} style={{ fontSize: 15 }}>
-              {c.libelle} : {formaterNombre(e!.premier.valeur)} → {formaterNombre(e!.dernier.valeur)} {c.unite}
-              <Texte doux style={{ fontSize: 14 }}>
-                {'  '}({signe(e!.ecart)} {c.unite} depuis le {formaterDate(e!.premier.date)})
-              </Texte>
-            </Texte>
-          ))}
-        </Carte>
-      )}
+      {evolutions.length > 0 && <Evolution evolutions={evolutions} />}
       {donnee && donnee.length === 0 && <Texte doux>Aucune mesure enregistrée pour l’instant.</Texte>}
       {donnee && donnee.length > 0 && (
         <Carte>

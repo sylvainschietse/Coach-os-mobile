@@ -1,6 +1,7 @@
 // C03 — Fiche Contact reprise de RecordEditor (table Contacts) et ContactBoosters.tsx :
-// modale `max-w-3xl`, initiales + coordonnées + statut, rubriques Coordonnées / Boosters / Nutrition / Photos,
-// grille deux colonnes, pied collant (état du dossier, Fermer, Enregistrer).
+// modale `max-w-3xl`, initiales + coordonnées + statut, grille deux colonnes, pied collant (état du dossier, Fermer, Enregistrer).
+// Fiche unique de la personne : Coordonnées, Boosters, puis, une fois cliente, Programme, Suivi et Nutrition ; Documents
+// (bilans complets compris) pour tous.
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -33,19 +34,26 @@ import { NutritionDuClient } from '../alimentation/nutrition-coach';
 import { BoutonContour, SousNav, type OngletDef } from '../coque';
 import { AbonnementClient } from '../abonnement';
 import { AccesAppli } from './acces';
-import { Photos } from '../suivi/photos';
+import { ProgrammeClient, SuiviClient } from '../fiche-client';
+import { Bilans } from './bilans';
+import { Documents } from './documents';
 import { Chargement, Erreur } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
 import { Cellule, Choix, Grille, Initiales, Modale, PiedEditeur, Repliable, Saisie, Valeur } from './dossier';
 
-export type VoletFiche = 'fiche' | 'boosters' | 'nutrition' | 'photos';
+export type VoletFiche = 'fiche' | 'boosters' | 'programme' | 'suivi' | 'nutrition' | 'documents';
+export const VOLETS_FICHE: VoletFiche[] = ['fiche', 'boosters', 'programme', 'suivi', 'nutrition', 'documents'];
 const VOLETS: OngletDef<VoletFiche>[] = [
   { cle: 'fiche', libelle: 'Coordonnées' },
   { cle: 'boosters', libelle: 'Boosters' },
+  { cle: 'programme', libelle: 'Programme' },
+  { cle: 'suivi', libelle: 'Suivi' },
   { cle: 'nutrition', libelle: 'Nutrition' },
-  { cle: 'photos', libelle: 'Photos' },
+  { cle: 'documents', libelle: 'Documents' },
 ];
+/** Un prospect n'a pas encore d'espace client : ni programme, ni suivi, ni nutrition. */
+const VOLETS_CLIENT: VoletFiche[] = ['programme', 'suivi', 'nutrition'];
 
 type Brouillon = Record<keyof Required<SaisieContactFiche>, string>;
 const CLES: (keyof Brouillon)[] = [
@@ -87,6 +95,7 @@ export function FicheContactModale({
   onBooster,
   onNouveauBooster,
   onSupprimerBooster,
+  ...autres
 }: {
   /** Absent : création d'un contact. */
   id?: string;
@@ -98,7 +107,7 @@ export function FicheContactModale({
   onBooster: (b: Booster) => void;
   onNouveauBooster: (contactId: string) => void;
   onSupprimerBooster: (b: Booster, contact: Contact) => void;
-}) {
+} & ActionsFiche) {
   const charge = useCharger(() => (id ? crm.fiche(id) : Promise.resolve(null)), `fiche-${id ?? 'nouveau'}`);
   useRechargerSur(charge.recharger, ecouterCrm);
   const fiche = charge.donnee;
@@ -120,8 +129,17 @@ export function FicheContactModale({
       onBooster={onBooster}
       onNouveauBooster={onNouveauBooster}
       onSupprimerBooster={onSupprimerBooster}
+      {...autres}
     />
   );
+}
+
+/** Ce que la fiche ouvre au-dessus d'elle : documents, bilans complets, et l'appli telle que le client la voit. */
+export interface ActionsFiche {
+  onDocument: (id: string | 'nouveau') => void;
+  onBilan: (id: string | 'nouveau') => void;
+  onSupprimerBilan: (x: { id: string; nom: string; contact?: string }) => void;
+  onVoirAppli: (clientId: string) => void;
 }
 
 function Editeur({
@@ -133,6 +151,10 @@ function Editeur({
   onBooster,
   onNouveauBooster,
   onSupprimerBooster,
+  onDocument,
+  onBilan,
+  onSupprimerBilan,
+  onVoirAppli,
 }: {
   fiche?: Fiche;
   volet: VoletFiche;
@@ -142,8 +164,11 @@ function Editeur({
   onBooster: (b: Booster) => void;
   onNouveauBooster: (contactId: string) => void;
   onSupprimerBooster: (b: Booster, contact: Contact) => void;
-}) {
+} & ActionsFiche) {
   const contact = fiche?.contact;
+  const { profil } = useSession();
+  const coachId = profil?.role === 'coach' ? profil.coachId : '';
+  const volets = VOLETS.filter((v) => contact?.clientId || !VOLETS_CLIENT.includes(v.cle));
   const [initial, setInitial] = useState(() => brouillonDe(contact));
   const [brouillon, setBrouillon] = useState(initial);
   const [occupe, setOccupe] = useState(false);
@@ -212,7 +237,7 @@ function Editeur({
             </View>
             <SousNav
               nom="Rubriques de la fiche client"
-              onglets={VOLETS}
+              onglets={volets}
               valeur={volet}
               onChange={(v) =>
                 v !== volet &&
@@ -280,14 +305,18 @@ function Editeur({
           onSupprimer={(b) => onSupprimerBooster(b, fiche.contact)}
         />
       )}
+      {volet === 'fiche' && contact?.clientId && (
+        <View style={{ marginTop: espace(4), alignSelf: 'flex-start' }}>
+          <BoutonContour libelle="Voir son appli" onPress={() => onVoirAppli(contact.clientId!)} />
+        </View>
+      )}
+      {volet === 'programme' && contact?.clientId && <ProgrammeClient key={contact.clientId} clientId={contact.clientId} coachId={coachId} />}
+      {volet === 'suivi' && contact?.clientId && <SuiviClient key={contact.clientId} clientId={contact.clientId} />}
       {volet === 'nutrition' && contact && <NutritionContact contact={contact} />}
-      {volet === 'photos' && (
-        <View style={{ marginVertical: espace(4), borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 12, padding: espace(4) }}>
-          {contact?.clientId ? (
-            <Photos key={contact.clientId} clientId={contact.clientId} proprietaire={false} />
-          ) : (
-            <Text style={styles.aide}>Photos : aucun espace client rattaché à ce contact.</Text>
-          )}
+      {volet === 'documents' && contact && (
+        <View style={{ marginTop: espace(4), gap: espace(6) }}>
+          <Bilans contactId={contact.id} onOuvrir={onBilan} onNouveau={() => onBilan('nouveau')} onSupprimer={onSupprimerBilan} />
+          <Documents contactId={contact.id} onOuvrir={onDocument} onNouveau={() => onDocument('nouveau')} />
         </View>
       )}
     </Modale>

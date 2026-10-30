@@ -57,12 +57,14 @@ export function Documents({
   onNouveau,
 }: {
   contactId?: string;
-  onToutAfficher: () => void;
+  /** Absent dans la fiche : la liste y est déjà celle de ce contact. */
+  onToutAfficher?: () => void;
   onOuvrir: (id: string) => void;
   onNouveau: () => void;
 }) {
   const charge = useDonnees();
   const [recherche, setRecherche] = useState('');
+  const dansFiche = !!contactId && !onToutAfficher;
   const [suppression, setSuppression] = useState<Document>();
 
   if (charge.erreur && !charge.donnee)
@@ -82,11 +84,19 @@ export function Documents({
 
   return (
     <View style={{ gap: espace(4) }}>
-      <View style={styles.outils}>
-        <Recherche valeur={recherche} onChange={setRecherche} />
-        <BoutonPrincipal libelle="Ajouter un document" onPress={onNouveau} />
-      </View>
-      {contactId && (
+      {/* Dans la fiche (pas de « Afficher tous ») : la liste du contact, sans recherche. */}
+      {dansFiche ? (
+        <View style={[styles.outils, { justifyContent: 'space-between', alignItems: 'center' }]}>
+          <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: couleurs.texte }}>Documents</Text>
+          <BoutonPrincipal libelle="Ajouter un document" onPress={onNouveau} />
+        </View>
+      ) : (
+        <View style={styles.outils}>
+          <Recherche valeur={recherche} onChange={setRecherche} />
+          <BoutonPrincipal libelle="Ajouter un document" onPress={onNouveau} />
+        </View>
+      )}
+      {contactId && onToutAfficher && (
         <Text style={styles.filtre}>
           Dossier : {nom(contactId) || 'ce contact'}{' '}
           <Text accessibilityRole="button" onPress={onToutAfficher} style={{ textDecorationLine: 'underline' }}>
@@ -105,7 +115,7 @@ export function Documents({
             onEnvoi={charge.recharger}
             onOuvrir={() => onOuvrir(d.id)} onSupprimer={() => setSuppression(d)} />
         ))}
-        {!visibles.length && <Vide titre="Aucun dossier pour ces filtres." />}
+        {!visibles.length && <Vide titre={dansFiche ? 'Aucun document pour ce contact.' : 'Aucun dossier pour ces filtres.'} />}
       </View>
       {suppression && (
         <ConfirmerSuppression

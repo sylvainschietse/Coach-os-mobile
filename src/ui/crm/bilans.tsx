@@ -8,9 +8,11 @@ import { useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { crm, ecouterCrm } from '@/data/crm';
+import { depot } from '@/data';
 import { depuisBase64, documents, ecouterDocuments, type Fichier } from '@/data/documents';
 import { ecrireJour, jourLocal, lireJour, type Carnet } from '@/domain/crm';
 import type { Document } from '@/domain/documents';
+import type { Mensuration } from '@/domain/types';
 import { bilanHtml, ecartPrecedent, PILIERS, type BilanCoach, type Pilier, type SaisieBilan } from '@/domain/gestion';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
@@ -42,7 +44,8 @@ export function Bilans({
   onSupprimer,
 }: {
   contactId?: string;
-  onToutAfficher: () => void;
+  /** Absent dans la fiche : la liste y est déjà celle de ce contact. */
+  onToutAfficher?: () => void;
   onOuvrir: (id: string) => void;
   onNouveau: () => void;
   onSupprimer: (x: { id: string; nom: string; contact?: string }) => void;
@@ -52,6 +55,7 @@ export function Bilans({
   useRechargerSur(charge.recharger, ecouterCrm);
   useRechargerSur(charge.recharger, ecouterDocuments);
   const [recherche, setRecherche] = useState('');
+  const dansFiche = !!contactId && !onToutAfficher;
   const [archives, setArchives] = useState(false);
 
   if (charge.erreur && !charge.donnee)
@@ -74,11 +78,19 @@ export function Bilans({
 
   return (
     <View style={{ gap: espace(4) }}>
-      <View style={styles.outils}>
-        <Recherche valeur={recherche} onChange={setRecherche} />
-        <BoutonPrincipal libelle="Nouveau bilan" onPress={onNouveau} />
-      </View>
-      {contactId && (
+      {/* Dans la fiche (pas de « Afficher tous ») : la liste du contact, sans recherche. */}
+      {dansFiche ? (
+        <View style={[styles.outils, { justifyContent: 'space-between', alignItems: 'center' }]}>
+          <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: couleurs.texte }}>Bilans complets</Text>
+          <BoutonPrincipal libelle="Nouveau bilan" onPress={onNouveau} />
+        </View>
+      ) : (
+        <View style={styles.outils}>
+          <Recherche valeur={recherche} onChange={setRecherche} />
+          <BoutonPrincipal libelle="Nouveau bilan" onPress={onNouveau} />
+        </View>
+      )}
+      {contactId && onToutAfficher && (
         <Text style={styles.filtre}>
           Dossier : {filtre ? nomComplet(filtre) : 'ce contact'}{' '}
           <Text accessibilityRole="button" onPress={onToutAfficher} style={{ textDecorationLine: 'underline' }}>
@@ -86,7 +98,7 @@ export function Bilans({
           </Text>
         </Text>
       )}
-      <CaseACocher petite libelle="Inclure les dossiers archivés" valeur={archives} onChange={setArchives} />
+      {!dansFiche && <CaseACocher petite libelle="Inclure les dossiers archivés" valeur={archives} onChange={setArchives} />}
       <View style={{ gap: espace(3) }}>
         {visibles.map((b) => (
           <CarteBilan
@@ -101,7 +113,7 @@ export function Bilans({
             }}
           />
         ))}
-        {!visibles.length && <Vide titre="Aucun dossier pour ces filtres." />}
+        {!visibles.length && <Vide titre={dansFiche ? 'Aucun bilan complet pour ce contact.' : 'Aucun dossier pour ces filtres.'} />}
       </View>
     </View>
   );
@@ -209,14 +221,16 @@ type Brouillon = {
   priorites: string[];
 };
 const f = (v?: number) => (v === undefined ? '' : String(v).replace('.', ','));
-function brouillonDe(b: BilanCoach | undefined, contactId?: string): Brouillon {
+/** Un nouveau bilan reprend les dernières mensurations du client, pour ne pas les saisir deux fois. */
+function brouillonDe(b: BilanCoach | undefined, contactId?: string, mesures?: Mensuration[]): Brouillon {
+  const derniere = (k: 'poidsKg' | 'tourTailleCm' | 'tourHanchesCm') => (b ? undefined : mesures?.find((m) => m[k] !== undefined)?.[k]);
   return {
     contactId: b?.contactId ?? contactId ?? '',
     date: ecrireJour(b?.date ?? jourLocal(new Date())),
-    poids: f(b?.poids),
+    poids: f(b?.poids ?? derniere('poidsKg')),
     taille: f(b?.taille),
-    tourTaille: f(b?.tourTaille),
-    tourHanches: f(b?.tourHanches),
+    tourTaille: f(b?.tourTaille ?? derniere('tourTailleCm')),
+    tourHanches: f(b?.tourHanches ?? derniere('tourHanchesCm')),
     piliers: Object.fromEntries(PILIERS.map((p) => [p, b?.piliers[p] == null ? '' : String(b.piliers[p])])),
     synthese: b?.synthese ?? '',
     priorites: [0, 1, 2].map((i) => b?.priorites[i] ?? ''),
@@ -229,7 +243,13 @@ function lireMesure(t: string): number | undefined | null {
 }
 
 export function EditeurBilan({ id, contactId, onFermer }: { id?: string; contactId?: string; onFermer: () => void }) {
-  const charge = useCharger(chargerTout, `bilan-${id ?? 'nouveau'}`);
+  const charge = useCharger(async () => {
+    const tout = await chargerTout();
+    const clientId = !id && contactId ? tout.carnet.contacts.find((c) => c.id === contactId)?.clientId : undefined;
+    // Les mesures sont un plus : sans elles, le bilan s'ouvre vide comme avant.
+    const mesures = clientId ? await depot.mensurations(clientId).catch(() => []) : [];
+    return { ...tout, mesures: [...mesures].sort((a, b) => b.date.localeCompare(a.date)) };
+  }, `bilan-${id ?? 'nouveau'}-${contactId ?? ''}`);
   if (charge.erreur && !charge.donnee)
     return (
       <Modale titre="Nouveau bilan" onFermer={onFermer}>
@@ -256,13 +276,28 @@ export function EditeurBilan({ id, contactId, onFermer }: { id?: string; contact
       carnet={charge.donnee.carnet}
       doc={bilan?.documentId ? charge.donnee.docs.get(bilan.documentId) : undefined}
       contactId={contactId}
+      mesures={charge.donnee.mesures}
       onFermer={onFermer}
     />
   );
 }
 
-function FormulaireBilan({ bilan, carnet, doc, contactId, onFermer }: { bilan?: BilanCoach; carnet: Carnet; doc?: Document; contactId?: string; onFermer: () => void }) {
-  const [initial, setInitial] = useState(() => brouillonDe(bilan, contactId));
+function FormulaireBilan({
+  bilan,
+  carnet,
+  doc,
+  contactId,
+  mesures: dernieresMesures,
+  onFermer,
+}: {
+  bilan?: BilanCoach;
+  carnet: Carnet;
+  doc?: Document;
+  contactId?: string;
+  mesures: Mensuration[];
+  onFermer: () => void;
+}) {
+  const [initial, setInitial] = useState(() => brouillonDe(bilan, contactId, dernieresMesures));
   const [b, setB] = useState(initial);
   const [id, setId] = useState(bilan?.id);
   const [occupe, setOccupe] = useState(false);
