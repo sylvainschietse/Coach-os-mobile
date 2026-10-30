@@ -1,5 +1,5 @@
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { LogOut, ShieldCheck } from 'lucide-react-native';
+import { Redirect, useLocalSearchParams } from 'expo-router';
+import { LogOut } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
@@ -16,7 +16,7 @@ import { LanceurMinuteurs, Minuteurs } from '@/ui/entrainement/minuteurs';
 import { EspaceClient, type OngletClient } from '@/ui/espace-client';
 import { couleurs, espace, LARGEUR_CLIENT } from '@/ui/theme';
 
-const ONGLETS: OngletClient[] = ['programme', 'historique', 'suivi', 'nutrition', 'documents'];
+const ONGLETS: OngletClient[] = ['accueil', 'programme', 'suivi', 'nutrition', 'moi'];
 
 export default function AccueilClient() {
   const { profil, deconnecter } = useSession();
@@ -24,7 +24,7 @@ export default function AccueilClient() {
   const clientId = profil?.role === 'client' ? profil.clientId : '';
   const accord = useAccord(clientId);
   if (profil?.role !== 'client') return <Redirect href="/" />;
-  const initial = ONGLETS.find((o) => o === onglet) ?? 'programme';
+  const initial = ONGLETS.find((o) => o === onglet) ?? 'accueil';
 
   if (profil.suspendu) {
     return (
@@ -68,7 +68,6 @@ export default function AccueilClient() {
           droite={
             <>
               <LanceurMinuteurs />
-              <BoutonIcone icone={ShieldCheck} nom="Mes données" onPress={() => demanderSortie(() => router.push('/client/donnees'))} />
               <BoutonIcone icone={LogOut} nom="Se déconnecter" onPress={() => demanderSortie(deconnecter)} />
             </>
           }

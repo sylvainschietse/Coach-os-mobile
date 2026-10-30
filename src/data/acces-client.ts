@@ -29,3 +29,18 @@ export async function supprimerMonCompte(): Promise<void> {
     throw new Error(corps?.erreur ?? 'Impossible de supprimer ton compte pour le moment.');
   }
 }
+
+export interface MesInfos {
+  prenom?: string;
+  nom?: string;
+  email?: string;
+  telephone?: string;
+}
+
+/** Coordonnées du dossier, telles que le coach les a saisies. En démo, rien n'est enregistré. */
+export async function mesInfos(clientId: string): Promise<MesInfos> {
+  if (!supabase) return {};
+  const { data, error } = await supabase.from('clients').select('prenom, nom, email, telephone').eq('id', clientId).maybeSingle();
+  if (error) throw new Error('Impossible de lire tes informations. Vérifie ta connexion.');
+  return { prenom: data?.prenom ?? undefined, nom: data?.nom ?? undefined, email: data?.email ?? undefined, telephone: data?.telephone ?? undefined };
+}

@@ -113,11 +113,15 @@ export function EntrainementClient({
   vue,
   onRepos,
   onHaut,
+  onProgramme,
 }: {
   clientId: string;
   prenom: string;
   apercu?: boolean;
-  vue: 'programme' | 'historique';
+  /** accueil : prochaine séance, cycle et calendrier ; programme : séances du cycle, consignes et séances faites. */
+  vue: 'accueil' | 'programme';
+  /** « Voir mon programme » ouvre l'onglet Programme au lieu d'une page de l'accueil. */
+  onProgramme?: () => void;
   onRepos: (secondes: number, libelle: string) => void;
   /** Remonte en haut de l'écran quand on change de page. */
   onHaut?: () => void;
@@ -154,14 +158,58 @@ export function EntrainementClient({
     return () => abonnement.remove();
   }, [surAccueil, onHaut]);
 
-  if (vue === 'historique')
+  const apresEnregistrement = () => {
+    recharger();
+    calendrier.recharger();
+  };
+
+  const voirProgramme = () => (onProgramme ? demanderSortie(onProgramme) : aller({ nom: 'programme' }));
+
+  const programme = espace && (
+    <>
+      <CarteCycle espace={espace} />
+      {espace.cycle && (
+        <View style={{ gap: 12 }}>
+          <View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <Text style={ts.titre}>Mes séances au programme</Text>
+              <Text style={ts.doux}>
+                {espace.seances.length} séance{espace.seances.length > 1 ? 's' : ''}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
+              <Lock size={12} color={couleurs.texteDoux} />
+              <Text style={ts.doux}>{apercu ? 'Aperçu : seul le client peut noter une séance.' : 'Ouvrez une séance pour voir les exercices, puis notez ce que vous avez réalisé.'}</Text>
+            </View>
+          </View>
+          {espace.seances.map((s) => (
+            <SeanceLog
+              key={`${s.id}:${clientId}:${espace.cycle!.id}`}
+              clientId={clientId}
+              cycleId={espace.cycle!.id}
+              seance={s}
+              historique={espace.realisations}
+              references={references}
+              apercu={apercu}
+              onRepos={onRepos}
+              onEnregistre={apresEnregistrement}
+            />
+          ))}
+        </View>
+      )}
+      <TexteLong texte={espace.programme?.consignes} libelle="Consignes" />
+      <Planning espace={espace} />
+    </>
+  );
+
+  if (vue === 'programme')
     return (
       <>
         <GardeBrouillon />
         <Hero
-          kicker="Votre progression"
-          titre="Mes séances"
-          sousTitre="Retrouvez vos séances enregistrées et vos ressentis."
+          kicker="Mon entraînement"
+          titre="Mon programme"
+          sousTitre="Votre cycle, ses séances et tout ce que vous avez déjà réalisé."
           droite={<BoutonContour nom="Actualiser" icone={RefreshCw} onPress={() => demanderSortie(recharger)} />}
         />
         {erreur && !espace ? (
@@ -170,8 +218,9 @@ export function EntrainementClient({
           <View style={{ height: 256, borderRadius: 12, backgroundColor: couleurs.discret }} />
         ) : (
           <>
+            {programme}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={ts.titreSection}>Historique</Text>
+              <Text style={ts.titreSection}>Mes séances réalisées</Text>
               <Badge libelle={`${nbSeries(espace)} série${nbSeries(espace) > 1 ? 's' : ''}`} />
             </View>
             <Historique espace={espace} />
@@ -179,11 +228,6 @@ export function EntrainementClient({
         )}
       </>
     );
-
-  const apresEnregistrement = () => {
-    recharger();
-    calendrier.recharger();
-  };
 
   return (
     <>
@@ -220,38 +264,7 @@ export function EntrainementClient({
       ) : page.nom === 'programme' ? (
         <>
           <Retour libelle="Retour à l’accueil" onPress={accueil} />
-          <CarteCycle espace={espace} />
-          {espace.cycle && (
-            <View style={{ gap: 12 }}>
-              <View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <Text style={ts.titre}>Mes séances au programme</Text>
-                  <Text style={ts.doux}>
-                    {espace.seances.length} séance{espace.seances.length > 1 ? 's' : ''}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
-                  <Lock size={12} color={couleurs.texteDoux} />
-                  <Text style={ts.doux}>{apercu ? 'Aperçu : seul le client peut noter une séance.' : 'Ouvrez une séance pour voir les exercices, puis notez ce que vous avez réalisé.'}</Text>
-                </View>
-              </View>
-              {espace.seances.map((s) => (
-                <SeanceLog
-                  key={`${s.id}:${clientId}:${espace.cycle!.id}`}
-                  clientId={clientId}
-                  cycleId={espace.cycle!.id}
-                  seance={s}
-                  historique={espace.realisations}
-                  references={references}
-                  apercu={apercu}
-                  onRepos={onRepos}
-                  onEnregistre={apresEnregistrement}
-                />
-              ))}
-            </View>
-          )}
-          <TexteLong texte={espace.programme?.consignes} libelle="Consignes" />
-          <Planning espace={espace} />
+          {programme}
         </>
       ) : (
         <>
@@ -278,8 +291,8 @@ export function EntrainementClient({
             </View>
           ) : (
             <>
-              <ProchaineSeance espace={espace} creneaux={calendrier.donnee} apercu={apercu} onDemarrer={demarrer} onProgramme={() => aller({ nom: 'programme' })} />
-              <CarteProgramme espace={espace} onPress={() => aller({ nom: 'programme' })} />
+              <ProchaineSeance espace={espace} creneaux={calendrier.donnee} apercu={apercu} onDemarrer={demarrer} onProgramme={voirProgramme} />
+              <CarteProgramme espace={espace} onPress={voirProgramme} />
               <MonCalendrier
                 key={`${clientId}:${espace.cycle.id}`}
                 clientId={clientId}
