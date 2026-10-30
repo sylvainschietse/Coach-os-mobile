@@ -58,6 +58,7 @@ export function SeanceLog({
   references,
   planificationId,
   ouverture,
+  ouverteAuDepart,
   apercu,
   onRepos,
   onEnregistre,
@@ -71,6 +72,8 @@ export function SeanceLog({
   planificationId?: string;
   /** Change à chaque « Ouvrir la séance » du calendrier. */
   ouverture?: number;
+  /** Démarrée depuis l'accueil ou le calendrier : la séance s'affiche déjà ouverte. */
+  ouverteAuDepart?: boolean;
   apercu?: boolean;
   onRepos: (secondes: number, libelle: string) => void;
   onEnregistre: (r: Enregistrement) => void;
@@ -78,7 +81,7 @@ export function SeanceLog({
   const cle = `coachos:brouillon:${clientId}:${cycleId}:${seance.id}`;
   const [d, setD] = useState<Brouillon>(vide);
   const [pret, setPret] = useState(false);
-  const [ouvert, setOuvert] = useState(false);
+  const [ouvert, setOuvert] = useState(!!ouverteAuDepart);
   const [vu, setVu] = useState(ouverture);
   const [etat, setEtat] = useState<'repos' | 'envoi' | 'ok' | 'doublon' | 'erreur'>('repos');
   const [erreur, setErreur] = useState('');

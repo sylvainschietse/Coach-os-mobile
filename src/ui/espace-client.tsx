@@ -2,7 +2,7 @@
 // Nutrition / Documents, sous-rubriques Suivi et Nutrition. Sert aussi à l'aperçu « Vue client » du coach.
 import { useFocusEffect } from 'expo-router';
 import { Dumbbell, FileText, History, TrendingUp, Utensils } from 'lucide-react-native';
-import { useRef, useState, type ComponentRef } from 'react';
+import { useCallback, useRef, useState, type ComponentRef } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { depot } from '@/data';
@@ -11,7 +11,7 @@ import { demanderSortie } from '@/lib/brouillon';
 import { useCharger } from '@/lib/useCharger';
 
 import { EntrainementClient } from './entrainement/espace-entrainement';
-import { BoutonPanneauMinuteurs, useMinuteurs } from './entrainement/minuteurs';
+import { useMinuteurs } from './entrainement/minuteurs';
 import { MesDocuments } from './mes-documents';
 import { NutritionProfil } from './nutrition/nutrition';
 import { BandeauDemo, BarreClient, Selecteur, SousNav, type OngletDef } from './coque';
@@ -66,9 +66,10 @@ export function EspaceClient({
   const minuteurs = useMinuteurs();
   const defilement = useRef<ComponentRef<typeof ScrollView>>(null);
 
+  const enHaut = useCallback(() => defilement.current?.scrollTo({ y: 0, animated: false }), []);
   const aller = (o: OngletClient) => {
     setOnglet(o);
-    defilement.current?.scrollTo({ y: 0, animated: false });
+    enHaut();
   };
 
   return (
@@ -89,7 +90,6 @@ export function EspaceClient({
           )}
           {(onglet === 'programme' || onglet === 'historique') && (
             <>
-              {onglet === 'programme' && <BoutonPanneauMinuteurs />}
               <EnAttente clientId={clientId} apercu={!!apercu} />
               <EntrainementClient
                 key={`${clientId}:${onglet}`}
@@ -98,12 +98,7 @@ export function EspaceClient({
                 apercu={!!apercu}
                 vue={onglet}
                 onRepos={(secondes, libelle) => minuteurs?.repos(secondes, libelle)}
-                onAller={(o) =>
-                  demanderSortie(() => {
-                    if (o === 'suivi') setSuivi('hebdo');
-                    aller(o);
-                  })
-                }
+                onHaut={enHaut}
               />
             </>
           )}
