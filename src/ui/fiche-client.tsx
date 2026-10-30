@@ -67,7 +67,7 @@ export function FicheClient({ clientId, coachId }: { clientId: string; coachId: 
       {onglet === 'seances' && <SeancesClientCoach clientId={clientId} coachId={coachId} />}
       {onglet === 'historique' && <DetailClient clientId={clientId} />}
       {onglet === 'mesures' && <Mensurations clientId={clientId} saisie={false} />}
-      {onglet === 'quotidien' && <Quotidien clientId={clientId} saisie={false} cibles parCoach />}
+      {onglet === 'quotidien' && <Quotidien clientId={clientId} cibles parCoach />}
       {onglet === 'records' && <Records clientId={clientId} saisie={false} />}
       {onglet === 'sport' && <Sport clientId={clientId} proprietaire={false} />}
       {onglet === 'nutrition' && <Nutrition clientId={clientId} coachId={coachId} />}

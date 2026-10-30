@@ -125,7 +125,7 @@ export function Quotidien({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}>
             <Activity size={20} color={couleurs.rouge} />
             <Text accessibilityRole="header" style={[ts.titre, { fontSize: 18 }]}>
-              {saisie ? 'Mon quotidien' : 'Quotidien'}
+              {saisie && !parCoach ? 'Mon quotidien' : 'Quotidien'}
             </Text>
           </View>
           <BoutonContour icone={RefreshCw} nom="Actualiser le quotidien" desactive={occupe} onPress={recharger} />
@@ -148,7 +148,8 @@ export function Quotidien({
         </View>
       )}
 
-      {saisie && donnee && (
+      {/* La montre et le téléphone sont ceux du client : jamais lus depuis la session du coach. */}
+      {saisie && !parCoach && donnee && (
         <Telephone
           clientId={clientId}
           aujourdhui={aujourdhui}

@@ -139,8 +139,8 @@ function RubriqueObjectifs({ clientId, apercu }: { clientId: string; apercu: boo
         <Puce libelle="Mes objectifs perso" actif={vue === 'perso'} onPress={() => demanderSortie(() => setVue('perso'))} />
       </Puces>
       {vue === 'quotidien' ? (
-        // En aperçu, le coach ne note pas à la place du client mais peut choisir ses suivis et régler les cibles.
-        <Quotidien clientId={clientId} saisie={!apercu} cibles parCoach={apercu} />
+        // En aperçu, le coach peut aussi noter une journée pour son client (pendant une séance, par exemple).
+        <Quotidien clientId={clientId} cibles parCoach={apercu} />
       ) : (
         <Objectifs clientId={clientId} apercu={apercu} />
       )}

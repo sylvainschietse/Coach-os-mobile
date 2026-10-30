@@ -1,6 +1,6 @@
 /// <reference types="node" />
 // Suivis du quotidien dans un vrai Postgres (PGlite) : chaque client ne voit et n'écrit que ses relevés,
-// son coach les lit et règle les cibles, un autre coach ne voit rien.
+// son coach les lit, peut noter une journée et règle les cibles, un autre coach ne voit rien.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -88,12 +88,15 @@ describe('suivis du quotidien', () => {
     expect(lu.rows[0].n).toBe(0);
   });
 
-  it('le coach lit les relevés de ses clients sans pouvoir les modifier', async () => {
+  it('le coach lit et note le quotidien de ses clients, pas ceux d’un autre coach', async () => {
     const lu = await en(ids.userCoach1, `select count(*)::int as n from public.suivis_quotidiens where client_id = $1`, [ids.clientA]);
     expect(lu.rows[0].n).toBe(2);
-    await en(ids.userCoach1, `update public.suivis_quotidiens set valeur = 0 where client_id = $1`, [ids.clientA]);
-    const apres = await en(ids.userClientA, `select max(valeur)::float as m from public.suivis_quotidiens`);
-    expect(apres.rows[0].m).toBe(8450);
+    await ecrire(ids.userCoach1, ids.clientA, 'eau', 1.5);
+    await en(ids.userCoach1, `update public.suivis_quotidiens set valeur = 9000 where client_id = $1 and indicateur = 'pas'`, [ids.clientA]);
+    const apres = await en(ids.userClientA, `select indicateur, valeur::float as v from public.suivis_quotidiens order by indicateur`);
+    expect(apres.rows).toEqual([{ indicateur: 'cigarettes', v: 6 }, { indicateur: 'eau', v: 1.5 }, { indicateur: 'pas', v: 9000 }]);
+    await expect(ecrire(ids.userCoach1, ids.clientA, 'pas', 100, `current_date + 5`)).rejects.toThrow();
+    await expect(ecrire(ids.userCoach2, ids.clientA, 'pas', 100)).rejects.toThrow();
     const autre = await en(ids.userCoach2, `select count(*)::int as n from public.suivis_quotidiens`);
     expect(autre.rows[0].n).toBe(0);
   });
