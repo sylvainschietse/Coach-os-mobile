@@ -10,14 +10,11 @@ export interface Abonnement {
 
 export const TARIFS = { appli: 59, optionNutrition: 40, seance: 60 } as const;
 
-export type TypePack = "unite" | "pack10";
-export const PACKS: Record<
-  TypePack,
-  { libelle: string; seances: number; prix: number }
-> = {
-  unite: { libelle: "Séance à l’unité", seances: 1, prix: TARIFS.seance },
+export type TypePack = 'unite' | 'pack10';
+export const PACKS: Record<TypePack, { libelle: string; seances: number; prix: number }> = {
+  unite: { libelle: 'Séance à l’unité', seances: 1, prix: TARIFS.seance },
   pack10: {
-    libelle: "Pack 10 séances + 1 offerte",
+    libelle: 'Pack 10 séances + 1 offerte',
     seances: 11,
     prix: 10 * TARIFS.seance,
   },
@@ -46,9 +43,7 @@ export function soldeSeances(packs: PackSeances[]) {
 
 /** Le pack à décompter : le plus ancien qui a encore des séances. */
 export function packADecompter(packs: PackSeances[]): PackSeances | undefined {
-  return [...packs]
-    .filter((p) => restantes(p) > 0)
-    .sort((a, b) => a.acheteLe.localeCompare(b.acheteLe))[0];
+  return [...packs].filter((p) => restantes(p) > 0).sort((a, b) => a.acheteLe.localeCompare(b.acheteLe))[0];
 }
 
 /** Montant mensuel de l'abonnement, pour le coach. */

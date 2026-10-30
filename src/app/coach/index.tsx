@@ -16,10 +16,11 @@ import { useCallback, useState } from 'react';
 import { ScrollView, View, useWindowDimensions } from 'react-native';
 
 import { depot } from '@/data';
+import { abonnements } from '@/data/abonnements';
 import { crm, ecouterCrm } from '@/data/crm';
 import { useSession } from '@/data/session';
 import type { Booster, Contact } from '@/domain/crm';
-import { encaissementsDuMois } from '@/domain/gestion';
+import { aEncaisser, encaissementsDuMois } from '@/domain/gestion';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { useRetourAndroid } from '@/lib/retour-android';
 import { NutritionCoach } from '@/ui/alimentation/nutrition-coach';
@@ -35,7 +36,7 @@ import {
   Vide,
   type OngletDef,
 } from '@/ui/coque';
-import { Carte, Chargement, Erreur, Texte } from '@/ui/composants';
+import { Carte, Chargement, Erreur, Puce, Puces, Texte } from '@/ui/composants';
 import { Bilans, EditeurBilan } from '@/ui/crm/bilans';
 import { Boosters } from '@/ui/crm/boosters';
 import { Automatisations } from '@/ui/crm/automatisations';
@@ -57,15 +58,22 @@ import { EditeurSeance } from '@/ui/entrainement/seance';
 import { couleurs, espace, LARGEUR_COACH, LARGEUR_LG } from '@/ui/theme';
 
 type Onglet = 'crm' | 'airtable' | 'suivis' | 'bilan' | 'hebdo' | 'nutrition';
-const ONGLETS: OngletDef<Onglet>[] = [
-  { cle: 'crm', libelle: 'Tableau de bord' },
-  { cle: 'airtable', libelle: 'Programmes' },
-  { cle: 'suivis', libelle: 'Cycles clients' },
-  { cle: 'bilan', libelle: 'Séances réalisées' },
-  { cle: 'hebdo', libelle: 'Bilans hebdo' },
+const TOUS: Onglet[] = ['crm', 'airtable', 'suivis', 'bilan', 'hebdo', 'nutrition'];
+/** Quatre onglets : « Clients » regroupe cycles, séances réalisées et bilans hebdo, client par client. */
+type OngletVisible = 'crm' | 'clients' | 'nutrition' | 'airtable';
+const ONGLETS: OngletDef<OngletVisible>[] = [
+  { cle: 'crm', libelle: 'Accueil' },
+  { cle: 'clients', libelle: 'Clients' },
   // Ajout demandé par Sylvain (absent de Zite) : recettes, clients suivis et plans alimentaires.
   { cle: 'nutrition', libelle: 'Nutrition' },
+  { cle: 'airtable', libelle: 'Programmes' },
 ];
+const SUIVI_CLIENTS: { cle: Onglet; libelle: string }[] = [
+  { cle: 'suivis', libelle: 'Cycles en cours' },
+  { cle: 'bilan', libelle: 'Séances réalisées' },
+  { cle: 'hebdo', libelle: 'Bilans hebdo' },
+];
+const visible = (o: Onglet): OngletVisible => (o === 'suivis' || o === 'bilan' || o === 'hebdo' ? 'clients' : o);
 
 type Rubrique = 'Accueil' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Automations';
 const RUBRIQUES: OngletDef<Rubrique>[] = [
@@ -79,6 +87,8 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Paiements', libelle: 'Paiements', icone: Wallet },
   { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
 ];
+/** Le journal des automatisations reste joignable par son adresse, mais n'encombre plus le menu. */
+const MENU_RUBRIQUES = RUBRIQUES.filter((r) => r.cle !== 'Automations');
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 
@@ -86,7 +96,7 @@ export default function EspaceCoach() {
   const { profil, email, deconnecter } = useSession();
   const { width } = useWindowDimensions();
   const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; client?: string; programme?: string; seance?: string } & ParamsDossier>();
-  const onglet = ONGLETS.find((o) => o.cle === params.onglet)?.cle ?? 'crm';
+  const onglet = TOUS.find((o) => o === params.onglet) ?? 'crm';
   const rubrique = RUBRIQUES.find((r) => r.cle === params.rubrique)?.cle ?? 'Accueil';
   const [apercu, setApercu] = useState<'coach' | 'client'>('coach');
   const [apercuClient, setApercuClient] = useState<string>();
@@ -155,7 +165,16 @@ export default function EspaceCoach() {
               <BandeauDemo />
             </View>
           )}
-          <OngletsCoach onglets={ONGLETS} valeur={onglet} onChange={(o) => naviguer(o)} />
+          <OngletsCoach onglets={ONGLETS} valeur={visible(onglet)} onChange={(o) => naviguer(o === 'clients' ? 'suivis' : o)} />
+          {visible(onglet) === 'clients' && (
+            <View style={{ marginBottom: espace(4) }}>
+              <Puces>
+                {SUIVI_CLIENTS.map((o) => (
+                  <Puce key={o.cle} libelle={o.libelle} actif={onglet === o.cle} onPress={() => naviguer(o.cle)} />
+                ))}
+              </Puces>
+            </View>
+          )}
           {onglet === 'crm' && (
             <Crm
               rubrique={rubrique}
@@ -251,9 +270,11 @@ function Crm({
   const [suppression, setSuppression] = useState<{ booster: Booster; contact: Contact }>();
   const [aSupprimer, setASupprimer] = useState<{ quoi: string; nom: string; contact?: string; action: () => Promise<void> }>();
   const charger = useCallback(async () => {
+    // Les abonnements du mois deviennent des lignes « En attente » avant de lire les paiements.
+    await abonnements.preparerEcheances().catch(() => undefined);
     const [contacts, journee, boosters, carnet] = await Promise.all([crm.contacts(), crm.journee(), crm.boosters(), crm.carnet()]);
     setMaj(new Date());
-    return { contacts, relances: journee.relances, boosters, encaissements: encaissementsDuMois(carnet, new Date()) };
+    return { contacts, relances: journee.relances, boosters, encaissements: encaissementsDuMois(carnet, new Date()), aEncaisser: aEncaisser(carnet) };
   }, []);
   const vue = useCharger(charger, 'vue-ensemble');
   useFocusEffect(vue.recharger);
@@ -274,7 +295,7 @@ function Crm({
 
   return (
     <View style={{ flexDirection: large ? 'row' : 'column', gap: 24, alignItems: large ? 'flex-start' : 'stretch' }}>
-      <MenuRubriques rubriques={RUBRIQUES} valeur={rubrique} onChange={(r) => onRubrique(r)} large={large} />
+      <MenuRubriques rubriques={MENU_RUBRIQUES} valeur={rubrique} onChange={(r) => onRubrique(r)} large={large} />
       <View style={{ flex: large ? 1 : undefined, minWidth: 0 }}>
         <EnTeteRubrique
           kicker="Gestion du coaching"

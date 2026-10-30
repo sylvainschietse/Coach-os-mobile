@@ -305,6 +305,12 @@ export function encaissementsDuMois(c: Carnet, maintenant: Date): number {
     .reduce((s, p) => s + (p.montant ?? 0), 0);
 }
 
+/** À encaisser : paiements « En attente » des dossiers actifs (abonnements du mois, packs vendus…). */
+export function aEncaisser(c: Carnet): number {
+  const actifs = new Set(c.contacts.filter((x) => x.statut !== 'archive').map((x) => x.id));
+  return c.paiements.filter((p) => p.statut === 'En attente' && (!p.contactId || actifs.has(p.contactId))).reduce((s, p) => s + (p.montant ?? 0), 0);
+}
+
 export const montantLisible = (v: number | undefined) =>
   v === undefined ? '—' : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v);
 

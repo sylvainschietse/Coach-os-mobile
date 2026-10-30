@@ -1,7 +1,6 @@
-// Espace client repris de coach-os-espace-client/App.tsx : barre du bas Programme / Séances / Suivi /
-// Nutrition / Documents, sous-rubriques Suivi et Nutrition. Sert aussi à l'aperçu « Vue client » du coach.
+// Espace client : barre du bas Accueil / Programme / Suivi / Nutrition / Moi, sous-rubriques Suivi et Nutrition. Sert aussi à l'aperçu « Vue client » du coach.
 import { useFocusEffect } from 'expo-router';
-import { Dumbbell, FileText, History, TrendingUp, Utensils } from 'lucide-react-native';
+import { Dumbbell, Home, TrendingUp, User, Utensils } from 'lucide-react-native';
 import { useCallback, useRef, useState, type ComponentRef } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
@@ -14,7 +13,7 @@ import { useCharger } from '@/lib/useCharger';
 import { SeancesRestantes } from './abonnement';
 import { EntrainementClient } from './entrainement/espace-entrainement';
 import { useMinuteurs } from './entrainement/minuteurs';
-import { MesDocuments } from './mes-documents';
+import { MonCompte } from './mon-compte';
 import { NutritionProfil } from './nutrition/nutrition';
 import { BandeauDemo, BarreClient, Selecteur, SousNav, type OngletDef } from './coque';
 import { Carte, Puce, Puces, Texte } from './composants';
@@ -27,22 +26,21 @@ import { Records } from './suivi/records';
 import { Sport } from './suivi/sport';
 import { couleurs, espace, LARGEUR_CLIENT, polices } from './theme';
 
-export type OngletClient = 'programme' | 'historique' | 'suivi' | 'nutrition' | 'documents';
-type RubriqueSuivi = 'hebdo' | 'mesures' | 'pr' | 'sport' | 'objectifs' | 'photos';
+export type OngletClient = 'accueil' | 'programme' | 'suivi' | 'nutrition' | 'moi';
+type RubriqueSuivi = 'hebdo' | 'mesures' | 'pr' | 'activite' | 'photos';
 
 const ONGLETS: OngletDef<OngletClient>[] = [
+  { cle: 'accueil', libelle: 'Accueil', icone: Home },
   { cle: 'programme', libelle: 'Programme', icone: Dumbbell },
-  { cle: 'historique', libelle: 'Séances', icone: History },
   { cle: 'suivi', libelle: 'Suivi', icone: TrendingUp },
   { cle: 'nutrition', libelle: 'Nutrition', icone: Utensils },
-  { cle: 'documents', libelle: 'Documents', icone: FileText },
+  { cle: 'moi', libelle: 'Moi', icone: User },
 ];
 const SUIVI: OngletDef<RubriqueSuivi>[] = [
   { cle: 'hebdo', libelle: 'Bilan semaine' },
-  { cle: 'mesures', libelle: 'Mesures' },
+  { cle: 'mesures', libelle: 'Mensurations' },
   { cle: 'pr', libelle: 'Performances' },
-  { cle: 'sport', libelle: 'Sport' },
-  { cle: 'objectifs', libelle: 'Objectifs' },
+  { cle: 'activite', libelle: 'Activité et objectifs' },
   { cle: 'photos', libelle: 'Photos' },
 ];
 
@@ -55,7 +53,7 @@ export function EspaceClient({
   clientId,
   prenom,
   apercu,
-  ongletInitial = 'programme',
+  ongletInitial = 'accueil',
 }: {
   clientId: string;
   prenom: string;
@@ -91,10 +89,9 @@ export function EspaceClient({
               />
             </View>
           )}
-          {(onglet === 'programme' || onglet === 'historique') && (
+          {(onglet === 'accueil' || onglet === 'programme') && (
             <>
               <EnAttente clientId={clientId} apercu={!!apercu} />
-              {onglet === 'programme' && <SeancesRestantes clientId={clientId} />}
               <EntrainementClient
                 key={`${clientId}:${onglet}`}
                 clientId={clientId}
@@ -103,7 +100,9 @@ export function EspaceClient({
                 vue={onglet}
                 onRepos={(secondes, libelle) => minuteurs?.repos(secondes, libelle)}
                 onHaut={enHaut}
+                onProgramme={() => aller('programme')}
               />
+              {onglet === 'accueil' && <SeancesRestantes clientId={clientId} />}
             </>
           )}
           {onglet === 'suivi' && (
@@ -112,15 +111,12 @@ export function EspaceClient({
               {suivi === 'hebdo' && <BilanSemaine key={clientId} clientId={clientId} apercu={!!apercu} />}
               {suivi === 'mesures' && <Mensurations key={clientId} clientId={clientId} />}
               {suivi === 'pr' && <Records key={clientId} clientId={clientId} />}
-              {suivi === 'sport' && <Sport key={clientId} clientId={clientId} proprietaire={!apercu} />}
-              {suivi === 'objectifs' && <RubriqueObjectifs key={clientId} clientId={clientId} apercu={!!apercu} />}
+              {suivi === 'activite' && <ActiviteObjectifs key={clientId} clientId={clientId} apercu={!!apercu} />}
               {suivi === 'photos' && <Photos key={clientId} clientId={clientId} proprietaire={!apercu} />}
             </>
           )}
           {onglet === 'nutrition' && abo.donnee && <NutritionProfil key={clientId} clientId={clientId} optionNutrition={abo.donnee.optionNutrition} />}
-          {onglet === 'documents' && (
-            <MesDocuments key={clientId} clientId={clientId} />
-          )}
+          {onglet === 'moi' && <MonCompte key={clientId} clientId={clientId} prenom={prenom} apercu={!!apercu} />}
         </View>
       </ScrollView>
       <BarreClient onglets={ONGLETS} valeur={onglet} onChange={(o) => demanderSortie(() => aller(o))} />
@@ -128,18 +124,21 @@ export function EspaceClient({
   );
 }
 
-/** Objectifs : ceux du quotidien (pas, eau, sommeil…) d'abord, puis les objectifs personnels à échéance. */
-function RubriqueObjectifs({ clientId, apercu }: { clientId: string; apercu: boolean }) {
-  const [vue, setVue] = useState<'quotidien' | 'perso'>('quotidien');
+/** Activité et objectifs : le quotidien (pas, eau, sommeil…), le sport synchronisé et les objectifs personnels à échéance. */
+function ActiviteObjectifs({ clientId, apercu }: { clientId: string; apercu: boolean }) {
+  const [vue, setVue] = useState<'quotidien' | 'sport' | 'perso'>('quotidien');
   return (
     <>
       <Puces>
         <Puce libelle="Au quotidien" actif={vue === 'quotidien'} onPress={() => demanderSortie(() => setVue('quotidien'))} />
+        <Puce libelle="Sport" actif={vue === 'sport'} onPress={() => demanderSortie(() => setVue('sport'))} />
         <Puce libelle="Mes objectifs perso" actif={vue === 'perso'} onPress={() => demanderSortie(() => setVue('perso'))} />
       </Puces>
       {vue === 'quotidien' ? (
         // En aperçu, le coach peut aussi noter une journée pour son client (pendant une séance, par exemple).
         <Quotidien clientId={clientId} cibles parCoach={apercu} />
+      ) : vue === 'sport' ? (
+        <Sport clientId={clientId} proprietaire={!apercu} />
       ) : (
         <Objectifs clientId={clientId} apercu={apercu} />
       )}
