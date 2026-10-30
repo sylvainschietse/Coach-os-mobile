@@ -27,7 +27,7 @@ function Cadre({ children }: { children: ReactNode }) {
       <View style={styles.contenu}>
         <View style={{ gap: espace(1) }}>
           <Text style={styles.marque}>
-            COACH <Text style={{ color: couleurs.rouge }}>OS</Text>
+            COACH<Text style={{ color: couleurs.rouge }}>GO</Text>
           </Text>
           <Texte style={{ color: '#C9C9CF' }}>Ton programme, ta séance, ta progression.</Texte>
         </View>
