@@ -13,6 +13,7 @@ import { useCharger } from '@/lib/useCharger';
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, Puce, Puces, SousTitre, Texte } from '../composants';
 import { ChoixExercice } from '../programmes/choix-exercice';
 import { couleurs, espace } from '../theme';
+import { Courbe } from './courbe';
 
 type Brouillon = {
   libelle: string;
@@ -178,6 +179,13 @@ export function Records({ clientId, saisie = true }: { clientId: string; saisie?
                   ? `Référence programme : ${formaterNombre(unRm(ref.valeur, ref.repetitions ?? 1))} kg (${(ref.repetitions ?? 1) > 1 ? `estimée d’après ${formaterRecord(ref)}` : 'réalisée'} · ${formaterDate(ref.date)})`
                   : 'Aucune référence choisie : les programmes n’afficheront pas de charge calculée pour cet exercice.'}
               </Texte>
+            )}
+            {historique.length > 1 && (
+              <Courbe
+                points={[...historique].reverse().map((r) => ({ date: r.date, valeur: r.valeur }))}
+                unite={meilleur.unite === 'reps' ? 'rép.' : meilleur.unite}
+                libelle={meilleur.libelle}
+              />
             )}
             {historique.map((r) => (
               <View key={r.id} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: espace(2), flexWrap: 'wrap' }}>

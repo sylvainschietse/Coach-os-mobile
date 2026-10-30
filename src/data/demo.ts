@@ -160,10 +160,15 @@ export const MODELES_DEMO: Programme[] = [
 
 export const MENSURATIONS_DEMO: Mensuration[] = [
   { id: 'demo-mens-1', clientId: 'client-lea', date: '2026-09-21', poidsKg: 66.2, tourTailleCm: 75, tourHanchesCm: 99 },
+  { id: 'demo-mens-3', clientId: 'client-lea', date: '2026-09-28', poidsKg: 65.9, tourTailleCm: 74.5, tourHanchesCm: 98.5 },
+  { id: 'demo-mens-4', clientId: 'client-lea', date: '2026-10-05', poidsKg: 65.6, tourTailleCm: 73.5, tourHanchesCm: 98 },
+  { id: 'demo-mens-5', clientId: 'client-lea', date: '2026-10-12', poidsKg: 65.1, tourTailleCm: 73, tourHanchesCm: 97.5 },
   { id: 'demo-mens-2', clientId: 'client-lea', date: '2026-10-19', poidsKg: 64.8, tourTailleCm: 72.5, tourHanchesCm: 97 },
 ];
 
 export const RECORDS_DEMO: RecordPerso[] = [
+  { id: 'demo-pr-3', clientId: 'client-lea', exerciceId: 'ex-dc', libelle: 'Développé couché barre', valeur: 37.5, unite: 'kg', repetitions: 5, date: '2026-09-14' },
+  { id: 'demo-pr-4', clientId: 'client-lea', exerciceId: 'ex-dc', libelle: 'Développé couché barre', valeur: 40, unite: 'kg', repetitions: 5, date: '2026-09-28' },
   { id: 'demo-pr-1', clientId: 'client-lea', exerciceId: 'ex-dc', libelle: 'Développé couché barre', valeur: 45, unite: 'kg', repetitions: 5, date: '2026-10-12', reference: true },
   { id: 'demo-pr-2', clientId: 'client-lea', libelle: 'Rameur 500 m', valeur: 118, unite: 's', date: '2026-10-05' },
 ];
