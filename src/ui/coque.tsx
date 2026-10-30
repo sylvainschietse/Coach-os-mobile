@@ -138,7 +138,7 @@ export function SousNav<T extends string>({
   grille?: 'suivi' | 'nutrition';
 }) {
   const petit = useWindowDimensions().width <= 640;
-  const colonnes = grille === 'suivi' && petit ? 3 : 5;
+  const colonnes = grille === 'suivi' ? (petit ? 2 : 4) : 5;
   const bouton = (o: OngletDef<T>) => {
     const actif = o.cle === valeur;
     return (

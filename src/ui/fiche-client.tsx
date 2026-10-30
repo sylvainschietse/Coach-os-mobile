@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -5,6 +6,7 @@ import { Puce, Puces } from './composants';
 import { JournalRepas } from './alimentation/journal-repas';
 import { ProfilNutritionCarte } from './alimentation/profil';
 import { DetailClient } from './detail-client';
+import { SeancesRealisees } from './entrainement/bilan';
 import { SeancesClientCoach } from './programmes/seances-client';
 import { Mensurations } from './suivi/mensurations';
 import { Photos } from './suivi/photos';
@@ -78,7 +80,15 @@ export function ProgrammeClient({ clientId, coachId }: { clientId: string; coach
         ))}
       </Puces>
       {onglet === 'seances' && <SeancesClientCoach clientId={clientId} coachId={coachId} />}
-      {onglet === 'historique' && <DetailClient clientId={clientId} />}
+      {/* Résultats du client (anciennement l'onglet Clients › Séances réalisées), filtrables par cycle et par séance. */}
+      {onglet === 'historique' && (
+        <SeancesRealisees
+          coachId={coachId}
+          clientFixe={clientId}
+          onOuvrirProgramme={(id) => router.setParams({ onglet: 'airtable', programme: id, seance: undefined, contact: undefined, volet: undefined })}
+          onOuvrirSuivis={() => router.setParams({ onglet: 'suivis', contact: undefined, volet: undefined })}
+        />
+      )}
     </View>
   );
 }

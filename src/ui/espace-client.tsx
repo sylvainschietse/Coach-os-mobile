@@ -27,7 +27,7 @@ import { Sport } from './suivi/sport';
 import { couleurs, espace, LARGEUR_CLIENT, polices } from './theme';
 
 export type OngletClient = 'accueil' | 'programme' | 'suivi' | 'nutrition' | 'moi';
-type RubriqueSuivi = 'hebdo' | 'mesures' | 'pr' | 'activite' | 'photos';
+type RubriqueSuivi = 'hebdo' | 'mesures' | 'pr' | 'activite';
 
 const ONGLETS: OngletDef<OngletClient>[] = [
   { cle: 'accueil', libelle: 'Accueil', icone: Home },
@@ -38,10 +38,9 @@ const ONGLETS: OngletDef<OngletClient>[] = [
 ];
 const SUIVI: OngletDef<RubriqueSuivi>[] = [
   { cle: 'hebdo', libelle: 'Bilan semaine' },
-  { cle: 'mesures', libelle: 'Mensurations' },
+  { cle: 'mesures', libelle: 'Mensurations et photos' },
   { cle: 'pr', libelle: 'Performances' },
   { cle: 'activite', libelle: 'Activité et objectifs' },
-  { cle: 'photos', libelle: 'Photos' },
 ];
 
 export interface Apercu {
@@ -109,10 +108,15 @@ export function EspaceClient({
             <>
               <SousNav nom="Rubriques du suivi" grille="suivi" onglets={SUIVI} valeur={suivi} onChange={(r) => demanderSortie(() => setSuivi(r))} />
               {suivi === 'hebdo' && <BilanSemaine key={clientId} clientId={clientId} apercu={!!apercu} />}
-              {suivi === 'mesures' && <Mensurations key={clientId} clientId={clientId} />}
+              {/* Les photos de progression accompagnent les mesures : une seule rubrique. */}
+              {suivi === 'mesures' && (
+                <View style={{ gap: espace(6) }}>
+                  <Mensurations key={clientId} clientId={clientId} />
+                  <Photos key={`photos-${clientId}`} clientId={clientId} proprietaire={!apercu} />
+                </View>
+              )}
               {suivi === 'pr' && <Records key={clientId} clientId={clientId} />}
               {suivi === 'activite' && <ActiviteObjectifs key={clientId} clientId={clientId} apercu={!!apercu} />}
-              {suivi === 'photos' && <Photos key={clientId} clientId={clientId} proprietaire={!apercu} />}
             </>
           )}
           {onglet === 'nutrition' && abo.donnee && <NutritionProfil key={clientId} clientId={clientId} optionNutrition={abo.donnee.optionNutrition} />}

@@ -59,7 +59,7 @@ import { couleurs, espace, LARGEUR_COACH, LARGEUR_LG } from '@/ui/theme';
 
 type Onglet = 'crm' | 'airtable' | 'suivis' | 'bilan' | 'hebdo' | 'nutrition';
 const TOUS: Onglet[] = ['crm', 'airtable', 'suivis', 'bilan', 'hebdo', 'nutrition'];
-/** Quatre onglets : « Clients » regroupe cycles, séances réalisées et bilans hebdo, client par client. */
+/** Quatre onglets : « Clients » regroupe les cycles et les bilans de la semaine ; les séances réalisées sont dans la fiche. */
 type OngletVisible = 'crm' | 'clients' | 'nutrition' | 'airtable';
 const ONGLETS: OngletDef<OngletVisible>[] = [
   { cle: 'crm', libelle: 'Accueil' },
@@ -70,7 +70,6 @@ const ONGLETS: OngletDef<OngletVisible>[] = [
 ];
 const SUIVI_CLIENTS: { cle: Onglet; libelle: string }[] = [
   { cle: 'suivis', libelle: 'Cycles en cours' },
-  { cle: 'bilan', libelle: 'Séances réalisées' },
   { cle: 'hebdo', libelle: 'Bilans de la semaine' },
 ];
 const visible = (o: Onglet): OngletVisible => (o === 'suivis' || o === 'bilan' || o === 'hebdo' ? 'clients' : o);

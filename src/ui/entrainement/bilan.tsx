@@ -50,13 +50,17 @@ export function SeancesRealisees({
   coachId,
   onOuvrirProgramme,
   onOuvrirSuivis,
+  clientFixe,
 }: {
   coachId: string;
   onOuvrirProgramme: (id: string) => void;
   onOuvrirSuivis: () => void;
+  /** Dans la fiche : les résultats de ce client seulement, sans titre ni choix du profil. */
+  clientFixe?: string;
 }) {
   const profils = useCharger(() => entrainement.suivis(coachId), `bilan-profils-${coachId}`);
-  const [clientId, setClientId] = useState<string>();
+  const [clientChoisi, setClientId] = useState<string>();
+  const clientId = clientFixe ?? clientChoisi;
   const [cycle, setCycle] = useState('');
   const [seance, setSeance] = useState('');
   const [q, setQ] = useState('');
@@ -120,26 +124,29 @@ export function SeancesRealisees({
   const filtre = (enfant: ReactNode) => <View style={{ flexBasis: 200, flexGrow: 1, minWidth: 0 }}>{enfant}</View>;
   return (
     <View style={{ gap: 16 }}>
-      <View>
-        <TitreDisplay taille={26}>Bilan</TitreDisplay>
-        <Text style={[ts.doux, { fontSize: 14 }]}>Lecture seule des résultats saisis par vos clients. Dates en heure de Paris.</Text>
-      </View>
+      {!clientFixe && (
+        <View>
+          <TitreDisplay taille={26}>Bilan</TitreDisplay>
+          <Text style={[ts.doux, { fontSize: 14 }]}>Lecture seule des résultats saisis par vos clients. Dates en heure de Paris.</Text>
+        </View>
+      )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {filtre(
-          <Choix
-            libelle="Profil"
-            sansLibelle
-            vide={null}
-            choix={(profils.donnee ?? []).map((p) => p.nom)}
-            valeur={profil?.nom}
-            onChange={(n) => {
-              setCycle('');
-              setSeance('');
-              setQ('');
-              setClientId(profils.donnee?.find((p) => p.nom === n)?.clientId);
-            }}
-          />,
-        )}
+        {!clientFixe &&
+          filtre(
+            <Choix
+              libelle="Profil"
+              sansLibelle
+              vide={null}
+              choix={(profils.donnee ?? []).map((p) => p.nom)}
+              valeur={profil?.nom}
+              onChange={(n) => {
+                setCycle('');
+                setSeance('');
+                setQ('');
+                setClientId(profils.donnee?.find((p) => p.nom === n)?.clientId);
+              }}
+            />,
+          )}
         {filtre(
           <Choix
             libelle="Cycle"
@@ -180,7 +187,20 @@ export function SeancesRealisees({
           <View style={{ gap: 12 }}>
             <Text style={ts.titre}>Dernières séances ({filtrees.length})</Text>
             {filtrees.length === 0 && (
-              <Text style={[ts.texte, { borderWidth: 1, borderStyle: 'dashed', borderColor: couleurs.bordure, borderRadius: 12, padding: 24, textAlign: 'center', color: couleurs.texteDoux }]}>
+              <Text
+                style={[
+                  ts.texte,
+                  {
+                    borderWidth: 1,
+                    borderStyle: 'dashed',
+                    borderColor: couleurs.bordure,
+                    borderRadius: 12,
+                    padding: 24,
+                    textAlign: 'center',
+                    color: couleurs.texteDoux,
+                  },
+                ]}
+              >
                 {donnee.length ? 'Aucune séance ne correspond aux filtres.' : 'Aucun résultat enregistré pour ce profil.'}
               </Text>
             )}
@@ -194,12 +214,24 @@ export function SeancesRealisees({
   );
 }
 
-function CyclesLiens({ profil, onOuvrirProgramme, onOuvrirSuivis }: { profil: SuiviClient; onOuvrirProgramme: (id: string) => void; onOuvrirSuivis: () => void }) {
+function CyclesLiens({
+  profil,
+  onOuvrirProgramme,
+  onOuvrirSuivis,
+}: {
+  profil: SuiviClient;
+  onOuvrirProgramme: (id: string) => void;
+  onOuvrirSuivis: () => void;
+}) {
   if (!profil.cycles.length)
     return (
       <Text style={[ts.texte, ts.carte, { padding: 12, color: couleurs.texteDoux }]}>
         Ce profil n’a aucun cycle.{' '}
-        <Text accessibilityRole="button" onPress={onOuvrirSuivis} style={{ color: couleurs.rouge, fontFamily: polices.texteMoyen, textDecorationLine: 'underline' }}>
+        <Text
+          accessibilityRole="button"
+          onPress={onOuvrirSuivis}
+          style={{ color: couleurs.rouge, fontFamily: polices.texteMoyen, textDecorationLine: 'underline' }}
+        >
           Ouvrir les suivis
         </Text>
       </Text>
@@ -207,8 +239,28 @@ function CyclesLiens({ profil, onOuvrirProgramme, onOuvrirSuivis }: { profil: Su
   return (
     <Ligne>
       {profil.cycles.map((c) => (
-        <View key={c.id} style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, maxWidth: '100%', borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 10, backgroundColor: couleurs.carte, paddingHorizontal: 12, paddingVertical: 8 }}>
-          <Text accessibilityRole="button" onPress={onOuvrirSuivis} numberOfLines={1} style={[ts.texte, { color: couleurs.rouge, fontFamily: polices.texteMoyen }]}>
+        <View
+          key={c.id}
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 8,
+            maxWidth: '100%',
+            borderWidth: 1,
+            borderColor: couleurs.bordure,
+            borderRadius: 10,
+            backgroundColor: couleurs.carte,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+          }}
+        >
+          <Text
+            accessibilityRole="button"
+            onPress={onOuvrirSuivis}
+            numberOfLines={1}
+            style={[ts.texte, { color: couleurs.rouge, fontFamily: polices.texteMoyen }]}
+          >
             {c.nom}
           </Text>
           <Badge libelle={c.statut} variante="secondaire" />
@@ -240,8 +292,8 @@ function Comparaison({ seances }: { seances: SeanceBilan[] }) {
     <View style={[ts.carte, { padding: 16, gap: 4 }]}>
       <Text style={ts.titre}>Comparaison des 2 derniers résultats</Text>
       <Text style={ts.doux}>
-        Valeurs brutes, même exercice prescrit (même ligne) dans le même cycle. Aucun calcul de progrès ni recommandation. La prescription affichée est celle d’aujourd’hui : elle
-        n’est pas figée au moment des saisies.
+        Valeurs brutes, même exercice prescrit (même ligne) dans le même cycle. Aucun calcul de progrès ni recommandation. La prescription affichée est celle
+        d’aujourd’hui : elle n’est pas figée au moment des saisies.
       </Text>
       {comparables.length === 0 ? (
         <Text style={[ts.texte, { marginTop: 8, borderRadius: 10, backgroundColor: 'rgba(237,239,242,0.5)', padding: 12, color: couleurs.texteDoux }]}>
@@ -281,7 +333,11 @@ function Comparaison({ seances }: { seances: SeanceBilan[] }) {
                     ))}
                   </View>
                 </ScrollView>
-                {differents && <Text style={[ts.doux, { color: '#B45309' }]}>Non comparable série par série : nombre ou numéros de séries différents entre les deux séances.</Text>}
+                {differents && (
+                  <Text style={[ts.doux, { color: '#B45309' }]}>
+                    Non comparable série par série : nombre ou numéros de séries différents entre les deux séances.
+                  </Text>
+                )}
               </View>
             );
           })}
@@ -324,7 +380,19 @@ function CarteSeance({ s, onOuvrirProgramme }: { s: SeanceBilan; onOuvrirProgram
             </Text>
             <Ligne style={{ marginTop: 4, gap: 6 }}>
               {e.series.map((x) => (
-                <Text key={x.id} style={{ borderRadius: 6, backgroundColor: couleurs.secondaire, color: '#FFFFFF', paddingHorizontal: 8, paddingVertical: 2, fontSize: 12, fontFamily: polices.texte, fontVariant: ['tabular-nums'] }}>
+                <Text
+                  key={x.id}
+                  style={{
+                    borderRadius: 6,
+                    backgroundColor: couleurs.secondaire,
+                    color: '#FFFFFF',
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                    fontSize: 12,
+                    fontFamily: polices.texte,
+                    fontVariant: ['tabular-nums'],
+                  }}
+                >
                   S{x.index + 1} · {serie(x)}
                 </Text>
               ))}
