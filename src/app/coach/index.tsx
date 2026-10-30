@@ -88,7 +88,7 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
 ];
 /** Le journal des automatisations reste joignable par son adresse, mais n'encombre plus le menu. */
-const MENU_RUBRIQUES = RUBRIQUES.filter((r) => r.cle !== 'Automations');
+const MENU_RUBRIQUES = RUBRIQUES.filter((r) => r.cle !== 'Automations' && r.cle !== 'Coachings');
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 
