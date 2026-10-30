@@ -309,12 +309,26 @@ export function CaseSelection({ nom, valeur, desactive, onChange }: { nom: strin
 export const jourCourt = (s?: string) =>
   s ? new Date(`${s}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '—';
 
-/** Photo d'un programme : en vignette dans les listes, en grand sur la fiche et dans l'espace du client. */
+/**
+ * Photo d'un programme : en vignette dans les listes, en grand sur la fiche et dans l'espace du client.
+ * Dans un cadre plus large que la photo, on garde surtout le haut (les visages) plutôt que le centre.
+ */
 export function PhotoProgramme({ programme, hauteur = 160, style }: { programme: ProgrammeIllustre; hauteur?: number; style?: StyleProp<ViewStyle> }) {
   const { source, description } = photoProgramme(programme);
+  const [largeur, setLargeur] = useState(0);
+  const hauteurPhoto = Math.max(hauteur, largeur * 0.75);
   return (
-    <View style={[{ height: hauteur, borderRadius: arrondi.global, overflow: 'hidden', backgroundColor: couleurs.bordure }, style]}>
-      <Image source={source} accessibilityIgnoresInvertColors accessibilityLabel={description} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+    <View
+      onLayout={(e) => setLargeur(e.nativeEvent.layout.width)}
+      style={[{ height: hauteur, borderRadius: arrondi.global, overflow: 'hidden', backgroundColor: couleurs.bordure }, style]}
+    >
+      <Image
+        source={source}
+        accessibilityIgnoresInvertColors
+        accessibilityLabel={description}
+        resizeMode="cover"
+        style={{ width: '100%', height: hauteurPhoto, marginTop: -(hauteurPhoto - hauteur) * 0.3 }}
+      />
     </View>
   );
 }
