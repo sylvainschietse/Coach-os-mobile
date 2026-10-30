@@ -81,7 +81,7 @@ function Connexion({ clientId, onSynchro }: { clientId: string; onSynchro: () =>
       const ok = (await demanderAcces()).includes('ExerciseSession');
       setAcces(ok);
       if (ok) await synchroniser();
-      else setErreur('Accès non accordé : sans lui, Coach OS ne peut pas lire tes séances.');
+      else setErreur('Accès non accordé : sans lui, CoachGo ne peut pas lire tes séances.');
     } catch (e) {
       setErreur(messageErreur(e));
     }
@@ -94,8 +94,8 @@ function Connexion({ clientId, onSynchro }: { clientId: string; onSynchro: () =>
         <SousTitre>Montre et applis de sport</SousTitre>
         <Texte doux style={{ fontSize: 14 }}>
           {Platform.OS === 'android'
-            ? 'Health Connect n’est pas disponible : il faut Android 8 ou plus et la dernière version de Coach OS.'
-            : 'La lecture automatique de tes courses se fait sur Android, avec Health Connect. Ouvre Coach OS sur ton téléphone Android.'}
+            ? 'Health Connect n’est pas disponible : il faut Android 8 ou plus et la dernière version de CoachGo.'
+            : 'La lecture automatique de tes courses se fait sur Android, avec Health Connect. Ouvre CoachGo sur ton téléphone Android.'}
         </Texte>
       </Carte>
     );
@@ -103,7 +103,7 @@ function Connexion({ clientId, onSynchro }: { clientId: string; onSynchro: () =>
     return (
       <Carte>
         <SousTitre>Montre et applis de sport</SousTitre>
-        <Texte doux style={{ fontSize: 14 }}>Installe ou mets à jour Health Connect pour que Coach OS lise tes courses.</Texte>
+        <Texte doux style={{ fontSize: 14 }}>Installe ou mets à jour Health Connect pour que CoachGo lise tes courses.</Texte>
         <Bouton libelle="Installer Health Connect" onPress={() => Linking.openURL('market://details?id=com.google.android.apps.healthdata')} />
       </Carte>
     );
@@ -120,7 +120,7 @@ function Connexion({ clientId, onSynchro }: { clientId: string; onSynchro: () =>
         </>
       ) : (
         <>
-          <Texte style={{ fontSize: 15 }}>Coach OS peut lire tes courses, sorties vélo et marches : distance, durée, allure, fréquence cardiaque et dénivelé.</Texte>
+          <Texte style={{ fontSize: 15 }}>CoachGo peut lire tes courses, sorties vélo et marches : distance, durée, allure, fréquence cardiaque et dénivelé.</Texte>
           <Texte doux style={{ fontSize: 14 }}>
             Dans Garmin Connect, Strava ou Samsung Health, active d’abord l’envoi vers Health Connect (Réglages, Applis connectées, Health Connect). Les 30 derniers jours seront importés.
           </Texte>

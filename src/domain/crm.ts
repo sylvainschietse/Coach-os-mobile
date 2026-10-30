@@ -750,7 +750,7 @@ export function ecrireDateHeure(iso: string | undefined): string {
  */
 export function messageAccesClient(prenom: string, coach: string, lienAppli: string): string {
   return [
-    `Salut${prenom ? ` ${prenom}` : ''} ! Voici le lien pour accéder à ton espace Coach OS : ${lienAppli}`,
+    `Salut${prenom ? ` ${prenom}` : ''} ! Voici le lien pour accéder à ton espace CoachGo : ${lienAppli}`,
     '',
     'Connecte-toi avec l’adresse email que tu m’as communiquée. Tu pourras y retrouver ton programme et enregistrer tes séances.',
     '',

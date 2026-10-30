@@ -323,7 +323,7 @@ ${tests ? `<div class="page">${entete}<div class="contenu">${tests}</div></div>`
     ${semaine || suite ? `<div class="duo">${semaine}${suite}</div>` : ''}
     <section class="envol"><div class="citation">Ce n’est pas une question de perfection. C’est une question de régularité.</div>
       <p>${echapper(cr.conclusion[0])}</p></section>
-    <div class="signature"><div><b>${echapper(cr.coach)}</b>Ton coach · À très bientôt !</div><div>Coach OS</div></div>
+    <div class="signature"><div><b>${echapper(cr.coach)}</b>Ton coach · À très bientôt !</div><div>CoachGo</div></div>
   </div>
 </div>
 </body></html>`;

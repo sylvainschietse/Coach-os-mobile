@@ -8,7 +8,7 @@
     "niveau": "Intermédiaire",
     "environment": "Salle équipée",
     "material": "Salle : barre, haltères, banc sécurisé, poulies, machines.",
-    "changes": "Répartition dos/épaules/triceps, jambes et pecs/épaules/biceps issue du contenu public. Tirage poitrine au lieu du tirage nuque, exercices et volumes simplifiés ; préparation et quatre cycles ajoutés par Coach OS."
+    "changes": "Répartition dos/épaules/triceps, jambes et pecs/épaules/biceps issue du contenu public. Tirage poitrine au lieu du tirage nuque, exercices et volumes simplifiés ; préparation et quatre cycles ajoutés par CoachGo."
   },
   {
     "code": "REF-NIP-2",
@@ -19,7 +19,7 @@
     "niveau": "Intermédiaire",
     "environment": "Salle équipée",
     "material": "Barre et rack sécurisé, haltères, banc, poulie.",
-    "changes": "Référence : approche minimaliste publique. Cette adaptation privilégie peu de mouvements, avec un volume modéré et un suivi du RIR. Choix des exercices, fréquence, préparation et cycles propres à Coach OS ; ce n’est pas le programme commercial Essentials."
+    "changes": "Référence : approche minimaliste publique. Cette adaptation privilégie peu de mouvements, avec un volume modéré et un suivi du RIR. Choix des exercices, fréquence, préparation et cycles propres à CoachGo ; ce n’est pas le programme commercial Essentials."
   },
   {
     "code": "REF-BWS-3",
@@ -30,7 +30,7 @@
     "niveau": "Intermédiaire",
     "environment": "Salle équipée",
     "material": "Salle : haltères, barre, rack, poulies, machines.",
-    "changes": "Adaptation du schéma public pousser/tirer/jambes : fréquence ramenée à 3 jours au lieu des 6 généralement présentés. Variantes complexes remplacées par les fondamentaux. Préparation, repos et cycles choisis par Coach OS."
+    "changes": "Adaptation du schéma public pousser/tirer/jambes : fréquence ramenée à 3 jours au lieu des 6 généralement présentés. Variantes complexes remplacées par les fondamentaux. Préparation, repos et cycles choisis par CoachGo."
   },
   {
     "code": "REF-AX-2",
@@ -41,7 +41,7 @@
     "niveau": "Débutant",
     "environment": "Maison avec matériel",
     "material": "Deux haltères réglables, tapis ; banc stable facultatif.",
-    "changes": "Référence publique : travailler tout le corps avec peu de matériel. Coach OS remplace le circuit Death March, les high pulls et les mouvements combinés par des séries classiques de mouvements simples. Cette version n’est pas la routine originale de la vidéo."
+    "changes": "Référence publique : travailler tout le corps avec peu de matériel. CoachGo remplace le circuit Death March, les high pulls et les mouvements combinés par des séries classiques de mouvements simples. Cette version n’est pas la routine originale de la vidéo."
   },
   {
     "code": "CAL-BASE-2",
@@ -52,7 +52,7 @@
     "niveau": "Débutant",
     "environment": "Poids du corps",
     "material": "Barre basse fixe ou anneaux solidement ancrés, support stable pour les pompes, tapis. Aucun meuble non fixé.",
-    "changes": "Inspiré des mouvements fondamentaux publics et de la progression par variantes. Deux séances complètes avec tirage réel ; les dips ne sont pas imposés aux débutants. Séries, progression et préparation définies par Coach OS."
+    "changes": "Inspiré des mouvements fondamentaux publics et de la progression par variantes. Deux séances complètes avec tirage réel ; les dips ne sont pas imposés aux débutants. Séries, progression et préparation définies par CoachGo."
   },
   {
     "code": "CAL-PPL-3",
@@ -63,7 +63,7 @@
     "niveau": "Intermédiaire",
     "environment": "Poids du corps",
     "material": "Barre de traction, barre basse ou anneaux, barres parallèles stables, tapis.",
-    "changes": "Adaptation Coach OS du principe de répartition par mouvements. Pompes, tractions, dips et jambes simples ; sans muscle-up, front lever ni équilibre sur les mains. La répartition et les doses sont propres à Coach OS."
+    "changes": "Adaptation CoachGo du principe de répartition par mouvements. Pompes, tractions, dips et jambes simples ; sans muscle-up, front lever ni équilibre sur les mains. La répartition et les doses sont propres à CoachGo."
   },
   {
     "code": "CAL-SPLIT-4",
@@ -74,7 +74,7 @@
     "niveau": "Intermédiaire",
     "environment": "Poids du corps",
     "material": "Barre de traction, barre basse ou anneaux, barres parallèles stables, tapis.",
-    "changes": "Référence : variations accessibles du travail au poids du corps. La vidéo publique full body est réorganisée en 4 séances ciblées, avec deux dominantes jambes, par Coach OS ; pas une reproduction de son entraînement chronométré."
+    "changes": "Référence : variations accessibles du travail au poids du corps. La vidéo publique full body est réorganisée en 4 séances ciblées, avec deux dominantes jambes, par CoachGo ; pas une reproduction de son entraînement chronométré."
   },
   {
     "code": "CAL-TRACTIONS-2",
@@ -85,6 +85,6 @@
     "niveau": "Débutant",
     "environment": "Poids du corps",
     "material": "Barre fixe solide, élastique d’assistance adapté, barre basse ou anneaux, tapis.",
-    "changes": "Inspiré des ressources publiques sur la progression en traction. Évaluation et progression individualisées ; aucune promesse de nombre de tractions à une date donnée. Préparation, doses et exercices complémentaires définis par Coach OS."
+    "changes": "Inspiré des ressources publiques sur la progression en traction. Évaluation et progression individualisées ; aucune promesse de nombre de tractions à une date donnée. Préparation, doses et exercices complémentaires définis par CoachGo."
   }
 ]

@@ -1,6 +1,6 @@
-# Coach OS · application mobile (prototype)
+# CoachGo · application mobile (prototype)
 
-Application iPhone / Android de Coach OS, avec l'espace coach utilisable aussi dans un navigateur.
+Application iPhone / Android de CoachGo, avec l'espace coach utilisable aussi dans un navigateur.
 Construite avec [Expo](https://expo.dev) (React Native, TypeScript) et [Supabase](https://supabase.com) pour la base.
 
 Ce prototype couvre deux parcours de bout en bout.
@@ -120,6 +120,6 @@ npm run lint
 | `src/app/` | Écrans (Expo Router) : `client/`, `coach/` |
 | `src/domain/` | Logique métier pure, testée : CRM et relances, questionnaire, suggestions, minuteur, file d'envoi, décodage Zite |
 | `src/data/` | Accès aux données : mode démo local ou Supabase |
-| `src/ui/` | Thème Coach OS et composants |
+| `src/ui/` | Thème CoachGo et composants |
 | `supabase/` | Schéma, règles d'accès et données de démonstration |
 | `tests/` | Tests automatiques |

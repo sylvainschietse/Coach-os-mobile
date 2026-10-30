@@ -418,7 +418,7 @@ header{background:#16181d;color:#fff;padding:22px 24px;border-bottom:4px solid #
 .date{color:#d1d5db}main{padding:8px 4px}section{margin:20px 0;break-inside:avoid}
 h2{font-family:'Titre',Impact,sans-serif;font-size:18px;letter-spacing:1px;color:#c3181e;text-transform:uppercase;border-bottom:1px solid #e5e7eb;padding-bottom:4px}
 p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}footer{margin-top:28px;border-top:1px solid #e5e7eb;padding-top:10px;font-size:10px;color:#6b7280}
-</style></head><body><header><div class="marque">COACH OS · BILAN</div><h1>${echapper(nom)}</h1><div class="date">${echapper(date)}</div></header><main>
+</style></head><body><header><div class="marque">COACHGO · BILAN</div><h1>${echapper(nom)}</h1><div class="date">${echapper(date)}</div></header><main>
 ${sectionsBilan(b)
   .map((s) => `<section><h2>${echapper(s.titre)}</h2><p>${echapper(s.texte)}</p></section>`)
   .join('\n')}

@@ -206,7 +206,7 @@ function CarteModele({
           {!!p.dureeSemaines && <Puce libelle={`${p.dureeSemaines} sem.`} />}
           {p.environnement && <Puce libelle={p.environnement} />}
         </Ligne>
-        {source && <Text style={[ts.doux, { marginTop: 8 }]}>{source.author} · Adaptation Coach OS</Text>}
+        {source && <Text style={[ts.doux, { marginTop: 8 }]}>{source.author} · Adaptation CoachGo</Text>}
         {codeModele(p.titre) && <Text style={[ts.doux, { marginTop: 4, fontSize: 12 }]}>Réf. {codeModele(p.titre)}</Text>}
         <Text style={[ts.doux, { marginTop: 12 }]}>
           {p.nbSeances} séance(s){p.statut ? ` · ${p.statut}` : ''}

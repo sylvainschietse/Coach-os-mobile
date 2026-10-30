@@ -1,4 +1,4 @@
-// Identité Coach OS reprise de la cascade finale de l'index.css d'origine (Zite) :
+// Identité CoachGo reprise de la cascade finale de l'index.css d'origine (Zite) :
 // primaire HSL 358 78% 43%, fond 220 18% 97%, bordure 220 14% 89%, texte secondaire 220 8% 42%.
 // Bebas Neue pour les titres, Jost pour le texte, JetBrains Mono pour les chiffres du minuteur.
 export const couleurs = {

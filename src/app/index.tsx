@@ -65,7 +65,7 @@ function SansDossier() {
 
   return (
     <View style={{ gap: espace(3) }}>
-      <Text style={styles.libelle}>Bienvenue dans Coach OS</Text>
+      <Text style={styles.libelle}>Bienvenue dans CoachGo</Text>
       <Texte style={{ color: '#C9C9CF' }}>
         Ton accès n’est pas encore relié à ton dossier. Vérifie que tu utilises l’adresse e-mail communiquée à ton coach.
       </Texte>

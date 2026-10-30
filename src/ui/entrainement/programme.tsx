@@ -140,12 +140,12 @@ export function DetailProgramme({
 
       {source && (
         <View style={{ marginTop: 16, maxWidth: 768, borderWidth: 1, borderColor: 'rgba(195,24,30,0.2)', backgroundColor: 'rgba(195,24,30,0.05)', borderRadius: 12, padding: 16, gap: 8 }}>
-          <Text style={[ts.texte, { fontFamily: polices.texteGras }]}>Adaptation Coach OS · {source.author}</Text>
+          <Text style={[ts.texte, { fontFamily: polices.texteGras }]}>Adaptation CoachGo · {source.author}</Text>
           <Text style={[ts.texte, { color: couleurs.texteDoux }]}>{source.changes}</Text>
           <Text accessibilityRole="link" onPress={() => Linking.openURL(source.url)} style={[ts.texte, { color: couleurs.rouge, fontFamily: polices.texteMoyen, textDecorationLine: 'underline' }]}>
             Voir la référence publique
           </Text>
-          <Text style={ts.doux}>Séries, cycles et consignes adaptés par Coach OS. Modèle indépendant, sans affiliation au créateur.</Text>
+          <Text style={ts.doux}>Séries, cycles et consignes adaptés par CoachGo. Modèle indépendant, sans affiliation au créateur.</Text>
         </View>
       )}
 

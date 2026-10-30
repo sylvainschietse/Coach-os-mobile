@@ -387,7 +387,7 @@ export function Planificateur({
                 <Text style={[doux, { color: couleurs.texte }]}>
                   Chaque recette source a une note d’au moins 4/5 et au moins 10 avis relevés le 12 octobre 2026. Ces avis concernent la recette
                   originale, pas nos adaptations. Les préparations sont reformulées en français dans chaque fiche. Les photos d’illustration de l’app
-                  d’origine n’ont pas été fournies : les photos affichées sont des illustrations créées pour Coach OS, pas celles des sources.
+                  d’origine n’ont pas été fournies : les photos affichées sont des illustrations créées pour CoachGo, pas celles des sources.
                 </Text>
                 <Text style={[doux, { color: couleurs.texte }]}>
                   Les calories et macros originales sont celles de l’éditeur. Les adaptations sont estimées par différence à partir de Ciqual 2025 ; les

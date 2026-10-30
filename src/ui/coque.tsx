@@ -3,7 +3,7 @@
 // barre du bas client (`client-bottom-nav`), hero, statistiques et états vides.
 import { ChevronDown, Eye, type LucideIcon } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
-import { Modal, Pressable, type PressableStateCallbackType, ScrollView, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, Modal, Pressable, type PressableStateCallbackType, ScrollView, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { arrondi, couleurs, espace, espacementTitre, polices } from './theme';
@@ -11,13 +11,9 @@ import { arrondi, couleurs, espace, espacementTitre, polices } from './theme';
 /** Survol souris (web) : absent des types natifs de Pressable. */
 const survol = (e: PressableStateCallbackType) => !!(e as { hovered?: boolean }).hovered;
 
-/** Le logo d'origine (/coach-os-logo.png) n'est pas dans l'export : emplacement signalé, sans substitut. */
-export function LogoAFournir() {
-  return (
-    <View accessibilityLabel="Logo Coach OS à fournir" style={styles.logo}>
-      <Text style={styles.logoTexte}>LOGO</Text>
-    </View>
-  );
+/** Monogramme C·O (C blanc, O rouge), lisible sur l'en-tête sombre. */
+export function Logo() {
+  return <Image source={require('../../assets/images/logo.png')} accessibilityLabel="Logo CoachGo" style={styles.logo} />;
 }
 
 export function EnTete({
@@ -40,9 +36,9 @@ export function EnTete({
     <View style={[styles.entete, { paddingTop: top }]}>
       <View style={[styles.enteteLigne, { maxWidth: largeur }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: espace(sousTitre ? 3 : 2) }}>
-          <LogoAFournir />
+          <Logo />
           <View>
-            <Text style={[styles.marque, { fontSize: petit ? 22 : sousTitre ? 24 : 20 }]}>Coach OS</Text>
+            <Text style={[styles.marque, { fontSize: petit ? 22 : sousTitre ? 24 : 20 }]}>CoachGo</Text>
             {sousTitre && <Text style={styles.marqueSous}>{sousTitre}</Text>}
           </View>
         </View>
@@ -445,17 +441,7 @@ export function BandeauDemo() {
 }
 
 const styles = StyleSheet.create({
-  logo: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#687384',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoTexte: { color: '#8A93A3', fontSize: 9, letterSpacing: 1, fontFamily: polices.texteMoyen },
+  logo: { width: 48, height: 48 },
   entete: {
     backgroundColor: '#18191D',
     backgroundImage: 'linear-gradient(110deg, #111216, #202126)',

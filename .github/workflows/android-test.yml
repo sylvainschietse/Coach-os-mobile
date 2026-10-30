@@ -45,6 +45,6 @@ jobs:
         run: |
           cp android/app/build/outputs/apk/release/app-release.apk coach-os-test.apk
           NOTES="Version de test du $(date -u '+%d/%m/%Y %H:%M') UTC, commit ${GITHUB_SHA::7}. À ouvrir depuis le téléphone Android pour l'installer."
-          gh release view android-test >/dev/null 2>&1 || gh release create android-test --prerelease --title "Coach OS · APK Android de test" --notes "$NOTES" --target "$GITHUB_SHA"
+          gh release view android-test >/dev/null 2>&1 || gh release create android-test --prerelease --title "CoachGo · APK Android de test" --notes "$NOTES" --target "$GITHUB_SHA"
           gh release edit android-test --notes "$NOTES"
           gh release upload android-test coach-os-test.apk --clobber
