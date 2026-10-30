@@ -14,7 +14,7 @@ import { useCharger } from '@/lib/useCharger';
 import { TitreDisplay } from '../coque';
 import { Badge, Choix, Modale, Recherche, Saisie } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
-import { Action, Confirmation, Etat, jourCourt, Ligne, ListeChoix, TexteLong, ts } from './commun';
+import { Action, Confirmation, Etat, jourCourt, Ligne, ListeChoix, TexteLong, ts, PhotoProgramme } from './commun';
 
 const STATUTS: StatutCycle[] = ['Brouillon', 'Prêt', 'Terminé'];
 
@@ -110,6 +110,7 @@ function LigneCycle({ c, i, n, occupe, agir }: { c: CycleClient; i: number; n: n
           </Text>
           <TexteLong texte={c.objectif} style={{ fontSize: 12, color: couleurs.texteDoux }} />
         </View>
+        {c.programmeNom && <PhotoProgramme programme={{ titre: c.programmeNom }} hauteur={56} style={{ width: 76, borderRadius: 8 }} />}
         <View>
           <Action petit variante="fantome" icone={ArrowUp} nom={`Monter ${c.nom}`} desactive={i === 0 || occupe} onPress={() => agir('up')} />
           <Action petit variante="fantome" icone={ArrowDown} nom={`Descendre ${c.nom}`} desactive={i === n - 1 || occupe} onPress={() => agir('down')} />

@@ -5,6 +5,7 @@ import { Check, ChevronDown, type LucideIcon } from 'lucide-react-native';
 import { useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Modal,
   ScrollView,
   Pressable,
@@ -19,6 +20,7 @@ import {
 
 import { arrondi, couleurs, espace, polices } from '../theme';
 
+import { photoProgramme, type ProgrammeIllustre } from '@/data/photos-programmes';
 import { roleWeb } from '@/lib/role-web';
 
 const survol = (e: PressableStateCallbackType) => !!(e as { hovered?: boolean }).hovered;
@@ -306,3 +308,13 @@ export function CaseSelection({ nom, valeur, desactive, onChange }: { nom: strin
 /** « 24 oct. 2026 » (fmtJour d'origine). */
 export const jourCourt = (s?: string) =>
   s ? new Date(`${s}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '—';
+
+/** Photo d'un programme : en vignette dans les listes, en grand sur la fiche et dans l'espace du client. */
+export function PhotoProgramme({ programme, hauteur = 160, style }: { programme: ProgrammeIllustre; hauteur?: number; style?: StyleProp<ViewStyle> }) {
+  const { source, description } = photoProgramme(programme);
+  return (
+    <View style={[{ height: hauteur, borderRadius: arrondi.global, overflow: 'hidden', backgroundColor: couleurs.bordure }, style]}>
+      <Image source={source} accessibilityIgnoresInvertColors accessibilityLabel={description} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+    </View>
+  );
+}

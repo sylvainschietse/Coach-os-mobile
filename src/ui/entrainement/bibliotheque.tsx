@@ -13,7 +13,7 @@ import { useCharger } from '@/lib/useCharger';
 import { TitreDisplay } from '../coque';
 import { Choix, Recherche } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
-import { Action, CaseSelection, Ligne, Puce, ts } from './commun';
+import { Action, CaseSelection, Ligne, PhotoProgramme, Puce, ts } from './commun';
 import { Corbeille, SuppressionEntrainement } from './corbeille';
 import { CreationEntrainement } from './creation';
 
@@ -193,6 +193,7 @@ function CarteModele({
           ((e as { hovered?: boolean }).hovered || e.pressed) && { borderColor: 'rgba(195,24,30,0.4)', shadowOpacity: 0.1, shadowRadius: 8 },
         ]}
       >
+        <PhotoProgramme programme={p} hauteur={200} style={{ marginBottom: 12 }} />
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
           <Text style={{ flex: 1, fontFamily: polices.texteGras, fontSize: 16, lineHeight: 21, color: couleurs.texte, paddingRight: selection ? 32 : 0 }}>{titreClient(p.titre)}</Text>
           {!selection && <ChevronRight size={20} color={couleurs.texteDoux} />}

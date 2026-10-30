@@ -12,7 +12,7 @@ import { Kicker, TitreDisplay } from '../coque';
 import { Repliable } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
 import { AttributionClient } from './attribution';
-import { Action, CaseSelection, Etat, Ligne, Puce, TexteLong, ts } from './commun';
+import { Action, CaseSelection, Etat, Ligne, Puce, TexteLong, ts, PhotoProgramme } from './commun';
 import { SuppressionEntrainement } from './corbeille';
 import { CreationEntrainement, type DemandeCreation } from './creation';
 import { RepriseSeance } from './reprise';
@@ -109,6 +109,7 @@ export function DetailProgramme({
       <Kicker>Programme · espace coach</Kicker>
       <TitreDisplay taille={30}>{titreClient(p.titre)}</TitreDisplay>
       {codeModele(p.titre) && <Text style={[ts.doux, { fontSize: 12 }]}>Réf. {codeModele(p.titre)}</Text>}
+      <PhotoProgramme programme={p} hauteur={320} style={{ marginTop: 12, maxWidth: 768 }} />
       <Ligne style={{ marginTop: 12, alignItems: 'flex-start' }}>
         <Action libelle="Créer une séance" onPress={() => setDialogue({ action: 'seance', programmeId: id })} />
         <Action libelle="Reprendre une séance existante" variante="contour" onPress={() => setReprise(true)} />

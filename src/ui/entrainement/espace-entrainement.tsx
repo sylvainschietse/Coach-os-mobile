@@ -16,7 +16,7 @@ import { BoutonContour, Hero } from '../coque';
 import { Badge, Repliable } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
 import { MonCalendrier } from './calendrier';
-import { Action, Confirmation, TexteLong, jourCourt, ts } from './commun';
+import { Action, Confirmation, TexteLong, jourCourt, ts, PhotoProgramme } from './commun';
 import { Historique, nbSeries } from './historique';
 import { SeanceLog } from './seance-log';
 
@@ -149,6 +149,7 @@ export function EntrainementClient({
         <>
           {espace.cycle ? (
             <View style={[ts.carte, { borderRadius: 16, gap: 4 }]}>
+              {espace.programme && <PhotoProgramme programme={espace.programme} hauteur={220} style={{ marginBottom: 8 }} />}
               <Text style={ts.kicker}>{espace.cycle.etat === 'a_venir' ? 'Cycle à venir' : espace.cycle.etat === 'depasse' ? 'Cycle terminé (dates dépassées)' : 'Cycle en cours'}</Text>
               <Text style={{ fontFamily: polices.titre, fontSize: 24, letterSpacing: 0.5, color: couleurs.texte }}>{espace.cycle.nom}</Text>
               <Text style={ts.texte}>
