@@ -8,6 +8,7 @@ import {
   ListTodo,
   LogOut,
   RefreshCw,
+  UserRound,
   Users,
   Wallet,
   Workflow,
@@ -40,6 +41,7 @@ import { Carte, Chargement, Erreur, Puce, Puces, Texte } from '@/ui/composants';
 import { Bilans, EditeurBilan } from '@/ui/crm/bilans';
 import { Boosters } from '@/ui/crm/boosters';
 import { Automatisations } from '@/ui/crm/automatisations';
+import { MonProfilCoach } from '@/ui/profil-coach';
 import { nomComplet } from '@/ui/crm/commun';
 import { Contacts } from '@/ui/crm/contacts';
 import { Documents, EditeurDocumentModale } from '@/ui/crm/documents';
@@ -74,7 +76,7 @@ const SUIVI_CLIENTS: { cle: Onglet; libelle: string }[] = [
 ];
 const visible = (o: Onglet): OngletVisible => (o === 'suivis' || o === 'bilan' || o === 'hebdo' ? 'clients' : o);
 
-type Rubrique = 'Accueil' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Automations';
+type Rubrique = 'Accueil' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Automations' | 'Profil';
 const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Accueil', libelle: 'Accueil', icone: LayoutDashboard },
   { cle: 'Contacts', libelle: 'Contacts', icone: Users },
@@ -85,6 +87,7 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Taches', libelle: 'Tâches', icone: ListTodo },
   { cle: 'Paiements', libelle: 'Paiements', icone: Wallet },
   { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
+  { cle: 'Profil', libelle: 'Mon profil', icone: UserRound },
 ];
 /**
  * Automatisations, Coachings, Tâches et Bilans restent joignables par leur adresse : les tâches vivent dans « À faire »
@@ -396,6 +399,7 @@ function Crm({
           />
         )}
         {rubrique === 'Automations' && <Automatisations />}
+        {rubrique === 'Profil' && <MonProfilCoach />}
       </View>
 
       {params.coaching || params.tache || params.paiement ? (

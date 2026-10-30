@@ -16,7 +16,7 @@ import { Courbe } from './courbe';
 
 const signe = (n: number) => (n > 0 ? `+${formaterNombre(n)}` : formaterNombre(n));
 
-function Saisie({ clientId, onAjoute }: { clientId: string; onAjoute: () => void }) {
+function Saisie({ clientId, onAjoute, parCoach }: { clientId: string; onAjoute: () => void; parCoach?: boolean }) {
   const [date, setDate] = useState(formaterDate(jourLocal(new Date())));
   const [valeurs, setValeurs] = useState<Record<string, string>>({});
   const [note, setNote] = useState('');
@@ -48,7 +48,9 @@ function Saisie({ clientId, onAjoute }: { clientId: string; onAjoute: () => void
     <Carte>
       <SousTitre>Nouvelle mesure</SousTitre>
       <Texte doux style={{ fontSize: 14 }}>
-        Remplis seulement ce que tu as mesuré. Idéalement le matin, à jeun, toujours dans les mêmes conditions.
+        {parCoach
+          ? 'Les mesures prises en séance. Ton client les voit dans son suivi, avec ses courbes.'
+          : 'Remplis seulement ce que tu as mesuré. Idéalement le matin, à jeun, toujours dans les mêmes conditions.'}
       </Texte>
       <ChampTexte libelle="Date" valeur={date} onChange={setDate} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(3) }}>
@@ -192,8 +194,8 @@ function Evolution({ evolutions }: { evolutions: EvolutionChamp[] }) {
   );
 }
 
-/** Mensurations : saisie, évolution depuis la première mesure, historique. Le coach voit la même chose. */
-export function Mensurations({ clientId, saisie = true }: { clientId: string; saisie?: boolean }) {
+/** Mensurations : saisie, évolution depuis la première mesure, historique. Le coach voit la même chose et peut aussi saisir (mesures prises en séance). */
+export function Mensurations({ clientId, saisie = true, parCoach }: { clientId: string; saisie?: boolean; parCoach?: boolean }) {
   const { donnee, erreur, recharger } = useCharger(() => depot.mensurations(clientId), clientId);
   const evolutions = donnee
     ? CHAMPS_MENSURATIONS.flatMap((c): EvolutionChamp[] => {
@@ -204,8 +206,8 @@ export function Mensurations({ clientId, saisie = true }: { clientId: string; sa
 
   return (
     <View style={{ gap: espace(4) }}>
-      <Taille clientId={clientId} saisie={saisie} poidsKg={donnee ? evolution(donnee, 'poidsKg')?.dernier.valeur : undefined} />
-      {saisie && <Saisie clientId={clientId} onAjoute={recharger} />}
+      <Taille clientId={clientId} saisie={saisie && !parCoach} poidsKg={donnee ? evolution(donnee, 'poidsKg')?.dernier.valeur : undefined} />
+      {saisie && <Saisie clientId={clientId} onAjoute={recharger} parCoach={parCoach} />}
       {erreur && <Erreur message={erreur} />}
       {!donnee && !erreur && <Chargement />}
       {evolutions.length > 0 && <Evolution evolutions={evolutions} />}

@@ -48,7 +48,10 @@ beforeAll(async () => {
     grant select, insert on storage.objects to authenticated;
   `);
   const dossier = join(__dirname, '../supabase/migrations');
-  for (const f of readdirSync(dossier).filter((x) => x.endsWith('.sql')).sort()) await db.exec(readFileSync(join(dossier, f), 'utf8'));
+  for (const f of readdirSync(dossier)
+    .filter((x) => x.endsWith('.sql'))
+    .sort())
+    await db.exec(readFileSync(join(dossier, f), 'utf8'));
   await db.exec(`
     insert into auth.users (id) values ('${ids.userCoach1}'), ('${ids.userCoach2}'), ('${ids.userClientA}'), ('${ids.userClientB}');
     insert into public.coachs (id, user_id, nom, lien_questionnaire) values
@@ -99,9 +102,28 @@ describe('accès appli et option nutrition', () => {
 
 describe('numéro du coach', () => {
   it('le client lit le prénom et le numéro de son coach, pas ceux des autres', async () => {
-    await db.exec(`update public.coachs set telephone = '33648640845' where id = '${ids.coach1}'; update public.coachs set telephone = '33600000000' where id = '${ids.coach2}';`);
-    expect((await en(ids.userClientA, `select * from public.mon_coach()`)).rows).toEqual([{ nom: 'Sylvain', telephone: '33648640845' }]);
+    await db.exec(
+      `update public.coachs set telephone = '33648640845' where id = '${ids.coach1}'; update public.coachs set telephone = '33600000000' where id = '${ids.coach2}';`,
+    );
+    expect((await en(ids.userClientA, `select * from public.mon_coach()`)).rows).toEqual([{ nom: 'Sylvain', telephone: '33648640845', photo: null }]);
     expect((await en(ids.userCoach2, `select * from public.mon_coach()`)).rows).toHaveLength(0);
+  });
+});
+
+describe('profil du coach', () => {
+  it('le coach modifie son prénom, son numéro et sa photo, pas ceux des autres coachs', async () => {
+    const photo = 'data:image/jpeg;base64,AAAA';
+    const maj = await en(ids.userCoach1, `update public.coachs set nom = 'Sylvain', telephone = '33648640845', photo = $1 returning id`, [photo]);
+    expect(maj.rows).toHaveLength(1);
+    expect((await en(ids.userCoach1, `update public.coachs set nom = 'Pirate' where id = $1 returning id`, [ids.coach2])).rows).toHaveLength(0);
+    expect((await en(ids.userClientA, `select photo from public.mon_coach()`)).rows).toEqual([{ photo }]);
+    await en(ids.userCoach1, `update public.coachs set photo = null`);
+  });
+
+  it('refuse un prénom vide, une photo qui n’est pas une image, et un client qui modifie son coach', async () => {
+    await expect(en(ids.userCoach1, `update public.coachs set nom = '  '`)).rejects.toThrow();
+    await expect(en(ids.userCoach1, `update public.coachs set photo = 'javascript:alert(1)'`)).rejects.toThrow();
+    expect((await en(ids.userClientA, `update public.coachs set nom = 'X' returning id`)).rows).toHaveLength(0);
   });
 });
 
@@ -111,12 +133,16 @@ describe('packs de séances', () => {
       ids.clientSeances,
     ]);
     expect(rows[0].coach_id).toBe(ids.coach1);
-    const maj = await en(ids.userCoach1, `update public.packs_seances set seances_faites = seances_faites + 1 where id = $1 returning seances_faites`, [rows[0].id]);
+    const maj = await en(ids.userCoach1, `update public.packs_seances set seances_faites = seances_faites + 1 where id = $1 returning seances_faites`, [
+      rows[0].id,
+    ]);
     expect(maj.rows[0].seances_faites).toBe(1);
   });
 
   it('refuse de décompter plus de séances que le pack n’en contient', async () => {
-    await expect(en(ids.userCoach1, `insert into public.packs_seances (client_id, seances_total, seances_faites) values ($1, 1, 2)`, [ids.clientA])).rejects.toThrow();
+    await expect(
+      en(ids.userCoach1, `insert into public.packs_seances (client_id, seances_total, seances_faites) values ($1, 1, 2)`, [ids.clientA]),
+    ).rejects.toThrow();
   });
 
   it('le client voit ses packs sans pouvoir les modifier, les autres ne voient rien', async () => {

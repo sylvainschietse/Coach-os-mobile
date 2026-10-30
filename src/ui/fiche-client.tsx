@@ -103,7 +103,7 @@ export function SuiviClient({ clientId }: { clientId: string }) {
           <Puce key={o.cle} libelle={o.libelle} actif={onglet === o.cle} onPress={() => setOnglet(o.cle)} />
         ))}
       </Puces>
-      {onglet === 'mesures' && <Mensurations clientId={clientId} saisie={false} />}
+      {onglet === 'mesures' && <Mensurations clientId={clientId} parCoach />}
       {onglet === 'quotidien' && <Quotidien clientId={clientId} cibles parCoach />}
       {onglet === 'records' && <Records clientId={clientId} saisie={false} />}
       {onglet === 'sport' && <Sport clientId={clientId} proprietaire={false} />}
@@ -124,7 +124,7 @@ export function FicheClient({ clientId, coachId }: { clientId: string; coachId: 
       </Puces>
       {onglet === 'seances' && <SeancesClientCoach clientId={clientId} coachId={coachId} />}
       {onglet === 'historique' && <DetailClient clientId={clientId} />}
-      {onglet === 'mesures' && <Mensurations clientId={clientId} saisie={false} />}
+      {onglet === 'mesures' && <Mensurations clientId={clientId} parCoach />}
       {onglet === 'quotidien' && <Quotidien clientId={clientId} cibles parCoach />}
       {onglet === 'records' && <Records clientId={clientId} saisie={false} />}
       {onglet === 'sport' && <Sport clientId={clientId} proprietaire={false} />}

@@ -1,5 +1,6 @@
 import type { AccesClient } from '@/domain/acces-client';
 
+import { profilCoach } from './profil-coach';
 import { supabase } from './supabase';
 
 /** Le client a-t-il déjà un compte pour se connecter ? */
@@ -48,13 +49,14 @@ export async function mesInfos(clientId: string): Promise<MesInfos> {
 export interface MonCoach {
   nom: string;
   telephone?: string;
+  photo?: string;
 }
 
-/** Prénom et numéro du coach, pour lui écrire depuis l'espace client. En démo, Sylvain sans numéro. */
+/** Prénom, numéro et photo du coach, pour lui écrire depuis l'espace client. En démo, le profil saisi dans « Mon profil ». */
 export async function monCoach(): Promise<MonCoach | null> {
-  if (!supabase) return { nom: 'Sylvain' };
+  if (!supabase) return profilCoach.lire();
   const { data, error } = await supabase.rpc('mon_coach');
   if (error) throw new Error('Impossible de joindre ton coach pour le moment.');
-  const ligne = (data as { nom: string; telephone: string | null }[] | null)?.[0];
-  return ligne ? { nom: ligne.nom, telephone: ligne.telephone ?? undefined } : null;
+  const ligne = (data as { nom: string; telephone: string | null; photo: string | null }[] | null)?.[0];
+  return ligne ? { nom: ligne.nom, telephone: ligne.telephone ?? undefined, photo: ligne.photo ?? undefined } : null;
 }
