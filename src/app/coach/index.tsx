@@ -2,6 +2,7 @@
 import { Redirect, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   Activity,
+  ArrowLeft,
   CalendarCheck,
   FileText,
   LayoutDashboard,
@@ -54,7 +55,9 @@ import { BilansCoach } from '@/ui/suivi/bilans-coach';
 import { EspaceClient } from '@/ui/espace-client';
 import { SeancesRealisees } from '@/ui/entrainement/bilan';
 import { Bibliotheque } from '@/ui/entrainement/bibliotheque';
+import { Action } from '@/ui/entrainement/commun';
 import { CyclesClients } from '@/ui/entrainement/cycles';
+import { EntrainementClient } from '@/ui/entrainement/suivi-client';
 import { DetailProgramme } from '@/ui/entrainement/programme';
 import { EditeurSeance } from '@/ui/entrainement/seance';
 import { couleurs, espace, LARGEUR_COACH, LARGEUR_LG } from '@/ui/theme';
@@ -214,13 +217,28 @@ export default function EspaceCoach() {
             ) : (
               <Bibliotheque coachId={coachId} onOuvrir={(id) => router.setParams({ programme: id })} />
             ))}
-          {onglet === 'suivis' && (
-            <CyclesClients
-              coachId={coachId}
-              onOuvrirProgramme={(id) => router.setParams({ onglet: 'airtable', programme: id, seance: undefined })}
-              onOuvrirFiche={ouvrirFicheClient}
-            />
-          )}
+          {onglet === 'suivis' &&
+            (params.client ? (
+              <View style={{ gap: espace(4) }}>
+                <View style={{ alignSelf: 'flex-start' }}>
+                  <Action petit variante="fantome" icone={ArrowLeft} libelle="Retour aux clients" onPress={() => router.setParams({ client: undefined })} />
+                </View>
+                <EntrainementClient
+                  key={params.client}
+                  coachId={coachId}
+                  clientId={params.client}
+                  avecNom
+                  onOuvrirProgramme={(id) => router.setParams({ onglet: 'airtable', programme: id, seance: undefined, client: undefined })}
+                />
+              </View>
+            ) : (
+              <CyclesClients
+                coachId={coachId}
+                onOuvrirProgramme={(id) => router.setParams({ onglet: 'airtable', programme: id, seance: undefined })}
+                onOuvrirFiche={ouvrirFicheClient}
+                onOuvrirEntrainement={(id) => router.setParams({ client: id })}
+              />
+            ))}
           {onglet === 'bilan' && (
             <SeancesRealisees
               coachId={coachId}

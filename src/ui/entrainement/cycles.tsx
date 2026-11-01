@@ -1,8 +1,8 @@
 // Suivis.tsx, CycleDialog.tsx et CycleProgrammeDialog.tsx d'origine (C13, C14) : un suivi de plusieurs mois par
 // client, découpé en cycles préparés puis activés par le coach. Un seul cycle actif ; activer termine le précédent.
-import { ArrowDown, ArrowUp, ExternalLink, Library, Pencil, Play, Plus } from 'lucide-react-native';
+import { Activity, ArrowDown, ArrowUp, ExternalLink, Library, Pencil, Play, Plus } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
-import { Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';
 
 import { entrainement, lierProgramme } from '@/data/entrainement';
 import { ecrireJour, lireJour } from '@/domain/crm';
@@ -87,10 +87,11 @@ function SuiviForm({ coachId, p, onEnregistre }: { coachId: string; p: SuiviClie
   );
 }
 
-type ActionCycle = 'up' | 'down' | 'edit' | 'prog' | 'activer' | 'open';
+type ActionCycle = 'up' | 'down' | 'edit' | 'prog' | 'activer' | 'open' | 'suivi';
 
 function LigneCycle({ c, i, n, occupe, agir }: { c: CycleClient; i: number; n: number; occupe: boolean; agir: (a: ActionCycle) => void }) {
   const jour = aujourdhuiParis();
+  const suivable = !!c.programmeId && (c.statut === 'Actif' || c.statut === 'Terminé');
   return (
     <View style={{ borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 10, backgroundColor: couleurs.carte, padding: 12, gap: 8 }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
@@ -105,21 +106,34 @@ function LigneCycle({ c, i, n, occupe, agir }: { c: CycleClient; i: number; n: n
           <Text style={ts.doux}>
             {jourCourt(c.debut)} → {jourCourt(c.fin)} · {c.nbResultats} résultat{c.nbResultats > 1 ? 's' : ''}
           </Text>
-          <Text numberOfLines={1} style={[ts.doux, { color: couleurs.texte }]}>
-            {c.programmeNom ? `${c.programmeNom} · ${c.mode}` : 'Aucun programme lié'}
-          </Text>
+          {/* Toucher le programme d'un cycle commencé ouvre l'entraînement du client (séances faites, manquées, à venir). */}
+          <Pressable
+            accessibilityRole={suivable ? 'button' : undefined}
+            accessibilityLabel={suivable ? `Voir l’entraînement : ${c.programmeNom}` : undefined}
+            disabled={!suivable}
+            onPress={() => agir('suivi')}
+          >
+            <Text numberOfLines={1} style={[ts.doux, { color: suivable ? couleurs.rouge : couleurs.texte }, suivable && { fontFamily: polices.texteMoyen }]}>
+              {c.programmeNom ? `${titreClient(c.programmeNom)} · ${c.mode}` : 'Aucun programme lié'}
+            </Text>
+          </Pressable>
           <TexteLong texte={c.objectif} style={{ fontSize: 12, color: couleurs.texteDoux }} />
         </View>
-        {c.programmeNom && <PhotoProgramme programme={{ titre: c.programmeNom }} hauteur={56} style={{ width: 76, borderRadius: 8 }} />}
+        {c.programmeNom && (
+          <Pressable disabled={!suivable} onPress={() => agir('suivi')} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <PhotoProgramme programme={{ titre: c.programmeNom }} hauteur={56} style={{ width: 76, borderRadius: 8 }} />
+          </Pressable>
+        )}
         <View>
           <Action petit variante="fantome" icone={ArrowUp} nom={`Monter ${c.nom}`} desactive={i === 0 || occupe} onPress={() => agir('up')} />
           <Action petit variante="fantome" icone={ArrowDown} nom={`Descendre ${c.nom}`} desactive={i === n - 1 || occupe} onPress={() => agir('down')} />
         </View>
       </View>
       <Ligne style={{ gap: 6 }}>
+        {suivable && <Action petit icone={Activity} libelle="Entraînement" onPress={() => agir('suivi')} />}
         <Action petit variante="contour" icone={Pencil} libelle="Modifier" onPress={() => agir('edit')} />
-        {c.statut !== 'Terminé' && <Action petit variante="contour" icone={Library} libelle="Programme" onPress={() => agir('prog')} />}
-        {c.programmeId && <Action petit variante="fantome" icone={ExternalLink} libelle="Éditer" onPress={() => agir('open')} />}
+        {c.statut !== 'Terminé' && <Action petit variante="contour" icone={Library} libelle={c.programmeId ? 'Changer de programme' : 'Lier un programme'} onPress={() => agir('prog')} />}
+        {c.programmeId && <Action petit variante="fantome" icone={ExternalLink} libelle="Éditer le programme" onPress={() => agir('open')} />}
         {c.statut === 'Prêt' && <Action petit icone={Play} libelle="Activer" desactive={!c.programmeId || occupe || !dansDates(c, jour)} onPress={() => agir('activer')} />}
         {c.statut === 'Brouillon' && <Text style={ts.doux}>Passez en « Prêt » pour activer</Text>}
         {c.statut === 'Prêt' && !dansDates(c, jour) && <Text style={ts.doux}>{jour < c.debut ? `À venir · activable le ${jourCourt(c.debut)}` : 'Dates dépassées · replanifiez'}</Text>}
@@ -342,6 +356,7 @@ function ProfilSuivi({
   recharger,
   onOuvrir,
   onFiche,
+  onEntrainement,
 }: {
   coachId: string;
   p: SuiviClient;
@@ -349,6 +364,7 @@ function ProfilSuivi({
   recharger: () => void;
   onOuvrir: (programmeId: string) => void;
   onFiche: () => void;
+  onEntrainement: () => void;
 }) {
   const { width } = useWindowDimensions();
   const [dialogue, setDialogue] = useState<{ type: 'cycle'; c?: CycleClient } | { type: 'prog'; c: CycleClient }>();
@@ -375,6 +391,9 @@ function ProfilSuivi({
       <Ligne style={{ marginBottom: 12 }}>
         <Text style={{ fontFamily: polices.titre, fontSize: 22, letterSpacing: 0.8, color: couleurs.texte }}>{p.nom}</Text>
         <Action petit variante="contour" icone={ExternalLink} libelle="Voir la fiche" onPress={onFiche} />
+        {p.cycles.some((c) => c.programmeId && (c.statut === 'Actif' || c.statut === 'Terminé')) && (
+          <Action petit variante="contour" icone={Activity} libelle="Entraînement" onPress={onEntrainement} />
+        )}
       </Ligne>
       <SuiviForm coachId={coachId} p={p} onEnregistre={recharger} />
       {p.suivi && (
@@ -404,6 +423,7 @@ function ProfilSuivi({
                     else if (a === 'edit') setDialogue({ type: 'cycle', c });
                     else if (a === 'prog') setDialogue({ type: 'prog', c });
                     else if (a === 'open') onOuvrir(c.programmeId!);
+                    else if (a === 'suivi') onEntrainement();
                     else setActiver(c);
                   }}
                 />
@@ -460,10 +480,13 @@ export function CyclesClients({
   coachId,
   onOuvrirProgramme,
   onOuvrirFiche,
+  onOuvrirEntrainement,
 }: {
   coachId: string;
   onOuvrirProgramme: (id: string) => void;
   onOuvrirFiche: (clientId: string) => void;
+  /** Séances faites, manquées et à venir du client, détail et évolutions. */
+  onOuvrirEntrainement: (clientId: string) => void;
 }) {
   const profils = useCharger(() => entrainement.suivis(coachId), `suivis-${coachId}`);
   const modeles = useCharger(() => entrainement.bibliotheque(coachId), `modeles-${coachId}`);
@@ -486,7 +509,9 @@ export function CyclesClients({
         {!profils.donnee && !profils.erreur && [0, 1].map((i) => <View key={i} style={{ height: 320, borderRadius: 12, backgroundColor: couleurs.discret, flexBasis: '48%', flexGrow: 1 }} />)}
         {profils.donnee?.length === 0 && <Text style={[ts.doux, { fontSize: 14 }]}>Aucun client actif. Un contact devient client depuis sa fiche.</Text>}
         {profils.donnee?.map((p) => (
-          <ProfilSuivi key={p.clientId} coachId={coachId} p={p} modeles={modeles.donnee ?? null} recharger={recharger} onOuvrir={onOuvrirProgramme} onFiche={() => onOuvrirFiche(p.clientId)} />
+          <ProfilSuivi key={p.clientId} coachId={coachId} p={p} modeles={modeles.donnee ?? null} recharger={recharger} onOuvrir={onOuvrirProgramme} onFiche={() => onOuvrirFiche(p.clientId)}
+            onEntrainement={() => onOuvrirEntrainement(p.clientId)}
+          />
         ))}
       </View>
     </View>

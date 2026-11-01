@@ -7,6 +7,7 @@ import { JournalRepas } from './alimentation/journal-repas';
 import { ProfilNutritionCarte } from './alimentation/profil';
 import { DetailClient } from './detail-client';
 import { SeancesRealisees } from './entrainement/bilan';
+import { EntrainementClient } from './entrainement/suivi-client';
 import { SeancesClientCoach } from './programmes/seances-client';
 import { Mensurations } from './suivi/mensurations';
 import { Photos } from './suivi/photos';
@@ -57,6 +58,7 @@ function Nutrition({ clientId, coachId }: { clientId: string; coachId: string })
 }
 
 const PROGRAMME = [
+  { cle: 'entrainement', libelle: 'Entraînement' },
   { cle: 'seances', libelle: 'Séances' },
   { cle: 'historique', libelle: 'Réalisé' },
 ] as const;
@@ -69,9 +71,9 @@ const SUIVI = [
   { cle: 'photos', libelle: 'Photos' },
 ] as const;
 
-/** Volet Programme de la fiche : séances du client et ce qu'il a réalisé. */
+/** Volet Programme de la fiche : son entraînement semaine par semaine, ses séances et ce qu'il a réalisé. */
 export function ProgrammeClient({ clientId, coachId }: { clientId: string; coachId: string }) {
-  const [onglet, setOnglet] = useState<(typeof PROGRAMME)[number]['cle']>('seances');
+  const [onglet, setOnglet] = useState<(typeof PROGRAMME)[number]['cle']>('entrainement');
   return (
     <View style={{ gap: espace(4), marginTop: espace(4) }}>
       <Puces>
@@ -79,6 +81,13 @@ export function ProgrammeClient({ clientId, coachId }: { clientId: string; coach
           <Puce key={o.cle} libelle={o.libelle} actif={onglet === o.cle} onPress={() => setOnglet(o.cle)} />
         ))}
       </Puces>
+      {onglet === 'entrainement' && (
+        <EntrainementClient
+          coachId={coachId}
+          clientId={clientId}
+          onOuvrirProgramme={(id) => router.setParams({ onglet: 'airtable', programme: id, seance: undefined, contact: undefined, volet: undefined })}
+        />
+      )}
       {onglet === 'seances' && <SeancesClientCoach clientId={clientId} coachId={coachId} />}
       {/* Résultats du client (anciennement l'onglet Clients › Séances réalisées), filtrables par cycle et par séance. */}
       {onglet === 'historique' && (
