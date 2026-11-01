@@ -22,9 +22,13 @@ import {
   verifierCycle,
   type CycleStocke,
   type Etat,
+  type Planification,
+  type RealisationStockee,
   type ProgrammeStocke,
   type SeanceStockee,
 } from '@/domain/entrainement-etat';
+
+import type { SerieRealisee, Valeurs } from '@/domain/types';
 
 import { CLIENTS_DEMO, COACH_DEMO } from './demo';
 import type { Entrainement } from './entrainement';
@@ -37,9 +41,94 @@ const MODELE_DEMO = 'rec0a3UFdHP6Mwh7P'; // MOD-SAL-13-4 · Débutant · Prise d
 type Stocke = Omit<Etat, 'programmes' | 'seances'> & { programmes: ProgrammeStocke[]; seances: SeanceStockee[] };
 
 /** Un suivi fictif pour Léa, son cycle en cours lié tel quel à un modèle importé, pour essayer l'espace client. */
+/**
+ * Trois semaines et demie d'entraînement fictif de Léa sur le cycle 1, pour que le coach voie tout de suite son suivi :
+ * séances faites (charges qui montent, ressenti, commentaires), une séance manquée, et les créneaux à venir.
+ */
+function historiqueDemo(clientId: string, cycleId: string, cycleNom: string, debut: string, jour: string) {
+  const base = modelesImportes(COACH_DEMO.id);
+  const prog = base.programmes.find((x) => x.id === MODELE_DEMO);
+  const seances = base.seances.filter((x) => x.programmeId === MODELE_DEMO).sort((a, b) => (a.ordre ?? 99) - (b.ordre ?? 99));
+  const planifications: Planification[] = [];
+  const realisations: RealisationStockee[] = [];
+  if (!prog || seances.length === 0) return { planifications, realisations };
+  // Jours de la semaine du cycle où Léa s'entraîne ; une séance manquée en semaine 2.
+  const JOURS = [0, 1, 3, 5];
+  const MANQUEE = '2-3';
+  const COMMENTAIRES: Record<string, string> = {
+    '1-0': 'Première séance, j’ai pris mes repères sur les charges.',
+    '2-1': 'Fatiguée après le travail, j’ai gardé les mêmes charges.',
+    '3-0': 'Super séance, le squat passe beaucoup mieux !',
+    '3-2': 'Petite gêne à l’épaule droite sur le développé, rien de grave.',
+    '4-0': 'J’ai monté toutes les charges, je me sens plus forte.',
+  };
+  for (let semaine = 1; semaine <= 5; semaine++) {
+    JOURS.forEach((decalage, i) => {
+      const date = ajouterJours(debut, (semaine - 1) * 7 + decalage);
+      const seance = seances[i % seances.length];
+      const cle = `${semaine}-${i}`;
+      const id = `demo-creneau-${cle}`;
+      const faite = date < jour && cle !== MANQUEE;
+      const realisationId = faite ? `demo-realisation-${cle}` : undefined;
+      if (date > ajouterJours(jour, 7)) return;
+      planifications.push({
+        id,
+        clientId,
+        cycleId,
+        seanceId: seance.id,
+        seanceTitre: seance.titre,
+        date,
+        statut: faite ? 'Réalisée' : 'Prévue',
+        realiseeLe: faite ? `${date}T18:05:00.000Z` : undefined,
+        realisationId,
+        envoiId: id,
+      });
+      if (!faite) return;
+      const noms: Record<string, string> = {};
+      const series: SerieRealisee[] = [];
+      seance.blocs
+        .flatMap((b) => b.lignes)
+        .forEach((l) => {
+          noms[l.id] = l.exercice.nom;
+          const mesures = l.exercice.mesures ?? [];
+          for (let k = 0; k < l.series; k++) {
+            // Charge de départ propre à chaque exercice, +2,5 kg par semaine ; la dernière série un peu plus dure.
+            const valeurs: Valeurs = mesures.includes('charge')
+              ? {
+                  charge: 8 + ([...l.exercice.id].reduce((t, c) => t + c.charCodeAt(0), 0) % 5) * 4 + (semaine - 1) * 2.5,
+                  repetitions: (l.repetitionsMax ?? 12) - (k === l.series - 1 ? 2 : 0) - (cle === '2-1' ? 1 : 0),
+                }
+              : mesures.includes('repetitions')
+                ? { repetitions: l.repetitionsMax ?? 8 }
+                : { duree: (l.dureeS ?? 20) + (semaine - 1) * 5 };
+            series.push({ id: `${realisationId}-${l.id}-${k}`, ligneId: l.id, exerciceId: l.exercice.id, index: series.length, valeurs, suggestion: {} });
+          }
+        });
+      realisations.push({
+        id: realisationId!,
+        clientId,
+        seanceId: seance.id,
+        cycleId,
+        planificationId: id,
+        debut: `${date}T17:00:00.000Z`,
+        fin: `${date}T18:05:00.000Z`,
+        note: cle === '2-1' ? 5 : 6 + ((semaine + i) % 3),
+        commentaire: COMMENTAIRES[cle],
+        series,
+        seanceTitre: seance.titre,
+        programmeId: prog.id,
+        programmeNom: prog.titre,
+        cycleNom,
+        noms,
+      });
+    });
+  }
+  return { planifications, realisations };
+}
+
 function depart(): Stocke {
   const jour = aujourdhuiParis();
-  const debut = ajouterJours(jour, -10);
+  const debut = ajouterJours(jour, -24);
   const suivi = { id: 'suivi-lea', clientId: CLIENTS_DEMO[0].id, debut, dureeMois: 3 };
   const cycle = (ordre: number, nom: string, d: string, statut: CycleStocke['statut'], programmeId?: string): CycleStocke => ({
     id: `cycle-lea-${ordre}`,
@@ -58,8 +147,7 @@ function depart(): Stocke {
     seances: [],
     suivis: [suivi],
     cycles: [cycle(1, 'Cycle 1 · Fondations', debut, 'Actif', MODELE_DEMO), cycle(2, 'Cycle 2 · Progression', ajouterJours(debut, 35), 'Brouillon')],
-    planifications: [],
-    realisations: [],
+    ...historiqueDemo(suivi.clientId, 'cycle-lea-1', 'Cycle 1 · Fondations', debut, jour),
   };
 }
 
