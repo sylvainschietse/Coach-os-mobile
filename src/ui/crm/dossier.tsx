@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Selecteur } from '../coque';
 import { Bouton } from '../composants';
+import { BoutonDictee } from '../dictee';
 import { arrondi, couleurs, espace, polices } from '../theme';
 
 import { roleWeb } from '@/lib/role-web';
@@ -284,11 +285,14 @@ export function Saisie({
   aide,
   max,
   desactive,
+  dictee,
 }: {
   libelle: string;
   valeur: string;
   onChange: (v: string) => void;
   long?: boolean;
+  /** Bouton « Dicter » sous le libellé : le texte dicté s'ajoute à la saisie. */
+  dictee?: boolean;
   placeholder?: string;
   type?: 'email' | 'telephone' | 'nombre';
   erreur?: string;
@@ -300,6 +304,7 @@ export function Saisie({
   return (
     <View style={{ gap: espace(2) }}>
       <Libelle>{libelle}</Libelle>
+      {dictee && <BoutonDictee valeur={valeur} onChange={onChange} desactive={desactive} />}
       <TextInput
         accessibilityLabel={libelle}
         value={valeur}

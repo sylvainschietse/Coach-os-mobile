@@ -4,9 +4,9 @@
 // Écart corrigé : un exercice au temps (gainage) ou à l'objectif (cardio) se saisit en durée, distance, calories ou
 // watts au lieu de « charge × répétitions ».
 import { router } from 'expo-router';
-import { AlertCircle, CheckCircle2, ChevronDown, PlayCircle, Timer } from 'lucide-react-native';
+import { AlertCircle, CheckCircle2, ChevronDown, Timer } from 'lucide-react-native';
 import { Fragment, useEffect, useRef, useState, type ComponentRef } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { entrainement } from '@/data/entrainement';
 import { dureeCourte, formatDeLigne, lireObjectif, prescriptionClient, suggestionPourcentage, titreClient, typeDeLigne, type Reference } from '@/domain/entrainement';
@@ -18,6 +18,7 @@ import { nouvelId } from '@/lib/identifiant';
 
 import { couleurs, polices } from '../theme';
 import { Action, Ligne, TexteLong, ts } from './commun';
+import { VignetteVideo } from './vignette-video';
 
 type Champ = { m: Mesure; titre: string; unite: string; decimal: boolean; max: number };
 type Brouillon = { vals: Record<string, Partial<Record<Mesure, string>>>; note: number | null; com: string; envoiId: string; debut: string };
@@ -380,16 +381,13 @@ function LigneSaisie({
 
   return (
     <View accessibilityLabel={l.exercice.nom} style={{ borderRadius: 10, backgroundColor: 'rgba(237,239,242,0.5)', padding: 12, gap: 4 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-        <Text style={[ts.titre, { flex: 1, fontSize: 15 }]}>{l.exercice.nom}</Text>
-        {l.exercice.videoUrl && (
-          <Pressable accessibilityRole="link" onPress={() => Linking.openURL(l.exercice.videoUrl!)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32 }}>
-            <PlayCircle size={16} color={couleurs.rouge} />
-            <Text style={{ fontFamily: polices.texteMoyen, fontSize: 12, color: couleurs.rouge }}>Vidéo</Text>
-          </Pressable>
-        )}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+          <Text style={[ts.titre, { fontSize: 15 }]}>{l.exercice.nom}</Text>
+          <Text style={ts.mono}>{prescriptionClient(l)}</Text>
+        </View>
+        {l.exercice.videoUrl && <VignetteVideo url={l.exercice.videoUrl} nom={l.exercice.nom} largeur={96} />}
       </View>
-      <Text style={ts.mono}>{prescriptionClient(l)}</Text>
       <TexteLong texte={l.consignes} style={{ fontSize: 12, color: couleurs.texteDoux }} />
       <Ligne style={{ marginTop: 8 }}>
         <Action

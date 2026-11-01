@@ -5,8 +5,8 @@ import { Text, View } from 'react-native';
 
 import { entrainement, gererProgramme, type ActionCreation } from '@/data/entrainement';
 import { descriptifSeance } from '@/domain/descriptif-seance';
-import { proposerSeance } from '@/data/redaction';
-import { blocsProposes, type PropositionSeance } from '@/domain/assistant-seance';
+import { proposerPlanProgramme, proposerSeance } from '@/data/redaction';
+import { blocsProposes, demandeSeanceDuPlan, lirePlan, type PlanLu, type PropositionSeance } from '@/domain/assistant-seance';
 import { LIBELLES_CYCLES, NIVEAUX, OBJECTIFS } from '@/domain/entrainement';
 import type { ModeleResume } from '@/domain/entrainement-etat';
 import type { Bloc } from '@/domain/types';
@@ -77,6 +77,8 @@ export function CreationEntrainement({
   const [enregistre, setEnregistre] = useState({ nom: '', consignes: '' });
   const [demande, setDemande] = useState('');
   const [proposition, setProposition] = useState<{ p: PropositionSeance; blocs: Bloc[] }>();
+  const [programmePropose, setProgrammePropose] = useState<ProgrammePropose>();
+  const [avancement, setAvancement] = useState('');
 
   const prog = action === 'programme' || action === 'editProgramme';
   const copie = action === 'copyProgramme' || action === 'copySeance';
@@ -116,6 +118,7 @@ export function CreationEntrainement({
   const soumettre = async () => {
     // Une proposition de l'assistant encore affichée est reprise par le bouton du bas, sinon ses blocs seraient perdus.
     if (action === 'seance' && !cree && proposition) return utiliserProposition();
+    if (action === 'programme' && programmePropose) return utiliserProgramme();
     if (verrou.current || !valide) return;
     verrou.current = true;
     setOccupe(true);
@@ -155,6 +158,78 @@ export function CreationEntrainement({
       setProposition({ p, blocs });
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Proposition impossible');
+    } finally {
+      verrou.current = false;
+      setOccupe(false);
+    }
+  };
+
+  // Programme : le plan de la semaine d'abord, puis chaque séance composée en parallèle avec la bibliothèque d'exercices.
+  const proposerProgramme = async () => {
+    if (verrou.current || demande.trim().length < 5) return;
+    verrou.current = true;
+    setOccupe(true);
+    setErreur('');
+    setProgrammePropose(undefined);
+    try {
+      setAvancement('Plan de la semaine en cours…');
+      const plan = lirePlan(await proposerPlanProgramme(demande.trim()));
+      if (!plan.seances.length) throw new Error('L’assistant n’a proposé aucune séance. Reformule ta demande.');
+      let faites = 0;
+      const etape = () => setAvancement(`« ${plan.titre} » : composition des séances (${faites}/${plan.seances.length})…`);
+      etape();
+      const reponses = await Promise.allSettled(
+        plan.seances.map((_, i) =>
+          proposerSeance(demandeSeanceDuPlan(demande, plan, i)).finally(() => {
+            faites++;
+            etape();
+          }),
+        ),
+      );
+      const seances = reponses.map((r, i) => {
+        const blocs = r.status === 'fulfilled' ? blocsProposes(r.value, nouvelId) : [];
+        return { titre: plan.seances[i].titre, consignes: (r.status === 'fulfilled' && r.value.consignes?.trim()) || plan.seances[i].contenu, blocs };
+      });
+      if (seances.every((x) => !x.blocs.length)) throw new Error('Les séances n’ont pas pu être composées. Réessaie dans un instant.');
+      setProgrammePropose({ plan, seances });
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Proposition impossible');
+    } finally {
+      setAvancement('');
+      verrou.current = false;
+      setOccupe(false);
+    }
+  };
+
+  // Le programme proposé est enregistré d'un bloc (en-tête et séances) ; le coach le retouche ensuite comme un autre.
+  const utiliserProgramme = async () => {
+    if (verrou.current || !programmePropose) return;
+    verrou.current = true;
+    setOccupe(true);
+    setErreur('');
+    try {
+      const { plan, seances } = programmePropose;
+      const id = nouvelId();
+      await entrainement.enregistrerProgramme(
+        coachId,
+        {
+          id,
+          titre: f.nom.trim() || plan.titre,
+          statut: 'Brouillon',
+          version: 'coachos-free',
+          niveau: f.niveau || plan.niveau,
+          objectif: f.objectif || plan.objectif,
+          seancesParSemaine: Number(f.frequence) || plan.seancesParSemaine,
+          dureeSemaines: Number(f.duree) || plan.dureeSemaines,
+          materiel: f.materiel.trim() || plan.materiel,
+          consignes: f.consignes.trim() || plan.consignes || undefined,
+        },
+        seances.map((x, i) => ({ id: nouvelId(), titre: x.titre, programmeId: id, ordre: i + 1, consignes: x.consignes || undefined, blocs: x.blocs })),
+      );
+      onEnregistre({ id, programmeId: id });
+      onFermer();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Enregistrement impossible');
     } finally {
       verrou.current = false;
       setOccupe(false);
@@ -212,7 +287,7 @@ export function CreationEntrainement({
             <Action libelle={cree ? 'Fermer le brouillon' : 'Annuler'} variante="contour" desactive={occupe} onPress={fermer} />
             <Action
               libelle={occupe ? 'Enregistrement…' : action === 'seance' ? 'Suivant : blocs et exercices' : 'Enregistrer'}
-              desactive={(!valide && !(action === 'seance' && proposition)) || occupe}
+              desactive={(!valide && !(action === 'seance' && proposition) && !(action === 'programme' && programmePropose)) || occupe}
               onPress={soumettre}
             />
           </Ligne>
@@ -252,6 +327,7 @@ export function CreationEntrainement({
                 <Saisie
                   libelle="Ce que vous voulez dans la séance"
                   long
+                  dictee
                   valeur={demande}
                   aide="Ex. : full body 45 min pour une femme de 50 ans débutante, haltères et élastiques, genou sensible, finir par 10 min de vélo."
                   onChange={(v) => !occupe && setDemande(v.slice(0, 2000))}
@@ -264,6 +340,40 @@ export function CreationEntrainement({
                   <Ligne style={{ justifyContent: 'flex-end' }}>
                     <Action petit variante="contour" libelle="Écarter" desactive={occupe} onPress={() => setProposition(undefined)} />
                     <Action petit libelle={occupe ? 'Enregistrement…' : 'Utiliser cette séance'} desactive={occupe} onPress={utiliserProposition} />
+                  </Ligne>
+                )}
+              </View>
+            </Repliable>
+          )}
+          {action === 'programme' && (
+            <Repliable resume="Décrire le programme à l’assistant" ouvert>
+              <View style={{ gap: 8 }}>
+                <Saisie
+                  libelle="Ce que vous voulez dans le programme"
+                  long
+                  dictee
+                  valeur={demande}
+                  aide="Ex. : femme de 50 ans débutante, remise en forme, 3 séances de 45 min par semaine, haltères et élastiques à la maison, genou sensible."
+                  onChange={(v) => !occupe && setDemande(v.slice(0, 2000))}
+                />
+                <Ligne style={{ justifyContent: 'flex-end' }}>
+                  <Action
+                    petit
+                    libelle={occupe && !programmePropose ? 'Proposition en cours…' : programmePropose ? 'Proposer à nouveau' : 'Proposer le programme'}
+                    desactive={occupe || demande.trim().length < 5}
+                    onPress={proposerProgramme}
+                  />
+                </Ligne>
+                {avancement ? (
+                  <Text {...{ 'aria-live': 'polite' }} style={ts.doux}>
+                    {avancement} Compte une à deux minutes.
+                  </Text>
+                ) : null}
+                {programmePropose && <ApercuProgramme p={programmePropose} />}
+                {programmePropose && (
+                  <Ligne style={{ justifyContent: 'flex-end' }}>
+                    <Action petit variante="contour" libelle="Écarter" desactive={occupe} onPress={() => setProgrammePropose(undefined)} />
+                    <Action petit libelle={occupe ? 'Enregistrement…' : 'Utiliser ce programme'} desactive={occupe} onPress={utiliserProgramme} />
                   </Ligne>
                 )}
               </View>
@@ -342,6 +452,38 @@ export function CreationEntrainement({
         />
       )}
     </Modale>
+  );
+}
+
+type ProgrammePropose = { plan: PlanLu; seances: { titre: string; consignes?: string; blocs: Bloc[] }[] };
+
+/** Aperçu du programme proposé : rien n'est enregistré tant que le coach ne l'a pas retenu. */
+function ApercuProgramme({ p }: { p: ProgrammePropose }) {
+  const { plan } = p;
+  return (
+    <View accessibilityLabel="Programme proposé par l’assistant" style={{ gap: 10, borderRadius: 8, padding: 12, backgroundColor: couleurs.discret }}>
+      <Text style={ts.doux}>Proposition, pas encore enregistrée. Vous pourrez tout modifier ensuite.</Text>
+      <Text style={ts.titreChamp}>{plan.titre}</Text>
+      <Text style={ts.doux}>
+        {[plan.niveau, plan.objectif, `${plan.seancesParSemaine} séance${plan.seancesParSemaine > 1 ? 's' : ''}/sem.`, `${plan.dureeSemaines} sem.`, plan.materiel].filter(Boolean).join(' · ')}
+      </Text>
+      {plan.consignes ? <Text style={ts.doux}>{plan.consignes}</Text> : null}
+      {p.seances.map((s, i) => (
+        <View key={i} style={{ gap: 2, borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: 8 }}>
+          <Text style={{ fontSize: 15, fontFamily: polices.texteGras, color: couleurs.texte }}>
+            {i + 1}. {s.titre}
+          </Text>
+          {s.blocs.length === 0 && <Text style={[ts.doux, { color: couleurs.rouge }]}>Séance non composée : vous pourrez la remplir dans l’éditeur.</Text>}
+          {s.blocs.map((b) => (
+            <Text key={b.id} style={{ fontSize: 14, fontFamily: polices.texte, color: couleurs.texte }}>
+              <Text style={{ fontFamily: polices.texteMoyen }}>{b.titre} : </Text>
+              {b.lignes.map((l) => l.exercice.nom).join(', ')}
+            </Text>
+          ))}
+        </View>
+      ))}
+      {plan.remarque ? <Text style={ts.doux}>À noter : {plan.remarque}</Text> : null}
+    </View>
   );
 }
 

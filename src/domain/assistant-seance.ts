@@ -58,3 +58,42 @@ export function blocsProposes(p: PropositionSeance, nouvelId: () => string): Blo
     }))
     .filter((b) => b.lignes.length > 0);
 }
+
+/** Plan d'un programme renvoyé par l'assistant (fonction creer-seance, « plan: true ») : les séances viennent ensuite. */
+export interface PlanProgramme {
+  titre?: string;
+  consignes?: string;
+  niveau?: string;
+  objectif?: string;
+  seancesParSemaine?: number;
+  dureeSemaines?: number;
+  materiel?: string;
+  seances?: { titre?: string; contenu?: string }[];
+  remarque?: string;
+}
+
+/** Le plan relu : au plus six séances, des critères dans leurs bornes. */
+export function lirePlan(p: PlanProgramme) {
+  const seances = (p.seances ?? []).slice(0, 6).map((s, i) => ({ titre: texte(s.titre, 120) ?? `Séance ${i + 1}`, contenu: texte(s.contenu, 600) ?? '' }));
+  return {
+    titre: texte(p.titre, 160) ?? 'Programme',
+    consignes: texte(p.consignes, 3000) ?? '',
+    niveau: texte(p.niveau, 40),
+    objectif: texte(p.objectif, 40),
+    seancesParSemaine: borne(p.seancesParSemaine, 1, 14) ?? seances.length,
+    dureeSemaines: borne(p.dureeSemaines, 1, 104) ?? 4,
+    materiel: texte(p.materiel, 200),
+    seances,
+    remarque: texte(p.remarque, 600),
+  };
+}
+export type PlanLu = ReturnType<typeof lirePlan>;
+
+/** Ce qu'on demande pour chaque séance du plan : la demande du coach, le cadre du programme et le rôle de la séance. */
+export function demandeSeanceDuPlan(demande: string, plan: PlanLu, i: number) {
+  const s = plan.seances[i];
+  const cadre = [plan.niveau, plan.objectif, `${plan.seancesParSemaine} séance${plan.seancesParSemaine > 1 ? 's' : ''} par semaine`, plan.materiel && `matériel : ${plan.materiel}`]
+    .filter(Boolean)
+    .join(', ');
+  return `${demande.trim().slice(0, 2000)}\n\nCette séance fait partie du programme « ${plan.titre} » (${cadre}). Séance ${i + 1} sur ${plan.seances.length} : ${s.titre}. ${s.contenu}`.slice(0, 3000);
+}
