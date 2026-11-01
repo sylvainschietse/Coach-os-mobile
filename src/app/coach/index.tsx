@@ -25,6 +25,7 @@ import type { Booster, Contact } from '@/domain/crm';
 import { aEncaisser, encaissementsDuMois } from '@/domain/gestion';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { useRetourAndroid } from '@/lib/retour-android';
+import { AgendaCoach } from '@/ui/agenda/agenda-coach';
 import { NutritionCoach } from '@/ui/alimentation/nutrition-coach';
 import {
   BandeauDemo,
@@ -62,12 +63,13 @@ import { DetailProgramme } from '@/ui/entrainement/programme';
 import { EditeurSeance } from '@/ui/entrainement/seance';
 import { couleurs, espace, LARGEUR_COACH, LARGEUR_LG } from '@/ui/theme';
 
-type Onglet = 'crm' | 'airtable' | 'suivis' | 'bilan' | 'hebdo' | 'nutrition';
-const TOUS: Onglet[] = ['crm', 'airtable', 'suivis', 'bilan', 'hebdo', 'nutrition'];
-/** Quatre onglets : « Clients » regroupe les cycles et les bilans de la semaine ; les séances réalisées sont dans la fiche. */
-type OngletVisible = 'crm' | 'clients' | 'nutrition' | 'airtable';
+type Onglet = 'crm' | 'agenda' | 'airtable' | 'suivis' | 'bilan' | 'hebdo' | 'nutrition';
+const TOUS: Onglet[] = ['crm', 'agenda', 'airtable', 'suivis', 'bilan', 'hebdo', 'nutrition'];
+/** Cinq onglets : « Agenda » pour les rendez-vous, « Clients » regroupe les cycles et les bilans de la semaine ; les séances réalisées sont dans la fiche. */
+type OngletVisible = 'crm' | 'agenda' | 'clients' | 'nutrition' | 'airtable';
 const ONGLETS: OngletDef<OngletVisible>[] = [
   { cle: 'crm', libelle: 'Accueil' },
+  { cle: 'agenda', libelle: 'Agenda' },
   { cle: 'clients', libelle: 'Clients' },
   // Ajout demandé par Sylvain (absent de Zite) : recettes, clients suivis et plans alimentaires.
   { cle: 'nutrition', libelle: 'Nutrition' },
@@ -198,6 +200,7 @@ export default function EspaceCoach() {
               onCycles={() => naviguer('suivis')}
             />
           )}
+          {onglet === 'agenda' && <AgendaCoach coachId={coachId} />}
           {onglet === 'airtable' &&
             (params.seance ? (
               <EditeurSeance
