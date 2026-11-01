@@ -61,6 +61,7 @@ const CLES: (keyof Brouillon)[] = [
   'prenom',
   'telephone',
   'email',
+  'adresse',
   'statutCrm',
   'objectifPrincipal',
   'prochaineAction',
@@ -76,6 +77,7 @@ function brouillonDe(c?: Contact): Brouillon {
     prenom: c?.prenom ?? '',
     telephone: formaterTelephone(c?.telephone),
     email: c?.email ?? '',
+    adresse: c?.adresse ?? '',
     statutCrm: c ? statutContact(c) : 'Nouveau Prospect',
     objectifPrincipal: c?.objectifPrincipal ?? '',
     prochaineAction: c?.prochaineAction ?? '',
@@ -368,6 +370,9 @@ function Coordonnees({
       </Cellule>
       <Cellule>
         <Saisie libelle="Email" type="email" valeur={b.email} onChange={set('email')} erreur={emailInvalide ? 'Adresse non reconnue' : undefined} />
+      </Cellule>
+      <Cellule>
+        <Saisie libelle="Adresse postale" long valeur={b.adresse} onChange={set('adresse')} placeholder={'N° et rue\nCode postal et ville'} aide="Elle figurera sur ses factures." />
       </Cellule>
       <Cellule>
         <Choix libelle="Statut" choix={STATUTS_CONTACT} vide={null} valeur={b.statutCrm} onChange={set('statutCrm')} />

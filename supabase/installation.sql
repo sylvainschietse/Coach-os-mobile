@@ -2661,6 +2661,12 @@ create trigger paiements_ecarter_echeance after delete on public.paiements
   for each row when (old.reference like 'abonnement:%') execute function public.ecarter_echeance();
 
 
+-- ===== 20261101100000_adresse_clients.sql =====
+-- Adresse postale du client, pour ses factures : saisie par le coach (fiche contact) ou par le client (« Mon compte »).
+alter table public.contacts add column if not exists adresse text;
+alter table public.clients add column if not exists adresse text;
+
+
 -- ===== 20261102000000_videos_mouvement.sql =====
 -- Vidéos de mouvement : depuis sa séance, le client envoie une courte vidéo (60 s au plus, compressée) d'un exercice ;
 -- le coach la regarde à côté des charges, répétitions et ressenti, puis répond par écrit et/ou par un vocal.

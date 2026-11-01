@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { messageAcces, verifierMotDePasse } from '../src/domain/acces-client';
+import { messageAcces, verifierCoordonnees, verifierMotDePasse } from '../src/domain/acces-client';
 
 describe('accès client', () => {
   it('le message donne l’e-mail, le mot de passe provisoire et le lien d’installation', () => {
@@ -28,5 +28,18 @@ describe('accès client', () => {
     expect(verifierMotDePasse('court', 'court')).toMatch(/8 caractères/);
     expect(verifierMotDePasse('assez-long', 'autre-chose')).toMatch(/identiques/);
     expect(verifierMotDePasse('assez-long', 'assez-long')).toBeNull();
+  });
+});
+
+describe('coordonnées modifiées par le client', () => {
+  it('exige un e-mail valide, le téléphone est facultatif', () => {
+    expect(verifierCoordonnees('', '')).toMatch(/e-mail/);
+    expect(verifierCoordonnees('pas-un-email', '')).toMatch(/e-mail/);
+    expect(verifierCoordonnees('zoe@exemple.fr', '')).toBeNull();
+    expect(verifierCoordonnees(' Zoe@Exemple.fr ', '06 12 34 56 78')).toBeNull();
+  });
+
+  it('refuse un numéro de téléphone illisible', () => {
+    expect(verifierCoordonnees('zoe@exemple.fr', '12')).toMatch(/téléphone/);
   });
 });

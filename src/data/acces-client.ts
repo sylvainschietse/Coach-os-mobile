@@ -36,14 +36,26 @@ export interface MesInfos {
   nom?: string;
   email?: string;
   telephone?: string;
+  adresse?: string;
 }
 
 /** Coordonnées du dossier, telles que le coach les a saisies. En démo, rien n'est enregistré. */
 export async function mesInfos(clientId: string): Promise<MesInfos> {
   if (!supabase) return {};
-  const { data, error } = await supabase.from('clients').select('prenom, nom, email, telephone').eq('id', clientId).maybeSingle();
+  const { data, error } = await supabase.from('clients').select('prenom, nom, email, telephone, adresse').eq('id', clientId).maybeSingle();
   if (error) throw new Error('Impossible de lire tes informations. Vérifie ta connexion.');
-  return { prenom: data?.prenom ?? undefined, nom: data?.nom ?? undefined, email: data?.email ?? undefined, telephone: data?.telephone ?? undefined };
+  return { prenom: data?.prenom ?? undefined, nom: data?.nom ?? undefined, email: data?.email ?? undefined, telephone: data?.telephone ?? undefined, adresse: data?.adresse ?? undefined };
+}
+
+/** Le client corrige son e-mail (qui devient son identifiant de connexion), son téléphone et son adresse postale. */
+export async function modifierMesCoordonnees(saisie: { email: string; telephone: string; adresse: string }): Promise<MesInfos> {
+  if (!supabase) return saisie;
+  const { data, error } = await supabase.functions.invoke('mes-coordonnees', { body: saisie });
+  if (error) {
+    const corps = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(corps?.erreur ?? 'Impossible d’enregistrer tes coordonnées pour le moment.');
+  }
+  return { email: data?.email ?? saisie.email, telephone: data?.telephone ?? undefined, adresse: data?.adresse ?? undefined };
 }
 
 export interface MonCoach {
