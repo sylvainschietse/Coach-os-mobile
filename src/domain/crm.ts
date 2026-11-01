@@ -22,6 +22,8 @@ export interface Contact {
   /** Numéro normalisé au format international sans « + » (336…), clé de rapprochement. */
   telephone?: string;
   email?: string;
+  /** Adresse postale, sur plusieurs lignes, pour les factures. */
+  adresse?: string;
   dateNaissance?: string;
   statut: Statut;
   /** Statut à retrouver si le contact est réactivé. */
@@ -544,7 +546,7 @@ export function reactiver(c: Carnet, contactId: string): Carnet {
 }
 
 export type SaisieContactFiche = Partial<
-  Pick<Contact, 'prenom' | 'nom' | 'telephone' | 'email' | 'notes' | 'dateNaissance' | 'source' | 'statutCrm' | 'objectifPrincipal' | 'prochaineAction' | 'offreVendue'>
+  Pick<Contact, 'prenom' | 'nom' | 'telephone' | 'email' | 'adresse' | 'notes' | 'dateNaissance' | 'source' | 'statutCrm' | 'objectifPrincipal' | 'prochaineAction' | 'offreVendue'>
 >;
 
 export function modifierContact(c: Carnet, contactId: string, patch: SaisieContactFiche) {

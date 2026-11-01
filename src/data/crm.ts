@@ -130,7 +130,13 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
       await ecrire(avant, r.carnet);
       return { contact: r.contact };
     },
-    modifierContact: (id, patch) => appliquer((c) => regles.modifierContact(c, id, patch)),
+    async modifierContact(id, patch) {
+      await appliquer((c) => regles.modifierContact(c, id, patch));
+      // Les coordonnées vont aussi sur la fiche client, que le client voit dans « Mon compte » (et ses factures).
+      if (!(['prenom', 'nom', 'telephone', 'email', 'adresse'] as const).some((cle) => cle in patch)) return;
+      const contact = (await lire()).contacts.find((x) => x.id === id);
+      if (contact?.clientId) await extra.actualiserEspaceClient(contact);
+    },
     planifierBooster: (contactId, date) => appliquer((c, ctx) => regles.planifierBooster(c, contactId, date, ctx)),
     async creerBooster(contactId, saisie) {
       const avant = await lire();
@@ -262,7 +268,7 @@ type Ligne = Record<string, unknown>;
 
 const versLigne = {
   contacts: (c: Contact): Ligne => ({
-    id: c.id, prenom: c.prenom, nom: c.nom, telephone: n(c.telephone), email: n(c.email), date_naissance: n(c.dateNaissance),
+    id: c.id, prenom: c.prenom, nom: c.nom, telephone: n(c.telephone), email: n(c.email), adresse: n(c.adresse), date_naissance: n(c.dateNaissance),
     statut: c.statut, statut_avant_archive: n(c.statutAvantArchive), source: n(c.source), notes: n(c.notes),
     client_id: n(c.clientId), cree_le: c.creeLe, statut_crm: n(c.statutCrm), objectif_principal: n(c.objectifPrincipal),
     prochaine_action: n(c.prochaineAction), offre_vendue: n(c.offreVendue),
@@ -297,7 +303,7 @@ const versLigne = {
 
 const depuisLigne = {
   contacts: (l: any): Contact => ({
-    id: l.id, prenom: l.prenom, nom: l.nom, telephone: u(l.telephone), email: u(l.email), dateNaissance: u(l.date_naissance),
+    id: l.id, prenom: l.prenom, nom: l.nom, telephone: u(l.telephone), email: u(l.email), adresse: u(l.adresse), dateNaissance: u(l.date_naissance),
     statut: l.statut, statutAvantArchive: u(l.statut_avant_archive), source: u(l.source), notes: u(l.notes),
     clientId: u(l.client_id), creeLe: l.cree_le, statutCrm: u(l.statut_crm), objectifPrincipal: u(l.objectif_principal),
     prochaineAction: u(l.prochaine_action), offreVendue: u(l.offre_vendue),
@@ -385,7 +391,7 @@ export function creerCrmSupabase(db: SupabaseClient): DepotCrm {
       const coach = await db.rpc('mon_coach_id');
       const { data, error } = await db
         .from('clients')
-        .insert({ coach_id: coach.data, prenom: contact.prenom, nom: contact.nom, email: n(contact.email), telephone: n(contact.telephone) })
+        .insert({ coach_id: coach.data, prenom: contact.prenom, nom: contact.nom, email: n(contact.email), telephone: n(contact.telephone), adresse: n(contact.adresse) })
         .select('id')
         .single();
       if (error) throw new Error(error.message);
@@ -394,7 +400,7 @@ export function creerCrmSupabase(db: SupabaseClient): DepotCrm {
     async actualiserEspaceClient(contact) {
       const { data, error } = await db
         .from('clients')
-        .update({ prenom: contact.prenom, nom: contact.nom, email: n(contact.email), telephone: n(contact.telephone) })
+        .update({ prenom: contact.prenom, nom: contact.nom, email: n(contact.email), telephone: n(contact.telephone), adresse: n(contact.adresse) })
         .eq('id', contact.clientId!)
         .select('id');
       if (error) throw new Error(error.message);
