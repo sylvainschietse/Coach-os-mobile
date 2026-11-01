@@ -9,15 +9,19 @@ import { Fragment, useEffect, useRef, useState, type ComponentRef } from 'react'
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { entrainement } from '@/data/entrainement';
+import { ecouterVideos, videos } from '@/data/videos-mouvement';
 import { dureeCourte, formatDeLigne, lireObjectif, prescriptionClient, suggestionPourcentage, titreClient, typeDeLigne, type Reference } from '@/domain/entrainement';
 import type { RealisationLue } from '@/domain/entrainement-etat';
 import { circuitAlterne, resumeAlternance, resumeMinuteur } from '@/domain/minuteur';
 import type { LignePrescription, Mesure, Seance, SerieRealisee, Valeurs } from '@/domain/types';
+import { videosDeLExercice, type ContexteVideo, type VideoMouvement } from '@/domain/videos-mouvement';
 import { demanderSortie, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { nouvelId } from '@/lib/identifiant';
+import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { couleurs, polices } from '../theme';
 import { Action, Ligne, TexteLong, ts } from './commun';
+import { VideosExercice } from './videos-mouvement';
 import { VignetteVideo } from './vignette-video';
 
 type Champ = { m: Mesure; titre: string; unite: string; decimal: boolean; max: number };
@@ -91,6 +95,9 @@ export function SeanceLog({
   const commentaire = useRef<ComponentRef<typeof TextInput>>(null);
   const lignes = seance.blocs.flatMap((b) => b.lignes);
   const brouillon = sale(d);
+  // Vidéos de mouvement envoyées au coach (et ses réponses), chargées à l'ouverture de la séance.
+  const mesVideos = useCharger(async () => (ouvert && !apercu ? videos.mesVideos(clientId) : []), `videos-mouvement-${clientId}-${ouvert && !apercu}`);
+  useRechargerSur(mesVideos.recharger, ecouterVideos);
 
   if (ouverture !== vu) {
     setVu(ouverture);
@@ -242,6 +249,17 @@ export function SeanceLog({
               precedentes={precedentes(l.id)}
               references={references}
               apercu={apercu}
+              videos={mesVideos.donnee ?? []}
+              contexteVideo={{
+                clientId,
+                realisationId: d.envoiId,
+                seanceId: seance.id,
+                ligneId: l.id,
+                exerciceId: l.exercice.id,
+                exerciceNom: l.exercice.nom,
+                seanceTitre: titreClient(seance.titre),
+              }}
+              onVideos={mesVideos.recharger}
               occupe={etat === 'envoi'}
               onChanger={changer}
               onRepos={onRepos}
@@ -356,6 +374,9 @@ function LigneSaisie({
   precedentes,
   references,
   apercu,
+  videos: videosClient,
+  contexteVideo,
+  onVideos,
   occupe,
   onChanger,
   onRemplir,
@@ -366,6 +387,9 @@ function LigneSaisie({
   precedentes: Record<number, Valeurs>;
   references: Reference[];
   apercu?: boolean;
+  videos: VideoMouvement[];
+  contexteVideo: ContexteVideo;
+  onVideos: () => void;
   occupe: boolean;
   onChanger: (k: string, m: Mesure, v: string) => void;
   onRemplir: (charge: number) => void;
@@ -493,6 +517,7 @@ function LigneSaisie({
           </View>
         );
       })}
+      {!apercu && <VideosExercice contexte={contexteVideo} videos={videosDeLExercice(videosClient, l, new Date())} onChange={onVideos} />}
     </View>
   );
 }

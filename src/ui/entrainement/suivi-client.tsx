@@ -1,15 +1,16 @@
 // Entraînement d'un client vu par le coach : où il en est dans son cycle, ses séances semaine par semaine
 // (vert faite, rouge manquée, orange à venir), le détail d'une séance faite comparé à la fois précédente,
 // et les évolutions par exercice et par semaine.
-import { ArrowDown, ArrowRight, ArrowUp, Check, Clock, X } from 'lucide-react-native';
+import { ArrowDown, ArrowRight, ArrowUp, Check, Clock, Video, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { entrainement } from '@/data/entrainement';
+import { ecouterVideos, videos } from '@/data/videos-mouvement';
 import { ajouterJours, aujourdhuiParis, avancementCycle, jourParis, titreClient } from '@/domain/entrainement';
-import { texteSerie, type CycleClient, type RealisationLue } from '@/domain/entrainement-etat';
+import type { CycleClient, RealisationLue } from '@/domain/entrainement-etat';
 import { formaterNombre } from '@/domain/suivi';
-import type { Valeurs } from '@/domain/types';
+import { expiree, type VideoMouvement } from '@/domain/videos-mouvement';
 import {
   assiduite,
   bilanParSemaine,
@@ -21,12 +22,13 @@ import {
   type PointExercice,
   type StatutPastille,
 } from '@/domain/suivi-entrainement';
-import { useCharger } from '@/lib/useCharger';
+import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Puce, Puces } from '../composants';
 import { Courbe } from '../suivi/courbe';
 import { couleurs, polices } from '../theme';
 import { Action, Ligne, TexteLong, jourCourt, ts } from './commun';
+import { serieLisible, VideosMouvementCoach } from './videos-mouvement';
 
 const STATUTS: Record<StatutPastille, { libelle: string; couleur: string; fond: string; Icone: typeof Check }> = {
   faite: { libelle: 'Faite', couleur: couleurs.vert, fond: couleurs.vertClair, Icone: Check },
@@ -42,10 +44,6 @@ const MESURES: { cle: keyof Omit<PointExercice, 'date'>; libelle: string; unite:
   { cle: 'repetitions', libelle: 'Répétitions', unite: 'reps' },
   { cle: 'duree', libelle: 'Durée', unite: 's' },
 ];
-
-/** « 27,5 kg × 12 », « 8 reps » (sans charge), sinon durée, distance… */
-const serieLisible = (v: Valeurs) =>
-  v.charge === undefined && v.repetitions !== undefined && Object.keys(v).length === 1 ? `${v.repetitions} reps` : texteSerie(v).replace(/\./g, ',');
 
 /** « 5 oct. » */
 const jourMois = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
@@ -88,6 +86,13 @@ export function EntrainementClient({
     },
     `suivi-entrainement-${clientId}-${cycle?.id ?? ''}`,
   );
+
+  // Vidéos de mouvement du client ; les plus de 30 jours sont effacées (fichiers compris) au passage.
+  const videosClient = useCharger(async () => {
+    await videos.purger().catch(() => 0);
+    return videos.videosClient(clientId);
+  }, `videos-mouvement-coach-${clientId}`);
+  useRechargerSur(videosClient.recharger, ecouterVideos);
 
   const jour = aujourdhuiParis();
   const vue = useMemo(() => {
@@ -134,7 +139,15 @@ export function EntrainementClient({
         <Text style={ts.doux}>Chargement…</Text>
       ) : (
         <>
-          <Semaines semaines={vue.semaines} realisations={vue.realisations} toutes={vue.toutes} prescriptions={vue.prescriptions} />
+          {videosClient.donnee && <VideosMouvementCoach videos={videosClient.donnee} realisations={vue.toutes} onChange={videosClient.recharger} />}
+          {videosClient.erreur && <Text style={ts.erreur}>Vidéos de mouvement : {videosClient.erreur}</Text>}
+          <Semaines
+            semaines={vue.semaines}
+            realisations={vue.realisations}
+            toutes={vue.toutes}
+            prescriptions={vue.prescriptions}
+            videos={videosClient.donnee ?? []}
+          />
           <Evolutions courbes={vue.courbes} />
           <ParSemaine bilan={vue.bilan} semaines={vue.semaines} />
         </>
@@ -245,11 +258,13 @@ function Semaines({
   realisations,
   toutes,
   prescriptions,
+  videos: liste,
 }: {
   semaines: ReturnType<typeof semainesDuCycle>;
   realisations: RealisationLue[];
   toutes: RealisationLue[];
   prescriptions: Record<string, { series: number; repetitions?: string }>;
+  videos: VideoMouvement[];
 }) {
   // Par défaut : la dernière séance faite.
   const derniere = [...realisations].sort((a, b) => b.fin.localeCompare(a.fin))[0];
@@ -305,7 +320,7 @@ function Semaines({
         ))}
       </View>
       {r ? (
-        <DetailSeance r={r} toutes={toutes} prescriptions={prescriptions} />
+        <DetailSeance r={r} toutes={toutes} prescriptions={prescriptions} videos={liste} />
       ) : pastilleChoisie ? (
         <View style={{ borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: 12, gap: 2 }}>
           <Text style={ts.titre}>{titreClient(pastilleChoisie.titre)}</Text>
@@ -330,12 +345,16 @@ function DetailSeance({
   r,
   toutes,
   prescriptions,
+  videos: liste,
 }: {
   r: RealisationLue;
   toutes: RealisationLue[];
   prescriptions: Record<string, { series: number; repetitions?: string }>;
+  videos: VideoMouvement[];
 }) {
   const exercices = detailSeance(r, toutes, prescriptions);
+  const maintenant = new Date();
+  const filmes = new Set(liste.filter((v) => v.realisationId === r.id && !expiree(v, maintenant)).map((v) => v.ligneId));
   const duree = Math.round((new Date(r.fin).getTime() - new Date(r.debut).getTime()) / 60000);
   return (
     <View style={{ borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: 12, gap: 12 }}>
@@ -363,6 +382,12 @@ function DetailSeance({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <Text style={[ts.titreChamp, { flexShrink: 1 }]}>{e.nom}</Text>
             {e.evolution && <Tendance e={e.evolution} avant={e.precedente ? serieLisible(e.precedente.valeurs) : undefined} />}
+            {filmes.has(e.ligneId) && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }} accessibilityLabel="Vidéo envoyée, à voir dans Vidéos de mouvement">
+                <Video size={14} color={couleurs.rouge} />
+                <Text style={{ fontFamily: polices.texteMoyen, fontSize: 12, color: couleurs.rouge }}>vidéo</Text>
+              </View>
+            )}
           </View>
           {e.prescription && (
             <Text style={ts.doux}>
