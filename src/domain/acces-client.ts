@@ -1,6 +1,8 @@
 // Accès d'un client à l'appli : son compte est créé par le coach avec un mot de passe provisoire,
 // que le client remplace par le sien à la première connexion.
 
+import { normaliserEmail, normaliserTelephone } from './crm';
+
 export interface AccesClient {
   email: string;
   motDePasse: string;
@@ -25,5 +27,12 @@ export function messageAcces(prenom: string, coach: string, acces: AccesClient, 
 export function verifierMotDePasse(motDePasse: string, confirmation: string): string | null {
   if (motDePasse.length < 8) return 'Choisis au moins 8 caractères.';
   if (motDePasse !== confirmation) return 'Les deux mots de passe ne sont pas identiques.';
+  return null;
+}
+
+/** null si les coordonnées saisies par le client conviennent, sinon ce qui ne va pas. Le téléphone est facultatif. */
+export function verifierCoordonnees(email: string, telephone: string): string | null {
+  if (!normaliserEmail(email)) return 'Cette adresse e-mail n’est pas reconnue.';
+  if (telephone.trim() && !normaliserTelephone(telephone)) return 'Ce numéro de téléphone n’est pas reconnu.';
   return null;
 }
