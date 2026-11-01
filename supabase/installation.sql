@@ -2687,6 +2687,7 @@ create table public.reglages_agenda (
 alter table public.reglages_agenda enable row level security;
 create policy "coach : ses réglages d'agenda" on public.reglages_agenda for all
   using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+revoke all on public.reglages_agenda from anon, authenticated;
 grant select, insert, update on public.reglages_agenda to authenticated;
 
 -- Pack partagé (couple, amis) : chaque séance faite par l'un ou l'autre se décompte une fois du même pack.
@@ -2704,6 +2705,7 @@ create policy "coach : partages de ses packs" on public.packs_partages for all
     and public.est_mon_client(client_id)
   );
 create policy "client : ses partages" on public.packs_partages for select using (client_id = public.mon_client_id());
+revoke all on public.packs_partages from anon, authenticated;
 grant select, insert, delete on public.packs_partages to authenticated;
 
 -- Le client voit aussi les packs partagés avec lui.
@@ -2804,6 +2806,8 @@ create policy "coach : retirer un participant" on public.rendez_vous_participant
 create policy "client : sa participation" on public.rendez_vous_participants for select using (client_id = public.mon_client_id());
 
 -- Le coach modifie le contenu ; le statut et le comptage passent par changer_statut_rendez_vous, qui tient packs et paiements à jour.
+-- Supabase donne tous les droits par défaut sur une nouvelle table : on les retire avant d'accorder les seules colonnes utiles.
+revoke all on public.rendez_vous, public.rendez_vous_participants from anon, authenticated;
 grant select, delete on public.rendez_vous to authenticated;
 grant insert (id, type, debut, fin, lieu, lien_visio, note, serie_id) on public.rendez_vous to authenticated;
 grant update (type, debut, fin, lieu, lien_visio, note) on public.rendez_vous to authenticated;
