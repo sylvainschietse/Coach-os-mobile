@@ -42,3 +42,42 @@ describe('photo des programmes', () => {
     expect(CLES_PROGRAMME).toContain(clePhotoProgramme({ titre: 'Sans rien' }));
   });
 });
+
+describe('photo selon le public visé', () => {
+  const titre = (code: string, profil: string, objectif: string) => `${code} · ${profil} · ${objectif} · 3 séances · Débutant`;
+  const FEMMES = ['salle-perte-2', 'salle-perte-3', 'salle-muscle-2', 'salle-force-1', 'salle-force-2', 'salle-forme-1', 'ref-nip'];
+  const HOMMES = ['salle-perte-1', 'salle-muscle-1', 'salle-muscle-3', 'salle-force-3', 'salle-forme-2', 'salle-forme-3', 'ref-rud', 'ref-nassim', 'ref-bws'];
+
+  it('un programme pour les femmes montre une femme', () => {
+    for (const objectif of ['Perte de poids', 'Remise en forme', 'Prise de muscle', 'Prise de force'])
+      for (let i = 1; i <= 12; i++) {
+        const t = titre(`MOD-SAL-V3-F-X${i}`, 'Femme', objectif);
+        expect(FEMMES, t).toContain(clePhotoProgramme({ titre: t, objectif }));
+        const p = titre(`MOD-SAL-V3-FP-X${i}`, 'Femme préménopause', objectif);
+        expect(FEMMES, p).toContain(clePhotoProgramme({ titre: p, objectif }));
+      }
+  });
+
+  it('un programme pour les femmes de 50 ans montre une femme de cet âge', () => {
+    for (let i = 1; i <= 12; i++) {
+      expect(clePhotoProgramme({ titre: titre(`MOD-SAL-V3-F50-RF${i}`, 'Femme 50 ans', 'Remise en forme'), objectif: 'Remise en forme' })).toBe(
+        'salle-forme-1',
+      );
+      expect(['salle-perte-2', 'salle-forme-1']).toContain(
+        clePhotoProgramme({ titre: titre(`MOD-SAL-V3-F50-PP${i}`, 'Femme 50 ans', 'Perte de poids'), objectif: 'Perte de poids' }),
+      );
+    }
+  });
+
+  it('un programme pour les hommes montre un homme', () => {
+    for (const objectif of ['Perte de poids', 'Remise en forme', 'Prise de muscle', 'Prise de force'])
+      for (let i = 1; i <= 12; i++) {
+        const t = titre(`MOD-H-X${i}`, 'Homme', objectif);
+        expect(HOMMES, t).toContain(clePhotoProgramme({ titre: t, objectif }));
+      }
+  });
+
+  it('un programme mixte garde la photo de son objectif', () => {
+    expect(clePhotoProgramme({ titre: 'MOD-SAL-23-1 · Perte de poids · 3 séances', objectif: 'Perte de poids' })).toMatch(/^salle-perte-/);
+  });
+});

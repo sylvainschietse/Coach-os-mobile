@@ -31,7 +31,11 @@ export const CLES_PROGRAMME = [
 export type CleProgramme = (typeof CLES_PROGRAMME)[number];
 type Cle = CleProgramme;
 
-const sansAccents = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const sansAccents = (t: string) =>
+  t
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 
 /** Méthodes de référence et programmes au poids du corps : leur photo montre l'exercice qui les caractérise. */
 const PAR_CODE: [RegExp, Cle][] = [
@@ -69,10 +73,51 @@ export interface ProgrammeIllustre {
   materiel?: string;
 }
 
+type Public = 'femme-50' | 'femme' | 'homme-50' | 'homme';
+type Objectif = 'perte' | 'muscle' | 'force' | 'forme';
+
+/** Public visé, lu dans le titre (« MOD-SAL-V3-F50-… · Femme 50 ans · … »). Sans mention : programme mixte. */
+function publicVise(titre: string): Public | undefined {
+  const t = sansAccents(titre);
+  const senior = /\b50 ?ans|\bsenior|post-?menopause|\bmenopause/.test(t.replace(/premenopause/g, ''));
+  if (/\bfemmes?\b|feminin/.test(t)) return senior ? 'femme-50' : 'femme';
+  if (/\bhommes?\b|masculin/.test(t)) return senior ? 'homme-50' : 'homme';
+  return undefined;
+}
+
+/** Photos qui montrent le bon public, par objectif (la première sert aussi quand l'objectif est inconnu). */
+const PAR_PUBLIC: Record<Public, Partial<Record<Objectif, Cle[]>> & { defaut: Cle[]; maison: Cle[] }> = {
+  // Seule photo d'une femme de plus de 50 ans ; la rameuse (perte) a la quarantaine passée.
+  'femme-50': { defaut: ['salle-forme-1'], perte: ['salle-perte-2', 'salle-forme-1'], maison: ['salle-forme-1'] },
+  femme: {
+    defaut: ['salle-force-2', 'salle-muscle-2', 'ref-nip'],
+    perte: ['salle-perte-3', 'salle-perte-2', 'ref-nip'],
+    muscle: ['salle-muscle-2', 'ref-nip', 'salle-force-2'],
+    force: ['salle-force-1', 'salle-force-2', 'ref-nip'],
+    maison: ['maison-halteres', 'maison-elastiques-2', 'cal-base'],
+  },
+  'homme-50': { defaut: ['salle-forme-3', 'salle-perte-1'], maison: ['salle-forme-3'] },
+  homme: {
+    defaut: ['salle-forme-2', 'salle-forme-3', 'salle-perte-1'],
+    perte: ['salle-perte-1', 'salle-forme-2', 'salle-muscle-3'],
+    muscle: ['salle-muscle-1', 'salle-muscle-3', 'ref-rud'],
+    force: ['salle-force-3', 'ref-nassim', 'ref-bws'],
+    maison: ['maison-elastiques-1', 'cal-split'],
+  },
+};
+
 export function clePhotoProgramme(p: ProgrammeIllustre): Cle {
   const titre = p.titre.trim();
   for (const [motif, cle] of PAR_CODE) if (motif.test(titre)) return cle;
   const texte = sansAccents([p.objectif, p.environnement, p.materiel, titre].filter(Boolean).join(' '));
+  const vise = publicVise(titre);
+  if (vise) {
+    // Un programme pour les femmes (ou les hommes, ou les plus de 50 ans) montre ce public.
+    const photos = PAR_PUBLIC[vise];
+    const objectif = OBJECTIFS.find(([motif]) => motif.test(sansAccents(p.objectif ?? '')) || motif.test(sansAccents(titre)))?.[1] as Objectif | undefined;
+    const liste = /maison|domicile|elastique|poids du corps/.test(texte) ? photos.maison : ((objectif && photos[objectif]) ?? photos.defaut);
+    return liste[(variante(titre.split(' · ')[0]) - 1) % liste.length];
+  }
   if (/elastique/.test(texte)) return 'maison-elastiques-1';
   if (/traction/.test(texte)) return 'cal-tractions';
   if (/poids du corps|calisthenie|street workout/.test(texte)) return 'cal-base';
@@ -82,4 +127,3 @@ export function clePhotoProgramme(p: ProgrammeIllustre): Cle {
   // Variante tirée du code du modèle (« MOD-SAL-23-3 ») : les modèles voisins de la liste ne se ressemblent pas.
   return `salle-${objectif}-${variante(titre.split(' · ')[0])}` as Cle;
 }
-
