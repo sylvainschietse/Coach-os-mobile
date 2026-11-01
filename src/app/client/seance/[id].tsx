@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useKeepAwake } from 'expo-keep-awake';
 
 import { depot } from '@/data';
@@ -17,6 +17,7 @@ import { dansSecondes, maintenantMs } from '@/lib/temps';
 import { annulerAlertes, autoriserNotifications, programmerAlerte } from '@/lib/notifications';
 import { vibrer } from '@/lib/vibrer';
 import { Bouton, Carte, Chargement, ChampNombre, Ecran, Erreur, SousTitre, Texte, Titre } from '@/ui/composants';
+import { VignetteVideo } from '@/ui/entrainement/vignette-video';
 import { couleurs, espace, polices } from '@/ui/theme';
 
 type Repos = { finMs: number; libelle: string; alerte: string | null };
@@ -137,14 +138,14 @@ export default function RealiserSeance() {
               const champs = champsPertinents(ligne.exercice);
               return (
                 <Carte key={ligne.id}>
-                  <SousTitre>{ligne.exercice.nom}</SousTitre>
-                  <Texte doux style={{ fontSize: 14 }}>{prescriptionLisible(ligne)}</Texte>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                    <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+                      <SousTitre>{ligne.exercice.nom}</SousTitre>
+                      <Texte doux style={{ fontSize: 14 }}>{prescriptionLisible(ligne)}</Texte>
+                    </View>
+                    {ligne.exercice.videoUrl && <VignetteVideo url={ligne.exercice.videoUrl} nom={ligne.exercice.nom} largeur={96} />}
+                  </View>
                   {ligne.consignes && <Texte style={{ fontSize: 14 }}>{ligne.consignes}</Texte>}
-                  {ligne.exercice.videoUrl && (
-                    <Pressable accessibilityRole="link" onPress={() => Linking.openURL(ligne.exercice.videoUrl!)} hitSlop={8}>
-                      <Texte style={{ fontSize: 14, color: couleurs.rouge }}>▶ Voir la démonstration</Texte>
-                    </Pressable>
-                  )}
                   {ligne.minuteur && <LancerChrono config={ligne.minuteur} titre={ligne.exercice.nom} />}
                   {series[ligne.id]?.map((serie) => (
                     <View key={serie.index} style={styles.serie}>
