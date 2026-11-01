@@ -7,6 +7,7 @@ import { crm } from '@/data/crm';
 import { ajouterJours, jourLocal, MODELES, statutBooster, type BoosterDossier, type ContactResume, type RelanceAFaire } from '@/domain/crm';
 import { montantLisible } from '@/domain/gestion';
 
+import { AgendaDuJour } from '../agenda/agenda-coach';
 import { BoutonContour, Stat } from '../coque';
 import { Carte } from '../composants';
 import { couleurs, espace, polices } from '../theme';
@@ -29,6 +30,7 @@ export function VueEnsemble({
   onOuvrirContact,
   onOuvrirBooster,
   onCycles,
+  onAgenda,
 }: {
   donnees: DonneesVueEnsemble;
   onRubrique: (r: 'Contacts' | 'Boosters' | 'Paiements') => void;
@@ -37,6 +39,7 @@ export function VueEnsemble({
   onOuvrirContact: (id: string) => void;
   onOuvrirBooster: (b: BoosterDossier) => void;
   onCycles: () => void;
+  onAgenda: () => void;
 }) {
   const { width } = useWindowDimensions();
   const [tout, setTout] = useState(false);
@@ -58,6 +61,7 @@ export function VueEnsemble({
 
   return (
     <View style={{ gap: espace(6) }}>
+      <AgendaDuJour onOuvrirAgenda={onAgenda} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         <Stat style={{ flexBasis: base }} libelle="Contacts" valeur={String(actifs.length)} onPress={() => onRubrique('Contacts')} />
         <Stat style={{ flexBasis: base }} libelle="Boosters à réaliser" valeur={String(prochains.length)} onPress={() => onRubrique('Boosters')} />

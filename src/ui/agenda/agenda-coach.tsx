@@ -172,6 +172,34 @@ export function AgendaCoach({ coachId }: { coachId: string }) {
   );
 }
 
+/** Accueil du coach : ses rendez-vous et ses événements Google du jour ; un appui ouvre l'agenda. */
+export function AgendaDuJour({ onOuvrirAgenda }: { onOuvrirAgenda: () => void }) {
+  const [jour] = useState(() => new Date(new Date().setHours(0, 0, 0, 0)));
+  const du = jour.toISOString();
+  const au = ajouterJours(jour, 1).toISOString();
+  const rdv = useCharger(() => agenda.rendezVous(du, au), `accueil-agenda-${cleJour(jour)}`);
+  const perso = useCharger(() => agenda.occupations(du, au).catch(() => [] as Occupation[]), `accueil-perso-${cleJour(jour)}`);
+  const duJour = (rdv.donnee ?? []).filter((r) => cleJour(r.debut) === cleJour(jour) && r.statut !== 'annule' && r.statut !== 'refuse');
+  const occupations = surLeJour(perso.donnee ?? [], jour);
+  return (
+    <Carte style={{ padding: 20, gap: espace(2) }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: espace(3) }}>
+        <View style={{ flexShrink: 1 }}>
+          <Text style={{ fontSize: 16, fontFamily: polices.texteGras, color: couleurs.texte }}>Aujourd’hui</Text>
+          <Text style={{ fontSize: 13, fontFamily: polices.texte, color: couleurs.texteDoux }}>{majuscule(jourLong(cleJour(jour)))}</Text>
+        </View>
+        <BoutonContour libelle="Agenda" icone={ChevronRight} onPress={onOuvrirAgenda} />
+      </View>
+      {rdv.erreur && <Erreur message={rdv.erreur} onReessayer={rdv.recharger} />}
+      {!rdv.donnee && !rdv.erreur && <Chargement />}
+      {rdv.donnee && !duJour.length && !occupations.length && (
+        <Text style={{ fontSize: 13, fontFamily: polices.texte, color: couleurs.texteDoux }}>Aucun rendez-vous aujourd’hui.</Text>
+      )}
+      {rdv.donnee && <JourMele rdv={duJour} perso={occupations} onOuvrir={onOuvrirAgenda} />}
+    </Carte>
+  );
+}
+
 function Fleche({ nom, gauche, onPress }: { nom: string; gauche?: boolean; onPress: () => void }) {
   const Icone = gauche ? ChevronLeft : ChevronRight;
   return (
