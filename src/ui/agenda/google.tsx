@@ -3,7 +3,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { RefreshCw } from 'lucide-react-native';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { agenda, type EtatGoogle } from '@/data/agenda';
 import { heureDe } from '@/domain/agenda';
@@ -37,7 +37,9 @@ export function GoogleAgenda({ onChange }: { onChange: () => void }) {
 
   const connecter = () =>
     faire('connecter', async () => {
-      const retour = Linking.createURL('agenda-google');
+      // Sur le web, Linking oublie le chemin du site (…/Coach-os-mobile) : on part de l'adresse publique de l'app.
+      const site = process.env.EXPO_PUBLIC_ADRESSE_WEB?.replace(/\/+$/, '');
+      const retour = Platform.OS === 'web' && site ? `${site}/agenda-google` : Linking.createURL('agenda-google');
       const url = await agenda.connecterGoogle(retour);
       const r = await WebBrowser.openAuthSessionAsync(url, retour);
       if (r.type !== 'success') return;
