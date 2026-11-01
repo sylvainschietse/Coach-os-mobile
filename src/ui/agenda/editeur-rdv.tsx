@@ -94,6 +94,12 @@ export function EditeurRendezVous({
     `autour-${periode}`,
   );
   const conflits = creneaux.flatMap((c) => chevauchements(c, autour.donnee ?? [], reglages.tamponMinutes, rdv?.id));
+  // Événements perso du Google Agenda sur la même période.
+  const perso = useCharger(
+    () => (periode ? agenda.occupations(creneaux[0].debut, creneaux.at(-1)!.fin) : Promise.resolve([])),
+    `perso-${periode}`,
+  );
+  const conflitsPerso = (perso.donnee ?? []).filter((o) => creneaux.some((c) => o.debut < c.fin && o.fin > c.debut));
 
   // Séances restantes de chaque personne : décompte du pack ou part du prix à l'unité.
   const cle = clientIds.join(',');
@@ -281,6 +287,18 @@ export function EditeurRendezVous({
               .map((c) => `${jourLong(cleJour(c.debut))} ${heureDe(c.debut)} (${c.participants.map((p) => p.prenom).join(' et ')})`)
               .join(', ')}
             {reglages.tamponMinutes ? `, temps de trajet de ${reglages.tamponMinutes} min compris` : ''}. Tu peux quand même enregistrer.
+          </Texte>
+        </View>
+      )}
+      {conflitsPerso.length > 0 && (
+        <View style={{ padding: espace(3), borderRadius: 12, backgroundColor: couleurs.orangeClair }}>
+          <Texte style={{ fontSize: 14, color: couleurs.orange }}>
+            Ton Google Agenda est occupé à ce moment-là :{' '}
+            {conflitsPerso
+              .slice(0, 3)
+              .map((o) => `« ${o.titre} »${o.journee ? ' (toute la journée)' : ` ${heureDe(o.debut)}–${heureDe(o.fin)}`}`)
+              .join(', ')}
+            . Tu peux quand même enregistrer.
           </Texte>
         </View>
       )}

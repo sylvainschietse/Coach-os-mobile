@@ -9,6 +9,7 @@ import {
   type StatutRdv,
   type TypeRdv,
 } from '@/domain/agenda';
+import type { Occupation } from '@/domain/agenda-google';
 import { nouvelId } from '@/lib/identifiant';
 
 import { supabase } from './supabase';
@@ -38,6 +39,14 @@ export interface RendezVousParLien {
 
 export type ActionClient = 'confirme' | 'refuse' | 'annule';
 
+/** Connexion du coach à son Google Agenda (sans le jeton, qui reste côté serveur). */
+export interface EtatGoogle {
+  email: string;
+  connecteLe: string;
+  synchroLe?: string;
+  erreur?: string;
+}
+
 export interface DepotAgenda {
   /** Coach : rendez-vous dont le début tombe entre ces deux dates (ISO). Clôture d'abord ceux qui sont terminés. */
   rendezVous(du: string, au: string): Promise<RendezVous[]>;
@@ -56,6 +65,14 @@ export interface DepotAgenda {
   // Lien du mail, sans compte
   parLien(jeton: string): Promise<RendezVousParLien | null>;
   repondreParLien(jeton: string, action: ActionClient): Promise<void>;
+  // Google Agenda du coach
+  /** Événements perso du Google Agenda (hors rendez-vous de l'app) qui commencent avant `au` et finissent après `du`. */
+  occupations(du: string, au: string): Promise<Occupation[]>;
+  google(): Promise<EtatGoogle | null>;
+  /** Adresse de la page de connexion Google ; `retour` : page de l'app où revenir ensuite. */
+  connecterGoogle(retour: string): Promise<string>;
+  synchroniserGoogle(): Promise<void>;
+  deconnecterGoogle(): Promise<void>;
 }
 
 const message = (e: { message?: string } | null, defaut: string) => {
@@ -178,6 +195,26 @@ const demo: DepotAgenda = {
     return null;
   },
   async repondreParLien() {},
+  async occupations(du, au) {
+    // Démo : deux créneaux perso, pour montrer l'affichage.
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    const a = (jour: number, h: number, duree: number, titre: string) => {
+      const d = new Date(base);
+      d.setDate(d.getDate() + jour);
+      d.setHours(h);
+      return { id: `demo-${jour}-${h}`, debut: d.toISOString(), fin: new Date(d.getTime() + duree * 3_600_000).toISOString(), titre, journee: false };
+    };
+    return [a(1, 10, 1, 'Dentiste'), a(3, 17, 2, 'École des enfants')].filter((o) => o.debut < au && o.fin > du);
+  },
+  async google() {
+    return null;
+  },
+  async connecterGoogle() {
+    throw new Error('La connexion à Google Agenda se fait avec un compte en ligne, pas en démo.');
+  },
+  async synchroniserGoogle() {},
+  async deconnecterGoogle() {},
 };
 
 /** Démo : les prénoms des clients, pour afficher les rendez-vous créés. */
@@ -234,6 +271,12 @@ const COLONNES_RDV =
   'id, type, debut, fin, lieu, lien_visio, note, statut, compte, serie_id, rendez_vous_participants(client_id, pack_id, decompte, montant, clients(prenom, nom))';
 
 function enLigne(db: NonNullable<typeof supabase>): DepotAgenda {
+  /** Après un changement, copie tout de suite dans Google Agenda (lien Meet compris) ; sinon la tâche planifiée s'en charge. */
+  const versGoogle = () => {
+    void db.rpc('mon_google_agenda').then(({ data }) => {
+      if ((data as unknown[] | null)?.length) void db.functions.invoke('agenda-google', { body: { action: 'synchroniser' } }).catch(() => undefined);
+    });
+  };
   const depot: DepotAgenda = {
     async rendezVous(du, au) {
       await db.rpc('cloturer_mes_rendez_vous');
@@ -262,6 +305,7 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAgenda {
         await db.from('rendez_vous').delete().in('id', lignes.map((l) => l.id));
         throw new Error('Les clients n’ont pas pu être ajoutés au rendez-vous. Réessaie.');
       }
+      versGoogle();
     },
     async modifier(id, r) {
       const { error } = await db
@@ -281,15 +325,18 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAgenda {
         const s = await db.from('rendez_vous_participants').delete().eq('rendez_vous_id', id).in('client_id', retrait).select('client_id');
         if (s.error || (s.data ?? []).length !== retrait.length) throw new Error('Impossible de changer les personnes d’une séance déjà comptée.');
       }
+      versGoogle();
     },
     async supprimer(id) {
       const { data, error } = await db.from('rendez_vous').delete().eq('id', id).select('id');
       if (error) throw new Error('Le rendez-vous n’a pas pu être supprimé. Réessaie.');
       if (!data?.length) throw new Error('Cette séance a déjà été comptée : passe-la d’abord en « Annulé ».');
+      versGoogle();
     },
     async changerStatut(id, statut, compter = true) {
       const { error } = await db.rpc('changer_statut_rendez_vous', { p_id: id, p_statut: statut, p_compter: compter });
       if (error) throw new Error(message(error, 'Le statut n’a pas pu être changé. Réessaie.'));
+      versGoogle();
     },
     async reglages() {
       const { data, error } = await db.from('reglages_agenda').select('*').maybeSingle();
@@ -373,6 +420,31 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAgenda {
     async repondreParLien(jeton, action) {
       const { error } = await db.rpc('repondre_par_jeton', { p_jeton: jeton, p_action: action });
       if (error) throw new Error(message(error, 'Réponse non enregistrée. Réessaie.'));
+    },
+    async occupations(du, au) {
+      const { data, error } = await db.from('google_occupations').select('id, debut, fin, titre, journee').lt('debut', au).gt('fin', du).order('debut');
+      if (error) return [];
+      return data as Occupation[];
+    },
+    async google() {
+      const { data, error } = await db.rpc('mon_google_agenda');
+      if (error) return null;
+      const r = (data as { email: string; connecte_le: string; synchro_le: string | null; erreur: string | null }[])[0];
+      return r ? { email: r.email, connecteLe: r.connecte_le, synchroLe: r.synchro_le ?? undefined, erreur: r.erreur ?? undefined } : null;
+    },
+    async connecterGoogle(retour) {
+      const { data, error } = await db.functions.invoke<{ url?: string; erreur?: string }>('agenda-google', { body: { action: 'connecter', retour } });
+      if (error || !data?.url) throw new Error(data?.erreur ?? 'La connexion à Google n’est pas disponible pour le moment.');
+      return data.url;
+    },
+    async synchroniserGoogle() {
+      const { data, error } = await db.functions.invoke<{ erreur?: string }>('agenda-google', { body: { action: 'synchroniser' } });
+      if (error) throw new Error('La synchro Google n’a pas pu se faire. Réessaie plus tard.');
+      if (data?.erreur) throw new Error(data.erreur);
+    },
+    async deconnecterGoogle() {
+      const { error } = await db.functions.invoke('agenda-google', { body: { action: 'deconnecter' } });
+      if (error) throw new Error('La déconnexion n’a pas pu se faire. Réessaie.');
     },
   };
   return depot;
