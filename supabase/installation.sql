@@ -2659,3 +2659,9 @@ revoke execute on function public.ecarter_echeance() from public, anon, authenti
 
 create trigger paiements_ecarter_echeance after delete on public.paiements
   for each row when (old.reference like 'abonnement:%') execute function public.ecarter_echeance();
+
+
+-- ===== 20261101100000_adresse_clients.sql =====
+-- Adresse postale du client, pour ses factures : saisie par le coach (fiche contact) ou par le client (« Mon compte »).
+alter table public.contacts add column if not exists adresse text;
+alter table public.clients add column if not exists adresse text;
