@@ -209,3 +209,10 @@ export function grilleMois(date: Date) {
   for (let d = debut; d <= dernier || jours.length % 7; d = ajouterJours(d, 1)) jours.push(d);
   return jours;
 }
+
+/** Créneaux (événements perso Google) qui touchent ce jour, en heure locale. */
+export function surLeJour<T extends { debut: string; fin: string }>(liste: T[], jour: Date) {
+  const d = new Date(jour.getFullYear(), jour.getMonth(), jour.getDate()).getTime();
+  const f = ajouterJours(new Date(d), 1).getTime();
+  return liste.filter((o) => ms(o.debut) < f && ms(o.fin) > d);
+}

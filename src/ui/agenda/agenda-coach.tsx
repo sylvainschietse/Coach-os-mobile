@@ -17,11 +17,13 @@ import {
   nomsParticipants,
   occupe,
   packsBientotFinis,
+  surLeJour,
   TYPES_RDV,
   type ReglagesAgenda,
   type RendezVous,
 } from '@/domain/agenda';
 import { soldeSeances } from '@/domain/abonnements';
+import type { Occupation } from '@/domain/agenda-google';
 import { useCharger } from '@/lib/useCharger';
 
 import { BoutonContour, Vide } from '../coque';
@@ -31,6 +33,7 @@ import { couleurs, espace, LARGEUR_LARGE, polices } from '../theme';
 
 import { COULEURS_STATUT, jourCourt, jourLong, majuscule, PastilleStatutRdv } from './commun';
 import { EditeurRendezVous, type ClientAgenda } from './editeur-rdv';
+import { GoogleAgenda } from './google';
 
 type Vue = 'jour' | 'semaine' | 'mois';
 const HAUTEUR_HEURE = 52;
@@ -75,12 +78,14 @@ export function AgendaCoach({ coachId }: { coachId: string }) {
   }, `agenda-clients-${coachId}`);
   const reglages = useCharger(() => agenda.reglages(), 'agenda-reglages');
   const rdv = useCharger(() => agenda.rendezVous(du.toISOString(), au.toISOString()), `agenda-${vue}-${cleJour(du)}`);
+  const perso = useCharger(() => agenda.occupations(du.toISOString(), au.toISOString()), `agenda-perso-${vue}-${cleJour(du)}`);
   const alertes = useAlertes(clients.donnee, reglages.donnee);
 
   const recharger = useCallback(() => {
     rdv.recharger();
+    perso.recharger();
     alertes.recharger();
-  }, [rdv, alertes]);
+  }, [rdv, perso, alertes]);
 
   const deplacer = (sens: 1 | -1) =>
     setDate((d) => (vue === 'jour' ? ajouterJours(d, sens) : vue === 'semaine' ? ajouterJours(d, 7 * sens) : new Date(d.getFullYear(), d.getMonth() + sens, 1)));
@@ -91,6 +96,7 @@ export function AgendaCoach({ coachId }: { coachId: string }) {
   const nouveau = (jour?: string, heure?: string, clientId?: string) => setEdition({ jour: jour ?? cleJour(vue === 'semaine' && !jour ? (cleJour(lundiDe(new Date())) === cleJour(lundiDe(date)) ? new Date() : lundiDe(date)) : date), heure, clientId });
 
   const liste = rdv.donnee ?? [];
+  const occupations = perso.donnee ?? [];
   const jours = vue === 'mois' ? grilleMois(date) : vue === 'semaine' ? Array.from({ length: 7 }, (_, i) => ajouterJours(du, i)) : [du];
   const duJour = (d: Date) => liste.filter((r) => cleJour(r.debut) === cleJour(d));
 
@@ -119,6 +125,7 @@ export function AgendaCoach({ coachId }: { coachId: string }) {
         </Pressable>
       </View>
 
+      {reglagesOuverts && <GoogleAgenda onChange={recharger} />}
       {reglagesOuverts && reglages.donnee && (
         <Reglages
           initial={reglages.donnee}
@@ -133,15 +140,15 @@ export function AgendaCoach({ coachId }: { coachId: string }) {
       {!rdv.donnee && !rdv.erreur && <Chargement />}
       {rdv.donnee &&
         (vue === 'jour' ? (
-          <VueJour rdv={duJour(du)} onOuvrir={(r) => setEdition({ rdv: r })} onNouveau={() => nouveau(cleJour(du))} />
+          <VueJour rdv={duJour(du)} perso={surLeJour(occupations, du)} onOuvrir={(r) => setEdition({ rdv: r })} onNouveau={() => nouveau(cleJour(du))} />
         ) : vue === 'semaine' ? (
           large ? (
-            <GrilleSemaine jours={jours} rdv={liste} onOuvrir={(r) => setEdition({ rdv: r })} onCreneau={(j, h) => nouveau(j, h)} onJour={ouvrirJour} />
+            <GrilleSemaine jours={jours} rdv={liste} perso={occupations} onOuvrir={(r) => setEdition({ rdv: r })} onCreneau={(j, h) => nouveau(j, h)} onJour={ouvrirJour} />
           ) : (
-            <ListeSemaine jours={jours} rdv={liste} onOuvrir={(r) => setEdition({ rdv: r })} onJour={ouvrirJour} onNouveau={(j) => nouveau(j)} />
+            <ListeSemaine jours={jours} rdv={liste} perso={occupations} onOuvrir={(r) => setEdition({ rdv: r })} onJour={ouvrirJour} onNouveau={(j) => nouveau(j)} />
           )
         ) : (
-          <GrilleMois jours={jours} mois={date.getMonth()} rdv={liste} large={large} onJour={ouvrirJour} />
+          <GrilleMois jours={jours} mois={date.getMonth()} rdv={liste} perso={occupations} large={large} onJour={ouvrirJour} />
         ))}
 
       <AlertesAgenda alertes={alertes} onProposer={(clientId) => nouveau(undefined, undefined, clientId)} />
@@ -211,8 +218,34 @@ function CarteRdv({ r, onPress, compacte }: { r: RendezVous; onPress: () => void
   );
 }
 
-function VueJour({ rdv, onOuvrir, onNouveau }: { rdv: RendezVous[]; onOuvrir: (r: RendezVous) => void; onNouveau: () => void }) {
-  if (!rdv.length)
+/** Événement perso du Google Agenda : en gris, pour information. */
+function CartePerso({ o }: { o: Occupation }) {
+  return (
+    <View
+      accessibilityLabel={`Occupé dans Google Agenda : ${o.titre}`}
+      style={{ flexDirection: 'row', gap: espace(3), padding: espace(2), borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: couleurs.bordure, backgroundColor: couleurs.discret }}
+    >
+      <Text style={{ fontFamily: polices.chiffres, fontSize: 13, color: couleurs.texteDoux, minWidth: 44 }}>{o.journee ? 'Jour' : heureDe(o.debut)}</Text>
+      <Text style={{ flex: 1, fontFamily: polices.texte, fontSize: 14, color: couleurs.texteDoux }} numberOfLines={1}>
+        {o.titre}
+        {o.journee ? '' : ` · ${heureDe(o.debut)}–${heureDe(o.fin)}`} · Google
+      </Text>
+    </View>
+  );
+}
+
+/** Rendez-vous et événements perso d'une journée, dans l'ordre de l'heure. */
+function JourMele({ rdv, perso, compacte, onOuvrir }: { rdv: RendezVous[]; perso: Occupation[]; compacte?: boolean; onOuvrir: (r: RendezVous) => void }) {
+  const elements = [...rdv.map((r) => ({ debut: r.debut, r })), ...perso.map((o) => ({ debut: o.journee ? '' : o.debut, o }))].sort((a, b) => a.debut.localeCompare(b.debut));
+  return (
+    <>
+      {elements.map((e) => ('r' in e && e.r ? <CarteRdv key={e.r.id} r={e.r} compacte={compacte} onPress={() => onOuvrir(e.r!)} /> : 'o' in e && e.o ? <CartePerso key={`g-${e.o.id}`} o={e.o} /> : null))}
+    </>
+  );
+}
+
+function VueJour({ rdv, perso, onOuvrir, onNouveau }: { rdv: RendezVous[]; perso: Occupation[]; onOuvrir: (r: RendezVous) => void; onNouveau: () => void }) {
+  if (!rdv.length && !perso.length)
     return (
       <Vide titre="Aucun rendez-vous ce jour-là" texte="Touche « Rendez-vous » pour en poser un.">
         <BoutonContour libelle="Ajouter un rendez-vous" icone={CalendarPlus} iconeAGauche onPress={onNouveau} />
@@ -220,9 +253,10 @@ function VueJour({ rdv, onOuvrir, onNouveau }: { rdv: RendezVous[]; onOuvrir: (r
     );
   return (
     <View style={{ gap: espace(2) }}>
-      {rdv.map((r) => (
-        <CarteRdv key={r.id} r={r} onPress={() => onOuvrir(r)} />
-      ))}
+      <JourMele rdv={rdv} perso={perso} onOuvrir={onOuvrir} />
+      {!rdv.length && (
+        <BoutonContour libelle="Ajouter un rendez-vous" icone={CalendarPlus} iconeAGauche onPress={onNouveau} />
+      )}
     </View>
   );
 }
@@ -231,12 +265,14 @@ function VueJour({ rdv, onOuvrir, onNouveau }: { rdv: RendezVous[]; onOuvrir: (r
 function ListeSemaine({
   jours,
   rdv,
+  perso,
   onOuvrir,
   onJour,
   onNouveau,
 }: {
   jours: Date[];
   rdv: RendezVous[];
+  perso: Occupation[];
   onOuvrir: (r: RendezVous) => void;
   onJour: (d: Date) => void;
   onNouveau: (jour: string) => void;
@@ -246,6 +282,7 @@ function ListeSemaine({
     <View style={{ gap: espace(3) }}>
       {jours.map((d) => {
         const siens = rdv.filter((r) => cleJour(r.debut) === cleJour(d));
+        const occupes = surLeJour(perso, d);
         return (
           <View key={cleJour(d)} style={{ gap: espace(2) }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -258,8 +295,8 @@ function ListeSemaine({
                 <CalendarPlus size={18} color={couleurs.texteDoux} />
               </Pressable>
             </View>
-            {siens.length ? (
-              siens.map((r) => <CarteRdv key={r.id} r={r} compacte onPress={() => onOuvrir(r)} />)
+            {siens.length || occupes.length ? (
+              <JourMele rdv={siens} perso={occupes} compacte onOuvrir={onOuvrir} />
             ) : (
               <Text style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.suggestion }}>Libre</Text>
             )}
@@ -274,12 +311,14 @@ function ListeSemaine({
 function GrilleSemaine({
   jours,
   rdv,
+  perso,
   onOuvrir,
   onCreneau,
   onJour,
 }: {
   jours: Date[];
   rdv: RendezVous[];
+  perso: Occupation[];
   onOuvrir: (r: RendezVous) => void;
   onCreneau: (jour: string, heure: string) => void;
   onJour: (d: Date) => void;
@@ -298,6 +337,14 @@ function GrilleSemaine({
             <Text style={{ fontFamily: polices.texteGras, fontSize: 13, color: cleJour(d) === aujourdhui ? couleurs.rouge : couleurs.texte, textTransform: 'capitalize' }}>
               {jourCourt(d)}
             </Text>
+            {surLeJour(perso, d)
+              .filter((o) => o.journee)
+              .slice(0, 2)
+              .map((o) => (
+                <Text key={o.id} numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux, paddingHorizontal: 4 }}>
+                  {o.titre}
+                </Text>
+              ))}
           </Pressable>
         ))}
       </View>
@@ -311,6 +358,8 @@ function GrilleSemaine({
         </View>
         {jours.map((d) => {
           const siens = rdv.filter((r) => cleJour(r.debut) === cleJour(d));
+          const occupes = surLeJour(perso, d).filter((o) => !o.journee);
+          const jourMs = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
           return (
             <View key={cleJour(d)} style={{ flex: 1, borderLeftWidth: 1, borderLeftColor: couleurs.bordure }}>
               {plage.map((h) => (
@@ -322,6 +371,37 @@ function GrilleSemaine({
                   style={({ pressed }) => ({ height: HAUTEUR_HEURE, borderTopWidth: 1, borderTopColor: couleurs.discret, backgroundColor: pressed ? couleurs.rougeClair : 'transparent' })}
                 />
               ))}
+              {occupes.map((o) => {
+                // Bornes ramenées à la journée et à la plage horaire affichée.
+                const h0 = Math.max(debut, (new Date(o.debut).getTime() - jourMs) / 3_600_000);
+                const h1 = Math.min(fin, (new Date(o.fin).getTime() - jourMs) / 3_600_000);
+                if (h1 <= h0) return null;
+                return (
+                  <View
+                    key={`g-${o.id}`}
+                    pointerEvents="none"
+                    accessibilityLabel={`Occupé dans Google Agenda : ${o.titre}`}
+                    style={{
+                      position: 'absolute',
+                      top: (h0 - debut) * HAUTEUR_HEURE,
+                      left: 2,
+                      right: 2,
+                      height: Math.max(18, (h1 - h0) * HAUTEUR_HEURE - 2),
+                      borderRadius: 8,
+                      padding: 4,
+                      backgroundColor: couleurs.discret,
+                      borderWidth: 1,
+                      borderStyle: 'dashed',
+                      borderColor: couleurs.bordure,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Text style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }} numberOfLines={2}>
+                      {o.titre}
+                    </Text>
+                  </View>
+                );
+              })}
               {siens.map((r) => {
                 const dd = new Date(r.debut);
                 const top = (dd.getHours() - debut + dd.getMinutes() / 60) * HAUTEUR_HEURE;
@@ -368,7 +448,21 @@ function GrilleSemaine({
 }
 
 /** Mois : nombre de rendez-vous par jour (prénoms sur ordinateur) ; toucher un jour l'ouvre. */
-function GrilleMois({ jours, mois, rdv, large, onJour }: { jours: Date[]; mois: number; rdv: RendezVous[]; large: boolean; onJour: (d: Date) => void }) {
+function GrilleMois({
+  jours,
+  mois,
+  rdv,
+  perso,
+  large,
+  onJour,
+}: {
+  jours: Date[];
+  mois: number;
+  rdv: RendezVous[];
+  perso: Occupation[];
+  large: boolean;
+  onJour: (d: Date) => void;
+}) {
   const aujourdhui = cleJour(new Date());
   const semaines = Array.from({ length: jours.length / 7 }, (_, i) => jours.slice(i * 7, i * 7 + 7));
   return (
@@ -384,6 +478,7 @@ function GrilleMois({ jours, mois, rdv, large, onJour }: { jours: Date[]; mois: 
         <View key={cleJour(s[0])} style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: couleurs.discret }}>
           {s.map((d) => {
             const siens = rdv.filter((r) => cleJour(r.debut) === cleJour(d) && occupe(r));
+            const occupes = surLeJour(perso, d);
             const horsMois = d.getMonth() !== mois;
             return (
               <Pressable
@@ -413,13 +508,22 @@ function GrilleMois({ jours, mois, rdv, large, onJour }: { jours: Date[]; mois: 
                       </Text>
                     ))}
                     {siens.length > 3 && <Text style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }}>+{siens.length - 3}</Text>}
+                    {occupes.slice(0, siens.length >= 3 ? 0 : 3 - siens.length).map((o) => (
+                      <Text key={`g-${o.id}`} numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }}>
+                        {o.journee ? '' : `${heureDe(o.debut)} `}
+                        {o.titre}
+                      </Text>
+                    ))}
                   </>
                 ) : (
-                  siens.length > 0 && (
-                    <View style={{ alignSelf: 'flex-start', minWidth: 20, paddingHorizontal: 5, borderRadius: 999, backgroundColor: couleurs.rouge }}>
-                      <Text style={{ fontFamily: polices.texteGras, fontSize: 11, color: '#FFFFFF', textAlign: 'center' }}>{siens.length}</Text>
-                    </View>
-                  )
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    {siens.length > 0 && (
+                      <View style={{ minWidth: 20, paddingHorizontal: 5, borderRadius: 999, backgroundColor: couleurs.rouge }}>
+                        <Text style={{ fontFamily: polices.texteGras, fontSize: 11, color: '#FFFFFF', textAlign: 'center' }}>{siens.length}</Text>
+                      </View>
+                    )}
+                    {occupes.length > 0 && <View accessibilityLabel="Occupé dans Google Agenda" style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: couleurs.suggestion }} />}
+                  </View>
                 )}
               </Pressable>
             );
