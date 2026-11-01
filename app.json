@@ -59,7 +59,7 @@
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "CoachGo utilise le micro pour dicter tes demandes aux assistants.",
+          "microphonePermission": "CoachGo utilise le micro pour dicter tes demandes, filmer tes mouvements avec le son et enregistrer les réponses vocales du coach.",
           "speechRecognitionPermission": "CoachGo transcrit ta voix pour remplir les demandes aux assistants.",
           "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
         }
@@ -68,14 +68,22 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "CoachGo utilise l’appareil photo pour scanner le code-barres de tes aliments et photographier tes repas.",
-          "recordAudioAndroid": false
+          "cameraPermission": "CoachGo utilise l’appareil photo pour scanner le code-barres de tes aliments, photographier tes repas et filmer tes mouvements pour ton coach.",
+          "microphonePermission": "CoachGo utilise le micro pour dicter tes demandes, filmer tes mouvements avec le son et enregistrer les réponses vocales du coach.",
+          "recordAudioAndroid": true
         }
       ],
       [
+        "expo-audio",
+        {
+          "microphonePermission": "CoachGo utilise le micro pour dicter tes demandes, filmer tes mouvements avec le son et enregistrer les réponses vocales du coach."
+        }
+      ],
+      "expo-video",
+      [
         "expo-image-picker",
         {
-          "photosPermission": "CoachGo ouvre tes photos pour estimer ce qu’il y a dans ton assiette.",
+          "photosPermission": "CoachGo ouvre tes photos et vidéos pour estimer ce qu’il y a dans ton assiette ou envoyer un mouvement à ton coach.",
           "cameraPermission": "CoachGo utilise l’appareil photo pour photographier tes repas."
         }
       ],
