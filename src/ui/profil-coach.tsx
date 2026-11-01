@@ -2,7 +2,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { UserRound } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Image, View } from 'react-native';
 
 import { erreursProfilCoach, profilCoach, type ProfilCoach } from '@/data/profil-coach';
@@ -44,16 +44,16 @@ export function PhotoCoach({ photo, taille = 96 }: { photo?: string; taille?: nu
 
 export function MonProfilCoach() {
   const { donnee, erreur, recharger } = useCharger(() => profilCoach.lire(), 'profil-coach');
-  const [p, setP] = useState<ProfilCoach>();
+  if (erreur) return <Erreur message={erreur} onReessayer={recharger} />;
+  if (!donnee) return <Chargement />;
+  return <Formulaire initial={{ ...donnee, telephone: donnee.telephone ? formaterTelephone(donnee.telephone) : '' }} />;
+}
+
+function Formulaire({ initial }: { initial: ProfilCoach }) {
+  const [p, setP] = useState(initial);
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [enCours, setEnCours] = useState(false);
   const [enregistre, setEnregistre] = useState(false);
-  useEffect(() => {
-    if (donnee) setP({ ...donnee, telephone: donnee.telephone ? formaterTelephone(donnee.telephone) : '' });
-  }, [donnee]);
-
-  if (erreur) return <Erreur message={erreur} onReessayer={recharger} />;
-  if (!p) return <Chargement />;
   const modifier = (m: Partial<ProfilCoach>) => {
     setP({ ...p, ...m });
     setEnregistre(false);
@@ -70,12 +70,12 @@ export function MonProfilCoach() {
   }
 
   async function enregistrer() {
-    const liste = erreursProfilCoach(p!);
+    const liste = erreursProfilCoach(p);
     setErreurs(liste);
     if (liste.length) return;
     setEnCours(true);
     try {
-      await profilCoach.enregistrer(p!);
+      await profilCoach.enregistrer(p);
       setEnregistre(true);
     } catch (e) {
       setErreurs([e instanceof Error ? e.message : 'Profil non enregistré']);

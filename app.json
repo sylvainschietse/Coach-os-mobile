@@ -56,6 +56,14 @@
         }
       ],
       "expo-sharing",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "CoachGo utilise le micro pour dicter tes demandes aux assistants.",
+          "speechRecognitionPermission": "CoachGo transcrit ta voix pour remplir les demandes aux assistants.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ],
       "expo-mail-composer",
       [
         "expo-camera",

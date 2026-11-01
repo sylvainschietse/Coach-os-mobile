@@ -17,18 +17,21 @@ const NOUVEAU = 'nouveau';
 
 export function AttributionClient({
   coachId,
+  clientId: clientFixe,
   source,
   nom,
   onFermer,
 }: {
   coachId: string;
+  /** Depuis la fiche d'un client : il est déjà choisi, la liste des clients n'est pas montrée. */
+  clientId?: string;
   source: { programmeId: string } | { seanceId: string };
   nom: string;
   onFermer: () => void;
 }) {
   const { donnee, erreur: erreurLecture } = useCharger(() => entrainement.suivis(coachId), `suivis-${coachId}`);
   const [q, setQ] = useState('');
-  const [clientId, setClientId] = useState('');
+  const [clientId, setClientId] = useState(clientFixe ?? '');
   const [cycleId, setCycleId] = useState(NOUVEAU);
   const [activer, setActiver] = useState(true);
   const [debut, setDebut] = useState(ecrireJour(aujourdhuiParis()));
@@ -72,7 +75,7 @@ export function AttributionClient({
 
   return (
     <Modale
-      titre={`Attribuer « ${nom} »`}
+      titre={client && clientFixe ? `Attribuer « ${nom} » à ${client.nom}` : `Attribuer « ${nom} »`}
       largeur={640}
       onFermer={() => !occupe && onFermer()}
       pied={
@@ -83,12 +86,16 @@ export function AttributionClient({
       }
     >
       <Text style={ts.doux}>Le client reçoit une copie à son nom. Vous pouvez la modifier pour lui sans toucher au modèle de la bibliothèque.</Text>
-      <Text style={ts.titreChamp}>Client</Text>
-      <View style={{ flexDirection: 'row' }}>
-        <Recherche valeur={q} onChange={setQ} libelle="Rechercher un client" placeholder="Rechercher un client…" />
-      </View>
+      {!clientFixe && <Text style={ts.titreChamp}>Client</Text>}
+      {!clientFixe && (
+        <View style={{ flexDirection: 'row' }}>
+          <Recherche valeur={q} onChange={setQ} libelle="Rechercher un client" placeholder="Rechercher un client…" />
+        </View>
+      )}
       {erreurLecture ? (
         <Etat erreur={erreurLecture} />
+      ) : clientFixe ? (
+        donnee && !client && <Etat erreur="Ce client n’est plus actif : impossible de lui attribuer un programme." />
       ) : (
         <ListeChoix
           elements={clients}

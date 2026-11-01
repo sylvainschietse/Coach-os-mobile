@@ -1,4 +1,4 @@
-import type { PropositionSeance } from '@/domain/assistant-seance';
+import type { PlanProgramme, PropositionSeance } from '@/domain/assistant-seance';
 import type { Booster, Contact } from '@/domain/crm';
 import { dossierRedaction, redactionModele, type RedactionGeneree } from '@/domain/redaction';
 
@@ -30,6 +30,17 @@ export async function proposerSeance(demande: string): Promise<PropositionSeance
   if (error || !data || data.erreur) {
     const corps = await (error as { context?: Response } | null)?.context?.json?.().catch(() => null);
     throw new Error(data?.erreur ?? corps?.erreur ?? 'L’assistant n’a pas pu proposer de séance. Réessaie, ou crée-la à la main.');
+  }
+  return data;
+}
+
+/** Assistant de création de programme, première étape : le plan de la semaine (nom, critères, rôle de chaque séance). */
+export async function proposerPlanProgramme(demande: string): Promise<PlanProgramme> {
+  if (!supabase) throw new Error('L’assistant fonctionne avec le compte en ligne seulement.');
+  const { data, error } = await supabase.functions.invoke<PlanProgramme & { erreur?: string }>('creer-seance', { body: { demande, plan: true } });
+  if (error || !data || data.erreur) {
+    const corps = await (error as { context?: Response } | null)?.context?.json?.().catch(() => null);
+    throw new Error(data?.erreur ?? corps?.erreur ?? 'L’assistant n’a pas pu proposer de programme. Réessaie, ou crée-le à la main.');
   }
   return data;
 }

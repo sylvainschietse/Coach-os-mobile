@@ -1,5 +1,7 @@
 // Assistant de création de séance : le coach décrit sa séance, Claude la compose avec les exercices de la
 // bibliothèque (jamais d'exercice inventé). Rien n'est enregistré ici : l'app montre la proposition, le coach valide.
+// Pour un programme (« plan: true »), Claude répond d'abord le plan de la semaine ; l'app demande ensuite chaque séance
+// ici, en parallèle, ce qui garde chaque appel court.
 // La clé Claude reste dans les secrets Supabase (ANTHROPIC_API_KEY).
 
 import Anthropic from 'npm:@anthropic-ai/sdk@0.135.0';
@@ -33,6 +35,38 @@ const Proposition = z.object({
     .describe('Les blocs dans l’ordre de la séance.'),
   remarque: z.string().optional().describe('Ce que tu n’as pas pu respecter dans la demande (exercice absent de la bibliothèque…).'),
 });
+
+const NIVEAUX = ['Débutant', 'Intermédiaire', 'Confirmé', 'Expert'] as const;
+const OBJECTIFS = ['Remise en forme', 'Perte de poids', 'Prise de muscle', 'Prise de force'] as const;
+
+const Plan = z.object({
+  titre: z.string().describe('Nom court du programme, parlant pour le client, sans code.'),
+  consignes: z.string().describe('Descriptif pour le client, 3 à 5 phrases : à qui il s’adresse, organisation de la semaine, progression d’une semaine à l’autre.'),
+  niveau: z.enum(NIVEAUX),
+  objectif: z.enum(OBJECTIFS),
+  seancesParSemaine: z.number().int().describe('Entre 1 et 6.'),
+  dureeSemaines: z.number().int().describe('Entre 2 et 16. Sans indication : 4.'),
+  materiel: z.string().optional().describe('Matériel nécessaire, en quelques mots.'),
+  seances: z
+    .array(
+      z.object({
+        titre: z.string().describe('Titre court, ex. « Haut du corps · poussée ».'),
+        contenu: z.string().describe('Ce que la séance doit travailler, en une ou deux phrases : zones, mouvements de référence, durée.'),
+      }),
+    )
+    .describe('Une séance différente par jour d’entraînement de la semaine, dans l’ordre. Elles se répètent chaque semaine.'),
+  remarque: z.string().optional(),
+});
+
+const CONSIGNES_PLAN = `Tu aides un coach sportif à construire un programme d'entraînement (musculation, remise en forme) pour ses clients. Le coach décrit ce qu'il veut ; tu proposes le plan de la semaine type, en français. Les séances seront détaillées ensuite, une par une.
+
+Règles :
+- Autant de séances différentes que de séances par semaine (entre 1 et 6) ; elles se répètent chaque semaine.
+- Répartis le travail selon la fréquence : full body à 1 ou 2 séances, puis haut / bas, poussée / tirage / jambes, etc. Évite de solliciter lourdement les mêmes muscles deux jours de suite.
+- Sans indication : niveau intermédiaire, 3 séances de 60 minutes, 4 semaines.
+- Respecte le matériel et les contraintes (douleur, blessure) s'ils sont précisés, sans diagnostic.
+- Choisis le niveau et l'objectif les plus proches dans les listes.
+- Indique dans le descriptif comment progresser d'une semaine à l'autre (charge, répétitions ou RIR).`;
 
 const CONSIGNES = `Tu aides un coach sportif à construire une séance de musculation ou de remise en forme pour ses clients. Le coach décrit ce qu'il veut ; tu proposes la séance complète, en français. Le coach la relira et la modifiera avant de l'enregistrer.
 
@@ -70,10 +104,39 @@ interface ExerciceBase {
   materiel: string[] | null;
 }
 
+/** Le plan d'un programme : nom, critères et une ligne par séance de la semaine. Pas encore d'exercices. */
+async function planProgramme(claude: Anthropic, demande: string) {
+  try {
+    const reponse = await claude.beta.messages.parse({
+      model: 'claude-opus-5-5',
+      max_tokens: 8000,
+      output_config: { effort: 'medium', format: betaZodOutputFormat(Plan) },
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      system: CONSIGNES_PLAN,
+      messages: [{ role: 'user', content: `Demande du coach :\n${demande}` }],
+    });
+    if (reponse.stop_reason === 'refusal' || reponse.stop_reason === 'max_tokens' || !reponse.parsed_output) {
+      return repondre({ erreur: 'Le plan n’a pas abouti. Reformule ta demande, ou crée le programme à la main.' }, 502);
+    }
+    const p = reponse.parsed_output;
+    return repondre({ ...p, seances: p.seances.slice(0, 6) });
+  } catch (e) {
+    return erreurClaude(e);
+  }
+}
+
+function erreurClaude(e: unknown) {
+  if (e instanceof Anthropic.RateLimitError) return repondre({ erreur: 'Trop de demandes en même temps, réessaie dans une minute.' }, 429);
+  if (e instanceof Anthropic.AuthenticationError) return repondre({ erreur: 'La clé Claude du serveur est absente ou invalide.' }, 500);
+  if (e instanceof Anthropic.APIError) return repondre({ erreur: `Service Claude indisponible (${e.status}).` }, 502);
+  throw e;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: entetes });
 
-  let corps: { demande?: string };
+  let corps: { demande?: string; plan?: boolean };
   try {
     corps = await req.json();
   } catch {
@@ -84,7 +147,7 @@ Deno.serve(async (req) => {
   const claude = new Anthropic({ apiKey: cle });
 
   const demande = corps.demande?.trim() ?? '';
-  if (demande.length < 5 || demande.length > 2000) return repondre({ erreur: 'Décris la séance en quelques phrases (2000 caractères au plus).' }, 400);
+  if (demande.length < 5 || demande.length > 3000) return repondre({ erreur: 'Décris ta demande en quelques phrases (2000 caractères au plus).' }, 400);
 
   // Le jeton du coach : seules les lignes qu'il a le droit de lire sont renvoyées.
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
@@ -92,6 +155,7 @@ Deno.serve(async (req) => {
   });
   const { data: coachId } = await db.rpc('mon_coach_id');
   if (!coachId) return repondre({ erreur: 'Réservé au coach connecté.' }, 403);
+  if (corps.plan === true) return planProgramme(claude, demande);
 
   const exercices: ExerciceBase[] = [];
   for (let debut = 0; ; debut += 1000) {
@@ -142,9 +206,6 @@ Deno.serve(async (req) => {
       .filter((b) => b.lignes.length);
     return repondre({ titre: p.titre, consignes: p.consignes, blocs, remarque: p.remarque, ecartes: ecartes.length });
   } catch (e) {
-    if (e instanceof Anthropic.RateLimitError) return repondre({ erreur: 'Trop de demandes en même temps, réessaie dans une minute.' }, 429);
-    if (e instanceof Anthropic.AuthenticationError) return repondre({ erreur: 'La clé Claude du serveur est absente ou invalide.' }, 500);
-    if (e instanceof Anthropic.APIError) return repondre({ erreur: `Service Claude indisponible (${e.status}).` }, 502);
-    throw e;
+    return erreurClaude(e);
   }
 });
