@@ -51,7 +51,10 @@ beforeAll(async () => {
     grant select, insert on storage.objects to authenticated;
   `);
   const dossier = join(__dirname, '../supabase/migrations');
-  for (const f of readdirSync(dossier).filter((x) => x.endsWith('.sql')).sort()) await db.exec(readFileSync(join(dossier, f), 'utf8'));
+  for (const f of readdirSync(dossier)
+    .filter((x) => x.endsWith('.sql'))
+    .sort())
+    await db.exec(readFileSync(join(dossier, f), 'utf8'));
   await db.exec(`
     insert into auth.users (id) values ('${ids.userCoach1}'), ('${ids.userCoach2}'), ('${ids.userClientA}'), ('${ids.userClientB}');
     insert into public.coachs (id, user_id, nom, lien_questionnaire) values
@@ -68,7 +71,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await db.close();
 });
-
 
 const COACHING = '50000000-0000-4000-8000-000000000001';
 
@@ -103,8 +105,12 @@ describe('coachings, paiements et bilans du coach', () => {
       [ids.contactA],
     );
     expect(rows[0].piliers).toEqual({ Force: 7, Sommeil: null });
-    await expect(en(ids.userCoach1, `insert into public.bilans_coach (contact_id, date, piliers) values ($1, '2026-10-25', '{"Force": 0}')`, [ids.contactA])).rejects.toThrow();
-    await expect(en(ids.userCoach1, `insert into public.bilans_coach (contact_id, date, piliers) values ($1, '2026-10-25', '{"Chance": 5}')`, [ids.contactA])).rejects.toThrow();
+    await expect(
+      en(ids.userCoach1, `insert into public.bilans_coach (contact_id, date, piliers) values ($1, '2026-10-25', '{"Force": 0}')`, [ids.contactA]),
+    ).rejects.toThrow();
+    await expect(
+      en(ids.userCoach1, `insert into public.bilans_coach (contact_id, date, piliers) values ($1, '2026-10-25', '{"Chance": 5}')`, [ids.contactA]),
+    ).rejects.toThrow();
   });
 
   it('un autre coach ne voit rien et ne peut ni modifier ni rattacher une ligne à ses contacts', async () => {
@@ -137,7 +143,10 @@ describe('tâches (relances)', () => {
     ).rejects.toThrow();
     // Contact du coach 1, coaching inexistant chez le coach 2 : refusé pour le coach 2.
     await expect(
-      en(ids.userCoach2, `insert into public.relances (contact_id, echeance, modele, coaching_id) values ($1, '2026-10-26', 'tache', $2)`, [ids.contactAutre, COACHING]),
+      en(ids.userCoach2, `insert into public.relances (contact_id, echeance, modele, coaching_id) values ($1, '2026-10-26', 'tache', $2)`, [
+        ids.contactAutre,
+        COACHING,
+      ]),
     ).rejects.toThrow();
   });
 
@@ -147,5 +156,44 @@ describe('tâches (relances)', () => {
     expect(p.rows).toEqual([{ coaching_id: null }]);
     const t = await en(ids.userCoach1, `select coaching_id from public.relances where titre = 'Appeler Inès'`);
     expect(t.rows).toEqual([{ coaching_id: null }]);
+  });
+});
+
+describe('mensualités préparées automatiquement', () => {
+  const ref = `abonnement:2026-11:${ids.clientA}`;
+  const ajouter = (userId: string) =>
+    en(
+      userId,
+      `insert into public.paiements (titre, contact_id, date, montant, statut, reference) values ('Abonnement 11/2026 · Inès', $1, '2026-11-01', 59, 'En attente', $2)`,
+      [ids.contactA, ref],
+    );
+
+  it('une seule ligne par client et par mois', async () => {
+    await ajouter(ids.userCoach1);
+    await expect(ajouter(ids.userCoach1)).rejects.toThrow();
+    expect((await en(ids.userCoach1, `select id from public.paiements where reference = $1`, [ref])).rows).toHaveLength(1);
+  });
+
+  it('une ligne supprimée par le coach est écartée, et lui seul le voit', async () => {
+    await en(ids.userCoach1, `delete from public.paiements where reference = $1`, [ref]);
+    expect((await en(ids.userCoach1, `select reference from public.echeances_ecartees`)).rows).toEqual([{ reference: ref }]);
+    expect((await en(ids.userCoach2, `select reference from public.echeances_ecartees`)).rows).toHaveLength(0);
+    await expect(en(ids.userCoach1, `insert into public.echeances_ecartees (reference) values ('abonnement:2026-12:x')`)).rejects.toThrow();
+  });
+
+  it('un paiement saisi à la main n’est pas concerné', async () => {
+    await en(
+      ids.userCoach1,
+      `insert into public.paiements (titre, date, reference) values ('Virement', '2026-11-02', 'VIR-1'), ('Virement 2', '2026-11-02', 'VIR-1')`,
+    );
+    await en(ids.userCoach1, `delete from public.paiements where reference = 'VIR-1'`);
+    expect((await en(ids.userCoach1, `select reference from public.echeances_ecartees where reference = 'VIR-1'`)).rows).toHaveLength(0);
+  });
+
+  it('supprimer le coach supprime aussi ses mensualités sans erreur', async () => {
+    await ajouter(ids.userCoach1).catch(() => undefined);
+    await en(ids.userCoach1, `insert into public.paiements (titre, reference) values ('Abonnement 12/2026', 'abonnement:2026-12:x')`);
+    await db.query(`delete from public.coachs where id = $1`, [ids.coach1]);
+    expect((await db.query(`select * from public.echeances_ecartees where coach_id = $1`, [ids.coach1])).rows).toHaveLength(0);
   });
 });

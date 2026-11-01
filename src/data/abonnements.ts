@@ -149,12 +149,14 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
     },
     async preparerEcheances() {
       const mois = jourLocal(new Date()).slice(0, 7);
-      const [clients, deja] = await Promise.all([
+      const [clients, deja, ecartees] = await Promise.all([
         db.from('clients').select('id, prenom, option_nutrition, contacts(id)').eq('acces_appli', true).eq('actif', true),
         db.from('paiements').select('reference').like('reference', `abonnement:${mois}:%`),
+        // Lignes du mois supprimées par le coach : elles ne reviennent pas.
+        db.from('echeances_ecartees').select('reference').like('reference', `abonnement:${mois}:%`),
       ]);
-      if (clients.error || deja.error) return;
-      const faites = new Set((deja.data ?? []).map((p) => p.reference as string));
+      if (clients.error || deja.error || ecartees.error) return;
+      const faites = new Set([...(deja.data ?? []), ...(ecartees.data ?? [])].map((p) => p.reference as string));
       const lignes = (clients.data as { id: string; prenom: string; option_nutrition: boolean; contacts: { id: string }[] }[])
         .filter((c) => !faites.has(`abonnement:${mois}:${c.id}`))
         .map((c) => ({
@@ -165,7 +167,8 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
           statut: 'En attente',
           reference: `abonnement:${mois}:${c.id}`,
         }));
-      if (lignes.length) await db.from('paiements').insert(lignes);
+      // Une ligne à la fois : si un autre chargement l'a déjà créée, la base refuse le doublon et on passe à la suivante.
+      for (const ligne of lignes) await db.from('paiements').insert(ligne);
     },
   };
   return depot;
