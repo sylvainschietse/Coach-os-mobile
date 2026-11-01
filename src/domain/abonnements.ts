@@ -6,6 +6,8 @@ export interface Abonnement {
   accesAppli: boolean;
   /** Option nutrition (+40 €/mois) : recettes, plan de repas automatique et photo d'assiette. */
   optionNutrition: boolean;
+  /** Tarif d'une séance à l'unité pour ce client (60 € par défaut, au cas par cas sinon). */
+  tarifSeance?: number;
 }
 
 export const TARIFS = { appli: 59, optionNutrition: 40, seance: 60 } as const;
@@ -28,6 +30,10 @@ export interface PackSeances {
   prix?: number;
   /** AAAA-MM-JJ. */
   acheteLe: string;
+  /** Pack partagé (couple, duo) : les autres personnes qui l'utilisent. Côté titulaire et côté coach seulement. */
+  partageAvec?: { clientId: string; prenom: string }[];
+  /** Pack d'une autre personne, partagé avec ce client. */
+  titulaire?: { clientId: string; prenom: string };
 }
 
 export const restantes = (p: PackSeances) => p.seancesTotal - p.seancesFaites;

@@ -1,4 +1,4 @@
-import { mensualite, PACKS, packADecompter, type Abonnement, type PackSeances, type TypePack } from '@/domain/abonnements';
+import { mensualite, PACKS, packADecompter, TARIFS, type Abonnement, type PackSeances, type TypePack } from '@/domain/abonnements';
 import { jourLocal } from '@/domain/crm';
 import { nouvelId } from '@/lib/identifiant';
 
@@ -9,7 +9,11 @@ export interface DepotAbonnements {
   /** Réservé au coach : la base refuse qu'un client change son propre abonnement. */
   changer(clientId: string, modif: Partial<Abonnement>): Promise<void>;
   packs(clientId: string): Promise<PackSeances[]>;
-  ajouterPack(clientId: string, type: TypePack): Promise<void>;
+  /** prix : tarif négocié au cas par cas ; sinon le prix du pack. */
+  ajouterPack(clientId: string, type: TypePack, prix?: number): Promise<void>;
+  /** Pack partagé (couple, duo) : la séance faite par l'un ou l'autre se décompte une fois. */
+  partagerPack(packId: string, clientId: string): Promise<void>;
+  retirerPartage(packId: string, clientId: string): Promise<void>;
   /** Décompte une séance faite avec le coach (+1) ou annule le dernier décompte (-1). */
   decompter(clientId: string, sens: 1 | -1): Promise<void>;
   /** Pack ajouté par erreur : supprimé avec sa ligne de paiement encore « En attente ». */
@@ -34,6 +38,7 @@ const demo: DepotAbonnements = {
       memoire.abonnements.get(clientId) ?? {
         accesAppli: true,
         optionNutrition: true,
+        tarifSeance: TARIFS.seance,
       }
     );
   },
@@ -44,17 +49,25 @@ const demo: DepotAbonnements = {
     });
   },
   async packs(clientId) {
-    return memoire.packs.filter((p) => p.clientId === clientId);
+    return memoire.packs.filter((p) => p.clientId === clientId || p.partageAvec?.some((x) => x.clientId === clientId));
   },
-  async ajouterPack(clientId, type) {
+  async ajouterPack(clientId, type, prix) {
     memoire.packs.push({
       id: nouvelId(),
       clientId,
       seancesTotal: PACKS[type].seances,
       seancesFaites: 0,
-      prix: PACKS[type].prix,
+      prix: prix ?? PACKS[type].prix,
       acheteLe: aujourdhui(),
     });
+  },
+  async partagerPack(packId, clientId) {
+    const p = memoire.packs.find((x) => x.id === packId);
+    if (p && !p.partageAvec?.some((x) => x.clientId === clientId)) p.partageAvec = [...(p.partageAvec ?? []), { clientId, prenom: 'Client' }];
+  },
+  async retirerPartage(packId, clientId) {
+    const p = memoire.packs.find((x) => x.id === packId);
+    if (p) p.partageAvec = p.partageAvec?.filter((x) => x.clientId !== clientId);
   },
   async supprimerPack(packId) {
     memoire.packs = memoire.packs.filter((p) => p.id !== packId);
@@ -75,46 +88,66 @@ type Ligne = {
   seances_faites: number;
   prix: number | string | null;
   achete_le: string;
+  clients?: { prenom: string } | null;
+  packs_partages?: { client_id: string; clients: { prenom: string } | null }[];
 };
-const versPack = (l: Ligne): PackSeances => ({
+const versPack = (l: Ligne, pour: string): PackSeances => ({
   id: l.id,
   clientId: l.client_id,
   seancesTotal: l.seances_total,
   seancesFaites: l.seances_faites,
   prix: l.prix === null ? undefined : Number(l.prix),
   acheteLe: l.achete_le,
+  partageAvec: (l.packs_partages ?? []).filter((p) => p.client_id !== pour).map((p) => ({ clientId: p.client_id, prenom: p.clients?.prenom ?? '' })),
+  titulaire: l.client_id !== pour ? { clientId: l.client_id, prenom: l.clients?.prenom ?? '' } : undefined,
 });
 
 function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
   const depot: DepotAbonnements = {
     async lire(clientId) {
-      const { data, error } = await db.from('clients').select('acces_appli, option_nutrition').eq('id', clientId).maybeSingle();
+      const { data, error } = await db.from('clients').select('acces_appli, option_nutrition, tarif_seance').eq('id', clientId).maybeSingle();
       if (error) throw new Error('Impossible de lire l’abonnement. Vérifie ta connexion.');
       return {
         accesAppli: data?.acces_appli ?? false,
         optionNutrition: data?.option_nutrition ?? false,
+        tarifSeance: data?.tarif_seance == null ? TARIFS.seance : Number(data.tarif_seance),
       };
     },
     async changer(clientId, modif) {
-      const champs: Record<string, boolean> = {};
+      const champs: Record<string, boolean | number> = {};
+      if (modif.tarifSeance !== undefined) champs.tarif_seance = modif.tarifSeance;
       if (modif.accesAppli !== undefined) champs.acces_appli = modif.accesAppli;
       if (modif.optionNutrition !== undefined) champs.option_nutrition = modif.optionNutrition;
       const { error } = await db.from('clients').update(champs).eq('id', clientId);
       if (error) throw new Error('L’abonnement n’a pas pu être enregistré. Réessaie.');
     },
     async packs(clientId) {
+      // Ses packs, et ceux d'une autre personne partagés avec lui.
+      const partages = await db.from('packs_partages').select('pack_id').eq('client_id', clientId);
+      if (partages.error) throw new Error('Impossible de lire les séances. Vérifie ta connexion.');
+      const ids = (partages.data ?? []).map((p) => p.pack_id as string);
+      const filtre = ids.length ? `client_id.eq.${clientId},id.in.(${ids.join(',')})` : `client_id.eq.${clientId}`;
       const { data, error } = await db
         .from('packs_seances')
-        .select('id, client_id, seances_total, seances_faites, prix, achete_le')
-        .eq('client_id', clientId)
+        .select('id, client_id, seances_total, seances_faites, prix, achete_le, clients(prenom), packs_partages(client_id, clients(prenom))')
+        .or(filtre)
         .order('achete_le');
       if (error) throw new Error('Impossible de lire les séances. Vérifie ta connexion.');
-      return (data as Ligne[]).map(versPack);
+      return (data as unknown as Ligne[]).map((l) => versPack(l, clientId));
     },
-    async ajouterPack(clientId, type) {
+    async partagerPack(packId, clientId) {
+      const { error } = await db.from('packs_partages').insert({ pack_id: packId, client_id: clientId });
+      if (error && error.code !== '23505') throw new Error('Le pack n’a pas pu être partagé. Réessaie.');
+    },
+    async retirerPartage(packId, clientId) {
+      const { error } = await db.from('packs_partages').delete().eq('pack_id', packId).eq('client_id', clientId);
+      if (error) throw new Error('Le partage n’a pas pu être retiré. Réessaie.');
+    },
+    async ajouterPack(clientId, type, prix) {
+      const montant = prix ?? PACKS[type].prix;
       const { data, error } = await db
         .from('packs_seances')
-        .insert({ client_id: clientId, seances_total: PACKS[type].seances, prix: PACKS[type].prix })
+        .insert({ client_id: clientId, seances_total: PACKS[type].seances, prix: montant })
         .select('id')
         .single();
       if (error) throw new Error('Le pack n’a pas pu être ajouté. Réessaie.');
@@ -124,7 +157,7 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
         titre: `${PACKS[type].libelle}${contact?.prenom ? ` · ${contact.prenom}` : ''}`,
         contact_id: contact?.id ?? null,
         date: jourLocal(new Date()),
-        montant: PACKS[type].prix,
+        montant,
         statut: 'En attente',
         reference: `pack:${data.id}`,
       });

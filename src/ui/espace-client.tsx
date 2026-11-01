@@ -11,6 +11,7 @@ import { demanderSortie } from '@/lib/brouillon';
 import { useCharger } from '@/lib/useCharger';
 
 import { SeancesRestantes } from './abonnement';
+import { MesRendezVous } from './agenda/mes-rendez-vous';
 import { EntrainementClient } from './entrainement/espace-entrainement';
 import { useMinuteurs } from './entrainement/minuteurs';
 import { MonCompte } from './mon-compte';
@@ -91,6 +92,7 @@ export function EspaceClient({
           {(onglet === 'accueil' || onglet === 'programme') && (
             <>
               <EnAttente clientId={clientId} apercu={!!apercu} />
+              {onglet === 'accueil' && !apercu && <MesRendezVous clientId={clientId} />}
               <EntrainementClient
                 key={`${clientId}:${onglet}`}
                 clientId={clientId}
