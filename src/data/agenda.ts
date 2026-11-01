@@ -104,6 +104,7 @@ function semerDemo() {
   };
   const exemples: [ReturnType<typeof a>, TypeRdv, StatutRdv, (typeof lea)[], string][] = [
     [a(-5, 18, 0), 'seance', 'realise', [lea], 'Salle Fitness Park'],
+    [a(0, 12, 15), 'seance', 'confirme', [thomas], 'Salle Fitness Park'],
     [a(1, 18, 0), 'seance', 'confirme', [lea], 'Salle Fitness Park'],
     [a(2, 7, 30, 45), 'visio', 'confirme', [thomas], ''],
     [a(3, 12, 30), 'seance', 'propose', [lea, thomas], 'Parc de la Tête d’Or'],
@@ -205,7 +206,7 @@ const demo: DepotAgenda = {
       d.setHours(h);
       return { id: `demo-${jour}-${h}`, debut: d.toISOString(), fin: new Date(d.getTime() + duree * 3_600_000).toISOString(), titre, journee: false };
     };
-    return [a(1, 10, 1, 'Dentiste'), a(3, 17, 2, 'École des enfants')].filter((o) => o.debut < au && o.fin > du);
+    return [a(0, 9, 1, 'Banque'), a(1, 10, 1, 'Dentiste'), a(3, 17, 2, 'École des enfants')].filter((o) => o.debut < au && o.fin > du);
   },
   async google() {
     return null;

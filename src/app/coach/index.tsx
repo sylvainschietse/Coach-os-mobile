@@ -198,6 +198,7 @@ export default function EspaceCoach() {
               large={width >= LARGEUR_LG}
               onRubrique={(r, dossier) => naviguer('crm', r, dossier)}
               onCycles={() => naviguer('suivis')}
+              onAgenda={() => naviguer('agenda')}
             />
           )}
           {onglet === 'agenda' && <AgendaCoach coachId={coachId} />}
@@ -295,12 +296,14 @@ function Crm({
   large,
   onRubrique,
   onCycles,
+  onAgenda,
 }: {
   rubrique: Rubrique;
   params: ParamsDossier;
   large: boolean;
   onRubrique: (r: Rubrique, dossier?: string) => void;
   onCycles: () => void;
+  onAgenda: () => void;
 }) {
   const [maj, setMaj] = useState(() => new Date());
   const [suppression, setSuppression] = useState<{ booster: Booster; contact: Contact }>();
@@ -368,6 +371,7 @@ function Crm({
               onOuvrirContact={(id) => ouvrirContact(id)}
               onOuvrirBooster={ouvrirBooster}
               onCycles={onCycles}
+              onAgenda={onAgenda}
             />
           ) : (
             !vue.erreur && <Chargement />
