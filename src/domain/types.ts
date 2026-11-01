@@ -331,6 +331,8 @@ export interface OrigineRecette {
 
 export type TypeRecette = 'plat' | 'collation' | 'sucre' | 'sale';
 
+export type AvisRecetteClient = 'partagee' | 'non-retenue';
+
 export interface Recette {
   id: string;
   /** Vide : recette personnelle d'un client. */
@@ -343,6 +345,8 @@ export interface Recette {
   ingredients: Ingredient[];
   /** Le client ne voit dans la banque que les recettes approuvées par le coach. */
   statut: 'brouillon' | 'approuvee';
+  /** Recette d'un client vue par le coach : partagée (copiée dans sa banque) ou non retenue. Vide : pas encore vue. */
+  avisCoach?: AvisRecetteClient;
   /** Régimes confirmés à la main (sans gluten notamment), en plus de ce que disent les ingrédients. */
   regimesConfirmes: Regime[];
   archive?: boolean;

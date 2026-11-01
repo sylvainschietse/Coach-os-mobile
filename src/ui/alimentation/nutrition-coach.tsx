@@ -16,11 +16,13 @@ import { couleurs, espace, polices } from '../theme';
 import { NutritionProfil } from '../nutrition/nutrition';
 import { AnalyseAssiette } from './analyse-assiette';
 import { BanqueRecettes } from './recettes';
+import { RecettesClients } from './recettes-clients';
 
-type Rubrique = 'clients' | 'recettes' | 'photo';
+type Rubrique = 'clients' | 'recettes' | 'recettes-clients' | 'photo';
 const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'clients', libelle: 'Clients suivis' },
   { cle: 'recettes', libelle: 'Mes recettes' },
+  { cle: 'recettes-clients', libelle: 'Recettes de mes clients' },
   { cle: 'photo', libelle: 'Photo d’assiette' },
 ];
 
@@ -85,6 +87,7 @@ export function NutritionCoach({
       <EnTeteRubrique kicker="Alimentation" titre="Nutrition" sousTitre="Vos recettes et les plans alimentaires de vos clients." />
       <SousNav nom="Rubriques Nutrition coach" onglets={RUBRIQUES} valeur={rubrique} onChange={setRubrique} />
       {rubrique === 'recettes' && <BanqueRecettes coachId={coachId} />}
+      {rubrique === 'recettes-clients' && <RecettesClients coachId={coachId} />}
       {rubrique === 'clients' && <ListeSuivis suivis={suivis} onOuvrir={onClient} />}
       {rubrique === 'photo' && <AnalyseAssiette />}
     </View>
