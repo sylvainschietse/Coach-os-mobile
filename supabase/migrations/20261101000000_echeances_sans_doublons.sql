@@ -2,9 +2,10 @@
 -- · une seule ligne par client et par mois, même si l'écran se charge deux fois en même temps ;
 -- · une ligne que le coach supprime ne revient plus au chargement suivant.
 
--- Doublons déjà créés : on garde la plus ancienne.
-delete from public.paiements p
-using public.paiements q
+-- Doublons déjà créés : on garde la plus ancienne, les autres passent « Annulé » sans référence (le coach peut les supprimer).
+update public.paiements p
+set reference = null, statut = 'Annulé', notes = 'Doublon créé automatiquement'
+from public.paiements q
 where p.reference like 'abonnement:%'
   and q.coach_id = p.coach_id
   and q.reference = p.reference
