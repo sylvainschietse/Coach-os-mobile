@@ -77,7 +77,12 @@ describe('besoins', () => {
 
   it('les objectifs du coach passent avant le calcul', () => {
     const b = calculerBesoins(profil, '2026-10-24').besoins!;
-    expect(objectifsDuJour({ clientId: 'c', calories: 1900, proteinesG: 110 }, b)).toMatchObject({ source: 'coach', kcal: 1900, proteines: 110, glucides: b.glucides });
+    expect(objectifsDuJour({ clientId: 'c', calories: 1900, proteinesG: 110 }, b)).toMatchObject({
+      source: 'coach',
+      kcal: 1900,
+      proteines: 110,
+      glucides: b.glucides,
+    });
     expect(objectifsDuJour(null, b)?.source).toBe('calcul');
     expect(objectifsDuJour(null, undefined)).toBeUndefined();
   });
@@ -241,5 +246,28 @@ describe('recettes importées de l’ancienne app (Zite)', () => {
   it('cherche par titre, ingrédient et type de repas', () => {
     expect(rechercherRecettes([importee], 'coco').has('zite')).toBe(true);
     expect(rechercherRecettes([importee], '', 'collation').size).toBe(0);
+  });
+});
+
+describe('recettes des clients', () => {
+  it('la copie pour la banque est approuvée et détachée du client', async () => {
+    const { copiePourLaBanque } = await import('@/domain/alimentation');
+    const copie = copiePourLaBanque(
+      {
+        id: 'r1',
+        clientId: 'lea',
+        titre: 'Pancakes',
+        portions: 2,
+        ingredients: [],
+        statut: 'brouillon',
+        regimesConfirmes: [],
+        avisCoach: undefined,
+        archive: false,
+      },
+      'r2',
+    );
+    expect(copie).toMatchObject({ id: 'r2', titre: 'Pancakes', portions: 2, statut: 'approuvee', archive: false });
+    expect(copie.clientId).toBeUndefined();
+    expect('avisCoach' in copie).toBe(false);
   });
 });

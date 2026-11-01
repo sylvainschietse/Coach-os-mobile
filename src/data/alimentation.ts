@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { lireProduitOff, lireRecette } from '@/domain/alimentation';
-import type { Aliment, Contient, EntreeRepas, Ingredient, Macros, OrigineRecette, ProfilNutrition, Recette, Regime } from '@/domain/types';
+import type { Aliment, AvisRecetteClient, Contient, EntreeRepas, Ingredient, Macros, OrigineRecette, ProfilNutrition, Recette, Regime } from '@/domain/types';
 import { nouvelId } from '@/lib/identifiant';
 
 import alimentsBase from './aliments-base.json';
@@ -34,6 +34,10 @@ export interface DepotAlimentation {
   /** Banque du coach : toutes pour le coach, les approuvées pour un client. */
   banqueRecettes(): Promise<Recette[]>;
   recettesPerso(clientId: string): Promise<Recette[]>;
+  /** Pour le coach : les recettes enregistrées par ses clients, les plus récentes d'abord. */
+  recettesDesClients(): Promise<Recette[]>;
+  /** Le coach note qu'il a partagé (ou non retenu) la recette d'un client ; vide pour la remettre « à voir ». */
+  avisRecetteClient(id: string, avis: AvisRecetteClient | undefined): Promise<void>;
   enregistrerRecette(r: Recette, coachId?: string): Promise<void>;
   repas(clientId: string, depuis: string): Promise<EntreeRepas[]>;
   ajouterRepas(entrees: EntreeRepas[]): Promise<void>;
@@ -113,7 +117,14 @@ const depotDemo: DepotAlimentation = {
   async recettesPerso(clientId) {
     return (await recettesDemo.lire()).filter((r) => r.clientId === clientId && !r.archive).map(lireRecette);
   },
-  enregistrerRecette: (r) => remplacer(recettesDemo, r, (x) => x.id === r.id),
+  enregistrerRecette: (r) => remplacer(recettesDemo, r.clientId ? { ...r, statut: 'brouillon', avisCoach: undefined } : r, (x) => x.id === r.id),
+  async recettesDesClients() {
+    return (await recettesDemo.lire()).filter((r) => r.clientId && !r.archive).reverse().map(lireRecette);
+  },
+  async avisRecetteClient(id, avis) {
+    const r = (await recettesDemo.lire()).find((x) => x.id === id);
+    if (r) await remplacer(recettesDemo, { ...r, avisCoach: avis, statut: avis === 'partagee' ? 'approuvee' : 'brouillon' }, (x) => x.id === id);
+  },
   async repas(clientId, depuis) {
     return (await repasDemo.lire()).filter((e) => e.clientId === clientId && e.date >= depuis);
   },
@@ -206,7 +217,11 @@ type RecetteBase = {
   origine: OrigineRecette | null;
   types: Recette['types'] | null;
   regime_source: Recette['regimeSource'] | null;
+  ref_externe?: string | null;
 };
+
+/** Sur la recette d'un client, le statut « approuvée » veut dire partagée par le coach ; ce repère, non retenue. */
+const NON_RETENUE = 'coach:non-retenue';
 
 const versRecette = (r: RecetteBase): Recette =>
   lireRecette({
@@ -226,6 +241,7 @@ const versRecette = (r: RecetteBase): Recette =>
     origine: ou(r.origine),
     types: r.types?.length ? r.types : undefined,
     regimeSource: ou(r.regime_source),
+    avisCoach: !r.client_id ? undefined : r.statut === 'approuvee' ? 'partagee' : r.ref_externe === NON_RETENUE ? 'non-retenue' : undefined,
   });
 
 type RepasBase = {
@@ -354,6 +370,23 @@ function creerDepotSupabase(db: SupabaseClient): DepotAlimentation {
     async recettesPerso(clientId) {
       const lignes = verifier(await db.from('recettes').select('*').eq('client_id', clientId).eq('archive', false).order('titre')) as RecetteBase[];
       return lignes.map(versRecette);
+    },
+
+    async recettesDesClients() {
+      const lignes = verifier(
+        await db.from('recettes').select('*').not('client_id', 'is', null).eq('archive', false).order('updated_at', { ascending: false }),
+      ) as RecetteBase[];
+      return lignes.map(versRecette);
+    },
+
+    async avisRecetteClient(id, avis) {
+      verifier(
+        await db
+          .from('recettes')
+          .update({ statut: avis === 'partagee' ? 'approuvee' : 'brouillon', ref_externe: avis === 'non-retenue' ? NON_RETENUE : null })
+          .eq('id', id)
+          .not('client_id', 'is', null),
+      );
     },
 
     async enregistrerRecette(r, coachId) {

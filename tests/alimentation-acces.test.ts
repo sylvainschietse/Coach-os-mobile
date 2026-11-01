@@ -136,6 +136,21 @@ describe('recettes', () => {
     await en(ids.userLea, `update public.recettes set statut = 'approuvee' where titre = 'Bowl validé'`);
     expect((await db.query(`select titre from public.recettes where titre = 'Bowl validé' and statut = 'approuvee'`)).rows).toHaveLength(1);
   });
+
+  it('le coach partage la recette de Léa : la copie de la banque est visible de tous, l’originale reste privée', async () => {
+    await recette(ids.userLea, ids.coach1, ids.lea, 'brouillon', 'Pancakes de Léa');
+    // « Partagée » : le coach marque la recette de Léa et en met une copie approuvée dans sa banque.
+    await en(ids.userCoach1, `update public.recettes set statut = 'approuvee', ref_externe = null where titre = 'Pancakes de Léa'`);
+    await recette(ids.userCoach1, ids.coach1, null, 'approuvee', 'Pancakes (copie)');
+    expect((await en(ids.userThomas, `select titre from public.recettes where titre like 'Pancakes%'`)).rows).toEqual([{ titre: 'Pancakes (copie)' }]);
+    expect((await en(ids.userLea, `select titre from public.recettes where titre like 'Pancakes%' order by titre`)).rows).toHaveLength(2);
+    // Léa modifie toujours sa recette ; sa modification la remet en brouillon (« à voir » pour le coach).
+    await en(ids.userLea, `update public.recettes set statut = 'brouillon', titre = 'Pancakes de Léa v2' where titre = 'Pancakes de Léa'`);
+    expect((await db.query(`select statut from public.recettes where titre = 'Pancakes de Léa v2'`)).rows).toEqual([{ statut: 'brouillon' }]);
+    // « Non retenue » : un repère invisible du client.
+    await en(ids.userCoach1, `update public.recettes set ref_externe = 'coach:non-retenue' where titre = 'Pancakes de Léa v2'`);
+    expect((await db.query(`select ref_externe from public.recettes where titre = 'Pancakes de Léa v2'`)).rows).toEqual([{ ref_externe: 'coach:non-retenue' }]);
+  });
 });
 
 describe('journal des repas', () => {

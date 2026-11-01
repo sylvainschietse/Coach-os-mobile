@@ -199,6 +199,43 @@ export const PROFILS_DEMO: ProfilNutrition[] = [
  * Les recettes écrites pour CoachGo, et une recette sur cinq de l'ancienne app de Sylvain (sources Good Food et Feel Good Foodie), pour essayer la démo.
  * Dans la démo elles sont marquées approuvées pour que la cliente les voie ; dans la vraie banque, elles arrivent en brouillon.
  */
-export const RECETTES_DEMO: Recette[] = ([...recettesCoach, ...recettesDemo] as unknown as Recette[]).map((r) => ({ ...r, statut: 'approuvee' }));
+export const RECETTES_DEMO: Recette[] = ([...recettesCoach, ...recettesDemo] as unknown as Recette[]).map((r): Recette => ({ ...r, statut: 'approuvee' })).concat(RECETTES_CLIENTS_DEMO());
+
+/** Deux recettes enregistrées par Léa, que le coach retrouve dans « Recettes de mes clients ». */
+function RECETTES_CLIENTS_DEMO(): Recette[] {
+  const ing = (nom: string, quantiteG: number, kcal: number, proteines: number, glucides: number, lipides: number) => ({
+    nom,
+    quantiteG,
+    kcal,
+    proteines,
+    glucides,
+    lipides,
+    contient: [],
+  });
+  return [
+    {
+      id: 'recette-lea-pancakes',
+      clientId: 'client-lea',
+      titre: 'Pancakes banane et flocons d’avoine',
+      portions: 2,
+      tempsMin: 15,
+      etapes: 'Écraser la banane, ajouter les œufs et les flocons, mixer. Cuire à la poêle 2 min par face. Servir avec le skyr.',
+      ingredients: [ing('Banane', 120, 107, 1.3, 27, 0.4), ing('Œufs', 100, 145, 12.6, 0.7, 10), ing('Flocons d’avoine', 60, 225, 8, 36, 4.2), ing('Skyr nature', 150, 90, 16, 6, 0.3)],
+      statut: 'brouillon',
+      regimesConfirmes: [],
+    },
+    {
+      id: 'recette-lea-bowl',
+      clientId: 'client-lea',
+      titre: 'Bowl poulet, quinoa et avocat',
+      portions: 1,
+      tempsMin: 20,
+      etapes: 'Cuire le quinoa. Griller le poulet. Disposer avec l’avocat et les tomates cerises, arroser de citron.',
+      ingredients: [ing('Blanc de poulet', 130, 143, 30, 0, 2.3), ing('Quinoa cuit', 150, 180, 6.6, 32, 2.9), ing('Avocat', 60, 96, 1.2, 5, 8.8), ing('Tomates cerises', 80, 14, 0.7, 3, 0.2)],
+      statut: 'brouillon',
+      regimesConfirmes: [],
+    },
+  ];
+}
 
 export const REPAS_DEMO: EntreeRepas[] = [];

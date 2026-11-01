@@ -773,3 +773,9 @@ export function lireProduitOff(code: string, reponse: { status?: number; product
 }
 
 export const codeBarresValide = (code: string) => /^\d{8}$|^\d{12,14}$/.test(code.trim());
+
+/** Copie d'une recette de client pour la banque du coach : visible de tous ses clients (approuvée), sans lien avec le client. */
+export function copiePourLaBanque(r: Recette, id: string): Recette {
+  const { clientId: _client, avisCoach: _avis, ...reste } = r;
+  return { ...reste, id, statut: 'approuvee', archive: false, origine: undefined };
+}
