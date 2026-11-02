@@ -8,7 +8,7 @@ import { betaZodOutputFormat } from 'npm:@anthropic-ai/sdk@0.135.0/helpers/beta/
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import * as z from 'npm:zod@4';
 
-import NOMS_CIQUAL from './noms-ciqual.json' with { type: 'json' };
+import { NOMS_CIQUAL } from './noms-ciqual.ts';
 
 const CONTIENT = ['viande', 'poisson', 'fruits_de_mer', 'oeuf', 'lait', 'gluten', 'miel'] as const;
 
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
       // La table ne change pas d'un appel à l'autre : elle reste en cache chez Anthropic, ce qui réduit le coût.
       system: [
         { type: 'text', text: CONSIGNES },
-        { type: 'text', text: `Table Ciqual (un nom par ligne) :\n${(NOMS_CIQUAL as string[]).join('\n')}`, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: `Table Ciqual (un nom par ligne) :\n${NOMS_CIQUAL.join('\n')}`, cache_control: { type: 'ephemeral' } },
       ],
       messages: [{ role: 'user', content: texte }],
     });
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
         .slice(0, 40)
         .map((i) => ({
           nom: i.nom.trim().slice(0, 120),
-          ciqual: i.ciqual && (NOMS_CIQUAL as string[]).includes(i.ciqual) ? i.ciqual : undefined,
+          ciqual: i.ciqual && NOMS_CIQUAL.includes(i.ciqual) ? i.ciqual : undefined,
           recherche: i.recherche.trim().slice(0, 80),
           quantiteG: Math.round(Math.min(i.quantiteG, 5000)),
           kcal: Math.round(borne(i.kcal, 900)),
