@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { erreursRecette, quantiteLisible, regimesDeLaRecette, totalRecette } from '@/domain/alimentation';
+import { alimentation } from '@/data/alimentation';
+import { appliquerDictee, erreursRecette, quantiteLisible, regimesDeLaRecette, totalRecette } from '@/domain/alimentation';
 import { formaterNombre, lireNombre } from '@/domain/suivi';
 import type { Recette, Regime } from '@/domain/types';
 
 import { Bouton, Carte, ChampTexte, Erreur, Puce, Puces, SousTitre, Texte } from '../composants';
+import { BoutonDictee } from '../dictee';
 import { couleurs, espace } from '../theme';
 import { type Auteur, ChoixAliment } from './choix-aliment';
 import { libelleRegime, LigneMacros } from './commun';
+import { DicteeRecette } from './dictee-recette';
 
 /** Régimes que les ingrédients ne suffisent pas à garantir : le coach les confirme. */
 const A_CONFIRMER: Regime[] = ['sans_gluten', 'sans_lactose'];
@@ -36,6 +39,8 @@ export function EditeurRecette({
   const [ajout, setAjout] = useState(false);
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [enCours, setEnCours] = useState(false);
+  // Après une dictée : ce que l'IA signale, et les ingrédients estimés faute d'être dans la base.
+  const [dictee, setDictee] = useState<{ remarque?: string; aVerifier: string[] }>();
 
   const brouillon: Recette = {
     ...r,
@@ -68,6 +73,32 @@ export function EditeurRecette({
 
   return (
     <View style={{ gap: espace(4) }}>
+      {!importee && (
+        <DicteeRecette
+          onRemplir={async (lue) => {
+            const { recette: remplie, aVerifier } = appliquerDictee(brouillon, lue, await alimentation.aliments());
+            setR(remplie);
+            setPortions(String(remplie.portions));
+            setTemps(remplie.tempsMin ? String(remplie.tempsMin) : '');
+            setDictee({ remarque: lue.remarque, aVerifier });
+          }}
+        />
+      )}
+      {dictee && (
+        <Carte>
+          <Texte style={{ fontSize: 14 }}>Recette remplie : relis chaque champ et corrige si besoin avant d’enregistrer.</Texte>
+          {dictee.remarque && (
+            <Texte doux style={{ fontSize: 13 }}>
+              {dictee.remarque}
+            </Texte>
+          )}
+          {dictee.aVerifier.length > 0 && (
+            <Texte doux style={{ fontSize: 13 }}>
+              Pas trouvé dans la base, valeurs moyennes à vérifier : {dictee.aVerifier.join(', ')}.
+            </Texte>
+          )}
+        </Carte>
+      )}
       <Carte>
         <ChampTexte libelle="Nom de la recette" valeur={r.titre} onChange={(titre) => setR({ ...r, titre })} />
         <ChampTexte libelle="Description (facultatif)" valeur={r.description ?? ''} onChange={(description) => setR({ ...r, description })} />
@@ -185,6 +216,7 @@ export function EditeurRecette({
 
       <Carte>
         <ChampTexte libelle="Préparation (facultatif)" valeur={r.etapes ?? ''} onChange={(etapes) => setR({ ...r, etapes })} multiligne />
+        <BoutonDictee valeur={r.etapes ?? ''} onChange={(etapes) => setR((x) => ({ ...x, etapes }))} />
       </Carte>
 
       {coach && (

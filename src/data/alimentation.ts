@@ -3,7 +3,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { lireProduitOff, lireRecette } from '@/domain/alimentation';
+import { lireProduitOff, lireRecette, recetteDepuisPerso, type RecetteDictee } from '@/domain/alimentation';
+import type { PersonalRecipe } from '@/domain/nutrition/personnel';
 import type { Aliment, AvisRecetteClient, Contient, EntreeRepas, Ingredient, Macros, OrigineRecette, ProfilNutrition, Recette, Regime } from '@/domain/types';
 import { nouvelId } from '@/lib/identifiant';
 
@@ -43,6 +44,8 @@ export interface DepotAlimentation {
   ajouterRepas(entrees: EntreeRepas[]): Promise<void>;
   supprimerRepas(id: string): Promise<void>;
   analyserPhoto(imageBase64: string, typeMime: string): Promise<EstimationPhoto>;
+  /** Une recette racontée à voix haute (ou collée), rangée en champs par l'IA : rien n'est enregistré. */
+  lireRecetteDictee(texte: string): Promise<RecetteDictee>;
 }
 
 const URL_OFF = 'https://world.openfoodfacts.org/api/v2/product/';
@@ -136,6 +139,9 @@ const depotDemo: DepotAlimentation = {
   },
   async analyserPhoto() {
     throw new Error('L’analyse des photos fonctionne avec un compte CoachGo, pas en démo.');
+  },
+  async lireRecetteDictee() {
+    throw new Error('Le remplissage automatique fonctionne avec un compte CoachGo, pas en démo.');
   },
 };
 
@@ -475,7 +481,30 @@ function creerDepotSupabase(db: SupabaseClient): DepotAlimentation {
       }
       return data;
     },
+
+    async lireRecetteDictee(texte) {
+      const { data, error } = await db.functions.invoke<RecetteDictee & { erreur?: string }>('lire-recette', { body: { texte } });
+      if (error || !data || data.erreur) {
+        const corps = await (error as { context?: Response } | null)?.context?.json?.().catch(() => null);
+        throw new Error(data?.erreur ?? corps?.erreur ?? 'Je n’ai pas réussi à lire la recette. Remplis les champs à la main.');
+      }
+      return data;
+    },
   };
 }
 
 export const alimentation: DepotAlimentation = supabase ? creerDepotSupabase(supabase) : depotDemo;
+
+/**
+ * Les recettes que le client enregistre dans « Mes recettes » arrivent aussi chez son coach (« Recettes de mes clients ») :
+ * seules celles qui ont changé sont renvoyées (une recette modifiée revient « à voir »), une recette retirée est archivée.
+ */
+export async function publierRecettesPerso(clientId: string, avant: PersonalRecipe[], apres: PersonalRecipe[]) {
+  const pareil = (a: PersonalRecipe | undefined, b: PersonalRecipe) => !!a && JSON.stringify(a) === JSON.stringify(b);
+  for (const p of apres) {
+    if (!pareil(avant.find((a) => a.id === p.id), p)) await alimentation.enregistrerRecette(recetteDepuisPerso(p, clientId, BASE));
+  }
+  for (const a of avant) {
+    if (!apres.some((p) => p.id === a.id)) await alimentation.enregistrerRecette({ ...recetteDepuisPerso(a, clientId, BASE), archive: true });
+  }
+}

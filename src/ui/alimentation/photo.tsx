@@ -139,8 +139,8 @@ export function PhotoRepas({
   );
 }
 
-/** RGPD : un client n'envoie une photo à l'IA qu'avec son accord (le coach, lui, analyse ses propres photos). */
-function useAccordIa() {
+/** RGPD : un client n'envoie une photo ou une recette dictée à l'IA qu'avec son accord (le coach, lui, n'en a pas besoin). */
+export function useAccordIa() {
   const { profil } = useSession();
   const clientId = profil?.role === 'client' ? profil.clientId : undefined;
   const [refuse, setRefuse] = useState(false);

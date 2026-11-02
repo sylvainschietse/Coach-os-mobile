@@ -5,7 +5,9 @@ import { Plus, RefreshCw, Trash2 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
+import { alimentation, publierRecettesPerso } from '@/data/alimentation';
 import { nutrition, produitParCode, type DonneesNutrition } from '@/data/nutrition';
+import { ingredientsPersoDepuisDictee } from '@/domain/alimentation';
 import { macros } from '@/domain/nutrition/calcul';
 import type { CiqualFood } from '@/domain/nutrition/ciqual';
 import { foodMeasures, measuredAmount } from '@/domain/nutrition/mesures';
@@ -16,6 +18,8 @@ import { nouvelId } from '@/lib/identifiant';
 import { BoutonContour, Selecteur, TitreDisplay } from '../coque';
 import { Cellule, Grille, Modale, Repliable, Saisie } from '../crm/dossier';
 import { Action, Confirmation, Etat, ts } from '../entrainement/commun';
+import { DicteeRecette } from '../alimentation/dictee-recette';
+import { BoutonDictee } from '../dictee';
 import { couleurs, polices } from '../theme';
 import { Bloc, doux, Lien } from './commun';
 import { RechercheAliment } from './recherche-aliment';
@@ -105,6 +109,8 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
   const [steps, setSteps] = useState('');
   const [ingredients, setIngredients] = useState<Entry[]>([]);
   const [editing, setEditing] = useState('');
+  // Après une dictée : ce que l'IA signale, et les ingrédients estimés faute d'être dans la table.
+  const [dictee, setDictee] = useState<{ remarque?: string; aVerifier: string[] }>();
   const [confirmer, setConfirmer] = useState<{ titre: string; texte: string; action: string; suite: () => Promise<void> | void } | null>(null);
   const [jeton, setJeton] = useState(0);
   const versions = useRef({ recipes: 0, diary: 0 });
@@ -194,7 +200,12 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
     try {
       const result = await nutrition.enregistrerPersonnel(data.profilId, kind, date, content, versions.current[kind], nouvelId());
       versions.current[kind] = result.version;
-      if (kind === 'recipes') setRecipes(result.recipes);
+      if (kind === 'recipes') {
+        // Le coach les retrouve dans « Recettes de mes clients ». Sans réseau ou sans option nutrition, la recette reste
+        // enregistrée chez le client : l'envoi au coach n'empêche rien.
+        publierRecettesPerso(data.profilId, recipes, result.recipes).catch(() => undefined);
+        setRecipes(result.recipes);
+      }
       else setEntries(result.entries);
       setNotice('Enregistré');
       return true;
@@ -298,6 +309,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
     setSourceInfo(null);
   };
   const clearRecipe = () => {
+    setDictee(undefined);
     setFoodOpen(false);
     setName('');
     setServings('1');
@@ -402,6 +414,32 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
         </>
       )}
       {vue === 'personnelles' && (
+        <DicteeRecette
+          onRemplir={async (lue) => {
+            const { ingredients: dictes, aVerifier } = ingredientsPersoDepuisDictee(lue, await alimentation.aliments(), nouvelId);
+            const b = {
+              name: lue.titre || name,
+              servings: lue.portions ? String(lue.portions) : servings,
+              steps: [steps.trim(), lue.etapes.trim()].filter(Boolean).join('\n'),
+              ingredients: [...ingredients, ...dictes],
+            };
+            setName(b.name);
+            setServings(b.servings);
+            setSteps(b.steps);
+            setIngredients(b.ingredients);
+            garder(b);
+            setDictee({ remarque: lue.remarque, aVerifier });
+          }}
+        />
+      )}
+      {vue === 'personnelles' && dictee && (
+        <Bloc>
+          <Text style={ts.texte}>Recette remplie : relisez chaque champ et corrigez si besoin avant d’enregistrer.</Text>
+          {dictee.remarque ? <Text style={doux}>{dictee.remarque}</Text> : null}
+          {dictee.aVerifier.length > 0 && <Text style={doux}>Pas trouvé dans la table Ciqual, valeurs moyennes à vérifier : {dictee.aVerifier.join(', ')}.</Text>}
+        </Bloc>
+      )}
+      {vue === 'personnelles' && (
         <Bloc>
           <Saisie
             libelle="Nom de ma recette"
@@ -425,6 +463,13 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
             libelle="Étapes de préparation"
             long
             max={10000}
+            valeur={steps}
+            onChange={(t) => {
+              setSteps(t);
+              garder({ steps: t });
+            }}
+          />
+          <BoutonDictee
             valeur={steps}
             onChange={(t) => {
               setSteps(t);
@@ -712,7 +757,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
       <View style={{ gap: 2 }}>
         <Text style={doux}>
           Valeurs estimées selon les quantités et les étiquettes. Vérifiez les données et les allergènes. Produits : Open Food Facts · base sous licence ODbL.
-          Aliments courants : Anses, Ciqual 2025 (Licence Ouverte Etalab 2.0). Les recettes personnelles restent privées.
+          Aliments courants : Anses, Ciqual 2025 (Licence Ouverte Etalab 2.0). Vos recettes personnelles sont visibles par votre coach, pas par ses autres clients : s’il en aime une, il peut en faire une copie pour sa banque de recettes.
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 12 }}>
           <Lien petit url="https://world.openfoodfacts.org">Open Food Facts</Lien>
