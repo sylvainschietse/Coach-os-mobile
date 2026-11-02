@@ -1,11 +1,13 @@
 // Entraînement d'un client vu par le coach : où il en est dans son cycle, ses séances semaine par semaine
 // (vert faite, rouge manquée, orange à venir), le détail d'une séance faite comparé à la fois précédente,
 // et les évolutions par exercice et par semaine.
-import { ArrowDown, ArrowRight, ArrowUp, Check, Clock, Video, X } from 'lucide-react-native';
+import { ArrowDown, ArrowRight, ArrowUp, Check, Clock, Plus, Video, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import { activites } from '@/data/activites';
 import { entrainement } from '@/data/entrainement';
+import { estLibre, titreActivite, type Activite } from '@/domain/activites';
 import { ecouterVideos, videos } from '@/data/videos-mouvement';
 import { ajouterJours, aujourdhuiParis, avancementCycle, jourParis, titreClient } from '@/domain/entrainement';
 import type { CycleClient, RealisationLue } from '@/domain/entrainement-etat';
@@ -25,6 +27,7 @@ import {
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Puce, Puces } from '../composants';
+import { DetailActiviteLibre, resumeActivite } from '../suivi/activite-libre';
 import { Courbe } from '../suivi/courbe';
 import { couleurs, polices } from '../theme';
 import { Action, Ligne, TexteLong, jourCourt, ts } from './commun';
@@ -35,6 +38,7 @@ const STATUTS: Record<StatutPastille, { libelle: string; couleur: string; fond: 
   manquee: { libelle: 'Manquée', couleur: couleurs.rouge, fond: couleurs.rougeClair, Icone: X },
   // Orange franc (ambre) : le rouge-orangé du thème se confond avec le rouge « manquée » sur une pastille.
   prevue: { libelle: 'À venir', couleur: '#E68A00', fond: '#FFF4DE', Icone: Clock },
+  libre: { libelle: 'Activité libre', couleur: couleurs.bleu, fond: '#E8F0FE', Icone: Plus },
 };
 
 const MESURES: { cle: keyof Omit<PointExercice, 'date'>; libelle: string; unite: string }[] = [
@@ -93,13 +97,22 @@ export function EntrainementClient({
     return videos.videosClient(clientId);
   }, `videos-mouvement-coach-${clientId}`);
   useRechargerSur(videosClient.recharger, ecouterVideos);
+  // Activités ajoutées par le client hors programme (la table peut manquer si la base n'est pas à jour : on s'en passe).
+  const libres = useCharger(async () => (await activites.liste(clientId, 200).catch(() => [] as Activite[])).filter(estLibre), `libres-${clientId}`);
 
   const jour = aujourdhuiParis();
   const vue = useMemo(() => {
     const d = donnees.donnee;
     if (!d || !cycle || d.cycleId !== cycle.id) return null;
     const realisations = d.realisations.filter((r) => r.cycleId === cycle.id);
-    const semaines = semainesDuCycle({ cycle, planifications: d.creneaux, realisations, seancesParSemaine: d.seancesParSemaine, jour });
+    const semaines = semainesDuCycle({
+      cycle,
+      planifications: d.creneaux,
+      realisations,
+      seancesParSemaine: d.seancesParSemaine,
+      jour,
+      libres: (libres.donnee ?? []).map((a) => ({ id: a.id, titre: titreActivite(a), date: jourParis(a.debut) })),
+    });
     return {
       realisations,
       toutes: d.realisations,
@@ -111,7 +124,7 @@ export function EntrainementClient({
       courbes: courbesExercices(realisations),
       bilan: bilanParSemaine(semaines, realisations),
     };
-  }, [donnees.donnee, cycle, jour]);
+  }, [donnees.donnee, cycle, jour, libres.donnee]);
 
   if (profils.erreur || donnees.erreur) return <Text style={ts.erreur}>{profils.erreur ?? donnees.erreur}</Text>;
   if (!profils.donnee) return <Text style={ts.doux}>Chargement…</Text>;
@@ -147,6 +160,7 @@ export function EntrainementClient({
             toutes={vue.toutes}
             prescriptions={vue.prescriptions}
             videos={videosClient.donnee ?? []}
+            libres={libres.donnee ?? []}
           />
           <Evolutions courbes={vue.courbes} />
           <ParSemaine bilan={vue.bilan} semaines={vue.semaines} />
@@ -239,12 +253,12 @@ function Rond({ p, choisi, onPress }: { p: Pastille; choisi: boolean; onPress: (
           borderRadius: 17,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: p.statut === 'faite' ? s.couleur : s.fond,
+          backgroundColor: p.statut === 'faite' || p.statut === 'libre' ? s.couleur : s.fond,
           borderWidth: choisi ? 3 : 1.5,
           borderColor: choisi ? couleurs.noir : s.couleur,
         }}
       >
-        <s.Icone size={16} color={p.statut === 'faite' ? '#FFFFFF' : s.couleur} />
+        <s.Icone size={16} color={p.statut === 'faite' || p.statut === 'libre' ? '#FFFFFF' : s.couleur} />
       </View>
       <Text numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }}>
         {p.date ? jourMois(p.date) : '—'}
@@ -259,12 +273,14 @@ function Semaines({
   toutes,
   prescriptions,
   videos: liste,
+  libres,
 }: {
   semaines: ReturnType<typeof semainesDuCycle>;
   realisations: RealisationLue[];
   toutes: RealisationLue[];
   prescriptions: Record<string, { series: number; repetitions?: string }>;
   videos: VideoMouvement[];
+  libres: Activite[];
 }) {
   // Par défaut : la dernière séance faite.
   const derniere = [...realisations].sort((a, b) => b.fin.localeCompare(a.fin))[0];
@@ -272,6 +288,7 @@ function Semaines({
   const pastilleChoisie = choix ? semaines[choix.semaine - 1]?.pastilles[choix.index] : undefined;
   const realisationId = choix ? pastilleChoisie?.realisationId : derniere?.id;
   const r = realisations.find((x) => x.id === realisationId);
+  const libre = pastilleChoisie?.activiteId ? libres.find((a) => a.id === pastilleChoisie.activiteId) : undefined;
 
   return (
     <View style={ts.carte}>
@@ -319,7 +336,15 @@ function Semaines({
           </View>
         ))}
       </View>
-      {r ? (
+      {libre ? (
+        <View style={{ borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: 12, gap: 8 }}>
+          <Text style={ts.titre}>{titreActivite(libre)}</Text>
+          <Text style={ts.doux}>
+            Activité libre ajoutée par le client, le {jourCourt(jourParis(libre.debut))} · {resumeActivite(libre)}
+          </Text>
+          <DetailActiviteLibre a={libre} />
+        </View>
+      ) : r ? (
         <DetailSeance r={r} toutes={toutes} prescriptions={prescriptions} videos={liste} />
       ) : pastilleChoisie ? (
         <View style={{ borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: 12, gap: 2 }}>
@@ -335,7 +360,7 @@ function Semaines({
           </Text>
         </View>
       ) : (
-        <Text style={ts.doux}>Touchez une séance verte pour voir ce que le client a fait.</Text>
+        <Text style={ts.doux}>Touchez une séance verte ou une activité bleue pour voir ce que le client a fait.</Text>
       )}
     </View>
   );

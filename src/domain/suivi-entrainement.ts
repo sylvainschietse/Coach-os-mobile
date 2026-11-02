@@ -5,7 +5,8 @@ import { ajouterJours, jourParis, unRm } from './entrainement';
 import type { Planification, RealisationLue } from './entrainement-etat';
 import type { SerieRealisee, Valeurs } from './types';
 
-export type StatutPastille = 'faite' | 'manquee' | 'prevue';
+/** `libre` : activité ajoutée par le client hors programme (cours collectif, séance à lui…), à part de l'assiduité. */
+export type StatutPastille = 'faite' | 'manquee' | 'prevue' | 'libre';
 
 export interface Pastille {
   statut: StatutPastille;
@@ -13,6 +14,8 @@ export interface Pastille {
   /** Jour de la séance faite, ou jour prévu au calendrier. Vide pour une séance attendue mais pas planifiée. */
   date?: string;
   realisationId?: string;
+  /** Activité libre : son id dans les activités du client. */
+  activiteId?: string;
 }
 
 export interface SemaineSuivi {
@@ -23,7 +26,7 @@ export interface SemaineSuivi {
   pastilles: Pastille[];
 }
 
-const ORDRE: Record<StatutPastille, number> = { faite: 0, manquee: 1, prevue: 2 };
+const ORDRE: Record<StatutPastille, number> = { faite: 0, libre: 1, manquee: 2, prevue: 3 };
 
 /**
  * Les semaines d'un cycle, comptées depuis son premier jour (semaine 1 = 7 premiers jours, comme « semaine 3/5 »).
@@ -37,6 +40,8 @@ export function semainesDuCycle(p: {
   realisations: RealisationLue[];
   seancesParSemaine?: number;
   jour: string;
+  /** Activités libres du client (jour à Paris) : une pastille bleue chacune, sans compter dans la fréquence. */
+  libres?: { id: string; titre: string; date: string }[];
 }): SemaineSuivi[] {
   const { cycle, jour } = p;
   if (!cycle.debut || !cycle.fin || cycle.fin < cycle.debut) return [];
@@ -54,6 +59,7 @@ export function semainesDuCycle(p: {
       else pastilles.push({ statut: c.date < jour ? 'manquee' : 'prevue', titre: c.seanceTitre, date: c.date });
     }
     const manque = (p.seancesParSemaine ?? 0) - pastilles.length;
+    for (const a of p.libres ?? []) if (dans(a.date)) pastilles.push({ statut: 'libre', titre: a.titre, date: a.date, activiteId: a.id });
     for (let i = 0; i < manque; i++) pastilles.push({ statut: fin < jour ? 'manquee' : 'prevue', titre: 'Séance non planifiée' });
     pastilles.sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999') || ORDRE[a.statut] - ORDRE[b.statut]);
     semaines.push({ numero: n, debut, fin, enCours: dans(jour), pastilles });
@@ -71,7 +77,8 @@ export interface Assiduite {
 }
 
 export function assiduite(semaines: SemaineSuivi[]): Assiduite {
-  const toutes = semaines.flatMap((s) => s.pastilles);
+  // Les activités libres ne comptent ni comme faites ni comme à venir : elles s'ajoutent au programme.
+  const toutes = semaines.flatMap((s) => s.pastilles).filter((x) => x.statut !== 'libre');
   const faites = toutes.filter((x) => x.statut === 'faite').length;
   const manquees = toutes.filter((x) => x.statut === 'manquee').length;
   return {
