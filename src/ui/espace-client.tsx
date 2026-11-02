@@ -25,6 +25,7 @@ import { Photos } from './suivi/photos';
 import { Quotidien } from './suivi/quotidien';
 import { Records } from './suivi/records';
 import { Sport } from './suivi/sport';
+import { AjoutActiviteLibre } from './suivi/activite-libre';
 import { couleurs, espace, LARGEUR_CLIENT, polices } from './theme';
 
 export type OngletClient = 'accueil' | 'programme' | 'suivi' | 'nutrition' | 'moi';
@@ -103,6 +104,8 @@ export function EspaceClient({
                 onHaut={enHaut}
                 onProgramme={() => aller('programme')}
               />
+              {/* Un cours de RPM, une séance à lui : le client déclare ce qu'il a fait en dehors du programme. */}
+              {onglet === 'accueil' && !apercu && <AjoutActiviteLibre clientId={clientId} />}
               {onglet === 'accueil' && <SeancesRestantes clientId={clientId} />}
             </>
           )}

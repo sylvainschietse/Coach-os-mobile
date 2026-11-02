@@ -1,12 +1,13 @@
 // Rubrique « Sport » du suivi : courses, sorties vélo, marches, séances sur les machines Technogym… lues dans
-// Health Connect (Android) ou Apple Santé (iPhone). Le client autorise la lecture et synchronise ; son coach voit la même liste.
+// Health Connect (Android) ou Apple Santé (iPhone), et activités libres ajoutées par le client (cours collectif, muscu à lui…).
+// Le client autorise la lecture, synchronise et ajoute ; son coach voit la même liste et les totaux.
 import * as Linking from 'expo-linking';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 
 import { activites } from '@/data/activites';
 import { derniereSynchro, nomServiceSante, synchroniserSport } from '@/data/synchro-sport';
-import { estTechnogym, formaterDistance, formaterDuree, libelleSport, rythme, SOURCES, SPORTS, totauxParSemaine, type Activite } from '@/domain/activites';
+import { estLibre, estTechnogym, formaterDistance, formaterDuree, libelleSport, rythme, SOURCES, SPORTS, totauxParSemaine, type Activite } from '@/domain/activites';
 import * as appleSante from '@/lib/apple-sante';
 import { jourParis, lundiDe } from '@/domain/entrainement';
 import { accesAccordes, demanderAcces, diagnostiquer, etatHealthConnect, ouvrirReglages, type DiagnosticHealthConnect, type EtatHealthConnect } from '@/lib/health-connect';
@@ -14,6 +15,7 @@ import { messageErreur, useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, Erreur, SousTitre, Texte } from '../composants';
 import { couleurs, espace } from '../theme';
+import { AjoutActiviteLibre, DetailActiviteLibre, FormulaireActiviteLibre } from './activite-libre';
 
 const APPLIS: Record<string, string> = {
   'com.garmin.android.apps.connectmobile': 'Garmin Connect',
@@ -29,6 +31,7 @@ const nomAppli = (p?: string) => (!p ? '' : estTechnogym(p) ? 'Technogym' : (APP
 
 const quand = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+const quandJour = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
 const jourCourt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
 
 const LIBELLES_ACCES: Record<string, string> = {
@@ -282,8 +285,9 @@ function ConnexionAppleSante({ clientId, onSynchro }: { clientId: string; onSync
   );
 }
 
-function Ligne({ a, proprietaire, onRetirer }: { a: Activite; proprietaire: boolean; onRetirer: () => void }) {
+function Ligne({ a, proprietaire, onRetirer, onModifier }: { a: Activite; proprietaire: boolean; onRetirer: () => void; onModifier: () => void }) {
   const [confirmer, setConfirmer] = useState(false);
+  const libre = estLibre(a);
   const r = rythme(a);
   const details = [
     a.distanceM ? formaterDistance(a.distanceM) : '',
@@ -291,29 +295,41 @@ function Ligne({ a, proprietaire, onRetirer }: { a: Activite; proprietaire: bool
     r,
     a.fcMoy ? `FC ${a.fcMoy}${a.fcMax ? `/${a.fcMax}` : ''} bpm` : '',
     a.deniveleM ? `D+ ${a.deniveleM} m` : '',
+    libre && a.calories ? `≈ ${a.calories} kcal` : '',
   ].filter(Boolean);
   return (
     <View style={{ gap: espace(1), paddingVertical: espace(2), borderTopWidth: 1, borderTopColor: couleurs.bordure }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: espace(2) }}>
         <Texte style={{ fontSize: 16, fontWeight: '600', flex: 1 }}>
-          {libelleSport(a.sport)}
-          {a.titre ? ` · ${a.titre}` : ''}
+          {libre && a.titre ? a.titre : libelleSport(a.sport)}
+          {!libre && a.titre ? ` · ${a.titre}` : ''}
         </Texte>
-        <Texte doux style={{ fontSize: 13 }}>{quand(a.debut)}</Texte>
+        <Texte doux style={{ fontSize: 13 }}>{libre ? quandJour(a.debut) : quand(a.debut)}</Texte>
       </View>
-      <Texte style={{ fontSize: 15 }}>{details.join(' · ')}</Texte>
+      <Texte style={{ fontSize: 15 }}>{[libre && a.titre ? libelleSport(a.sport) : '', ...details].filter(Boolean).join(' · ')}</Texte>
+      {libre && <DetailActiviteLibre a={a} />}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: espace(2) }}>
-        <Texte doux style={{ fontSize: 12 }}>{nomAppli(a.appareil) || SOURCES[a.source]}</Texte>
-        {proprietaire &&
-          (confirmer ? (
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={onRetirer}>
-              <Texte style={{ fontSize: 13, color: couleurs.rouge }}>Confirmer le retrait</Texte>
-            </Pressable>
-          ) : (
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={() => setConfirmer(true)}>
-              <Texte doux style={{ fontSize: 13 }}>Retirer</Texte>
-            </Pressable>
-          ))}
+        <Texte doux style={{ fontSize: 12, color: libre ? couleurs.bleu : couleurs.texteDoux }}>
+          {libre ? (proprietaire ? 'Ajoutée par toi' : 'Saisie par le client') : nomAppli(a.appareil) || SOURCES[a.source]}
+        </Texte>
+        {proprietaire && (
+          <View style={{ flexDirection: 'row', gap: espace(4) }}>
+            {libre && !confirmer && (
+              <Pressable accessibilityRole="button" hitSlop={8} onPress={onModifier}>
+                <Texte style={{ fontSize: 13, color: couleurs.rouge }}>Modifier</Texte>
+              </Pressable>
+            )}
+            {confirmer ? (
+              <Pressable accessibilityRole="button" hitSlop={8} onPress={onRetirer}>
+                <Texte style={{ fontSize: 13, color: couleurs.rouge }}>Confirmer le retrait</Texte>
+              </Pressable>
+            ) : (
+              <Pressable accessibilityRole="button" hitSlop={8} onPress={() => setConfirmer(true)}>
+                <Texte doux style={{ fontSize: 13 }}>Retirer</Texte>
+              </Pressable>
+            )}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -323,6 +339,7 @@ function Ligne({ a, proprietaire, onRetirer }: { a: Activite; proprietaire: bool
 export function Sport({ clientId, proprietaire = true }: { clientId: string; proprietaire?: boolean }) {
   const { donnee, erreur, recharger } = useCharger(() => activites.liste(clientId, 200), clientId);
   const [erreurRetrait, setErreurRetrait] = useState('');
+  const [modifiee, setModifiee] = useState<Activite>();
   const semaines = donnee ? totauxParSemaine(donnee, (i) => lundiDe(jourParis(i))).slice(0, 4) : [];
 
   async function retirer(id: string) {
@@ -337,11 +354,25 @@ export function Sport({ clientId, proprietaire = true }: { clientId: string; pro
 
   return (
     <View style={{ gap: espace(4) }}>
+      {proprietaire &&
+        (modifiee ? (
+          <FormulaireActiviteLibre
+            clientId={clientId}
+            existante={modifiee}
+            onFermer={() => setModifiee(undefined)}
+            onEnregistre={() => {
+              setModifiee(undefined);
+              recharger();
+            }}
+          />
+        ) : (
+          <AjoutActiviteLibre clientId={clientId} onEnregistre={recharger} />
+        ))}
       {proprietaire && (Platform.OS === 'ios' ? <ConnexionAppleSante clientId={clientId} onSynchro={recharger} /> : <Connexion clientId={clientId} onSynchro={recharger} />)}
       {erreur && <Erreur message={erreur} onReessayer={recharger} />}
       {!donnee && !erreur && <Chargement />}
       {donnee?.length === 0 && (
-        <Texte doux>{proprietaire ? 'Aucune séance importée pour l’instant.' : 'Aucune séance importée par ce client pour l’instant.'}</Texte>
+        <Texte doux>{proprietaire ? 'Aucune activité pour l’instant.' : 'Aucune activité importée ou ajoutée par ce client pour l’instant.'}</Texte>
       )}
       {semaines.length > 0 && (
         <Carte>
@@ -366,7 +397,7 @@ export function Sport({ clientId, proprietaire = true }: { clientId: string; pro
           <SousTitre>Séances</SousTitre>
           {erreurRetrait ? <Erreur message={erreurRetrait} /> : null}
           {donnee.map((a) => (
-            <Ligne key={a.id} a={a} proprietaire={proprietaire} onRetirer={() => retirer(a.id)} />
+            <Ligne key={a.id} a={a} proprietaire={proprietaire} onRetirer={() => retirer(a.id)} onModifier={() => setModifiee(a)} />
           ))}
         </Carte>
       )}

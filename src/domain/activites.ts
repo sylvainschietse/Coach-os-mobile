@@ -4,8 +4,26 @@
 // Les mêmes bornes sont vérifiées par la fonction SQL enregistrer_activites.
 
 import { ajouterJours } from './entrainement';
+import type { Bloc, Exercice, LignePrescription, Mesure, Seance, Valeurs } from './types';
 
-export type Sport = 'course' | 'trail' | 'velo' | 'marche' | 'randonnee' | 'natation' | 'cardio' | 'renforcement' | 'autre';
+export type Sport =
+  | 'course'
+  | 'trail'
+  | 'velo'
+  | 'marche'
+  | 'randonnee'
+  | 'natation'
+  | 'cardio'
+  | 'musculation'
+  | 'cours'
+  | 'yoga'
+  | 'aquatique'
+  | 'raquette'
+  | 'sport_co'
+  | 'combat'
+  | 'danse'
+  | 'glisse'
+  | 'autre';
 export type SourceActivite = 'health_connect' | 'apple_sante' | 'fichier' | 'strava' | 'garmin' | 'suunto' | 'polar' | 'manuel';
 
 export const SPORTS: { cle: Sport; libelle: string }[] = [
@@ -16,7 +34,15 @@ export const SPORTS: { cle: Sport; libelle: string }[] = [
   { cle: 'randonnee', libelle: 'Randonnée' },
   { cle: 'natation', libelle: 'Natation' },
   { cle: 'cardio', libelle: 'Cardio' },
-  { cle: 'renforcement', libelle: 'Renforcement' },
+  { cle: 'musculation', libelle: 'Musculation' },
+  { cle: 'cours', libelle: 'Cours collectif' },
+  { cle: 'yoga', libelle: 'Yoga, Pilates, étirements' },
+  { cle: 'aquatique', libelle: 'Activité aquatique' },
+  { cle: 'raquette', libelle: 'Sport de raquette' },
+  { cle: 'sport_co', libelle: 'Sport collectif' },
+  { cle: 'combat', libelle: 'Sport de combat' },
+  { cle: 'danse', libelle: 'Danse' },
+  { cle: 'glisse', libelle: 'Glisse et plein air' },
   { cle: 'autre', libelle: 'Autre' },
 ];
 export const libelleSport = (s: Sport) => SPORTS.find((x) => x.cle === s)?.libelle ?? 'Autre';
@@ -53,6 +79,10 @@ export interface Activite extends NouvelleActivite {
   id: string;
   clientId: string;
   importeeLe: string;
+  /** Activité libre (source « manuel ») : effort ressenti de 1 à 10, note du client et exercices de musculation. */
+  ressenti?: number;
+  note?: string;
+  exercices?: ExerciceLibre[];
 }
 
 // ---------- Heures de Paris ----------
@@ -134,7 +164,7 @@ export function sportHealthConnect(code: number): Sport {
     case 70: // STRENGTH_TRAINING
     case 81: // WEIGHTLIFTING
     case 13: // CALISTHENICS
-      return 'renforcement';
+      return 'musculation';
     default:
       return 'autre';
   }
@@ -171,7 +201,7 @@ export function sportAppleSante(code: number): Sport {
     case 50: // traditionalStrengthTraining
     case 20: // functionalStrengthTraining
     case 59: // coreTraining
-      return 'renforcement';
+      return 'musculation';
     default:
       return 'autre';
   }
@@ -185,15 +215,15 @@ export function titreAppleSante(code: number): string {
 /** Séance enregistrée par une machine de salle connectée (appli Technogym / Mywellness). */
 export const estTechnogym = (appareil?: string) => /technogym|mywellness/i.test(appareil ?? '');
 
-/** Sports gardés : l'appli suit l'endurance et le cardio, pas chaque séance de renforcement déjà saisie ailleurs. */
+/** Sports gardés : l'appli suit l'endurance et le cardio, pas chaque séance de musculation déjà saisie ailleurs. */
 export const SPORTS_IMPORTES: Sport[] = ['course', 'trail', 'velo', 'marche', 'randonnee', 'natation', 'cardio'];
 
 /**
- * Faut-il importer cette séance ? Le renforcement n'est gardé que s'il vient des machines Technogym de la salle :
+ * Faut-il importer cette séance ? La musculation n'est gardé que s'il vient des machines Technogym de la salle :
  * celui d'une montre ferait doublon avec les séances déjà validées dans CoachGo.
  */
 export const aImporter = (sport: Sport, appareil?: string) =>
-  SPORTS_IMPORTES.includes(sport) || (estTechnogym(appareil) && (sport === 'renforcement' || sport === 'autre'));
+  SPORTS_IMPORTES.includes(sport) || (estTechnogym(appareil) && (sport === 'musculation' || sport === 'autre'));
 
 // ---------- Affichage ----------
 
@@ -269,4 +299,157 @@ export function erreursActivite(a: NouvelleActivite): string[] {
   for (const fc of [a.fcMoy, a.fcMax]) if (fc !== undefined && !(fc >= 25 && fc <= 250)) e.push('Fréquence cardiaque invalide.');
   if ((a.titre ?? '').length > 200) e.push('Titre trop long.');
   return [...new Set(e)];
+}
+
+// ---------- Activités libres (saisies par le client) ----------
+
+/** Ce que le client note pour une série : répétitions et charge, ou une durée (gainage), ou une distance. */
+export type SerieLibre = Pick<Valeurs, 'repetitions' | 'charge' | 'duree' | 'distance'>;
+
+/** Un exercice d'une séance libre : pris dans la bibliothèque (exerciceId) ou simplement nommé. */
+export interface ExerciceLibre {
+  exerciceId?: string;
+  nom: string;
+  mesures?: Mesure[];
+  series: SerieLibre[];
+}
+
+/** Ce que le client envoie : l'id est créé sur le téléphone, le renvoyer met à jour la même activité. */
+export interface ActiviteLibre {
+  id: string;
+  sport: Sport;
+  titre: string;
+  debut: string;
+  dureeS: number;
+  distanceM?: number;
+  ressenti?: number;
+  note: string;
+  exercices: ExerciceLibre[];
+  /** Dépense estimée (kcal), calculée sur le téléphone avec le poids du client. */
+  calories?: number;
+}
+
+export const estLibre = (a: Pick<Activite, 'source'>) => a.source === 'manuel';
+
+export const RESSENTIS: Record<number, string> = {
+  1: 'Très facile',
+  2: 'Facile',
+  3: 'Facile',
+  4: 'Modéré',
+  5: 'Modéré',
+  6: 'Soutenu',
+  7: 'Difficile',
+  8: 'Très difficile',
+  9: 'Très difficile',
+  10: 'Maximal',
+};
+
+/** Séries réellement remplies (au moins une valeur). */
+export const seriesRemplies = (series: SerieLibre[]) =>
+  series.filter((s) => Object.values(s).some((v) => v !== undefined && v !== null && !Number.isNaN(v)));
+
+/** « 3 × 10 à 40 kg », « 4 séries · 8 à 12 reps · 20 à 30 kg », « 3 × 45 s ». */
+export function resumeSeries(series: SerieLibre[]) {
+  const l = seriesRemplies(series);
+  if (!l.length) return '';
+  const plage = (vals: (number | undefined)[], unite: string) => {
+    const v = vals.filter((x): x is number => x !== undefined);
+    if (!v.length) return '';
+    const min = Math.min(...v);
+    const max = Math.max(...v);
+    const n = (x: number) => x.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+    return min === max ? `${n(min)}${unite}` : `${n(min)} à ${n(max)}${unite}`;
+  };
+  const reps = plage(l.map((s) => s.repetitions), '');
+  const charge = plage(l.map((s) => s.charge), ' kg');
+  const duree = plage(l.map((s) => s.duree), ' s');
+  const distance = plage(l.map((s) => s.distance), ' m');
+  const parSerie = [reps && (charge ? `${reps} reps` : `${reps} reps`), charge, duree, distance].filter(Boolean);
+  return `${l.length} série${l.length > 1 ? 's' : ''}${parSerie.length ? ` · ${parSerie.join(' · ')}` : ''}`;
+}
+
+export function erreursActiviteLibre(a: ActiviteLibre, maintenant = Date.now()): string[] {
+  const e: string[] = [];
+  const t = Date.parse(a.debut);
+  if (Number.isNaN(t)) e.push('Date invalide.');
+  else if (t > maintenant + 3600e3) e.push('Une activité ne peut pas être dans le futur.');
+  else if (t < maintenant - 365 * 864e5) e.push('Date trop ancienne.');
+  if (!SPORTS.some((s) => s.cle === a.sport)) e.push('Choisis un type d’activité.');
+  if (!(a.dureeS >= 60 && a.dureeS <= 86400)) e.push('Indique une durée entre 1 minute et 24 heures.');
+  if (a.ressenti !== undefined && !(Number.isInteger(a.ressenti) && a.ressenti >= 1 && a.ressenti <= 10)) e.push('Le ressenti va de 1 à 10.');
+  if (a.distanceM !== undefined && !(a.distanceM >= 0 && a.distanceM <= 1_000_000)) e.push('Distance invalide.');
+  if (a.calories !== undefined && !(a.calories >= 0 && a.calories <= 50000)) e.push('Calories invalides.');
+  if (a.titre.length > 200) e.push('Nom trop long.');
+  if (a.note.length > 2000) e.push('Note trop longue (2 000 caractères au plus).');
+  if (a.exercices.length > 40) e.push('40 exercices au plus.');
+  for (const x of a.exercices) {
+    if (!x.nom.trim() || x.nom.length > 200) e.push('Chaque exercice a besoin d’un nom.');
+    if (x.series.length > 20) e.push('20 séries au plus par exercice.');
+    for (const s of x.series)
+      for (const v of Object.values(s)) if (v !== undefined && !(v >= 0 && v <= 100000)) e.push(`Valeur invalide pour ${x.nom || 'un exercice'}.`);
+  }
+  return [...new Set(e)];
+}
+
+/** Nettoie avant envoi : séries vides et exercices sans série retirés, textes rognés. */
+export function preparerActiviteLibre(a: ActiviteLibre): ActiviteLibre {
+  const exercices = a.exercices
+    .map((x) => ({ ...x, nom: x.nom.trim(), series: seriesRemplies(x.series) }))
+    .filter((x) => x.nom && x.series.length);
+  return { ...a, titre: a.titre.trim(), note: a.note.trim(), exercices };
+}
+
+/** Titre lisible : « RPM », sinon le type d'activité. */
+export const titreActivite = (a: Pick<Activite, 'sport' | 'titre'>) => a.titre || libelleSport(a.sport);
+
+/**
+ * Transforme une séance libre en séance de bibliothèque pour le coach : un bloc « Corps de séance », une ligne par
+ * exercice de la bibliothèque, avec le nombre de séries, la fourchette de répétitions et la charge la plus lourde.
+ * Les exercices tapés à la main (sans exerciceId) ne peuvent pas devenir des lignes : ils sont rappelés dans les consignes.
+ */
+export function seanceDepuisActivite(
+  a: Pick<Activite, 'titre' | 'sport' | 'note' | 'exercices' | 'dureeS'>,
+  catalogue: Exercice[],
+  nouvelId: () => string,
+  programmeId: string,
+): { seance: Seance; ignores: string[] } {
+  const lignes: LignePrescription[] = [];
+  const ignores: string[] = [];
+  for (const x of a.exercices ?? []) {
+    const exercice = x.exerciceId ? catalogue.find((c) => c.id === x.exerciceId) : undefined;
+    if (!exercice) {
+      ignores.push(x.nom);
+      continue;
+    }
+    const s = seriesRemplies(x.series);
+    const reps = s.map((v) => v.repetitions).filter((v): v is number => v !== undefined);
+    const charges = s.map((v) => v.charge).filter((v): v is number => v !== undefined && v > 0);
+    const durees = s.map((v) => v.duree).filter((v): v is number => v !== undefined && v > 0);
+    const min = reps.length ? Math.min(...reps) : undefined;
+    const max = reps.length ? Math.max(...reps) : undefined;
+    lignes.push({
+      id: nouvelId(),
+      exercice,
+      series: Math.max(1, s.length),
+      repetitions: min === undefined ? undefined : min === max ? String(min) : `${min}–${max}`,
+      repetitionsMin: min,
+      repetitionsMax: max,
+      chargeIndicative: charges.length ? Math.max(...charges) : undefined,
+      dureeS: !reps.length && durees.length ? Math.max(...durees) : undefined,
+    });
+  }
+  const consignes = [a.note?.trim(), ignores.length ? `Aussi fait par le client : ${ignores.join(', ')}.` : ''].filter(Boolean).join('\n\n');
+  const bloc: Bloc = { id: nouvelId(), titre: 'Corps de séance', lignes };
+  return {
+    seance: {
+      id: nouvelId(),
+      titre: titreActivite(a),
+      programmeId,
+      ordre: 1,
+      consignes: consignes || undefined,
+      dureeMin: Math.round(a.dureeS / 60) || undefined,
+      blocs: [bloc],
+    },
+    ignores,
+  };
 }
