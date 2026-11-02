@@ -78,12 +78,13 @@ export function AccordDonnees({
         onChange={reglage ? () => undefined : setSante}
       />
       <Carte style={{ gap: espace(2) }}>
-        <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: couleurs.texte }}>Facultatif : analyse des photos de repas</Text>
+        <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: couleurs.texte }}>Facultatif : analyse par l’IA</Text>
         <Texte doux style={{ fontSize: 14 }}>
           Quand tu photographies un repas, la photo est envoyée à Claude (Anthropic, États-Unis) pour estimer les aliments et les quantités.
-          Elle n’est pas gardée. Sans cet accord, tu notes tes repas à la main ou par code-barres.
+          Quand tu dictes une recette, son texte lui est envoyé pour remplir les champs. Rien n’est gardé. Sans cet accord, tu notes tes repas
+          et tes recettes à la main ou par code-barres.
         </Texte>
-        <CaseACocher libelle="J’accepte l’analyse de mes photos de repas par l’IA" valeur={ia} onChange={setIa} />
+        <CaseACocher libelle="J’accepte l’analyse de mes photos de repas et de mes recettes dictées par l’IA" valeur={ia} onChange={setIa} />
       </Carte>
       <LienPolitique />
       {erreur && <Erreur message={erreur} />}

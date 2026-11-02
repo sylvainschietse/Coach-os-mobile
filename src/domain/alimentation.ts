@@ -16,6 +16,7 @@ import type {
   TypeRecette,
   VarianteRecette,
 } from './types';
+import type { PersonalRecipe } from './nutrition/personnel';
 import { formaterNombre } from './suivi';
 
 const sansAccents = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -778,4 +779,135 @@ export const codeBarresValide = (code: string) => /^\d{8}$|^\d{12,14}$/.test(cod
 export function copiePourLaBanque(r: Recette, id: string): Recette {
   const { clientId: _client, avisCoach: _avis, ...reste } = r;
   return { ...reste, id, statut: 'approuvee', archive: false, origine: undefined };
+}
+
+// ——— Recette dictée ———
+
+/** Ce que l'IA lit dans une recette dictée : à relier à la base d'aliments, puis à relire avant d'enregistrer. */
+export interface RecetteDictee {
+  titre: string;
+  portions?: number;
+  tempsMin?: number;
+  ingredients: (Pick<Ingredient, 'nom' | 'quantiteG' | 'kcal' | 'proteines' | 'glucides' | 'lipides' | 'contient'> & {
+    /** Nom exact de l'aliment Ciqual choisi par l'IA, s'il y en a un. */
+    ciqual?: string;
+    recherche: string;
+  })[];
+  etapes: string;
+  remarque?: string;
+}
+
+/** L'aliment qui répond le mieux à quelques mots dictés : d'abord tels quels, puis au singulier. */
+export function trouverAliment(aliments: Aliment[], recherche: string): Aliment | undefined {
+  const mots = sansAccents(recherche)
+    .replace(/[’'(),.]/g, ' ')
+    .split(/\s+/)
+    .filter((m) => m.length > 1 && !['de', 'du', 'des', 'la', 'le', 'les', 'au', 'aux', 'en'].includes(m));
+  if (mots.length === 0) return undefined;
+  const singulier = mots.map((m) => (m.length > 3 ? m.replace(/s$/, '') : m));
+  return rechercherAliments(aliments, mots.join(' '), 1)[0] ?? rechercherAliments(aliments, singulier.join(' '), 1)[0];
+}
+
+/** L'aliment de la base qui correspond à un ingrédient dicté, s'il y en a un dont on connaît toutes les valeurs. */
+function relierIngredient(i: RecetteDictee['ingredients'][number], aliments: Aliment[]): Aliment | undefined {
+  // Sans nom Ciqual, l'IA n'a rien trouvé de proche dans la table : on ne cherche plus que dans les aliments du coach et du client.
+  const propres = aliments.filter((a) => a.source !== 'base');
+  const a =
+    (i.ciqual ? aliments.find((x) => x.source === 'base' && x.nom === i.ciqual) : undefined) ??
+    trouverAliment(propres, i.recherche) ??
+    trouverAliment(propres, i.nom);
+  return a && !a.valeursInconnues?.length ? a : undefined;
+}
+
+/**
+ * Remplit la recette avec la dictée. Les champs déjà écrits sont gardés quand la dictée ne les dit pas, les ingrédients
+ * s'ajoutent à ceux déjà là. Un ingrédient trouvé dans la base prend ses valeurs ; sinon il garde l'estimation de l'IA,
+ * et son nom revient dans `aVerifier`.
+ */
+export function appliquerDictee(recette: Recette, lue: RecetteDictee, aliments: Aliment[]): { recette: Recette; aVerifier: string[] } {
+  const aVerifier: string[] = [];
+  const ingredients: Ingredient[] = lue.ingredients.map((i) => {
+    const a = relierIngredient(i, aliments);
+    if (!a) {
+      aVerifier.push(i.nom);
+      return { nom: i.nom, quantiteG: i.quantiteG, kcal: i.kcal, proteines: i.proteines, glucides: i.glucides, lipides: i.lipides, contient: i.contient };
+    }
+    return { alimentId: a.id, nom: a.nom, quantiteG: i.quantiteG, kcal: a.kcal, proteines: a.proteines, glucides: a.glucides, lipides: a.lipides, contient: a.contient };
+  });
+  return {
+    recette: {
+      ...recette,
+      titre: lue.titre || recette.titre,
+      portions: lue.portions ?? recette.portions,
+      tempsMin: lue.tempsMin ?? recette.tempsMin,
+      ingredients: [...recette.ingredients, ...ingredients],
+      etapes: [recette.etapes?.trim(), lue.etapes.trim()].filter(Boolean).join('\n') || undefined,
+    },
+    aVerifier,
+  };
+}
+
+// ——— Recettes de l'écran « Mes recettes » du client ———
+
+/**
+ * Une recette de « Mes recettes » (journal personnel du client) mise au format de la banque, pour que le coach la voie
+ * dans « Recettes de mes clients ». Ce que contient chaque ingrédient (régimes) vient de la table Ciqual quand on le
+ * retrouve, par sa référence ou par son nom ; le coach vérifie avant de partager.
+ */
+export function recetteDepuisPerso(p: PersonalRecipe, clientId: string, aliments: Aliment[]): Recette {
+  const base = aliments.filter((a) => a.source === 'base');
+  const ingredients: Ingredient[] = p.ingredients.map((e) => {
+    const ciqual = (e.food.source === 'ciqual' && e.food.reference ? base.find((a) => a.codeCiqual === e.food.reference) : undefined) ?? trouverAliment(base, e.food.name);
+    const valeurs = { kcal: e.food.kcal, proteines: e.food.protein, glucides: e.food.carbs, lipides: e.food.fat };
+    const contient = ciqual?.contient ?? [];
+    // Un aliment compté en portions n'a pas de poids : ses valeurs sont par portion, la recette porte alors ses totaux.
+    return e.food.basis === 'portion'
+      ? { nom: e.food.name, quantiteG: 0, quantite: e.amount, unite: 'portion', valeursInconnues: true, ...valeurs, contient }
+      : { nom: e.food.name, quantiteG: e.amount, ...valeurs, contient };
+  });
+  const enPortions = p.ingredients.some((e) => e.food.basis === 'portion');
+  const parPortion = (m: number) => Math.round((m / p.servings) * 10) / 10;
+  const somme = (cle: 'kcal' | 'protein' | 'carbs' | 'fat') =>
+    p.ingredients.reduce((t, e) => t + e.food[cle] * (e.amount / (e.food.basis === 'portion' ? 1 : 100)), 0);
+  return {
+    id: p.id,
+    clientId,
+    titre: p.name,
+    portions: Math.max(1, Math.round(p.servings)),
+    etapes: p.steps.trim() || undefined,
+    ingredients,
+    statut: 'brouillon',
+    regimesConfirmes: [],
+    ...(enPortions
+      ? { macrosPortion: { kcal: Math.round(parPortion(somme('kcal'))), proteines: parPortion(somme('protein')), glucides: parPortion(somme('carbs')), lipides: parPortion(somme('fat')) } }
+      : {}),
+  };
+}
+
+/** La dictée pour l'écran « Mes recettes » du client : ses ingrédients au format du journal personnel. */
+export function ingredientsPersoDepuisDictee(lue: RecetteDictee, aliments: Aliment[], id: () => string): { ingredients: PersonalRecipe['ingredients']; aVerifier: string[] } {
+  const aVerifier: string[] = [];
+  const ingredients = lue.ingredients.map((i) => {
+    const a = relierIngredient(i, aliments);
+    if (!a) aVerifier.push(i.nom);
+    const v = a ?? i;
+    return {
+      id: id(),
+      food: {
+        name: a?.nom ?? i.nom,
+        barcode: a?.codeBarres ?? '',
+        source: a?.codeCiqual ? ('ciqual' as const) : ('manual' as const),
+        reference: a?.codeCiqual ?? '',
+        note: a ? '' : 'Valeurs moyennes estimées depuis la dictée, à vérifier.',
+        basis: 'g' as const,
+        kcal: v.kcal,
+        protein: v.proteines,
+        carbs: v.glucides,
+        fat: v.lipides,
+      },
+      amount: i.quantiteG,
+      meal: 'Déjeuner' as const,
+    };
+  });
+  return { ingredients, aVerifier };
 }
