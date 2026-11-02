@@ -7,6 +7,7 @@ import { entrainement, gererProgramme, type ActionCreation } from '@/data/entrai
 import { descriptifSeance } from '@/domain/descriptif-seance';
 import { proposerPlanProgramme, proposerSeance } from '@/data/redaction';
 import { blocsProposes, demandeSeanceDuPlan, lirePlan, type PlanLu, type PropositionSeance } from '@/domain/assistant-seance';
+import { activiteSimpleDans, seanceActivite } from '@/domain/catalogue-activites';
 import { LIBELLES_CYCLES, NIVEAUX, OBJECTIFS } from '@/domain/entrainement';
 import type { ModeleResume } from '@/domain/entrainement-etat';
 import type { Bloc } from '@/domain/types';
@@ -152,6 +153,12 @@ export function CreationEntrainement({
     setErreur('');
     setProposition(undefined);
     try {
+      // Cours collectif, yoga, sport… : la séance tient en son nom, le client la valide ; rien à composer.
+      const activite = activiteSimpleDans(demande);
+      if (activite) {
+        setProposition({ p: seanceActivite(activite), blocs: [] });
+        return;
+      }
       const p = await proposerSeance(demande.trim());
       const blocs = blocsProposes(p, nouvelId);
       if (!blocs.length) throw new Error('L’assistant n’a proposé aucun exercice de ta bibliothèque. Reformule ta demande.');
@@ -175,22 +182,28 @@ export function CreationEntrainement({
       setAvancement('Plan de la semaine en cours…');
       const plan = lirePlan(await proposerPlanProgramme(demande.trim()));
       if (!plan.seances.length) throw new Error('L’assistant n’a proposé aucune séance. Reformule ta demande.');
-      let faites = 0;
+      // Les séances d'activité du plan (RPM, Body Pump, yoga…) ne sont pas composées : un nom et une consigne courte.
+      const activites = plan.seances.map((x) => activiteSimpleDans(x.titre));
+      let faites = activites.filter(Boolean).length;
       const etape = () => setAvancement(`« ${plan.titre} » : composition des séances (${faites}/${plan.seances.length})…`);
       etape();
       const reponses = await Promise.allSettled(
         plan.seances.map((_, i) =>
-          proposerSeance(demandeSeanceDuPlan(demande, plan, i)).finally(() => {
-            faites++;
-            etape();
-          }),
+          activites[i]
+            ? Promise.resolve({ ...seanceActivite(activites[i]!), blocs: [] })
+            : proposerSeance(demandeSeanceDuPlan(demande, plan, i)).finally(() => {
+                faites++;
+                etape();
+              }),
         ),
       );
       const seances = reponses.map((r, i) => {
+        const a = activites[i];
+        if (a) return { titre: plan.seances[i].titre || a.nom, consignes: seanceActivite(a).consignes, blocs: [] as Bloc[] };
         const blocs = r.status === 'fulfilled' ? blocsProposes(r.value, nouvelId) : [];
         return { titre: plan.seances[i].titre, consignes: (r.status === 'fulfilled' && r.value.consignes?.trim()) || plan.seances[i].contenu, blocs };
       });
-      if (seances.every((x) => !x.blocs.length)) throw new Error('Les séances n’ont pas pu être composées. Réessaie dans un instant.');
+      if (seances.every((x, i) => !x.blocs.length && !activites[i])) throw new Error('Les séances n’ont pas pu être composées. Réessaie dans un instant.');
       setProgrammePropose({ plan, seances });
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Proposition impossible');
@@ -503,6 +516,7 @@ function ApercuProposition({ p, blocs }: { p: PropositionSeance; blocs: Bloc[] }
       <Text style={ts.doux}>Proposition, pas encore enregistrée. Vous pourrez tout modifier ensuite.</Text>
       {p.titre ? <Text style={ts.titreChamp}>{p.titre}</Text> : null}
       {p.consignes ? <Text style={ts.doux}>{p.consignes}</Text> : null}
+      {!blocs.length && <Text style={ts.doux}>Séance d’activité : pas d’exercices, le client indique simplement s’il l’a faite.</Text>}
       {blocs.map((b) => (
         <View key={b.id} style={{ gap: 2 }}>
           <Text style={{ fontSize: 14, fontFamily: polices.texteGras, color: couleurs.texte }}>{b.titre}</Text>

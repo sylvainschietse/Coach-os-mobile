@@ -326,3 +326,68 @@ export function estimerCalories(a: { sport: Sport; titre?: string; dureeS: numbe
   const effort = a.ressenti ? 0.8 + 0.04 * a.ressenti : 1;
   return Math.round(Math.min(met * effort * poids * (a.dureeS / 3600), 50000));
 }
+
+// ---------- Séances d'activité dans un programme ----------
+
+/**
+ * Activités du catalogue qu'un coach programme comme du cardio ou du renforcement détaillé : elles restent des
+ * séances composées d'exercices. Tout le reste (cours de salle, yoga, aquatique, sports…) varie selon le prof et
+ * le contexte : la séance tient en un nom, et le client la valide simplement.
+ */
+const DETAILLEES = new Set([
+  'HIIT',
+  'Tabata',
+  'Circuit training',
+  'Cardio training (machines)',
+  'Elliptique',
+  'Rameur',
+  'SkiErg',
+  'Air bike',
+  'Stepper',
+  'Corde à sauter',
+  'Cours kettlebell',
+  'Fit ball',
+  'Renforcement musculaire (cours)',
+  'Total body',
+  'Mobilité',
+  'Étirements à la maison',
+]);
+const CATEGORIES_DETAILLEES: Sport[] = ['musculation', 'course', 'trail', 'velo', 'marche', 'natation'];
+
+export const estActiviteSimple = (a: ActiviteCatalogue) => !CATEGORIES_DETAILLEES.includes(a.sport) && !DETAILLEES.has(a.nom);
+
+const motsSeuls = (t: string) =>
+  ` ${sansAccents(t)
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()} `;
+
+/**
+ * L'activité simple demandée au coach (« ajoute une séance de RPM », « Body Pump le jeudi »), s'il y en a une : la plus
+ * longue reconnue, en mots entiers (« bodypump » collé aussi). Une demande longue décrit une vraie séance (« full body…,
+ * finir par du stretching ») : elle reste à l'assistant.
+ */
+export function activiteSimpleDans(texte: string, motsMax = 12): ActiviteCatalogue | undefined {
+  const t = motsSeuls(texte);
+  if (t.trim().split(' ').length > motsMax) return undefined;
+  const colle = ` ${t.trim().split(' ').join(' ')} `;
+  let meilleure: ActiviteCatalogue | undefined;
+  let longueur = 0;
+  for (const a of CATALOGUE_ACTIVITES) {
+    if (!estActiviteSimple(a)) continue;
+    const n = motsSeuls(a.nom).trim();
+    if (n.length < 3) continue;
+    const trouve = t.includes(` ${n} `) || (n.includes(' ') && colle.includes(` ${n.replace(/ /g, '')} `));
+    if (trouve && n.length > longueur) {
+      meilleure = a;
+      longueur = n.length;
+    }
+  }
+  return meilleure;
+}
+
+/** La séance d'activité telle qu'elle part dans le programme : un nom, une consigne courte, aucun exercice. */
+export const seanceActivite = (a: ActiviteCatalogue) => ({
+  titre: a.nom,
+  consignes: `${a.nom} : le contenu dépend du cours et du prof, il n'est pas détaillé ici. Valide la séance une fois faite.`,
+});

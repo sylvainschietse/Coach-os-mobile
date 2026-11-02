@@ -354,11 +354,9 @@ function ProchaineSeance({
     <View style={[ts.carte, { borderRadius: 16, borderColor: 'rgba(195,24,30,0.35)', gap: 10 }]}>
       <Text style={ts.kicker}>{p.creneau ? `Prévue aujourd’hui${p.creneau.heure ? ` à ${p.creneau.heure}` : ''}` : 'Ma prochaine séance'}</Text>
       <Text style={{ fontFamily: polices.titre, fontSize: 26, letterSpacing: 0.5, color: couleurs.texte }}>{titreClient(p.seance.titre)}</Text>
-      <Text style={ts.doux}>
-        {nbExercices} exercice{nbExercices > 1 ? 's' : ''}
-      </Text>
+      <Text style={ts.doux}>{nbExercices ? `${nbExercices} exercice${nbExercices > 1 ? 's' : ''}` : 'Activité · à valider une fois faite'}</Text>
       <Action
-        libelle={apercu ? 'Seul le client peut démarrer' : ouvert ? 'Démarrer la séance' : 'Cycle terminé'}
+        libelle={apercu ? 'Seul le client peut démarrer' : !ouvert ? 'Cycle terminé' : nbExercices ? 'Démarrer la séance' : 'Valider la séance'}
         icone={PlayCircle}
         desactive={apercu || !ouvert}
         onPress={() => onDemarrer(p.seance.id, p.creneau?.id)}
