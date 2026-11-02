@@ -1,7 +1,7 @@
 // Activités sportives : heures de Paris, sommeil de la nuit, allure et totaux.
 import { describe, expect, it } from 'vitest';
 
-import { allure, erreursActivite, heuresDeSommeil, heureParis, plageJourParis, rythme, sportHealthConnect, totauxParSemaine } from '../src/domain/activites';
+import { aImporter, allure, erreursActivite, estTechnogym, sportAppleSante, titreHealthConnect, heuresDeSommeil, heureParis, plageJourParis, rythme, sportHealthConnect, totauxParSemaine } from '../src/domain/activites';
 import { jourParis, lundiDe } from '../src/domain/entrainement';
 
 describe('heures de Paris', () => {
@@ -62,5 +62,28 @@ describe('affichage', () => {
   });
   it('contrôles', () => {
     expect(erreursActivite({ source: 'health_connect', idExterne: 'a', sport: 'course', titre: '', debut: '2026-10-28T07:00:00Z', dureeS: 1800, fcMoy: 300 })).toEqual(['Fréquence cardiaque invalide.']);
+  });
+});
+
+describe('machines de salle (Technogym) et Apple Santé', () => {
+  it('le cardio des machines est reconnu et gardé', () => {
+    expect(sportHealthConnect(25)).toBe('cardio');
+    expect(sportHealthConnect(54)).toBe('cardio');
+    expect(titreHealthConnect(57)).toBe('Tapis de course');
+    expect(aImporter('cardio', 'com.garmin.android.apps.connectmobile')).toBe(true);
+  });
+  it('le renforcement ne vient que des machines Technogym', () => {
+    expect(sportHealthConnect(70)).toBe('renforcement');
+    expect(aImporter('renforcement', 'com.garmin.android.apps.connectmobile')).toBe(false);
+    expect(aImporter('renforcement', 'com.technogym.mywellness')).toBe(true);
+    expect(aImporter('autre', 'Technogym (com.technogym.app)')).toBe(true);
+    expect(aImporter('autre', 'com.strava')).toBe(false);
+    expect(estTechnogym('Mywellness')).toBe(true);
+  });
+  it('codes Apple Santé', () => {
+    expect(sportAppleSante(37)).toBe('course');
+    expect(sportAppleSante(16)).toBe('cardio');
+    expect(sportAppleSante(50)).toBe('renforcement');
+    expect(sportAppleSante(3000)).toBe('autre');
   });
 });

@@ -89,6 +89,14 @@
       ],
       "react-native-health-connect",
       [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "CoachGo lit tes entraînements (machines Technogym, montre, applis de sport) pour que ton coach suive tes séances et adapte ton programme.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {
