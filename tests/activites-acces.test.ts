@@ -111,3 +111,71 @@ describe('activités sportives', () => {
     expect((await en(ids.userCoach1, `select id_externe from public.activites_sport`)).rows).toEqual([{ id_externe: 'hc-1' }]);
   });
 });
+
+describe('activités libres', () => {
+  const idLibre = '40000000-0000-4000-8000-000000000001';
+  const maintenant = new Date(Date.now() - 2 * 3600e3).toISOString();
+  const libre = (r: Record<string, unknown> = {}) => ({
+    id: idLibre,
+    sport: 'musculation',
+    titre: 'Séance de musculation',
+    debut: maintenant,
+    dureeS: 3600,
+    ressenti: 7,
+    calories: 320,
+    note: 'Bonne séance',
+    exercices: [{ exerciceId: null, nom: 'Squat', series: [{ repetitions: 10, charge: 40 }, { repetitions: 8, charge: 45 }] }],
+    ...r,
+  });
+  const ajouter = (user: string, a: unknown) => en(user, `select public.enregistrer_activite_libre($1::jsonb) as id`, [JSON.stringify(a)]);
+
+  it('le client ajoute une séance libre, la corrige sans la dupliquer, et son coach la voit', async () => {
+    expect((await ajouter(ids.userClientA, libre())).rows[0].id).toBe(idLibre);
+    await ajouter(ids.userClientA, libre({ titre: 'Muscu jambes', ressenti: 8 }));
+    const { rows } = await en(ids.userCoach1, `select source, sport, titre, ressenti, calories, note, exercices from public.activites_sport where id = $1`, [idLibre]);
+    expect(rows).toEqual([
+      {
+        source: 'manuel',
+        sport: 'musculation',
+        titre: 'Muscu jambes',
+        ressenti: 8,
+        calories: 320,
+        note: 'Bonne séance',
+        exercices: [{ exerciceId: null, nom: 'Squat', series: [{ repetitions: 10, charge: 40 }, { repetitions: 8, charge: 45 }] }],
+      },
+    ]);
+    expect((await en(ids.userCoach2, `select count(*)::int as n from public.activites_sport where id = $1`, [idLibre])).rows[0].n).toBe(0);
+  });
+
+  it('les nouveaux types d’activité sont acceptés (cours collectif, aquatique, raquette…)', async () => {
+    for (const [i, sport] of ['cours', 'yoga', 'aquatique', 'raquette', 'sport_co', 'combat', 'danse', 'glisse'].entries()) {
+      const id = `40000000-0000-4000-8000-00000000010${i}`;
+      await ajouter(ids.userClientA, libre({ id, sport, titre: sport, exercices: [] }));
+    }
+    expect((await en(ids.userClientA, `select count(*)::int as n from public.activites_sport where source = 'manuel'`)).rows[0].n).toBe(9);
+  });
+
+  it('un autre client ne peut ni modifier ni retirer l’activité ; une activité importée ne peut pas être réécrite', async () => {
+    await expect(ajouter(ids.userClientB, libre({ titre: 'piratée' }))).rejects.toThrow('introuvable');
+    const hc = (await en(ids.userClientA, `select id from public.activites_sport where id_externe = 'hc-1'`)).rows[0].id;
+    await expect(ajouter(ids.userClientA, libre({ id: hc }))).rejects.toThrow('introuvable');
+    await expect(ajouter(ids.userCoach1, libre({ id: '40000000-0000-4000-8000-000000000999' }))).rejects.toThrow('hors de votre dossier');
+  });
+
+  it('valeurs invalides refusées', async () => {
+    const id = '40000000-0000-4000-8000-000000000002';
+    await expect(ajouter(ids.userClientA, libre({ id, ressenti: 11 }))).rejects.toThrow();
+    await expect(ajouter(ids.userClientA, libre({ id, dureeS: 10 }))).rejects.toThrow('Durée invalide');
+    await expect(ajouter(ids.userClientA, libre({ id, debut: '2099-01-01T00:00:00Z' }))).rejects.toThrow('futur');
+    await expect(ajouter(ids.userClientA, libre({ id, sport: 'quidditch' }))).rejects.toThrow();
+    await expect(ajouter(ids.userClientA, libre({ id, exercices: [{ nom: 'Squat', series: [{ repetitions: 'dix' }] }] }))).rejects.toThrow('Série invalide');
+    await expect(ajouter(ids.userClientA, libre({ id, exercices: [{ nom: 'Squat', series: [{ poids: 10 }] }] }))).rejects.toThrow('Série invalide');
+    await expect(ajouter(ids.userClientA, libre({ id, exercices: [{ nom: '', series: [] }] }))).rejects.toThrow('Exercice invalide');
+  });
+
+  it('une activité libre retirée ne peut plus être modifiée', async () => {
+    await en(ids.userClientA, `select public.retirer_activite($1)`, [idLibre]);
+    await expect(ajouter(ids.userClientA, libre())).rejects.toThrow('introuvable');
+    expect((await en(ids.userCoach1, `select count(*)::int as n from public.activites_sport where id = $1`, [idLibre])).rows[0].n).toBe(0);
+  });
+});

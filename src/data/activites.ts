@@ -3,7 +3,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { erreursActivite, type Activite, type NouvelleActivite, type SourceActivite, type Sport } from '@/domain/activites';
+import {
+  erreursActivite,
+  erreursActiviteLibre,
+  preparerActiviteLibre,
+  type Activite,
+  type ActiviteLibre,
+  type ExerciceLibre,
+  type NouvelleActivite,
+  type SourceActivite,
+  type Sport,
+} from '@/domain/activites';
 import { nouvelId } from '@/lib/identifiant';
 
 import { supabase } from './supabase';
@@ -14,6 +24,18 @@ export interface Activites {
   /** Envoi par le client de ses activités ; renvoie le nombre ajouté ou mis à jour. */
   enregistrer(clientId: string, lot: NouvelleActivite[]): Promise<number>;
   retirer(clientId: string, id: string): Promise<void>;
+  /** Le client ajoute ou corrige une activité libre (hors programme) ; renvoie son id. */
+  enregistrerLibre(clientId: string, a: ActiviteLibre): Promise<string>;
+  /** Pour le coach : les activités libres de tous ses clients, les plus récentes d'abord. */
+  libresDuCoach(coachId: string, limite?: number): Promise<Activite[]>;
+}
+
+/** Contrôle et nettoyage communs à la démo et à Supabase. */
+function libreValide(a: ActiviteLibre) {
+  const p = preparerActiviteLibre(a);
+  const e = erreursActiviteLibre(p);
+  if (e.length) throw new Error(e.join(' '));
+  return p;
 }
 
 const LOT = 200;
@@ -83,6 +105,38 @@ export const activitesDemo: Activites = {
     const l = await lire();
     await sauver(l.map((a) => (a.id === id && a.clientId === clientId ? { ...a, retiree: true } : a)));
   },
+  async enregistrerLibre(clientId, saisie) {
+    const a = libreValide(saisie);
+    const l = await lire();
+    const i = l.findIndex((x) => x.id === a.id);
+    if (i >= 0 && (l[i].clientId !== clientId || l[i].source !== 'manuel' || l[i].retiree)) throw new Error('Activité introuvable');
+    const ligne: Stockee = {
+      id: a.id,
+      clientId,
+      source: 'manuel',
+      idExterne: a.id,
+      sport: a.sport,
+      titre: a.titre,
+      debut: a.debut,
+      dureeS: a.dureeS,
+      distanceM: a.distanceM,
+      ressenti: a.ressenti,
+      calories: a.calories,
+      note: a.note,
+      exercices: a.exercices,
+      importeeLe: new Date().toISOString(),
+    };
+    if (i >= 0) l[i] = ligne;
+    else l.push(ligne);
+    await sauver(l);
+    return a.id;
+  },
+  async libresDuCoach(_coachId, limite = 200) {
+    return (await lire())
+      .filter((a) => a.source === 'manuel' && !a.retiree)
+      .sort((a, b) => b.debut.localeCompare(a.debut))
+      .slice(0, limite);
+  },
 };
 
 // ---------- Supabase ----------
@@ -103,6 +157,9 @@ type Ligne = {
   calories: number | null;
   appareil: string;
   importee_le: string;
+  ressenti?: number | null;
+  note?: string | null;
+  exercices?: ExerciceLibre[] | null;
 };
 const ouVide = (n: number | null) => (n === null ? undefined : n);
 const versActivite = (l: Ligne): Activite => ({
@@ -121,10 +178,14 @@ const versActivite = (l: Ligne): Activite => ({
   calories: ouVide(l.calories),
   appareil: l.appareil || undefined,
   importeeLe: l.importee_le,
+  ressenti: ouVide(l.ressenti ?? null),
+  note: l.note || undefined,
+  exercices: l.exercices?.length ? l.exercices : undefined,
 });
 
 /** Table ou fonctions absentes de la base (mise à jour SQL pas encore passée) : PostgREST répond 404 / PGRST205 / PGRST202. */
 export const SPORT_PAS_ACTIVE = 'La rubrique Sport n’est pas encore activée sur le serveur. Ton coach doit d’abord mettre à jour la base.';
+export const LIBRES_PAS_ACTIVEES = 'L’ajout d’activités n’est pas encore activé sur le serveur. Ton coach doit d’abord mettre à jour la base.';
 function verifier<T>(r: { data: T | null; error: { message: string; code?: string } | null }): T {
   if (r.error) {
     if (['PGRST205', 'PGRST202', '42P01', '42883'].includes(r.error.code ?? '') || /activites_sport|enregistrer_activites|retirer_activite/.test(r.error.message))
@@ -148,6 +209,20 @@ export function creerActivitesSupabase(db: SupabaseClient): Activites {
     },
     async retirer(_clientId, id) {
       verifier(await db.rpc('retirer_activite', { p_id: id }));
+    },
+    async enregistrerLibre(_clientId, saisie) {
+      const a = libreValide(saisie);
+      const r = await db.rpc('enregistrer_activite_libre', { a });
+      // Fonction absente : la mise à jour SQL des activités libres n'est pas encore passée.
+      if (r.error && (['PGRST202', '42883'].includes(r.error.code ?? '') || /enregistrer_activite_libre|activites_sport_sport_check/.test(r.error.message)))
+        throw new Error(LIBRES_PAS_ACTIVEES);
+      return verifier(r) as string;
+    },
+    async libresDuCoach(coachId, limite = 200) {
+      const lignes = verifier(
+        await db.from('activites_sport').select('*').eq('coach_id', coachId).eq('source', 'manuel').order('debut', { ascending: false }).limit(limite),
+      ) as Ligne[];
+      return lignes.map(versActivite);
     },
   };
 }

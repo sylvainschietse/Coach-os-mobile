@@ -16,6 +16,7 @@ import { couleurs, polices } from '../theme';
 import { Action, CaseSelection, Ligne, PhotoProgramme, Puce, ts } from './commun';
 import { Corbeille, SuppressionEntrainement } from './corbeille';
 import { CreationEntrainement } from './creation';
+import { SeancesLibresClients } from './seances-libres';
 
 const TOUS = '';
 
@@ -31,6 +32,7 @@ export function Bibliotheque({ coachId, onOuvrir }: { coachId: string; onOuvrir:
   const { width } = useWindowDimensions();
   const { donnee, erreur, recharger } = useCharger(() => entrainement.bibliotheque(coachId), `bibliotheque-${coachId}`);
   const [creation, setCreation] = useState<'programme' | 'seance'>();
+  const [libres, setLibres] = useState(false);
   const [selection, setSelection] = useState(false);
   const [choisis, setChoisis] = useState<string[]>([]);
   const [suppression, setSuppression] = useState<ElementCorbeille[]>();
@@ -65,7 +67,19 @@ export function Bibliotheque({ coachId, onOuvrir }: { coachId: string; onOuvrir:
       <Ligne style={{ marginTop: 12 }}>
         <Action libelle="Créer un programme" onPress={() => setCreation('programme')} />
         <Action libelle="Créer une séance seule" variante="contour" onPress={() => setCreation('seance')} />
+        <Action libelle={libres ? 'Fermer les séances libres des clients' : 'Séances libres des clients'} variante="contour" onPress={() => setLibres(!libres)} />
       </Ligne>
+      {libres && (
+        <View style={{ marginTop: 16 }}>
+          <SeancesLibresClients
+            coachId={coachId}
+            onOuvrirModele={(id) => {
+              recharger();
+              onOuvrir(id);
+            }}
+          />
+        </View>
+      )}
       <Ligne style={{ marginTop: 12 }}>
         <Action
           petit
