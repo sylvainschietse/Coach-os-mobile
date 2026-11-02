@@ -1,5 +1,3 @@
-// Généré par scripts/noms-ciqual.mjs depuis src/data/aliments-base.json : ne pas modifier à la main.
-export const NOMS_CIQUAL = `
 Abat, cuit (aliment moyen)
 Abondance
 Abricot au sirop (sans précision sur léger ou classique), appertisé, égoutté (aliment moyen)
@@ -3339,4 +3337,3 @@ Yaourt ou lait fermenté, nature, sucré
 Yaourt ou lait fermenté, nature, sucré, enrichi en vitamine D
 Yaourt ou lait fermenté, sur lit de fruits, à la crème, sucré
 Yaourt ou lait fermenté, sur lit de fruits, sucré
-`.trim().split('\n');

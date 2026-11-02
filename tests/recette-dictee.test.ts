@@ -61,8 +61,7 @@ describe('recette dictée', () => {
   });
 
   it('la fonction serveur connaît les mêmes noms Ciqual que l’app', () => {
-    const source = readFileSync(join(__dirname, '../supabase/functions/lire-recette/noms-ciqual.ts'), 'utf8');
-    const noms = source.slice(source.indexOf('`') + 1, source.lastIndexOf('`')).trim().split('\n');
+    const noms = readFileSync(join(__dirname, '../supabase/functions/lire-recette/noms-ciqual.txt'), 'utf8').trim().split('\n');
     expect(new Set(noms)).toEqual(new Set(aliments.map((a) => a.nom)));
   });
 });
