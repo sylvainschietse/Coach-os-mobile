@@ -5,7 +5,7 @@
 import { Platform } from 'react-native';
 import type * as HC from 'react-native-health-connect';
 
-import { heuresDeSommeil, heureParis, plageJourParis, sportHealthConnect, SPORTS_IMPORTES, type NouvelleActivite, type PeriodeSommeil } from '@/domain/activites';
+import { aImporter, heuresDeSommeil, heureParis, plageJourParis, sportHealthConnect, titreHealthConnect, type NouvelleActivite, type PeriodeSommeil } from '@/domain/activites';
 import { ajouterJours } from '@/domain/entrainement';
 
 type Module = typeof HC;
@@ -137,8 +137,8 @@ export async function lireSeances(depuis: string): Promise<NouvelleActivite[]> {
   const sortie: NouvelleActivite[] = [];
   for (const s of seances) {
     const sport = sportHealthConnect(s.exerciseType);
-    if (!SPORTS_IMPORTES.includes(sport) || !s.metadata?.id) continue;
-    const origine = s.metadata.dataOrigin;
+    const origine = s.metadata?.dataOrigin;
+    if (!aImporter(sport, origine) || !s.metadata?.id) continue;
     const plage = { timeRangeFilter: { operator: 'between' as const, startTime: s.startTime, endTime: s.endTime }, dataOriginFilter: origine ? [origine] : undefined };
     const total = async <T extends 'Distance' | 'ElevationGained' | 'HeartRate' | 'TotalCaloriesBurned'>(t: T) =>
       accordes.includes(t) ? hc.aggregateRecord({ recordType: t, ...plage }).catch(() => null) : null;
@@ -148,7 +148,7 @@ export async function lireSeances(depuis: string): Promise<NouvelleActivite[]> {
       source: 'health_connect',
       idExterne: s.metadata.id,
       sport,
-      titre: s.title?.trim() || '',
+      titre: s.title?.trim() || titreHealthConnect(s.exerciseType),
       debut: s.startTime,
       dureeS: Math.round((Date.parse(s.endTime) - Date.parse(s.startTime)) / 1000),
       distanceM: arrondi(distance?.DISTANCE?.inMeters),

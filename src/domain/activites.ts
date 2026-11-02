@@ -1,4 +1,5 @@
-// Activités sportives venues des montres et des applis, lues pour l'instant dans Health Connect (Android).
+// Activités sportives venues des montres, des applis et des machines connectées (Technogym…),
+// lues dans Health Connect (Android) ou Apple Santé (iPhone).
 // Tout est ramené au même format : distance, durée, allure, fréquence cardiaque et dénivelé.
 // Les mêmes bornes sont vérifiées par la fonction SQL enregistrer_activites.
 
@@ -12,6 +13,7 @@ export type Sport =
   | 'marche'
   | 'randonnee'
   | 'natation'
+  | 'cardio'
   | 'musculation'
   | 'cours'
   | 'yoga'
@@ -22,7 +24,7 @@ export type Sport =
   | 'danse'
   | 'glisse'
   | 'autre';
-export type SourceActivite = 'health_connect' | 'fichier' | 'strava' | 'garmin' | 'suunto' | 'polar' | 'manuel';
+export type SourceActivite = 'health_connect' | 'apple_sante' | 'fichier' | 'strava' | 'garmin' | 'suunto' | 'polar' | 'manuel';
 
 export const SPORTS: { cle: Sport; libelle: string }[] = [
   { cle: 'course', libelle: 'Course' },
@@ -31,6 +33,7 @@ export const SPORTS: { cle: Sport; libelle: string }[] = [
   { cle: 'marche', libelle: 'Marche' },
   { cle: 'randonnee', libelle: 'Randonnée' },
   { cle: 'natation', libelle: 'Natation' },
+  { cle: 'cardio', libelle: 'Cardio' },
   { cle: 'musculation', libelle: 'Musculation' },
   { cle: 'cours', libelle: 'Cours collectif' },
   { cle: 'yoga', libelle: 'Yoga, Pilates, étirements' },
@@ -46,6 +49,7 @@ export const libelleSport = (s: Sport) => SPORTS.find((x) => x.cle === s)?.libel
 
 export const SOURCES: Record<SourceActivite, string> = {
   health_connect: 'Health Connect',
+  apple_sante: 'Apple Santé',
   fichier: 'Fichier',
   strava: 'Strava',
   garmin: 'Garmin',
@@ -133,7 +137,7 @@ export function heuresDeSommeil(periodes: PeriodeSommeil[], jour: string): numbe
   return Math.round((ms / 3600e3) * 100) / 100;
 }
 
-// ---------- Health Connect ----------
+// ---------- Health Connect et Apple Santé ----------
 
 /** Codes ExerciseType de Health Connect vers nos sports. */
 export function sportHealthConnect(code: number): Sport {
@@ -151,13 +155,75 @@ export function sportHealthConnect(code: number): Sport {
     case 73: // SWIMMING_OPEN_WATER
     case 74: // SWIMMING_POOL
       return 'natation';
+    case 25: // ELLIPTICAL
+    case 54: // ROWING_MACHINE
+    case 68: // STAIR_CLIMBING
+    case 69: // STAIR_CLIMBING_MACHINE
+    case 36: // HIGH_INTENSITY_INTERVAL_TRAINING
+      return 'cardio';
+    case 70: // STRENGTH_TRAINING
+    case 81: // WEIGHTLIFTING
+    case 13: // CALISTHENICS
+      return 'musculation';
     default:
       return 'autre';
   }
 }
 
-/** Sports gardés : l'appli suit la course et l'endurance, pas chaque séance de renforcement déjà saisie ailleurs. */
-export const SPORTS_IMPORTES: Sport[] = ['course', 'trail', 'velo', 'marche', 'randonnee', 'natation'];
+/** Titre quand l'appli n'en donne pas : la machine utilisée, plus parlante que « Cardio ». */
+export function titreHealthConnect(code: number): string {
+  const t: Record<number, string> = { 57: 'Tapis de course', 9: 'Vélo d’appartement', 25: 'Elliptique', 54: 'Rameur', 68: 'Escalier', 69: 'Escalier', 36: 'Fractionné' };
+  return t[code] ?? '';
+}
+
+/** Codes HKWorkoutActivityType d'Apple Santé vers nos sports. */
+export function sportAppleSante(code: number): Sport {
+  switch (code) {
+    case 37: // running
+      return 'course';
+    case 13: // cycling
+      return 'velo';
+    case 52: // walking
+      return 'marche';
+    case 24: // hiking
+      return 'randonnee';
+    case 46: // swimming
+      return 'natation';
+    case 16: // elliptical
+    case 35: // rowing
+    case 44: // stairClimbing
+    case 68: // stairs
+    case 69: // stepTraining
+    case 63: // highIntensityIntervalTraining
+    case 73: // mixedCardio
+    case 11: // crossTraining
+      return 'cardio';
+    case 50: // traditionalStrengthTraining
+    case 20: // functionalStrengthTraining
+    case 59: // coreTraining
+      return 'musculation';
+    default:
+      return 'autre';
+  }
+}
+
+export function titreAppleSante(code: number): string {
+  const t: Record<number, string> = { 16: 'Elliptique', 35: 'Rameur', 44: 'Escalier', 68: 'Escalier', 69: 'Step', 63: 'Fractionné' };
+  return t[code] ?? '';
+}
+
+/** Séance enregistrée par une machine de salle connectée (appli Technogym / Mywellness). */
+export const estTechnogym = (appareil?: string) => /technogym|mywellness/i.test(appareil ?? '');
+
+/** Sports gardés : l'appli suit l'endurance et le cardio, pas chaque séance de musculation déjà saisie ailleurs. */
+export const SPORTS_IMPORTES: Sport[] = ['course', 'trail', 'velo', 'marche', 'randonnee', 'natation', 'cardio'];
+
+/**
+ * Faut-il importer cette séance ? La musculation n'est gardé que s'il vient des machines Technogym de la salle :
+ * celui d'une montre ferait doublon avec les séances déjà validées dans CoachGo.
+ */
+export const aImporter = (sport: Sport, appareil?: string) =>
+  SPORTS_IMPORTES.includes(sport) || (estTechnogym(appareil) && (sport === 'musculation' || sport === 'autre'));
 
 // ---------- Affichage ----------
 

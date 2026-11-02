@@ -200,6 +200,8 @@ export const activiteConnue = (nom: string) => CATALOGUE_ACTIVITES.find((a) => s
  */
 const MET_SPORT: Record<Sport, number> = {
   musculation: 5,
+  // Machines cardio (elliptique, rameur, escalier) : entre 5 et 9 selon la machine.
+  cardio: 7,
   cours: 6.5,
   yoga: 3,
   aquatique: 5,

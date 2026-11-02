@@ -1,13 +1,14 @@
-// Rubrique « Sport » du suivi : courses, sorties vélo, marches… lues dans Health Connect (Garmin Connect, Strava,
-// Samsung Health…), et activités libres ajoutées par le client (cours collectif, séance de muscu à lui…).
+// Rubrique « Sport » du suivi : courses, sorties vélo, marches, séances sur les machines Technogym… lues dans
+// Health Connect (Android) ou Apple Santé (iPhone), et activités libres ajoutées par le client (cours collectif, muscu à lui…).
 // Le client autorise la lecture, synchronise et ajoute ; son coach voit la même liste et les totaux.
 import * as Linking from 'expo-linking';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 
 import { activites } from '@/data/activites';
-import { derniereSynchro, synchroniserSport } from '@/data/synchro-sport';
-import { estLibre, formaterDistance, formaterDuree, libelleSport, rythme, SPORTS, totauxParSemaine, type Activite } from '@/domain/activites';
+import { derniereSynchro, nomServiceSante, synchroniserSport } from '@/data/synchro-sport';
+import { estLibre, estTechnogym, formaterDistance, formaterDuree, libelleSport, rythme, SOURCES, SPORTS, totauxParSemaine, type Activite } from '@/domain/activites';
+import * as appleSante from '@/lib/apple-sante';
 import { jourParis, lundiDe } from '@/domain/entrainement';
 import { accesAccordes, demanderAcces, diagnostiquer, etatHealthConnect, ouvrirReglages, type DiagnosticHealthConnect, type EtatHealthConnect } from '@/lib/health-connect';
 import { messageErreur, useCharger } from '@/lib/useCharger';
@@ -26,7 +27,7 @@ const APPLIS: Record<string, string> = {
   'com.polar.polarflow': 'Polar Flow',
   'com.coros.coros': 'COROS',
 };
-const nomAppli = (p?: string) => (p ? (APPLIS[p] ?? p) : '');
+const nomAppli = (p?: string) => (!p ? '' : estTechnogym(p) ? 'Technogym' : (APPLIS[p] ?? p.replace(/ \(.*\)$/, '')));
 
 const quand = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
@@ -98,7 +99,7 @@ function Connexion({ clientId, onSynchro }: { clientId: string; onSynchro: () =>
     setErreur('');
     try {
       const r = await synchroniserSport(clientId);
-      setMessage(r.lues ? `${r.lues} séance${r.lues > 1 ? 's' : ''} lue${r.lues > 1 ? 's' : ''} dans Health Connect.` : 'Aucune nouvelle séance dans Health Connect.');
+      setMessage(r.lues ? `${r.lues} séance${r.lues > 1 ? 's' : ''} lue${r.lues > 1 ? 's' : ''} dans ${nomServiceSante}.` : `Aucune nouvelle séance dans ${nomServiceSante}.`);
       setDerniere(await derniereSynchro(clientId));
       onSynchro();
     } catch (e) {
@@ -148,7 +149,7 @@ function Connexion({ clientId, onSynchro }: { clientId: string; onSynchro: () =>
         <Texte doux style={{ fontSize: 14 }}>
           {Platform.OS === 'android'
             ? 'Health Connect n’est pas disponible : il faut Android 8 ou plus et la dernière version de CoachGo.'
-            : 'La lecture automatique de tes courses se fait sur Android, avec Health Connect. Ouvre CoachGo sur ton téléphone Android.'}
+            : 'La lecture automatique de tes séances se fait sur ton téléphone, avec Apple Santé (iPhone) ou Health Connect (Android). Ouvre CoachGo sur ton téléphone.'}
         </Texte>
       </Carte>
     );
@@ -173,9 +174,11 @@ function Connexion({ clientId, onSynchro }: { clientId: string; onSynchro: () =>
         </>
       ) : (
         <>
-          <Texte style={{ fontSize: 15 }}>CoachGo peut lire tes courses, sorties vélo et marches : distance, durée, allure, fréquence cardiaque et dénivelé.</Texte>
+          <Texte style={{ fontSize: 15 }}>
+            CoachGo peut lire tes courses, sorties vélo, marches et séances sur les machines Technogym : distance, durée, allure, fréquence cardiaque et dénivelé.
+          </Texte>
           <Texte doux style={{ fontSize: 14 }}>
-            Dans Garmin Connect, Strava ou Samsung Health, active d’abord l’envoi vers Health Connect (Réglages, Applis connectées, Health Connect). Les 30 derniers jours seront importés.
+            Dans Garmin Connect, Strava, Samsung Health ou l’appli Technogym, active d’abord l’envoi vers Health Connect (Réglages, Applis connectées, Health Connect). Les 30 derniers jours seront importés.
           </Texte>
           <Bouton libelle="Autoriser la lecture" onPress={autoriser} />
         </>
@@ -183,6 +186,101 @@ function Connexion({ clientId, onSynchro }: { clientId: string; onSynchro: () =>
       {!!message && <Texte doux style={{ fontSize: 13 }}>{message}</Texte>}
       {!!erreur && <Erreur message={erreur} />}
       <Verification />
+    </Carte>
+  );
+}
+
+/** Accès à Apple Santé et synchronisation, sur l'iPhone du client. */
+function ConnexionAppleSante({ clientId, onSynchro }: { clientId: string; onSynchro: () => void }) {
+  const [dispo, setDispo] = useState<boolean | null>(null);
+  const [posee, setPosee] = useState(false);
+  const [derniere, setDerniere] = useState<string | null>(null);
+  const [occupe, setOccupe] = useState(false);
+  const [message, setMessage] = useState('');
+  const [erreur, setErreur] = useState('');
+  const auto = useRef(false);
+
+  const synchroniser = useCallback(async () => {
+    setOccupe(true);
+    setErreur('');
+    try {
+      const r = await synchroniserSport(clientId);
+      setMessage(
+        r.lues
+          ? `${r.lues} séance${r.lues > 1 ? 's' : ''} lue${r.lues > 1 ? 's' : ''} dans Apple Santé.`
+          : 'Aucune nouvelle séance dans Apple Santé. Si tu en attendais, vérifie dans Réglages › Santé › Accès aux données que CoachGo peut lire les entraînements.',
+      );
+      setDerniere(await derniereSynchro(clientId));
+      onSynchro();
+    } catch (e) {
+      setErreur(messageErreur(e));
+    } finally {
+      setOccupe(false);
+    }
+  }, [clientId, onSynchro]);
+
+  useEffect(() => {
+    let annule = false;
+    (async () => {
+      const d = await appleSante.appleSanteDisponible();
+      const p = d && (await appleSante.questionDejaPosee());
+      if (annule) return;
+      setDispo(d);
+      setPosee(p);
+      setDerniere(await derniereSynchro(clientId));
+      if (p && !auto.current) {
+        auto.current = true;
+        synchroniser();
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [clientId, synchroniser]);
+
+  async function autoriser() {
+    setErreur('');
+    try {
+      const ok = await appleSante.demanderAcces();
+      setPosee(ok);
+      if (ok) await synchroniser();
+    } catch (e) {
+      setErreur(messageErreur(e));
+    }
+  }
+
+  if (dispo === null) return null;
+  if (!dispo)
+    return (
+      <Carte>
+        <SousTitre>Montre, applis et machines</SousTitre>
+        <Texte doux style={{ fontSize: 14 }}>Apple Santé n’est pas disponible : installe la dernière version de CoachGo depuis l’App Store.</Texte>
+      </Carte>
+    );
+  return (
+    <Carte>
+      <SousTitre>Montre, applis et machines</SousTitre>
+      {posee ? (
+        <>
+          <Texte doux style={{ fontSize: 14 }}>
+            Tes séances arrivent depuis Apple Santé{derniere ? ` · dernière synchro ${quand(derniere)}` : ''}. Ton coach les voit aussi.
+          </Texte>
+          <Bouton libelle="Synchroniser maintenant" onPress={synchroniser} chargement={occupe} />
+          <Bouton variante="discret" libelle="Réglages de l’iPhone" onPress={() => Linking.openSettings()} />
+        </>
+      ) : (
+        <>
+          <Texte style={{ fontSize: 15 }}>
+            CoachGo peut lire tes courses, sorties vélo, marches et séances sur les machines Technogym : distance, durée, allure et fréquence cardiaque.
+          </Texte>
+          <Texte doux style={{ fontSize: 14 }}>
+            Dans l’appli Technogym, Garmin Connect ou Strava, active d’abord l’envoi vers Apple Santé. Les 30 derniers jours seront importés.
+          </Texte>
+          <Bouton libelle="Autoriser la lecture" onPress={autoriser} />
+        </>
+      )}
+      {!!message && <Texte doux style={{ fontSize: 13 }}>{message}</Texte>}
+      {!!erreur && <Erreur message={erreur} />}
     </Carte>
   );
 }
@@ -212,7 +310,7 @@ function Ligne({ a, proprietaire, onRetirer, onModifier }: { a: Activite; propri
       {libre && <DetailActiviteLibre a={a} />}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: espace(2) }}>
         <Texte doux style={{ fontSize: 12, color: libre ? couleurs.bleu : couleurs.texteDoux }}>
-          {libre ? (proprietaire ? 'Ajoutée par toi' : 'Saisie par le client') : nomAppli(a.appareil) || 'Health Connect'}
+          {libre ? (proprietaire ? 'Ajoutée par toi' : 'Saisie par le client') : nomAppli(a.appareil) || SOURCES[a.source]}
         </Texte>
         {proprietaire && (
           <View style={{ flexDirection: 'row', gap: espace(4) }}>
@@ -270,7 +368,7 @@ export function Sport({ clientId, proprietaire = true }: { clientId: string; pro
         ) : (
           <AjoutActiviteLibre clientId={clientId} onEnregistre={recharger} />
         ))}
-      {proprietaire && <Connexion clientId={clientId} onSynchro={recharger} />}
+      {proprietaire && (Platform.OS === 'ios' ? <ConnexionAppleSante clientId={clientId} onSynchro={recharger} /> : <Connexion clientId={clientId} onSynchro={recharger} />)}
       {erreur && <Erreur message={erreur} onReessayer={recharger} />}
       {!donnee && !erreur && <Chargement />}
       {donnee?.length === 0 && (

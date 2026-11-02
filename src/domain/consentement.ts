@@ -19,7 +19,7 @@ export const DONNEES_SANTE = [
   'tes mesures (poids, masse grasse, tours) et tes photos de progression',
   'ton profil et ton journal alimentaires (régime, allergies, repas)',
   'tes séances, tes performances, tes bilans de la semaine',
-  'les séances, pas et sommeil lus dans Health Connect, si tu l’autorises',
+  'les séances, pas et sommeil lus dans Health Connect ou Apple Santé, si tu l’autorises',
 ];
 
 /** Le client doit (re)donner son accord : jamais donné, ou donné pour une ancienne version de la politique. */
