@@ -8,7 +8,21 @@ import { betaZodOutputFormat } from 'npm:@anthropic-ai/sdk@0.135.0/helpers/beta/
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import * as z from 'npm:zod@4';
 
-import { NOMS_CIQUAL } from './noms-ciqual.ts';
+// Les noms de la table Ciqual de l'app (scripts/noms-ciqual.mjs), lus sur le dépôt public à une version figée : le fichier
+// ne peut pas changer sous la fonction. Lus une fois par démarrage ; sans eux, la dictée marche quand même, les
+// ingrédients sont alors seulement estimés.
+const VERSION_NOMS = 'd1378864b5f6b166effa2b6726bc5f6f5fe232f0';
+const URL_NOMS = `https://raw.githubusercontent.com/sylvainschietse/Coach-os-mobile/${VERSION_NOMS}/supabase/functions/lire-recette/noms-ciqual.txt`;
+let nomsCiqual: Promise<string[]> | undefined;
+const chargerNoms = () =>
+  (nomsCiqual ??= fetch(URL_NOMS, { signal: AbortSignal.timeout(5000) })
+    .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
+    .then((t) => t.split('\n').map((n) => n.trim()).filter(Boolean))
+    .catch((e) => {
+      console.error('Noms Ciqual indisponibles', e);
+      nomsCiqual = undefined;
+      return [] as string[];
+    }));
 
 const CONTIENT = ['viande', 'poisson', 'fruits_de_mer', 'oeuf', 'lait', 'gluten', 'miel'] as const;
 
@@ -87,6 +101,10 @@ Deno.serve(async (req) => {
   const cle = Deno.env.get('ANTHROPIC_API_KEY');
   if (!cle) return repondre({ erreur: 'Le remplissage automatique n’est pas encore activé : la clé Claude manque sur le serveur.' }, 503);
   const claude = new Anthropic({ apiKey: cle });
+  const NOMS_CIQUAL = await chargerNoms();
+  const table = NOMS_CIQUAL.length
+    ? `Table Ciqual (un nom par ligne) :\n${NOMS_CIQUAL.join('\n')}`
+    : 'Table Ciqual indisponible : laisse le champ ciqual vide.';
 
   try {
     const reponse = await claude.beta.messages.parse({
@@ -98,7 +116,7 @@ Deno.serve(async (req) => {
       // La table ne change pas d'un appel à l'autre : elle reste en cache chez Anthropic, ce qui réduit le coût.
       system: [
         { type: 'text', text: CONSIGNES },
-        { type: 'text', text: `Table Ciqual (un nom par ligne) :\n${NOMS_CIQUAL.join('\n')}`, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: table, cache_control: { type: 'ephemeral' } },
       ],
       messages: [{ role: 'user', content: texte }],
     });
