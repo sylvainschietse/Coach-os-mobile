@@ -146,3 +146,28 @@ describe('dépense estimée', () => {
     expect(estimerCalories({ sport: 'yoga', dureeS: 0 })).toBeUndefined();
   });
 });
+
+describe('séance d’activité dans un programme', () => {
+  it('une demande courte qui cite un cours, un yoga ou un sport devient une séance simple', async () => {
+    const { activiteSimpleDans, seanceActivite } = await import('../src/domain/catalogue-activites');
+    expect(activiteSimpleDans('Ajoute une séance de RPM')?.nom).toBe('RPM');
+    expect(activiteSimpleDans('bodypump le jeudi')?.nom).toBe('Body Pump');
+    expect(activiteSimpleDans('cours de yoga vinyasa')?.nom).toBe('Yoga Vinyasa');
+    expect(activiteSimpleDans('aquagym')?.nom).toBe('Aquagym');
+    expect(activiteSimpleDans('Padel')?.nom).toBe('Padel');
+    expect(seanceActivite(activiteSimpleDans('RPM')!)).toEqual({
+      titre: 'RPM',
+      consignes: "RPM : le contenu dépend du cours et du prof, il n'est pas détaillé ici. Valide la séance une fois faite.",
+    });
+  });
+  it('les séances que le coach compose restent à l’assistant', async () => {
+    const { activiteSimpleDans } = await import('../src/domain/catalogue-activites');
+    expect(activiteSimpleDans('séance HIIT au rameur')).toBeUndefined();
+    expect(activiteSimpleDans('séance de musculation haut du corps')).toBeUndefined();
+    expect(activiteSimpleDans('séance de mobilité hanches')).toBeUndefined();
+    expect(activiteSimpleDans('footing 30 minutes')).toBeUndefined();
+    expect(activiteSimpleDans('surface de jeu')).toBeUndefined();
+    // Une demande longue décrit une vraie séance, même si elle cite une activité.
+    expect(activiteSimpleDans('full body 45 min pour une femme de 50 ans débutante, haltères et élastiques, finir par 10 min de stretching')).toBeUndefined();
+  });
+});

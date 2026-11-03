@@ -94,6 +94,8 @@ export function SeanceLog({
   const envoi = useRef(false);
   const commentaire = useRef<ComponentRef<typeof TextInput>>(null);
   const lignes = seance.blocs.flatMap((b) => b.lignes);
+  /** Séance d'activité (cours collectif, yoga, sport…) : aucun exercice, le client dit seulement s'il l'a faite. */
+  const activite = lignes.length === 0;
   const brouillon = sale(d);
   // Vidéos de mouvement envoyées au coach (et ses réponses), chargées à l'ouverture de la séance.
   const mesVideos = useCharger(async () => (ouvert && !apercu ? videos.mesVideos(clientId) : []), `videos-mouvement-${clientId}-${ouvert && !apercu}`);
@@ -181,7 +183,8 @@ export function SeanceLog({
         debut: d.debut,
         fin: new Date().toISOString(),
         note: d.note ?? undefined,
-        commentaire: d.com,
+        // Séance d'activité (RPM, yoga…) validée sans ressenti ni commentaire : la base demande au moins une trace.
+        commentaire: activite && d.note === null && !d.com.trim() ? 'Séance faite.' : d.com,
         series,
       });
       ecrireBrouillon(cle, null);
@@ -209,7 +212,7 @@ export function SeanceLog({
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={[ts.titre, { fontSize: 16 }]}>{titreClient(seance.titre)}</Text>
           <Text style={ts.doux}>
-            {lignes.length} exercice{lignes.length > 1 ? 's' : ''}
+            {activite ? 'Activité · à valider une fois faite' : `${lignes.length} exercice${lignes.length > 1 ? 's' : ''}`}
             {brouillon && ' · brouillon non enregistré'}
           </Text>
         </View>
@@ -339,9 +342,9 @@ export function SeanceLog({
           )}
           <View style={[styles.pied, Platform.OS === 'web' && ({ position: 'sticky', bottom: 8, zIndex: 10 } as object)]}>
             <Action
-              libelle={etat === 'envoi' ? 'Enregistrement…' : 'Enregistrer la séance'}
+              libelle={etat === 'envoi' ? 'Enregistrement…' : activite ? 'J’ai fait cette séance' : 'Enregistrer la séance'}
               chargement={etat === 'envoi'}
-              desactive={apercu || fautif || !brouillon}
+              desactive={apercu || fautif || (!brouillon && (!activite || etat === 'ok' || etat === 'doublon'))}
               onPress={enregistrer}
             />
             <View aria-live="polite" style={{ flexShrink: 1 }}>
