@@ -13,12 +13,11 @@ import {
   normaliserEmail,
   normaliserTelephone,
   OBJECTIFS,
-  OFFRES_VENDUES,
   ORIGINES,
   PROCHAINES_ACTIONS,
   statutBooster,
   statutContact,
-  STATUTS_CONTACT,
+  STATUTS_CONTACT_PROPOSES,
   type Booster,
   type Contact,
   type Doublon,
@@ -385,7 +384,7 @@ function Coordonnees({
         <Saisie libelle="Adresse postale" long valeur={b.adresse} onChange={set('adresse')} placeholder={'N° et rue\nCode postal et ville'} aide="Elle figurera sur ses factures." />
       </Cellule>
       <Cellule>
-        <Choix libelle="Statut" choix={STATUTS_CONTACT} vide={null} valeur={b.statutCrm} onChange={set('statutCrm')} />
+        <Choix libelle="Statut" choix={STATUTS_CONTACT_PROPOSES} vide={null} valeur={b.statutCrm} onChange={set('statutCrm')} />
       </Cellule>
       <Cellule>
         <Choix libelle="Objectif principal" choix={OBJECTIFS} valeur={b.objectifPrincipal || undefined} onChange={set('objectifPrincipal')} />
@@ -398,9 +397,6 @@ function Coordonnees({
       </Cellule>
       <Cellule>
         <Choix libelle="Origine" choix={ORIGINES} valeur={b.source || undefined} onChange={set('source')} />
-      </Cellule>
-      <Cellule>
-        <Choix libelle="Offre Vendue" choix={OFFRES_VENDUES} valeur={b.offreVendue || undefined} onChange={set('offreVendue')} />
       </Cellule>
       <Cellule>
         <Saisie libelle="Date de naissance" valeur={b.dateNaissance} onChange={set('dateNaissance')} placeholder="jj/mm/aaaa" />
