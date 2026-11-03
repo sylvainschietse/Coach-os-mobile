@@ -27,7 +27,6 @@ import {
   type StatutContact,
 } from '@/domain/crm';
 import { ENTRETIEN, TESTS } from '@/domain/evaluation';
-import { reponsesParSection } from '@/domain/questionnaire';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { NutritionDuClient } from '../alimentation/nutrition-coach';
@@ -41,6 +40,7 @@ import { Conversation } from '../messagerie/conversation';
 import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
 import { ParcoursContact } from './parcours';
+import { ReponsesQuestionnaire } from './reponses-questionnaire';
 import { Cellule, Choix, Grille, Initiales, Modale, PiedEditeur, Repliable, Saisie, Valeur } from './dossier';
 
 export type VoletFiche = 'fiche' | 'messages' | 'boosters' | 'programme' | 'suivi' | 'nutrition' | 'documents';
@@ -442,26 +442,13 @@ function BoostersDuContact({
       <Text style={styles.aide}>
         Retrouvez ici les informations enregistrées dans les Boosters de ce client : briefing issu du questionnaire, entretien, tests et conclusion.
       </Text>
-      {questionnaires.map((q) => (
+      {questionnaires.map((q, i) => (
         <View key={q.id} style={styles.bloc}>
           <Repliable
-            resume={`Questionnaire reçu le ${new Date(q.recuLe).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+            ouvert={i === 0 && !boosters.length}
+            resume={`Questionnaire reçu le ${new Date(q.recuLe).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}${q.alertes.length ? ' · à vérifier' : ''}`}
           >
-            <View style={{ gap: espace(4) }}>
-              {q.alertes.map((a) => (
-                <Text key={a} style={[styles.alerteTexte, styles.alerte]}>
-                  {a}
-                </Text>
-              ))}
-              {reponsesParSection(q.reponses, ['prenom', 'nom', 'telephone', 'email']).map((s) => (
-                <View key={s.titre} style={{ gap: espace(2) }}>
-                  <Text style={styles.section}>{s.titre}</Text>
-                  {s.lignes.map((l) => (
-                    <Valeur key={l.id} libelle={l.libelle} valeur={l.valeur} />
-                  ))}
-                </View>
-              ))}
-            </View>
+            <ReponsesQuestionnaire questionnaire={q} />
           </Repliable>
         </View>
       ))}

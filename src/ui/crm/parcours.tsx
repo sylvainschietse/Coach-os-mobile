@@ -15,6 +15,7 @@ import { BoutonContour } from '../coque';
 import { couleurs, espace, polices } from '../theme';
 import { EtapeAcces, useEtatAcces, BoutonEtape } from './acces';
 import { EnvoiMessage, useMessageQuestionnaire } from './commun';
+import { ReponsesQuestionnaire } from './reponses-questionnaire';
 
 const jourCourt = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -35,6 +36,8 @@ export function ParcoursContact({
   const { donnee: lien } = useCharger(() => crm.lienQuestionnaire(), 'lien-questionnaire');
   const message = useMessageQuestionnaire(contact, lien);
   const [envoiQuestionnaire, setEnvoiQuestionnaire] = useState(false);
+  // Réponses arrivées et Booster pas encore planifié : c'est ce que le coach vient lire, on les montre d'emblée.
+  const [voirReponses, setVoirReponses] = useState(() => questionnaires.length > 0 && !boosters.some((b) => b.statut !== 'annule'));
   const acces = useEtatAcces(contact, versionAbo);
 
   const recu = questionnaires[0];
@@ -57,11 +60,22 @@ export function ParcoursContact({
         {!recu && !envoiQuestionnaire && (
           <Action courante={courante} etape={1} libelle="Envoyer le questionnaire" desactive={archive || !message} onPress={() => setEnvoiQuestionnaire(true)} />
         )}
-        {recu && !envoiQuestionnaire && (
-          <Text accessibilityRole="button" onPress={() => setEnvoiQuestionnaire(true)} style={lienDiscret}>
-            Le renvoyer
+        {recu && recu.alertes.length > 0 && !voirReponses && (
+          <Text style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.texte, backgroundColor: couleurs.orangeClair, borderRadius: 8, padding: 8 }}>
+            ⚠️ {recu.alertes.length === 1 ? 'Une information est à vérifier' : `${recu.alertes.length} informations sont à vérifier`}
           </Text>
         )}
+        {recu && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: espace(3) }}>
+            <BoutonContour libelle={voirReponses ? 'Masquer ses réponses' : 'Voir ses réponses'} onPress={() => setVoirReponses(!voirReponses)} />
+            {!envoiQuestionnaire && (
+              <Text accessibilityRole="button" onPress={() => setEnvoiQuestionnaire(true)} style={lienDiscret}>
+                Le renvoyer
+              </Text>
+            )}
+          </View>
+        )}
+        {recu && voirReponses && <ReponsesQuestionnaire questionnaire={recu} />}
         {envoiQuestionnaire && message && <EnvoiMessage contact={contact} sujet="Ton questionnaire" message={message} />}
       </Etape>
 

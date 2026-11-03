@@ -22,7 +22,7 @@ import { depot } from '@/data';
 import { abonnements } from '@/data/abonnements';
 import { crm, ecouterCrm } from '@/data/crm';
 import { useSession } from '@/data/session';
-import type { Booster, Contact } from '@/domain/crm';
+import { questionnairesATraiter, type Booster, type Contact } from '@/domain/crm';
 import { aEncaisser, encaissementsDuMois } from '@/domain/gestion';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { useRetourAndroid } from '@/lib/retour-android';
@@ -341,6 +341,7 @@ function Crm({
       encaissements: encaissementsDuMois(carnet, new Date()),
       aEncaisser: aEncaisser(carnet),
       lienQuestionnaire,
+      questionnaires: questionnairesATraiter(carnet),
     };
   }, []);
   const vue = useCharger(charger, 'vue-ensemble');
@@ -385,6 +386,7 @@ function Crm({
               onNouvelleTache={() => router.setParams({ ...FERME, tache: 'nouveau' })}
               onOuvrirContact={(id) => ouvrirContact(id)}
               onOuvrirBooster={ouvrirBooster}
+              onPlanifierBooster={(id) => nouveauBooster(id)}
               onCycles={onCycles}
               onAgenda={onAgenda}
             />

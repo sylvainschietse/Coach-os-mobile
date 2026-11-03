@@ -159,7 +159,8 @@ function Editeur({
   const [rubrique, setRubrique] = useState<Rubrique>('Préparation');
   const reponses = questionnaire?.reponses;
   const [initial, setInitial] = useState(() => brouillonDe(booster, contact, reponses));
-  const [brut, setB] = useState(initial);
+  // Nouveau Booster d'un contact qui a répondu : le briefing est déjà rempli à partir de ses réponses (modifiable).
+  const [brut, setB] = useState(() => (!booster && questionnaire ? { ...initial, ...depuisQuestionnaire(questionnaire) } : initial));
   // Les priorités suivent les tests et l'entretien à chaque modification.
   const b = { ...brut, priorites: troisPriorites(prioritesAuto(brut, reponses)) };
   const [occupe, setOccupe] = useState(false);

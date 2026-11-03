@@ -4,14 +4,14 @@ import { useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { crm } from '@/data/crm';
-import { ajouterJours, jourLocal, MODELES, statutBooster, type BoosterDossier, type ContactResume, type RelanceAFaire } from '@/domain/crm';
+import { ajouterJours, jourLocal, MODELES, rediger, statutBooster, type BoosterDossier, type ContactResume, type QuestionnaireATraiter, type RelanceAFaire } from '@/domain/crm';
 import { montantLisible } from '@/domain/gestion';
 
 import { AgendaDuJour } from '../agenda/agenda-coach';
 import { BoutonContour, Stat } from '../coque';
 import { Carte } from '../composants';
 import { couleurs, espace, polices } from '../theme';
-import { adresseQuestionnaire, CarteRelance, dateCourte, jourLisible, nomComplet } from './commun';
+import { adresseQuestionnaire, CarteRelance, dateCourte, EnvoiMessage, jourLisible, nomComplet, useCoachNom } from './commun';
 
 export type DonneesVueEnsemble = {
   contacts: ContactResume[];
@@ -20,6 +20,8 @@ export type DonneesVueEnsemble = {
   encaissements: number;
   aEncaisser: number;
   lienQuestionnaire: string | null;
+  /** Réponses reçues, Booster pas encore planifié. */
+  questionnaires: QuestionnaireATraiter[];
 };
 
 export function VueEnsemble({
@@ -29,6 +31,7 @@ export function VueEnsemble({
   onNouvelleTache,
   onOuvrirContact,
   onOuvrirBooster,
+  onPlanifierBooster,
   onCycles,
   onAgenda,
 }: {
@@ -38,6 +41,7 @@ export function VueEnsemble({
   onNouvelleTache: () => void;
   onOuvrirContact: (id: string) => void;
   onOuvrirBooster: (b: BoosterDossier) => void;
+  onPlanifierBooster: (contactId: string) => void;
   onCycles: () => void;
   onAgenda: () => void;
 }) {
@@ -49,7 +53,14 @@ export function VueEnsemble({
     action.catch((e) => setErreur(e instanceof Error ? e.message : 'Action non confirmée'));
   };
   const enRetard = donnees.relances.filter((r) => r.enRetard).length;
-  const aFaire = tout ? donnees.relances : donnees.relances.slice(0, 5);
+  const [proposer, setProposer] = useState<string>();
+  const coach = useCoachNom();
+  // La relance « Proposer une séance Booster » d'un contact qui vient de répondre est dans la carte des nouvelles réponses :
+  // pas deux fois à l'écran.
+  const nouveaux = new Set(donnees.questionnaires.map((x) => x.contact.id));
+  const relances = donnees.relances.filter((r) => !(r.modele === 'booster' && nouveaux.has(r.contactId)));
+  const aFaire = tout ? relances : relances.slice(0, 5);
+  const relanceBooster = (contactId: string) => donnees.relances.find((r) => r.modele === 'booster' && r.contactId === contactId);
   const actifs = donnees.contacts.filter((c) => c.statut !== 'archive');
   // Comme à l'origine : tout Booster ni Terminé ni Annulé d'un dossier actif, le plus proche d'abord.
   const prochains = donnees.boosters
@@ -62,6 +73,40 @@ export function VueEnsemble({
   return (
     <View style={{ gap: espace(6) }}>
       <AgendaDuJour onOuvrirAgenda={onAgenda} />
+      {/* Une réponse au questionnaire arrive toute seule (Tally ou l'app) : on la voit ici, avec ses réponses et le Booster à planifier. */}
+      {donnees.questionnaires.length > 0 && (
+        <Carte style={{ padding: 20, borderColor: couleurs.rouge }}>
+          <Text style={titreCarte}>
+            Nouvelles réponses au questionnaire · {donnees.questionnaires.length}
+          </Text>
+          {donnees.questionnaires.slice(0, 5).map(({ questionnaire: q, contact, objectif }, i, liste) => (
+            <View key={q.id} style={[{ paddingVertical: 12, gap: 8 }, i < liste.length - 1 && bordure]}>
+              <Pressable accessibilityRole="link" onPress={() => onOuvrirContact(contact.id)}>
+                <Text style={[ligneTexte, { fontFamily: polices.texteGras }]}>{nomComplet(contact)}</Text>
+                <Text style={ligneDoux}>
+                  Reçu {dateCourte(q.recuLe)}
+                  {objectif ? ` · ${objectif}` : ''}
+                </Text>
+                {q.alertes.length > 0 && <Text style={[ligneDoux, { color: couleurs.orange }]}>⚠️ {q.alertes[0]}</Text>}
+              </Pressable>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                <BoutonContour libelle="Voir ses réponses" onPress={() => onOuvrirContact(contact.id)} />
+                <BoutonContour libelle="Planifier le Booster" onPress={() => onPlanifierBooster(contact.id)} />
+                {relanceBooster(contact.id) && proposer !== contact.id && (
+                  <BoutonContour libelle="Lui proposer un créneau" onPress={() => setProposer(contact.id)} />
+                )}
+              </View>
+              {proposer === contact.id && relanceBooster(contact.id) && (
+                <EnvoiMessage
+                  contact={contact}
+                  message={rediger('booster', contact, { coach })}
+                  onEnvoye={() => agir(crm.terminerRelance(relanceBooster(contact.id)!.id))}
+                />
+              )}
+            </View>
+          ))}
+        </Carte>
+      )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         <Stat style={{ flexBasis: base }} libelle="Contacts" valeur={String(actifs.length)} onPress={() => onRubrique('Contacts')} />
         <Stat style={{ flexBasis: base }} libelle="Boosters à réaliser" valeur={String(prochains.length)} onPress={() => onRubrique('Boosters')} />
@@ -122,10 +167,10 @@ export function VueEnsemble({
               ),
             )}
           </View>
-          {!donnees.relances.length && <Text style={ligneDoux}>Rien à faire aujourd’hui.</Text>}
-          {donnees.relances.length > 5 && (
+          {!relances.length && <Text style={ligneDoux}>Rien à faire aujourd’hui.</Text>}
+          {relances.length > 5 && (
             <Text accessibilityRole="button" onPress={() => setTout((t) => !t)} style={[ligneDoux, { marginTop: 12, textDecorationLine: 'underline' }]}>
-              {tout ? 'Réduire' : `Tout afficher (${donnees.relances.length})`}
+              {tout ? 'Réduire' : `Tout afficher (${relances.length})`}
             </Text>
           )}
           {erreur && <Text style={[ligneDoux, { color: couleurs.rouge, marginTop: 8 }]}>{erreur}</Text>}

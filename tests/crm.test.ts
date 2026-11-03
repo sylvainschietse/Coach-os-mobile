@@ -8,6 +8,7 @@ import {
   creerContact,
   devenirClient,
   etapeSuivante,
+  questionnairesATraiter,
   filtrerContacts,
   formaterTelephone,
   lienEnvoi,
@@ -372,5 +373,27 @@ describe('éditeur Booster (lot 2)', () => {
     const plusRien = supprimerBooster(apres, deux.id, ctx);
     expect(plusRien.contacts[0].statut).toBe('prospect');
     expect(plusRien.questionnaires).toEqual(apres.questionnaires);
+  });
+});
+
+describe('nouvelles réponses au questionnaire', () => {
+  it('restent sur l’accueil jusqu’à ce qu’un Booster soit planifié', () => {
+    const ctx = contexte();
+    let { carnet } = avecJulie(ctx);
+    expect(questionnairesATraiter(carnet)).toEqual([]);
+
+    carnet = recevoirQuestionnaire(carnet, { prenom: 'Julie', telephone: '06 12 34 56 78', objectif: 'Perte de poids' }, ctx).carnet;
+    const [x] = questionnairesATraiter(carnet);
+    expect(x.contact.prenom).toBe('Julie');
+    expect(x.objectif).toBe('Perte de poids');
+
+    carnet = planifierBooster(carnet, x.contact.id, '2026-10-22T10:00:00', ctx);
+    expect(questionnairesATraiter(carnet)).toEqual([]);
+  });
+
+  it('un inconnu qui répond apparaît aussi, avec sa fiche créée', () => {
+    const ctx = contexte();
+    const carnet = recevoirQuestionnaire(CARNET_VIDE, { prenom: 'Nora', email: 'nora@exemple.fr' }, ctx).carnet;
+    expect(questionnairesATraiter(carnet).map((x) => x.contact.prenom)).toEqual(['Nora']);
   });
 });
