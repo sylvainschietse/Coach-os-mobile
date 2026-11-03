@@ -309,9 +309,36 @@ Deno.serve(async (req) => {
       await admin.from('clients').update({ stripe_client: clientStripe }).eq('id', c.id);
     }
 
+    // Montant facturé après remise : s'il est supérieur à 0, il faut une carte enregistrée.
+    const aPayer = !r ? Number(o.prix) : 'percent_off' in r ? Number(o.prix) * (1 - r.percent_off / 100) : Math.max(0, Number(o.prix) - r.amount_off / 100);
+
     // Déjà abonné : nouvelle offre et nouvelle remise au prochain prélèvement, sans rattrapage au prorata.
     if (enCours) {
       const abo = await stripe.subscriptions.retrieve(c.stripe_abonnement, compte);
+      // Abonnement offert créé sans carte : s'il devient payant, la prochaine facture échouerait.
+      // On fait alors passer le client par une page de paiement (nouvel abonnement), et l'ancien s'arrête à la fin de sa période.
+      if (aPayer > 0 && !abo.default_payment_method) {
+        const cs = await stripe.customers.retrieve(clientStripe, compte);
+        const carte = !('deleted' in cs && cs.deleted) && (cs as Stripe.Customer).invoice_settings?.default_payment_method;
+        if (!carte) {
+          const session = await stripe.checkout.sessions.create(
+            {
+              mode: 'subscription',
+              customer: clientStripe,
+              line_items: [{ price: prix, quantity: 1 }],
+              discounts: remise ? [{ coupon: remise.id }] : undefined,
+              subscription_data: { metadata },
+              metadata,
+              locale: 'fr',
+              success_url: `${SITE}/offre/${o.id}?paiement=merci`,
+              cancel_url: `${SITE}/offre/${o.id}?paiement=annule`,
+            },
+            compte,
+          );
+          await stripe.subscriptions.update(c.stripe_abonnement, { cancel_at_period_end: true }, compte);
+          return repondre({ lien: session.url, demarre: false });
+        }
+      }
       await stripe.subscriptions.update(
         c.stripe_abonnement,
         {
@@ -327,8 +354,9 @@ Deno.serve(async (req) => {
       return repondre({ demarre: true });
     }
 
-    // Offert : pas de carte à demander, l'abonnement démarre à 0 € avec la remise visible sur la facture.
-    if (offert) {
+    // Offert pour toujours : pas de carte à demander, l'abonnement démarre à 0 € avec la remise visible sur la facture.
+    // Offert jusqu'à une date : la page de paiement enregistre la carte (0 € aujourd'hui) pour les mois payants qui suivront.
+    if (offert && r.duration === 'forever') {
       const abo = await stripe.subscriptions.create({ customer: clientStripe, items: [{ price: prix }], discounts: [{ coupon: remise!.id }], metadata }, compte);
       await admin.from('clients').update({ paiement: 'stripe', stripe_abonnement: abo.id, statut_stripe: abo.status, offre_prix: Number(o.prix) }).eq('id', c.id);
       return repondre({ demarre: true });
