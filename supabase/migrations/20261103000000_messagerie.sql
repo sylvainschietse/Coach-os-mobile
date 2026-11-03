@@ -13,14 +13,13 @@ grant update (horaires_reponse) on public.coachs to authenticated;
 -- Vidéos corrigées incluses chaque mois dans la formule du client (0 : aucune, chaque vidéo est facturée).
 alter table public.clients add column videos_mois integer not null default 0 check (videos_mois between 0 and 30);
 
--- Le client lit maintenant aussi les horaires de réponse de son coach.
-drop function public.mon_coach();
-create function public.mon_coach() returns table (nom text, telephone text, photo text, horaires_reponse text)
+-- Le client lit les horaires de réponse de son coach (fonction à part : mon_coach() reste inchangée).
+create function public.horaires_de_mon_coach() returns text
 language sql stable security definer set search_path = public as $$
-  select nom, telephone, photo, horaires_reponse from public.coachs where id = public.coach_de_mon_client()
+  select horaires_reponse from public.coachs where id = public.coach_de_mon_client()
 $$;
-revoke execute on function public.mon_coach() from public, anon;
-grant execute on function public.mon_coach() to authenticated;
+revoke execute on function public.horaires_de_mon_coach() from public, anon;
+grant execute on function public.horaires_de_mon_coach() to authenticated;
 
 -- Le client lit sa propre limite de vidéos.
 create function public.mes_videos_mois() returns integer

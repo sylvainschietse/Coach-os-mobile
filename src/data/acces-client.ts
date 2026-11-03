@@ -69,10 +69,10 @@ export interface MonCoach {
 /** Prénom, numéro et photo du coach, pour lui écrire depuis l'espace client. En démo, le profil saisi dans « Mon profil ». */
 export async function monCoach(): Promise<MonCoach | null> {
   if (!supabase) return profilCoach.lire();
-  const { data, error } = await supabase.rpc('mon_coach');
+  const [{ data, error }, horaires] = await Promise.all([supabase.rpc('mon_coach'), supabase.rpc('horaires_de_mon_coach')]);
   if (error) throw new Error('Impossible de joindre ton coach pour le moment.');
-  const ligne = (data as { nom: string; telephone: string | null; photo: string | null; horaires_reponse?: string | null }[] | null)?.[0];
+  const ligne = (data as { nom: string; telephone: string | null; photo: string | null }[] | null)?.[0];
   return ligne
-    ? { nom: ligne.nom, telephone: ligne.telephone ?? undefined, photo: ligne.photo ?? undefined, horairesReponse: ligne.horaires_reponse ?? undefined }
+    ? { nom: ligne.nom, telephone: ligne.telephone ?? undefined, photo: ligne.photo ?? undefined, horairesReponse: (horaires.data as string | null) ?? undefined }
     : null;
 }

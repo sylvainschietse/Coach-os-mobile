@@ -149,7 +149,7 @@ describe('le coach', () => {
 describe('horaires, vidéos du mois et appareils', () => {
   it('le coach règle ses horaires de réponse, son client les lit', async () => {
     await en(ids.userCoach1, `update public.coachs set horaires_reponse = 'Sous 24 h, en semaine' where id = $1`, [ids.coach1]);
-    expect((await en(ids.userClientA, `select horaires_reponse from public.mon_coach()`)).rows).toEqual([{ horaires_reponse: 'Sous 24 h, en semaine' }]);
+    expect((await en(ids.userClientA, `select public.horaires_de_mon_coach() as h`)).rows).toEqual([{ h: 'Sous 24 h, en semaine' }]);
   });
 
   it('le coach fixe les vidéos incluses, le client les lit sans pouvoir les changer', async () => {
