@@ -17,7 +17,9 @@
 // · voir      : l'offre et le prénom du coach, pour la page publique.
 // · payer     : page de paiement ; à la fin, le webhook crée la fiche du nouveau client chez le coach.
 //
-// Secrets : STRIPE_SECRET_KEY (clé de la plateforme CoachGo), SITE_URL (adresse web de l'appli, pour les retours).
+// Secrets : STRIPE_SECRET_KEY (clé de la plateforme CoachGo), SITE_URL (adresse web de l'appli, pour les retours),
+// STRIPE_COACH_DIRECT (facultatif) : identifiant du coach propriétaire du compte Stripe de la plateforme. Ce coach encaisse
+// directement sur ce compte, sans compte connecté, et ses abonnements déjà créés en direct continuent de fonctionner.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@17';
@@ -32,6 +34,9 @@ const repondre = (corps: unknown, status = 200) =>
   new Response(JSON.stringify(corps), { status, headers: { ...entetes, 'Content-Type': 'application/json' } });
 
 const SITE = (Deno.env.get('SITE_URL') ?? 'https://sylvainschietse.github.io/Coach-os-mobile').replace(/\/+$/, '');
+const COACH_DIRECT = Deno.env.get('STRIPE_COACH_DIRECT') ?? '';
+/** Compte où créer les objets Stripe : celui du coach (Connect), ou la plateforme elle-même pour le coach en direct. */
+type Compte = { stripeAccount: string } | undefined;
 const CHAMPS_OFFRE =
   'id, coach_id, nom, accroche, prix, periodicite, acces_appli, nutrition, messagerie, videos_mois, seances, essai_jours, active, stripe_produit, stripe_prix, stripe_prix_cle';
 
@@ -77,7 +82,8 @@ Deno.serve(async (req) => {
     return data as { id: string; nom: string; user_id: string; stripe_compte: string | null; stripe_pret: boolean };
   }
   /** Compte Stripe du coach, prêt à encaisser : sinon on le dit clairement. */
-  function compteDe(coach: { stripe_compte: string | null; stripe_pret: boolean }, pourLeCoach: boolean) {
+  function compteDe(coach: { id: string; stripe_compte: string | null; stripe_pret: boolean }, pourLeCoach: boolean): Compte {
+    if (coach.id === COACH_DIRECT) return undefined;
     if (!coach.stripe_compte || !coach.stripe_pret)
       throw new Refus(
         pourLeCoach ? 'Ouvre d’abord ton compte Stripe dans « Mes offres » pour être payé.' : 'Ton coach n’a pas encore activé le paiement en ligne.',
@@ -87,7 +93,7 @@ Deno.serve(async (req) => {
   }
 
   /** Met l'offre en vente sur le compte du coach : produit à jour, et un prix Stripe par montant et par rythme. */
-  async function publier(o: LigneOffre, compte: { stripeAccount: string }) {
+  async function publier(o: LigneOffre, compte: Compte) {
     const t = tarifStripe(o);
     const description = o.accroche?.trim() || undefined;
     let produit = o.stripe_produit;
@@ -112,7 +118,7 @@ Deno.serve(async (req) => {
   }
 
   /** Page de paiement Stripe d'une offre, sur le compte du coach. */
-  async function pageDePaiement(o: LigneOffre, compte: { stripeAccount: string }, client?: { id: string; stripe_client: string | null; email: string | null }) {
+  async function pageDePaiement(o: LigneOffre, compte: Compte, client?: { id: string; stripe_client: string | null; email: string | null }) {
     const prix = await publier(o, compte);
     const metadata: Record<string, string> = { offre_id: o.id, coach_id: o.coach_id, ...(client ? { client_id: client.id } : {}) };
     const retour = `${SITE}/offre/${o.id}`;
@@ -158,7 +164,7 @@ Deno.serve(async (req) => {
           essaiJours: o.essai_jours,
         },
         coach: { nom: coach.nom, photo: photo?.photo ?? null },
-        paiement: !!coach.stripe_compte && coach.stripe_pret,
+        paiement: coach.id === COACH_DIRECT || (!!coach.stripe_compte && coach.stripe_pret),
       });
     }
 
@@ -215,6 +221,11 @@ Deno.serve(async (req) => {
     const coach = await lireCoach(moiCoach.id);
 
     if (action === 'compte' || action === 'connecter' || action === 'tableau') {
+      // Coach en direct sur le compte de la plateforme : rien à ouvrir, son tableau de bord est celui de Stripe.
+      if (coach.id === COACH_DIRECT) {
+        if (action === 'compte') return repondre({ compte: true, pret: true });
+        return repondre({ lien: 'https://dashboard.stripe.com' });
+      }
       let compteId = coach.stripe_compte;
       if (!compteId) {
         if (action !== 'connecter') return repondre({ compte: false, pret: false });
