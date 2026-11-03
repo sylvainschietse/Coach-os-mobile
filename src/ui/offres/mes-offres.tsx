@@ -200,6 +200,7 @@ function LigneOffre({ offre, pret, onModifier, onChange }: { offre: Offre; pret:
   const [confirmer, setConfirmer] = useState(false);
   const [occupe, setOccupe] = useState(false);
   const [info, setInfo] = useState<string>();
+  const [copie, setCopie] = useState(false);
   const lien = lienOffre(offre.id);
   const message = `${offre.nom} · ${libellePrix(offre)}\nPour t’inscrire et payer en ligne : ${lien}`;
 
@@ -217,7 +218,7 @@ function LigneOffre({ offre, pret, onModifier, onChange }: { offre: Offre; pret:
   };
 
   return (
-    <CarteOffre offre={offre} mention={!offre.active ? 'Plus proposée' : !pret ? 'Paiement en ligne à activer' : undefined}>
+    <CarteOffre offre={offre} mention={!offre.active ? 'Plus proposée' : undefined}>
       {offre.active && (
         <>
           <Text selectable style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux }}>
@@ -227,12 +228,24 @@ function LigneOffre({ offre, pret, onModifier, onChange }: { offre: Offre; pret:
             <View style={{ flexGrow: 1 }}>
               <Bouton variante="discret" libelle="Envoyer par WhatsApp" onPress={() => void ouvrirLien(`https://wa.me/?text=${encodeURIComponent(message)}`)} />
             </View>
-            {Platform.OS !== 'web' && (
-              <View style={{ flexGrow: 1 }}>
+            <View style={{ flexGrow: 1 }}>
+              {Platform.OS !== 'web' ? (
                 <Bouton variante="discret" libelle="Partager le lien…" onPress={() => void Share.share({ message })} />
-              </View>
-            )}
+              ) : (
+                <Bouton
+                  variante="discret"
+                  libelle={copie ? 'Lien copié ✓' : 'Copier le lien'}
+                  onPress={() =>
+                    void navigator.clipboard?.writeText(lien).then(() => {
+                      setCopie(true);
+                      setTimeout(() => setCopie(false), 2000);
+                    })
+                  }
+                />
+              )}
+            </View>
           </View>
+          {!pret && <Texte doux style={{ fontSize: 13 }}>Le paiement s’ouvrira sur cette page dès que ton compte Stripe sera prêt.</Texte>}
         </>
       )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>
@@ -264,6 +277,12 @@ function LigneOffre({ offre, pret, onModifier, onChange }: { offre: Offre; pret:
           )}
         </View>
       </View>
+      {confirmer && offre.active && !occupe && (
+        <>
+          <Texte doux style={{ fontSize: 13 }}>Plus personne ne pourra la prendre. Tes clients qui l’ont déjà la gardent, à leur prix.</Texte>
+          <Bouton variante="discret" libelle="Garder l’offre" onPress={() => setConfirmer(false)} />
+        </>
+      )}
       {info && <Texte doux style={{ fontSize: 13 }}>{info}</Texte>}
     </CarteOffre>
   );

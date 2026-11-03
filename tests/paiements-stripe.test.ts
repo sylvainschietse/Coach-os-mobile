@@ -52,6 +52,15 @@ describe('offres du coach', () => {
     expect(contenuOffre({ ...MODELES.en_ligne.base, essaiJours: 14 })).toContain('14 jours d’essai offerts');
   });
 
+  it('sur la fiche du client, le coach lit « avec toi »', () => {
+    expect(contenuOffre(hybride, 'coach')).toEqual([
+      '1 séance avec toi par mois',
+      'Programme et suivi dans l’appli',
+      'Nutrition complète : recettes, plan de repas, photo d’assiette',
+      'Messagerie avec toi',
+    ]);
+  });
+
   it('lit la saisie du coach et refuse ce qui n’a pas de sens', () => {
     const base = { ...MODELES.en_ligne.base, prix: '79,90' };
     expect(lireOffre({ ...base, nom: '  Suivi  ' })).toMatchObject({ nom: 'Suivi', prix: 79.9 });

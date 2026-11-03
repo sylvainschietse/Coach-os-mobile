@@ -1,6 +1,5 @@
 import {
   mensualite,
-  PACKS,
   packADecompter,
   prixAbonnement,
   prixAvecRemise,
@@ -10,7 +9,7 @@ import {
   type PackSeances,
   type Remise,
   type StatutStripe,
-  type TypePack,
+  type PackAVendre,
 } from '@/domain/abonnements';
 import { jourLocal } from '@/domain/crm';
 import { OFFRES_DEMO } from '@/domain/offres';
@@ -25,7 +24,7 @@ export interface DepotAbonnements {
   changer(clientId: string, modif: Partial<Abonnement>): Promise<void>;
   packs(clientId: string): Promise<PackSeances[]>;
   /** prix : tarif négocié au cas par cas ; sinon le prix du pack. */
-  ajouterPack(clientId: string, type: TypePack, prix?: number): Promise<void>;
+  ajouterPack(clientId: string, pack: PackAVendre, prix?: number): Promise<void>;
   /** Pack partagé (couple, duo) : la séance faite par l'un ou l'autre se décompte une fois. */
   partagerPack(packId: string, clientId: string): Promise<void>;
   retirerPartage(packId: string, clientId: string): Promise<void>;
@@ -93,13 +92,13 @@ const demo: DepotAbonnements = {
   async packs(clientId) {
     return memoire.packs.filter((p) => p.clientId === clientId || p.partageAvec?.some((x) => x.clientId === clientId));
   },
-  async ajouterPack(clientId, type, prix) {
+  async ajouterPack(clientId, pack, prix) {
     memoire.packs.push({
       id: nouvelId(),
       clientId,
-      seancesTotal: PACKS[type].seances,
+      seancesTotal: pack.seances,
       seancesFaites: 0,
-      prix: prix ?? PACKS[type].prix,
+      prix: prix ?? pack.prix,
       acheteLe: aujourdhui(),
     });
   },
@@ -224,18 +223,18 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
       const { error } = await db.from('packs_partages').delete().eq('pack_id', packId).eq('client_id', clientId);
       if (error) throw new Error('Le partage n’a pas pu être retiré. Réessaie.');
     },
-    async ajouterPack(clientId, type, prix) {
-      const montant = prix ?? PACKS[type].prix;
+    async ajouterPack(clientId, pack, prix) {
+      const montant = prix ?? pack.prix;
       const { data, error } = await db
         .from('packs_seances')
-        .insert({ client_id: clientId, seances_total: PACKS[type].seances, prix: montant })
+        .insert({ client_id: clientId, seances_total: pack.seances, prix: montant })
         .select('id')
         .single();
       if (error) throw new Error('Le pack n’a pas pu être ajouté. Réessaie.');
       // Le paiement se fait en dehors de l'appli : une ligne « En attente » que le coach passera à « Payé ».
       const { data: contact } = await db.from('contacts').select('id, prenom').eq('client_id', clientId).limit(1).maybeSingle();
       await db.from('paiements').insert({
-        titre: `${PACKS[type].libelle}${contact?.prenom ? ` · ${contact.prenom}` : ''}`,
+        titre: `${pack.libelle}${contact?.prenom ? ` · ${contact.prenom}` : ''}`,
         contact_id: contact?.id ?? null,
         date: jourLocal(new Date()),
         montant,

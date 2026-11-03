@@ -24,7 +24,7 @@ import {
   TARIFS,
   type Abonnement,
   type Remise,
-  type TypePack,
+  type PackAVendre,
 } from '@/domain/abonnements';
 import { contenuOffre, droitsOffre, libellePrix } from '@/domain/offres';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
@@ -242,9 +242,9 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
     );
   const prixSaisi = prixNegocie.trim() ? Number(prixNegocie.replace(',', '.')) : undefined;
   const prixValide = prixSaisi === undefined || (Number.isFinite(prixSaisi) && prixSaisi >= 0);
-  const ajouter = (type: TypePack) =>
+  const ajouter = (pack: PackAVendre) =>
     faire(
-      () => abonnements.ajouterPack(clientId, type, prixSaisi),
+      () => abonnements.ajouterPack(clientId, pack, prixSaisi),
       () => {
         setPrixNegocie('');
         packs.recharger();
@@ -269,6 +269,14 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
 
   if (abo.erreur) return <Erreur message={abo.erreur} onReessayer={abo.recharger} />;
   const a = abo.donnee;
+  // Séance à l'unité au tarif du client, puis les packs que le coach vend dans « Mes offres » (à défaut, le pack habituel).
+  const packsDuCoach = (mesOffres.donnee ?? [])
+    .filter((o) => o.active && o.periodicite === 'unique')
+    .map((o) => ({ libelle: o.nom, seances: o.seances, prix: o.prix }));
+  const aVendre: PackAVendre[] = [
+    { ...PACKS.unite, prix: a?.tarifSeance ?? PACKS.unite.prix },
+    ...(packsDuCoach.length ? packsDuCoach : mesOffres.donnee ? [PACKS.pack10] : []),
+  ];
   const liste = packs.donnee ?? [];
   const solde = soldeSeances(liste);
   const dejaFaites = liste.some((p) => p.seancesFaites > 0);
@@ -307,7 +315,7 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
           )}
           {a.offre && (
             <Texte doux style={{ fontSize: 13 }}>
-              {contenuOffre(a.offre).join(' · ')}
+              {contenuOffre(a.offre, 'coach').join(' · ')}
               {a.offrePrix !== undefined && a.offrePrix !== a.offre.prix
                 ? `\nPrix gardé : ${libellePrix(a.offre, a.offrePrix)} (prix actuel de l’offre : ${libellePrix(a.offre)}).`
                 : ''}
@@ -445,12 +453,12 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
         aide="Vide : prix habituel du pack."
       />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>
-        {(Object.keys(PACKS) as TypePack[]).map((t) => (
-          <View key={t} style={{ flexGrow: 1 }}>
+        {aVendre.map((pack) => (
+          <View key={pack.libelle} style={{ flexGrow: 1 }}>
             <Bouton
               variante="discret"
-              libelle={`+ ${PACKS[t].libelle} · ${euros(prixSaisi ?? PACKS[t].prix)}`}
-              onPress={() => ajouter(t)}
+              libelle={`+ ${pack.libelle} · ${euros(prixSaisi ?? pack.prix)}`}
+              onPress={() => ajouter(pack)}
               desactive={occupe || !prixValide}
             />
           </View>

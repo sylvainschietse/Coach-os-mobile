@@ -56,7 +56,7 @@ export default function OffreParLien() {
               unique ? ' et tes séances sont créditées.' : profil?.role === 'client' ? ' et ton accès est à jour.' : ' et va t’envoyer ton accès à l’appli.'
             }`}
           </Texte>
-          <Texte doux style={{ fontSize: 14 }}>Tu reçois aussi ta facture par e-mail.</Texte>
+          <Texte doux style={{ fontSize: 14 }}>Ta facture sera dans l’appli, dans Mon compte › Mes factures.</Texte>
         </Carte>
       </Ecran>
     );

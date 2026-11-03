@@ -3,12 +3,14 @@
 // jamais dans l'appli iPhone : sur iPhone, le client demande le lien à son coach.
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { Check } from 'lucide-react-native';
 import { Platform, View } from 'react-native';
 
 import { abonnements } from '@/data/abonnements';
 import { offres } from '@/data/offres';
 import { mesInfos, modifierMesCoordonnees, monCoach, type MesInfos } from '@/data/acces-client';
 import { prixAbonnement, prixAvecRemise, remiseEnCours, soldeSeances, statutOuvreAcces, suffixeAbonnement, type Abonnement } from '@/domain/abonnements';
+import { contenuOffre } from '@/domain/offres';
 import { verifierCoordonnees } from '@/domain/acces-client';
 import { formaterTelephone, normaliserTelephone } from '@/domain/crm';
 import { demanderSortie } from '@/lib/brouillon';
@@ -159,9 +161,11 @@ function OffresDeMonCoach({ a, apercu }: { a?: Abonnement | null; apercu: boolea
   const liste = useCharger(() => offres.lister(), 'offres-de-mon-coach');
   const [occupe, setOccupe] = useState<string>();
   const [erreur, setErreur] = useState<string>();
-  const proposees = (liste.donnee ?? []).filter((o) => o.active && o.id !== a?.offre?.id);
+  // Déjà une offre (payée en ligne, à la main ou offerte) : seuls les packs de séances restent à acheter ici ;
+  // changer d'offre se voit avec le coach, pour ne jamais payer deux abonnements.
+  const aUneOffre = !!a?.offre || !!a?.accesAppli;
+  const proposees = (liste.donnee ?? []).filter((o) => o.active && o.id !== a?.offre?.id && (!aUneOffre || o.periodicite === 'unique'));
   if (!proposees.length) return null;
-  const abonne = a?.paiement === 'stripe' && !!a.statutStripe && statutOuvreAcces(a.statutStripe);
   // Pas de paiement depuis l'appli iPhone (règles Apple) : le coach envoie le lien.
   const payable = !apercu && Platform.OS !== 'ios';
   const choisir = async (id: string) => {
@@ -177,16 +181,17 @@ function OffresDeMonCoach({ a, apercu }: { a?: Abonnement | null; apercu: boolea
   };
   return (
     <>
-      <SousTitre>Les offres de mon coach</SousTitre>
+      <SousTitre>{aUneOffre ? 'Séances en plus' : 'Les offres de mon coach'}</SousTitre>
       {proposees.map((o) => (
         <CarteOffre key={o.id} offre={o}>
-          {payable && (o.periodicite === 'unique' || !abonne) ? (
+          {payable ? (
             <Bouton variante="discret" libelle={o.periodicite === 'unique' ? 'Acheter ce pack' : 'Choisir cette offre'} onPress={() => choisir(o.id)} chargement={occupe === o.id} />
           ) : (
-            <Texte doux style={{ fontSize: 13 }}>{abonne && o.periodicite !== 'unique' ? 'Pour changer d’offre, écris à ton coach.' : 'Envie de cette offre ? Demande le lien à ton coach.'}</Texte>
+            <Texte doux style={{ fontSize: 13 }}>Envie de cette offre ? Demande le lien à ton coach.</Texte>
           )}
         </CarteOffre>
       ))}
+      {aUneOffre && <Texte doux style={{ fontSize: 13 }}>Pour changer d’offre, écris à ton coach.</Texte>}
       {erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{erreur}</Texte>}
     </>
   );
@@ -210,8 +215,22 @@ export function MonCompte({ clientId, prenom, apercu }: { clientId: string; pren
         {abo.donnee && (
           <>
             <MaFormule a={abo.donnee} apercu={apercu} />
-            <Ligne libelle="Appli (programme, séances, suivi)" valeur={abo.donnee.accesAppli ? 'Inclus' : 'Non'} />
-            <Ligne libelle="Nutrition" valeur={abo.donnee.optionNutrition ? 'Complète (recettes, plan de repas)' : 'Macros'} />
+            {abo.donnee.offre ? (
+              // Ce que comprend son offre, dans les mêmes mots que sur la page de l'offre.
+              <View style={{ gap: espace(1) }}>
+                {contenuOffre(abo.donnee.offre).map((l) => (
+                  <View key={l} style={{ flexDirection: 'row', gap: espace(2), alignItems: 'flex-start' }}>
+                    <Check size={16} color={couleurs.vert} style={{ marginTop: 3 }} />
+                    <Texte style={{ fontSize: 14, flex: 1 }}>{l}</Texte>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <>
+                <Ligne libelle="Appli (programme, séances, suivi)" valeur={abo.donnee.accesAppli ? 'Incluse' : 'Non'} />
+                <Ligne libelle="Nutrition" valeur={abo.donnee.optionNutrition ? 'Complète (recettes, plan de repas)' : 'Macros'} />
+              </>
+            )}
           </>
         )}
         <Ligne

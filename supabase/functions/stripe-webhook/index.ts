@@ -3,6 +3,7 @@
 // · abonnement actif, en essai ou en relance de paiement → accès ouvert avec les droits de son offre ;
 //   impayé, résilié ou expiré → accès coupé (tout son suivi est gardé, comme une pause).
 // · paiement par le lien partageable d'une offre, sans fiche → la fiche du nouveau client est créée chez le coach.
+// · paiement par une page Stripe terminé → le coach est prévenu sur son téléphone (notification).
 // · paiement réussi → ligne « Payé » dans la Gestion du coach (remise notée), et séances créditées (offre avec séances ou pack).
 // Webhook à créer dans Stripe (Développeurs › Webhooks), « Événements sur les comptes connectés » :
 //   <projet>/functions/v1/stripe-webhook
@@ -44,6 +45,25 @@ async function coachDuCompte(compte: Compte) {
   if (!compte) return undefined;
   const { data } = await admin.from('coachs').select('id').eq('stripe_compte', compte.stripeAccount).maybeSingle();
   return data?.id as string | undefined;
+}
+
+const EXPO_PUSH = 'https://exp.host/--/api/v2/push/send';
+
+/** Prévient le coach sur son téléphone. Sans appareil enregistré ou si l'envoi échoue, rien ne bloque le reste. */
+async function prevenirCoach(coachId: string, titre: string, corps: string, url: string) {
+  try {
+    const { data: coach } = await admin.from('coachs').select('user_id').eq('id', coachId).single();
+    if (!coach?.user_id) return;
+    const { data: appareils } = await admin.from('appareils_push').select('jeton').eq('user_id', coach.user_id);
+    if (!appareils?.length) return;
+    await fetch(EXPO_PUSH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(appareils.map((a) => ({ to: a.jeton, title: titre, body: corps, data: { url, genre: 'paiement' }, sound: 'default', channelId: 'messages', priority: 'high' }))),
+    });
+  } catch (e) {
+    console.error('notification coach', e);
+  }
 }
 
 /** Paiement par le lien partageable, sans fiche : on retrouve la personne par son e-mail chez ce coach, sinon on crée sa fiche. */
@@ -154,8 +174,19 @@ async function paiementTermine(s: Stripe.Checkout.Session, compte: Compte) {
   const clientStripe = typeof s.customer === 'string' ? s.customer : (s.customer?.id ?? null);
   let fiche = await ficheDe(undefined, s.metadata?.client_id);
   if (fiche && coachId && fiche.coach_id !== coachId) return;
+  const nouveau = !fiche;
   if (!fiche && offre && (!coachId || offre.coach_id === coachId)) fiche = await ficheNouveauClient(offre.coach_id, offre.id, s.customer_details, clientStripe);
   if (!fiche) return;
+  // Une seule fois, quand l'argent est là (un paiement différé arrive en deux événements).
+  if (offre && s.payment_status !== 'unpaid') {
+    const { data: contact } = await admin.from('contacts').select('id').eq('client_id', fiche.id).limit(1).maybeSingle();
+    await prevenirCoach(
+      fiche.coach_id,
+      nouveau ? 'Nouveau client payé en ligne' : 'Paiement reçu',
+      nouveau ? `${fiche.prenom} a pris « ${offre.nom} ». Crée son accès à l’appli depuis sa fiche.` : `${fiche.prenom} a payé « ${offre.nom} ».`,
+      contact ? `/coach?onglet=crm&rubrique=Contacts&contact=${contact.id}` : '/coach?onglet=crm&rubrique=Contacts',
+    );
+  }
 
   if (s.mode === 'subscription' && s.subscription) {
     // L'abonnement sait désormais à quelle fiche il appartient (utile pour un nouveau client créé ci-dessus).

@@ -18,7 +18,7 @@
 // · payer     : page de paiement ; à la fin, le webhook crée la fiche du nouveau client chez le coach.
 //
 // Secrets : STRIPE_SECRET_KEY (clé de la plateforme CoachGo), SITE_URL (adresse web de l'appli, pour les retours),
-// STRIPE_COACH_DIRECT (facultatif) : identifiant du coach propriétaire du compte Stripe de la plateforme. Ce coach encaisse
+// STRIPE_COACH_DIRECT (facultatif, Sylvain par défaut) : identifiant du coach propriétaire du compte Stripe de la plateforme. Ce coach encaisse
 // directement sur ce compte, sans compte connecté, et ses abonnements déjà créés en direct continuent de fonctionner.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -34,7 +34,8 @@ const repondre = (corps: unknown, status = 200) =>
   new Response(JSON.stringify(corps), { status, headers: { ...entetes, 'Content-Type': 'application/json' } });
 
 const SITE = (Deno.env.get('SITE_URL') ?? 'https://sylvainschietse.github.io/Coach-os-mobile').replace(/\/+$/, '');
-const COACH_DIRECT = Deno.env.get('STRIPE_COACH_DIRECT') ?? '';
+// Par défaut : Sylvain, propriétaire du compte Stripe de la plateforme (ses abonnements d'avant Stripe Connect y sont).
+const COACH_DIRECT = Deno.env.get('STRIPE_COACH_DIRECT') || 'db277d8d-1f4c-43b1-99d2-dcc69391308e';
 /** Compte où créer les objets Stripe : celui du coach (Connect), ou la plateforme elle-même pour le coach en direct. */
 type Compte = { stripeAccount: string } | undefined;
 const CHAMPS_OFFRE =
