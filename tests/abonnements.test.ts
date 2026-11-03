@@ -5,10 +5,10 @@ import { mensualite, packADecompter, soldeSeances, type PackSeances } from '../s
 const pack = (id: string, total: number, faites: number, acheteLe: string): PackSeances => ({ id, clientId: 'c', seancesTotal: total, seancesFaites: faites, acheteLe });
 
 describe('abonnements', () => {
-  it('59 € pour l’appli, 99 € avec l’option nutrition, rien sans accès', () => {
-    expect(mensualite({ accesAppli: true, optionNutrition: false })).toBe(59);
-    expect(mensualite({ accesAppli: true, optionNutrition: true })).toBe(99);
-    expect(mensualite({ accesAppli: false, optionNutrition: true })).toBe(0);
+  it('le prix sur mesure fixé par le coach, rien sans prix ni accès', () => {
+    expect(mensualite({ accesAppli: true, optionNutrition: false, offrePrix: 59 })).toBe(59);
+    expect(mensualite({ accesAppli: true, optionNutrition: true })).toBe(0);
+    expect(mensualite({ accesAppli: false, optionNutrition: true, offrePrix: 59 })).toBe(0);
   });
 
   it('compte les séances restantes sur les packs entamés seulement', () => {

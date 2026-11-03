@@ -1,33 +1,32 @@
-// Abonnements côté coach (formule du client, packs de séances) et côté client (séances restantes).
-// Rien ne s'achète dans l'appli (règles Apple et Google) : le client voit sa formule, son prix et sa remise, sans bouton d'achat.
-// Le coach choisit la formule et la remise, puis encaisse à la main ou envoie un lien de paiement Stripe.
+// Abonnements côté coach (offre du client, packs de séances) et côté client (séances restantes).
+// Le coach choisit une de ses offres et une remise, puis encaisse à la main ou envoie un lien de paiement Stripe :
+// l'argent arrive sur son propre compte Stripe.
 import { useState } from 'react';
 import { Platform, Pressable, Share, Text, View } from 'react-native';
 
 import { depot } from '@/data';
 import { abonnements } from '@/data/abonnements';
+import { offres } from '@/data/offres';
 import { useSession } from '@/data/session';
 import {
-  CLES_FORMULES,
-  droitsFormule,
-  estFormule,
-  FORMULES,
   LIBELLES_STATUT_STRIPE,
   libelleRemise,
   lireRemise,
   MAX_VIDEOS_MOIS,
   PACKS,
+  prixAbonnement,
   prixAvecRemise,
-  prixMensuel,
   remiseEnCours,
   restantes,
   soldeSeances,
   statutOuvreAcces,
+  suffixeAbonnement,
   TARIFS,
   type Abonnement,
   type Remise,
   type TypePack,
 } from '@/domain/abonnements';
+import { contenuOffre, droitsOffre, libellePrix } from '@/domain/offres';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { useCharger } from '@/lib/useCharger';
 
@@ -49,8 +48,9 @@ function RemiseCoach({ a, occupe, changer }: { a: Abonnement; occupe: boolean; c
   const [motif, setMotif] = useState(a.remise ? (a.remise.motif ?? '') : 'Merci d’être testeur');
   const [fin, setFin] = useState(a.remise?.jusquAu ? dateFr(a.remise.jusquAu) : '');
   const [erreur, setErreur] = useState<string>();
-  const p = prixAvecRemise(prixMensuel(a), a.remise, aujourdhui());
+  const p = prixAvecRemise(prixAbonnement(a), a.remise, aujourdhui());
   const enCours = remiseEnCours(a.remise, aujourdhui());
+  const suffixe = suffixeAbonnement(a);
 
   const appliquer = () => {
     const r = lireRemise(type, valeur, motif, fin);
@@ -63,8 +63,8 @@ function RemiseCoach({ a, occupe, changer }: { a: Abonnement; occupe: boolean; c
     <View style={{ gap: espace(2) }}>
       <Texte style={{ fontSize: 14 }}>
         {enCours
-          ? `Prix ${euros(p.prix)} · remise −${euros(p.remise)} · à encaisser ${euros(p.aPayer)} par mois${p.offert ? ' (offert)' : ''}.`
-          : `À encaisser : ${euros(p.prix)} par mois.`}
+          ? `Prix ${euros(p.prix)} · remise −${euros(p.remise)} · à encaisser ${euros(p.aPayer)} ${suffixe}${p.offert ? ' (offert)' : ''}.`
+          : `À encaisser : ${euros(p.prix)} ${suffixe}.`}
       </Texte>
       {a.remise && (
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: espace(2) }}>
@@ -116,7 +116,7 @@ function PaiementCoach({ clientId, prenom, a, recharger }: { clientId: string; p
   const [info, setInfo] = useState<string>();
   const [lien, setLien] = useState<string>();
   const [resilier, setResilier] = useState(false);
-  const p = prixAvecRemise(prixMensuel(a), a.remise, aujourdhui());
+  const p = prixAvecRemise(prixAbonnement(a), a.remise, aujourdhui());
   const statut = a.statutStripe;
   const enCours = !!statut && statutOuvreAcces(statut);
 
@@ -137,10 +137,10 @@ function PaiementCoach({ clientId, prenom, a, recharger }: { clientId: string; p
     faire(async () => {
       const r = await abonnements.demarrerStripe(clientId);
       setLien(r.lien);
-      if (r.demarre) setInfo(enCours ? 'Prélèvement mis à jour : la formule et la remise s’appliquent au prochain mois.' : `Abonnement démarré : ${prenom} n’a rien à payer.`);
+      if (r.demarre) setInfo(enCours ? 'Prélèvement mis à jour : l’offre et la remise s’appliquent à la prochaine échéance.' : `Abonnement démarré : ${prenom} n’a rien à payer.`);
     });
   const message = (url: string) =>
-    `Bonjour ${prenom}, voici le lien pour régler ton abonnement CoachGo (${a.formule ? FORMULES[a.formule].nom : 'appli'}, ${euros(p.aPayer)} par mois) : ${url}`;
+    `Bonjour ${prenom}, voici le lien pour régler ton abonnement (${a.offre?.nom ?? 'coaching'}, ${euros(p.aPayer)} ${suffixeAbonnement(a)}) : ${url}`;
 
   return (
     <View style={{ gap: espace(2) }}>
@@ -163,10 +163,10 @@ function PaiementCoach({ clientId, prenom, a, recharger }: { clientId: string; p
             {statut ? LIBELLES_STATUT_STRIPE[statut] : 'Pas encore démarré'}
             {a.prochaineEcheance ? ` · prochain prélèvement le ${dateFr(a.prochaineEcheance)}` : ''}
           </Texte>
-          {!a.formule && <Texte doux style={{ fontSize: 13 }}>Choisis une des 4 formules pour passer par Stripe.</Texte>}
-          {a.formule && (
+          {!a.offre && <Texte doux style={{ fontSize: 13 }}>Choisis une de tes offres pour passer par Stripe.</Texte>}
+          {a.offre && (
             <Bouton
-              libelle={enCours ? 'Appliquer la formule et la remise au prélèvement' : p.offert ? 'Démarrer l’abonnement offert' : 'Créer le lien de paiement'}
+              libelle={enCours ? 'Appliquer l’offre et la remise au prélèvement' : p.offert ? 'Démarrer l’abonnement offert' : 'Créer le lien de paiement'}
               onPress={demarrer}
               chargement={occupe}
             />
@@ -216,6 +216,8 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
   const { profil } = useSession();
   const coachId = profil?.role === 'coach' ? profil.coachId : '';
   const autres = useCharger(() => (coachId ? depot.clientsDuCoach(coachId) : Promise.resolve([])), `clients-${coachId}`);
+  const mesOffres = useCharger(() => offres.lister(), 'offres');
+  const [prixSurMesure, setPrixSurMesure] = useState<string>();
 
   async function faire(action: () => Promise<void>, apres: () => void) {
     setErreur(undefined);
@@ -277,46 +279,49 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
       {a && (
         <>
           <Selecteur
-            libelle="Formule"
+            libelle="Offre"
             options={[
-              ...CLES_FORMULES.map((c) => ({ cle: c as string, libelle: `${FORMULES[c].nom} · ${euros(FORMULES[c].prix)}/mois` })),
+              // Ses offres en vente (abonnements), et celle du client même si elle n'est plus proposée.
+              ...(mesOffres.donnee ?? [])
+                .filter((o) => o.periodicite !== 'unique' && (o.active || o.id === a.offre?.id))
+                .map((o) => ({ cle: o.id, libelle: `${o.nom} · ${libellePrix(o)}${o.active ? '' : ' (plus proposée)'}` })),
               { cle: 'sur-mesure', libelle: 'Sur mesure (cases ci-dessous)' },
               { cle: 'aucune', libelle: 'Séances seulement, sans appli' },
             ]}
-            valeur={a.formule ?? (a.accesAppli ? 'sur-mesure' : 'aucune')}
-            onChange={(v) =>
-              !occupe &&
-              changer(
-                estFormule(v)
-                  ? droitsFormule(v)
+            valeur={a.offre?.id ?? (a.accesAppli ? 'sur-mesure' : 'aucune')}
+            onChange={(v) => {
+              if (occupe) return;
+              const o = mesOffres.donnee?.find((x) => x.id === v);
+              void changer(
+                o
+                  ? // Nouvelle offre : le client paiera son prix actuel.
+                    { offre: o, offrePrix: o.prix, ...droitsOffre(o) }
                   : v === 'aucune'
-                    ? { formule: undefined, accesAppli: false, optionNutrition: false }
-                    : { formule: undefined, accesAppli: true },
-              )
-            }
+                    ? { offre: undefined, offrePrix: undefined, accesAppli: false, optionNutrition: false }
+                    : { offre: undefined, accesAppli: true },
+              );
+            }}
           />
-          {a.formule && (
+          {(mesOffres.donnee ?? []).length === 0 && !mesOffres.erreur && (
+            <Texte doux style={{ fontSize: 13 }}>Crée tes offres dans « Mes offres » (menu de l’Accueil) pour les proposer ici.</Texte>
+          )}
+          {a.offre && (
             <Texte doux style={{ fontSize: 13 }}>
-              {[
-                FORMULES[a.formule].optionNutrition ? 'Appli + nutrition' : 'Appli (nutrition limitée aux macros)',
-                FORMULES[a.formule].seancesMois
-                  ? `${FORMULES[a.formule].seancesMois} séance${FORMULES[a.formule].seancesMois > 1 ? 's' : ''} avec toi créditée${FORMULES[a.formule].seancesMois > 1 ? 's' : ''} chaque mois`
-                  : '',
-                FORMULES[a.formule].videosMois ? `${FORMULES[a.formule].videosMois} vidéos corrigées par mois` : '',
-              ]
-                .filter(Boolean)
-                .join(' · ')}
+              {contenuOffre(a.offre).join(' · ')}
+              {a.offrePrix !== undefined && a.offrePrix !== a.offre.prix
+                ? `\nPrix gardé : ${libellePrix(a.offre, a.offrePrix)} (prix actuel de l’offre : ${libellePrix(a.offre)}).`
+                : ''}
             </Texte>
           )}
-          {a.accesAppli && !a.formule && (
+          {a.accesAppli && !a.offre && (
             <>
               <CaseACocher
-                libelle={`Accès à l’appli · ${euros(TARIFS.appli)}/mois (programmes, séances, suivi, macros)`}
+                libelle="Accès à l’appli (programmes, séances, suivi, macros)"
                 valeur={a.accesAppli}
                 onChange={(v) => !occupe && changer(v ? { accesAppli: true } : { accesAppli: false, optionNutrition: false })}
               />
               <CaseACocher
-                libelle={`Option nutrition · +${euros(TARIFS.optionNutrition)}/mois (recettes, plan de repas)`}
+                libelle="Nutrition complète (recettes, plan de repas)"
                 valeur={a.optionNutrition}
                 onChange={(v) => !occupe && changer({ optionNutrition: v })}
               />
@@ -326,6 +331,30 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
                 valeur={String(a.videosMois ?? 0)}
                 onChange={(v) => !occupe && changer({ videosMois: Number(v) })}
               />
+              <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: espace(2) }}>
+                <View style={{ flex: 1 }}>
+                  <Saisie
+                    libelle="Prix par mois (€)"
+                    type="nombre"
+                    valeur={prixSurMesure ?? (a.offrePrix === undefined ? '' : String(a.offrePrix).replace('.', ','))}
+                    onChange={setPrixSurMesure}
+                    aide="Vide : rien à encaisser chaque mois."
+                  />
+                </View>
+                {prixSurMesure !== undefined && (
+                  <View style={{ marginBottom: espace(6) }}>
+                    <Bouton
+                      libelle="Enregistrer"
+                      chargement={occupe}
+                      onPress={() => {
+                        const n = prixSurMesure.trim() ? Number(prixSurMesure.replace(',', '.')) : undefined;
+                        if (n !== undefined && !(Number.isFinite(n) && n >= 0)) return setErreur('Prix illisible : écris un montant comme 79 ou 79,90.');
+                        void changer({ offrePrix: n }).then(() => setPrixSurMesure(undefined));
+                      }}
+                    />
+                  </View>
+                )}
+              </View>
             </>
           )}
           {a.accesAppli ? (

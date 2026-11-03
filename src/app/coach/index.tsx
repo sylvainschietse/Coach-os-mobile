@@ -10,6 +10,7 @@ import {
   LogOut,
   MessageCircle,
   RefreshCw,
+  Tag,
   UserRound,
   Users,
   Wallet,
@@ -46,6 +47,7 @@ import { Boosters } from '@/ui/crm/boosters';
 import { Automatisations } from '@/ui/crm/automatisations';
 import { MonProfilCoach } from '@/ui/profil-coach';
 import { EnteteFactures } from '@/ui/factures';
+import { MesOffres } from '@/ui/offres/mes-offres';
 import { BoutonMessages, useNonLus } from '@/ui/messagerie/conversation';
 import { ConversationsCoach } from '@/ui/messagerie/conversations-coach';
 import { messagerie } from '@/data/messagerie';
@@ -87,7 +89,7 @@ const SUIVI_CLIENTS: { cle: Onglet; libelle: string }[] = [
 ];
 const visible = (o: Onglet): OngletVisible => (o === 'suivis' || o === 'bilan' || o === 'hebdo' ? 'clients' : o);
 
-type Rubrique = 'Accueil' | 'Messages' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Automations' | 'Profil';
+type Rubrique = 'Accueil' | 'Messages' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Offres' | 'Automations' | 'Profil';
 const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Accueil', libelle: 'Accueil', icone: LayoutDashboard },
   { cle: 'Messages', libelle: 'Messages', icone: MessageCircle },
@@ -98,6 +100,7 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Documents', libelle: 'Documents', icone: FileText },
   { cle: 'Taches', libelle: 'Tâches', icone: ListTodo },
   { cle: 'Paiements', libelle: 'Paiements', icone: Wallet },
+  { cle: 'Offres', libelle: 'Mes offres', icone: Tag },
   { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
   { cle: 'Profil', libelle: 'Mon profil', icone: UserRound },
 ];
@@ -442,6 +445,7 @@ function Crm({
           />
         )}
         {rubrique === 'Automations' && <Automatisations />}
+        {rubrique === 'Offres' && <MesOffres />}
         {rubrique === 'Profil' && (
           <>
             <MonProfilCoach />
