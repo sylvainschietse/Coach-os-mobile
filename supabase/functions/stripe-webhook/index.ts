@@ -53,10 +53,13 @@ async function appliquerAbonnement(abo: Stripe.Subscription) {
 
 async function enregistrerPaiement(facture: Stripe.Invoice) {
   // Selon la version de l'API Stripe, l'abonnement est sur la facture ou dans parent.subscription_details.
-  const f0 = facture as unknown as { subscription?: string | { id: string } | null; parent?: { subscription_details?: { subscription?: string | { id: string } } } };
+  type Details = { subscription?: string | { id: string }; metadata?: Record<string, string> };
+  const f0 = facture as unknown as { subscription?: string | { id: string } | null; subscription_details?: Details; parent?: { subscription_details?: Details } };
   const abonnementId = f0.subscription ?? f0.parent?.subscription_details?.subscription;
   if (!abonnementId) return;
-  const fiche = await ficheDe(typeof abonnementId === 'string' ? abonnementId : abonnementId.id);
+  // La facture peut arriver avant que la fiche connaisse son abonnement : on la retrouve alors par l'identifiant du client.
+  const clientId = (f0.subscription_details ?? f0.parent?.subscription_details)?.metadata?.client_id;
+  const fiche = await ficheDe(typeof abonnementId === 'string' ? abonnementId : abonnementId.id, clientId);
   if (!fiche) return;
   const debut = facture.lines.data[0]?.period?.start ?? facture.created;
   const mois = jour(debut).slice(0, 7);
