@@ -114,7 +114,7 @@ export function SuiviClient({ clientId }: { clientId: string }) {
       </Puces>
       {onglet === 'mesures' && <Mensurations clientId={clientId} parCoach />}
       {onglet === 'quotidien' && <Quotidien clientId={clientId} cibles parCoach />}
-      {onglet === 'records' && <Records clientId={clientId} saisie={false} />}
+      {onglet === 'records' && <Records clientId={clientId} parCoach />}
       {onglet === 'sport' && <Sport clientId={clientId} proprietaire={false} />}
       {onglet === 'photos' && <Photos clientId={clientId} proprietaire={false} />}
     </View>
@@ -135,7 +135,7 @@ export function FicheClient({ clientId, coachId }: { clientId: string; coachId: 
       {onglet === 'historique' && <DetailClient clientId={clientId} />}
       {onglet === 'mesures' && <Mensurations clientId={clientId} parCoach />}
       {onglet === 'quotidien' && <Quotidien clientId={clientId} cibles parCoach />}
-      {onglet === 'records' && <Records clientId={clientId} saisie={false} />}
+      {onglet === 'records' && <Records clientId={clientId} parCoach />}
       {onglet === 'sport' && <Sport clientId={clientId} proprietaire={false} />}
       {onglet === 'photos' && <Photos clientId={clientId} proprietaire={false} />}
       {onglet === 'nutrition' && <Nutrition clientId={clientId} coachId={coachId} />}

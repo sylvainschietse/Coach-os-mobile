@@ -27,7 +27,7 @@ type Brouillon = {
 };
 const vide = (): Brouillon => ({ libelle: '', unite: 'kg', valeur: '', repetitions: '1', date: formaterDate(jourLocal(new Date())), note: '', reference: false });
 
-function Saisie({ clientId, onAjoute }: { clientId: string; onAjoute: () => void }) {
+function Saisie({ clientId, onAjoute, parCoach }: { clientId: string; onAjoute: () => void; parCoach?: boolean }) {
   const realisations = useCharger(() => depot.realisationsDuClient(clientId), clientId);
   const [b, setB] = useState<Brouillon>(vide);
   const [choix, setChoix] = useState(false);
@@ -67,10 +67,13 @@ function Saisie({ clientId, onAjoute }: { clientId: string; onAjoute: () => void
 
   return (
     <Carte>
-      <SousTitre>Nouveau record</SousTitre>
+      <SousTitre>{parCoach ? 'Nouvelle performance' : 'Nouveau record'}</SousTitre>
+      {parCoach && (
+        <Texte doux style={{ fontSize: 14 }}>Une performance faite en séance avec toi. Ton client la voit dans son suivi, avec ses courbes.</Texte>
+      )}
       {pistes.length > 0 && (
         <View style={{ gap: espace(2) }}>
-          <Texte doux style={{ fontSize: 14 }}>Tes meilleures charges en séance (touche pour préremplir) :</Texte>
+          <Texte doux style={{ fontSize: 14 }}>{parCoach ? 'Ses meilleures charges en séance' : 'Tes meilleures charges en séance'} (touche pour préremplir) :</Texte>
           <Puces>
             {pistes.map((p) => (
               <Puce
@@ -124,7 +127,7 @@ function Saisie({ clientId, onAjoute }: { clientId: string; onAjoute: () => void
         >
           <Texte style={{ fontSize: 18 }}>{b.reference ? '☑' : '☐'}</Texte>
           <View style={{ flex: 1 }}>
-            <Texte style={{ fontSize: 15 }}>Utiliser cette performance comme référence pour mes programmes</Texte>
+            <Texte style={{ fontSize: 15 }}>Utiliser cette performance comme référence pour {parCoach ? 'ses' : 'mes'} programmes</Texte>
             <Texte doux style={{ fontSize: 13 }}>
               {b.exerciceId
                 ? 'Elle sert au calcul des charges en % du 1RM de cet exercice seulement.'
@@ -134,13 +137,15 @@ function Saisie({ clientId, onAjoute }: { clientId: string; onAjoute: () => void
         </Pressable>
       )}
       {erreurs.length > 0 && <Erreur message={erreurs.join('\n')} />}
-      <Bouton libelle="Enregistrer le record" onPress={enregistrer} chargement={enCours} />
+      <Bouton libelle={parCoach ? 'Enregistrer la performance' : 'Enregistrer le record'} onPress={enregistrer} chargement={enCours} />
     </Carte>
   );
 }
 
 /** Records personnels (PR) : le meilleur par exercice et son historique. */
-export function Records({ clientId, saisie = true }: { clientId: string; saisie?: boolean }) {
+/** parCoach : le coach saisit pour son client (performance faite en séance), derrière un bouton pour garder l'écran court. */
+export function Records({ clientId, saisie = true, parCoach }: { clientId: string; saisie?: boolean; parCoach?: boolean }) {
+  const [ouvert, setOuvert] = useState(false);
   const { donnee, erreur, recharger } = useCharger(() => depot.records(clientId), clientId);
   const [confirmer, setConfirmer] = useState<string>();
   const [erreurReference, setErreurReference] = useState<string>();
@@ -155,7 +160,21 @@ export function Records({ clientId, saisie = true }: { clientId: string; saisie?
   }
   return (
     <View style={{ gap: espace(4) }}>
-      {saisie && <Saisie clientId={clientId} onAjoute={recharger} />}
+      {saisie && !parCoach && <Saisie clientId={clientId} onAjoute={recharger} />}
+      {saisie && parCoach && !ouvert && <Bouton libelle="Ajouter une performance" onPress={() => setOuvert(true)} />}
+      {saisie && parCoach && ouvert && (
+        <>
+          <Saisie
+            clientId={clientId}
+            parCoach
+            onAjoute={() => {
+              setOuvert(false);
+              recharger();
+            }}
+          />
+          <Bouton variante="discret" libelle="Annuler" onPress={() => setOuvert(false)} />
+        </>
+      )}
       {erreur && <Erreur message={erreur} onReessayer={recharger} />}
       {erreurReference && <Erreur message={erreurReference} />}
       {!donnee && !erreur && <Chargement />}
