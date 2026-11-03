@@ -130,6 +130,30 @@ describe('factures', () => {
     expect(rows[0]).toMatchObject({ numero: 'RT40', moyen: 'Virement' });
   });
 
+  it('un mois offert ou payé à la main reçoit aussi sa facture, avec le nom de l’offre ; une ligne en attente non', async () => {
+    const o = await db.query<{ id: string }>(
+      `insert into public.offres (coach_id, modele, nom, prix, periodicite) values ($1, 'hybride', 'Hybride complet', 269, 'mois') returning id`,
+      [ids.coach1],
+    );
+    await db.query(`update public.clients set offre_id = $1 where id = $2`, [o.rows[0].id, ids.clientB]);
+    const offert = await db.query<{ id: string }>(
+      `insert into public.paiements (coach_id, titre, date, montant, statut, notes, reference)
+       values ($1, 'Abonnement 01/2027 · Bruno · offert', '2027-01-01', 0, 'Payé', 'Prix 269 €, remise 269 € (Merci d’être testeur)', $2) returning id`,
+      [ids.coach1, `abonnement:2027-01:${ids.clientB}`],
+    );
+    const f = await db.query<Record<string, any>>(`select numero, objet, lignes from public.factures where paiement_id = $1`, [offert.rows[0].id]);
+    expect(f.rows[0].objet).toBe('Abonnement 01/2027 · Hybride complet');
+    expect(f.rows[0].lignes[0]).toMatchObject({ libelle: 'Abonnement 01/2027 · Hybride complet', prix_unitaire: 269 });
+
+    const attente = await db.query<{ id: string }>(
+      `insert into public.paiements (coach_id, titre, date, montant, statut, reference) values ($1, 'Abonnement 02/2027 · Bruno', '2027-02-01', 269, 'En attente', $2) returning id`,
+      [ids.coach1, `abonnement:2027-02:${ids.clientB}`],
+    );
+    expect((await db.query(`select 1 from public.factures where paiement_id = $1`, [attente.rows[0].id])).rows).toHaveLength(0);
+    await db.query(`update public.paiements set statut = 'Payé', moyen = 'Virement' where id = $1`, [attente.rows[0].id]);
+    expect((await db.query(`select 1 from public.factures where paiement_id = $1`, [attente.rows[0].id])).rows).toHaveLength(1);
+  });
+
   it('le coach règle son en-tête, sa couleur et la numérotation de ses clients', async () => {
     await en(ids.userCoach1, `update public.coachs set facture_couleur = '#123456' where id = $1`, [ids.coach1]);
     await expect(en(ids.userCoach1, `update public.coachs set facture_couleur = 'rouge' where id = $1`, [ids.coach1])).rejects.toThrow();
