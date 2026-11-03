@@ -45,6 +45,7 @@ import { Bilans, EditeurBilan } from '@/ui/crm/bilans';
 import { Boosters } from '@/ui/crm/boosters';
 import { Automatisations } from '@/ui/crm/automatisations';
 import { MonProfilCoach } from '@/ui/profil-coach';
+import { EnteteFactures } from '@/ui/factures';
 import { BoutonMessages, useNonLus } from '@/ui/messagerie/conversation';
 import { ConversationsCoach } from '@/ui/messagerie/conversations-coach';
 import { messagerie } from '@/data/messagerie';
@@ -441,7 +442,12 @@ function Crm({
           />
         )}
         {rubrique === 'Automations' && <Automatisations />}
-        {rubrique === 'Profil' && <MonProfilCoach />}
+        {rubrique === 'Profil' && (
+          <>
+            <MonProfilCoach />
+            <EnteteFactures />
+          </>
+        )}
         {rubrique === 'Messages' && <ConversationsCoach />}
       </View>
 
