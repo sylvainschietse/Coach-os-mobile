@@ -1,11 +1,11 @@
-// « Mon profil » du coach : prénom, numéro WhatsApp et photo, tels que ses clients les voient dans leur appli.
+// « Mon profil » du coach : prénom, numéro WhatsApp, photo et horaires de réponse, tels que ses clients les voient dans leur appli.
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { UserRound } from 'lucide-react-native';
 import { useState } from 'react';
 import { Image, View } from 'react-native';
 
-import { erreursProfilCoach, profilCoach, type ProfilCoach } from '@/data/profil-coach';
+import { erreursProfilCoach, HORAIRES_PAR_DEFAUT, MAX_HORAIRES, profilCoach, type ProfilCoach } from '@/data/profil-coach';
 import { formaterTelephone } from '@/domain/crm';
 import { useCharger } from '@/lib/useCharger';
 
@@ -99,6 +99,16 @@ function Formulaire({ initial }: { initial: ProfilCoach }) {
         <ChampTexte libelle="Numéro WhatsApp" valeur={p.telephone ?? ''} onChange={(telephone) => modifier({ telephone })} />
         <Texte doux style={{ fontSize: 13 }}>
           Tes clients t’écrivent sur WhatsApp depuis leur appli (onglet Moi, option nutrition). Sans numéro, ces boutons n’apparaissent pas.
+        </Texte>
+        <ChampTexte
+          libelle="Horaires de réponse aux messages"
+          valeur={p.horairesReponse ?? ''}
+          onChange={(horairesReponse) => modifier({ horairesReponse: horairesReponse.slice(0, MAX_HORAIRES) })}
+          placeholder={HORAIRES_PAR_DEFAUT}
+          multiligne
+        />
+        <Texte doux style={{ fontSize: 13 }}>
+          Affiché en haut de la messagerie de tes clients, pour qu’ils sachent quand tu réponds. Vide : « {HORAIRES_PAR_DEFAUT} »
         </Texte>
         {erreurs.length > 0 && <Erreur message={erreurs.join('\n')} />}
         <Bouton libelle="Enregistrer" onPress={enregistrer} chargement={enCours} />

@@ -8,13 +8,14 @@ import {
   LayoutDashboard,
   ListTodo,
   LogOut,
+  MessageCircle,
   RefreshCw,
   UserRound,
   Users,
   Wallet,
   Workflow,
 } from 'lucide-react-native';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, View, useWindowDimensions } from 'react-native';
 
 import { depot } from '@/data';
@@ -44,6 +45,10 @@ import { Bilans, EditeurBilan } from '@/ui/crm/bilans';
 import { Boosters } from '@/ui/crm/boosters';
 import { Automatisations } from '@/ui/crm/automatisations';
 import { MonProfilCoach } from '@/ui/profil-coach';
+import { BoutonMessages, useNonLus } from '@/ui/messagerie/conversation';
+import { ConversationsCoach } from '@/ui/messagerie/conversations-coach';
+import { messagerie } from '@/data/messagerie';
+import { inscrireMessages } from '@/lib/rappels';
 import { nomComplet } from '@/ui/crm/commun';
 import { Contacts } from '@/ui/crm/contacts';
 import { Documents, EditeurDocumentModale } from '@/ui/crm/documents';
@@ -81,9 +86,10 @@ const SUIVI_CLIENTS: { cle: Onglet; libelle: string }[] = [
 ];
 const visible = (o: Onglet): OngletVisible => (o === 'suivis' || o === 'bilan' || o === 'hebdo' ? 'clients' : o);
 
-type Rubrique = 'Accueil' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Automations' | 'Profil';
+type Rubrique = 'Accueil' | 'Messages' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Automations' | 'Profil';
 const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Accueil', libelle: 'Accueil', icone: LayoutDashboard },
+  { cle: 'Messages', libelle: 'Messages', icone: MessageCircle },
   { cle: 'Contacts', libelle: 'Contacts', icone: Users },
   { cle: 'Boosters', libelle: 'Boosters', icone: CalendarCheck },
   { cle: 'Coachings', libelle: 'Coachings', icone: Activity },
@@ -112,6 +118,14 @@ export default function EspaceCoach() {
   const clients = useCharger(() => depot.clientsDuCoach(coachId), coachId);
   useFocusEffect(clients.recharger);
   useRetourAndroid(params);
+  // Le téléphone du coach reçoit une notification quand un client écrit.
+  useEffect(() => {
+    if (coachId) void inscrireMessages(true);
+  }, [coachId]);
+  const nonLus = useNonLus(
+    () => (coachId ? messagerie.conversations().then((l) => l.reduce((n, c) => n + c.nonLus, 0)) : Promise.resolve(0)),
+    `non-lus-coach-${coachId}`,
+  );
 
   if (profil?.role !== 'coach') return <Redirect href="/" />;
 
@@ -135,6 +149,7 @@ export default function EspaceCoach() {
         <>
           {/* « Voir son appli » depuis la fiche : l'appli telle que ce client la voit, et le retour à l'espace coach. */}
           {params.apercu && <CommutateurApercu valeur="client" onChange={() => router.setParams({ apercu: undefined })} />}
+          {!params.apercu && <BoutonMessages nonLus={nonLus} onPress={() => naviguer('crm', 'Messages')} />}
           {/* Zite gérait la session hors de l'app : sans ce bouton, impossible de changer de compte. */}
           <BoutonIcone icone={LogOut} nom="Se déconnecter" onPress={deconnecter} />
         </>
@@ -425,6 +440,7 @@ function Crm({
         )}
         {rubrique === 'Automations' && <Automatisations />}
         {rubrique === 'Profil' && <MonProfilCoach />}
+        {rubrique === 'Messages' && <ConversationsCoach />}
       </View>
 
       {params.coaching || params.tache || params.paiement ? (

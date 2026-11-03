@@ -8,9 +8,19 @@ export interface Abonnement {
   optionNutrition: boolean;
   /** Tarif d'une séance à l'unité pour ce client (60 € par défaut, au cas par cas sinon). */
   tarifSeance?: number;
+  /** Vidéos corrigées incluses chaque mois dans sa formule (0 : chaque vidéo est facturée). */
+  videosMois?: number;
 }
 
-export const TARIFS = { appli: 59, optionNutrition: 40, seance: 60 } as const;
+export const TARIFS = { appli: 59, optionNutrition: 40, seance: 60, video: 15 } as const;
+export const MAX_VIDEOS_MOIS = 8;
+
+/** Vidéos envoyées ce mois-ci face au nombre inclus : combien restent, combien sont à facturer. */
+export function bilanVideos(envoyees: number, incluses: number) {
+  const restantes = Math.max(0, incluses - envoyees);
+  const enPlus = Math.max(0, envoyees - incluses);
+  return { envoyees, incluses, restantes, enPlus, aFacturer: enPlus * TARIFS.video };
+}
 
 export type TypePack = 'unite' | 'pack10';
 export const PACKS: Record<TypePack, { libelle: string; seances: number; prix: number }> = {

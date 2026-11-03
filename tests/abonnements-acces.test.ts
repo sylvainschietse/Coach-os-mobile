@@ -105,7 +105,7 @@ describe('numéro du coach', () => {
     await db.exec(
       `update public.coachs set telephone = '33648640845' where id = '${ids.coach1}'; update public.coachs set telephone = '33600000000' where id = '${ids.coach2}';`,
     );
-    expect((await en(ids.userClientA, `select * from public.mon_coach()`)).rows).toEqual([{ nom: 'Sylvain', telephone: '33648640845', photo: null }]);
+    expect((await en(ids.userClientA, `select * from public.mon_coach()`)).rows).toEqual([{ nom: 'Sylvain', telephone: '33648640845', photo: null, horaires_reponse: null }]);
     expect((await en(ids.userCoach2, `select * from public.mon_coach()`)).rows).toHaveLength(0);
   });
 });

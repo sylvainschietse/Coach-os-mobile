@@ -62,6 +62,8 @@ export interface MonCoach {
   nom: string;
   telephone?: string;
   photo?: string;
+  /** « Je réponds sous 24 h, du lundi au vendredi » : affiché en haut de la messagerie. */
+  horairesReponse?: string;
 }
 
 /** Prénom, numéro et photo du coach, pour lui écrire depuis l'espace client. En démo, le profil saisi dans « Mon profil ». */
@@ -69,6 +71,8 @@ export async function monCoach(): Promise<MonCoach | null> {
   if (!supabase) return profilCoach.lire();
   const { data, error } = await supabase.rpc('mon_coach');
   if (error) throw new Error('Impossible de joindre ton coach pour le moment.');
-  const ligne = (data as { nom: string; telephone: string | null; photo: string | null }[] | null)?.[0];
-  return ligne ? { nom: ligne.nom, telephone: ligne.telephone ?? undefined, photo: ligne.photo ?? undefined } : null;
+  const ligne = (data as { nom: string; telephone: string | null; photo: string | null; horaires_reponse?: string | null }[] | null)?.[0];
+  return ligne
+    ? { nom: ligne.nom, telephone: ligne.telephone ?? undefined, photo: ligne.photo ?? undefined, horairesReponse: ligne.horaires_reponse ?? undefined }
+    : null;
 }

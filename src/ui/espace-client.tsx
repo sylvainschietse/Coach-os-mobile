@@ -14,6 +14,7 @@ import { SeancesRestantes } from './abonnement';
 import { MesRendezVous } from './agenda/mes-rendez-vous';
 import { EntrainementClient } from './entrainement/espace-entrainement';
 import { useMinuteurs } from './entrainement/minuteurs';
+import { CarteMessages } from './messagerie/conversation';
 import { MonCompte } from './mon-compte';
 import { NutritionProfil } from './nutrition/nutrition';
 import { BandeauDemo, BarreClient, Selecteur, SousNav, type OngletDef } from './coque';
@@ -63,6 +64,12 @@ export function EspaceClient({
   ongletInitial?: OngletClient;
 }) {
   const [onglet, setOnglet] = useState<OngletClient>(ongletInitial);
+  // Une notification touchée (« repas à noter », « bilan ») ouvre l'onglet qu'elle annonce.
+  const [initialVu, setInitialVu] = useState(ongletInitial);
+  if (ongletInitial !== initialVu) {
+    setInitialVu(ongletInitial);
+    setOnglet(ongletInitial);
+  }
   const [suivi, setSuivi] = useState<RubriqueSuivi>('hebdo');
   const minuteurs = useMinuteurs();
   const defilement = useRef<ComponentRef<typeof ScrollView>>(null);
@@ -93,6 +100,7 @@ export function EspaceClient({
           {(onglet === 'accueil' || onglet === 'programme') && (
             <>
               <EnAttente clientId={clientId} apercu={!!apercu} />
+              {onglet === 'accueil' && !apercu && <CarteMessages clientId={clientId} />}
               {onglet === 'accueil' && !apercu && <MesRendezVous clientId={clientId} />}
               <EntrainementClient
                 key={`${clientId}:${onglet}`}

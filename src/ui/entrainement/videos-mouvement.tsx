@@ -45,7 +45,7 @@ const jourMois = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { da
 const mo = (octets: number) => `${(octets / 1024 / 1024).toFixed(1).replace('.', ',')} Mo`;
 
 /** Contenu d'un fichier local : Blob sur le web, octets sur le téléphone. */
-async function lireLocal(uri: string, type: string, dureeS?: number, blob?: Blob): Promise<FichierMedia> {
+export async function lireLocal(uri: string, type: string, dureeS?: number, blob?: Blob): Promise<FichierMedia> {
   if (Platform.OS === 'web') {
     const b = blob ?? (await (await fetch(uri)).blob());
     return { type: b.type || type, taille: b.size, dureeS, donnees: b, uri };
@@ -80,7 +80,20 @@ function Video916({ uri, largeur }: { uri: string; largeur: number }) {
 }
 
 /** Bouton « Voir la vidéo » puis lecteur : le lien signé n'est demandé qu'au moment de regarder. */
-export function LecteurVideo({ chemin, dureeS, largeur = 200, onVue }: { chemin: string; dureeS?: number; largeur?: number; onVue?: () => void }) {
+export function LecteurVideo({
+  chemin,
+  dureeS,
+  largeur = 200,
+  onVue,
+  lien = videos.lien,
+}: {
+  chemin: string;
+  dureeS?: number;
+  largeur?: number;
+  onVue?: () => void;
+  /** Autre compartiment (messagerie) : d'où vient le lien signé. */
+  lien?: (chemin: string) => Promise<string>;
+}) {
   const [uri, setUri] = useState<string>();
   const [charge, setCharge] = useState(false);
   const [erreur, setErreur] = useState('');
@@ -89,7 +102,7 @@ export function LecteurVideo({ chemin, dureeS, largeur = 200, onVue }: { chemin:
     setErreur('');
     try {
       await modeLecture();
-      setUri(await videos.lien(chemin));
+      setUri(await lien(chemin));
       onVue?.();
     } catch (e) {
       setErreur(messageErreur(e));
@@ -167,7 +180,19 @@ function BoutonAudio({ libelle, enLecture, detail, onPress, charge }: { libelle:
 }
 
 /** Vocal stocké (chemin) ou tout juste enregistré (uri locale). */
-export function LecteurVocal({ chemin, uri: locale, dureeS, libelle = 'Vocal du coach' }: { chemin?: string; uri?: string; dureeS?: number; libelle?: string }) {
+export function LecteurVocal({
+  chemin,
+  uri: locale,
+  dureeS,
+  libelle = 'Vocal du coach',
+  lien = videos.lien,
+}: {
+  chemin?: string;
+  uri?: string;
+  dureeS?: number;
+  libelle?: string;
+  lien?: (chemin: string) => Promise<string>;
+}) {
   const [uri, setUri] = useState(locale);
   const [charge, setCharge] = useState(false);
   const [erreur, setErreur] = useState('');
@@ -185,7 +210,7 @@ export function LecteurVocal({ chemin, uri: locale, dureeS, libelle = 'Vocal du 
           setErreur('');
           try {
             await modeLecture();
-            setUri(await videos.lien(chemin));
+            setUri(await lien(chemin));
           } catch (e) {
             setErreur(messageErreur(e));
           }
@@ -199,9 +224,9 @@ export function LecteurVocal({ chemin, uri: locale, dureeS, libelle = 'Vocal du 
 
 // ---------- Enregistrement d'un vocal (coach) ----------
 
-type Vocal = { fichier: FichierMedia; uri: string };
+export type Vocal = { fichier: FichierMedia; uri: string };
 
-function EnregistreurVocal({ valeur, desactive, onChange }: { valeur: Vocal | null; desactive?: boolean; onChange: (v: Vocal | null) => void }) {
+export function EnregistreurVocal({ valeur, desactive, onChange }: { valeur: Vocal | null; desactive?: boolean; onChange: (v: Vocal | null) => void }) {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const etat = useAudioRecorderState(recorder, 250);
   const [erreur, setErreur] = useState('');
@@ -276,7 +301,7 @@ function EnregistreurVocal({ valeur, desactive, onChange }: { valeur: Vocal | nu
 
 // ---------- Client : filmer dans l'appli ----------
 
-function Camera({ visible, onFermer, onFilmee }: { visible: boolean; onFermer: () => void; onFilmee: (f: FichierMedia) => void }) {
+export function Camera({ visible, onFermer, onFilmee }: { visible: boolean; onFermer: () => void; onFilmee: (f: FichierMedia) => void }) {
   const camera = useRef<CameraView>(null);
   const [permCam, demanderCam] = useCameraPermissions();
   const [permMicro, demanderMicro] = useMicrophonePermissions();
@@ -381,7 +406,7 @@ function Camera({ visible, onFermer, onFilmee }: { visible: boolean; onFermer: (
   );
 }
 
-async function choisirDansGalerie(): Promise<FichierMedia | null> {
+export async function choisirDansGalerie(): Promise<FichierMedia | null> {
   const r = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['videos'],
     allowsEditing: Platform.OS === 'ios',

@@ -4,6 +4,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { annulerRappels, oublierCeTelephone } from '@/lib/rappels';
+
 import type { Profil } from './depot';
 import { profilConnecte } from './depot-supabase';
 import { supabase, type Fournisseur } from './supabase';
@@ -145,6 +147,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deconnecter = useCallback(async () => {
+    // Avant de quitter le compte : ce téléphone ne reçoit plus ses messages, ni ses rappels.
+    await oublierCeTelephone().catch(() => undefined);
+    await annulerRappels().catch(() => undefined);
     if (supabase) await supabase.auth.signOut();
     await AsyncStorage.removeItem(CLE);
     setProfil(null);

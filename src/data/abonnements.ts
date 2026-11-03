@@ -39,6 +39,7 @@ const demo: DepotAbonnements = {
         accesAppli: true,
         optionNutrition: true,
         tarifSeance: TARIFS.seance,
+        videosMois: 2,
       }
     );
   },
@@ -105,12 +106,13 @@ const versPack = (l: Ligne, pour: string): PackSeances => ({
 function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
   const depot: DepotAbonnements = {
     async lire(clientId) {
-      const { data, error } = await db.from('clients').select('acces_appli, option_nutrition, tarif_seance').eq('id', clientId).maybeSingle();
+      const { data, error } = await db.from('clients').select('acces_appli, option_nutrition, tarif_seance, videos_mois').eq('id', clientId).maybeSingle();
       if (error) throw new Error('Impossible de lire l’abonnement. Vérifie ta connexion.');
       return {
         accesAppli: data?.acces_appli ?? false,
         optionNutrition: data?.option_nutrition ?? false,
         tarifSeance: data?.tarif_seance == null ? TARIFS.seance : Number(data.tarif_seance),
+        videosMois: data?.videos_mois ?? 0,
       };
     },
     async changer(clientId, modif) {
@@ -118,6 +120,7 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
       if (modif.tarifSeance !== undefined) champs.tarif_seance = modif.tarifSeance;
       if (modif.accesAppli !== undefined) champs.acces_appli = modif.accesAppli;
       if (modif.optionNutrition !== undefined) champs.option_nutrition = modif.optionNutrition;
+      if (modif.videosMois !== undefined) champs.videos_mois = modif.videosMois;
       const { error } = await db.from('clients').update(champs).eq('id', clientId);
       if (error) throw new Error('L’abonnement n’a pas pu être enregistré. Réessaie.');
     },
