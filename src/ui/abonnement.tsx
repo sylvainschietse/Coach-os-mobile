@@ -1,12 +1,34 @@
 // Abonnements côté coach (formule du client, packs de séances) et côté client (séances restantes).
-// Rien ne s'achète dans l'appli : le client ne voit aucun prix ni bouton d'achat (règles Apple et Google).
+// Rien ne s'achète dans l'appli (règles Apple et Google) : le client voit sa formule, son prix et sa remise, sans bouton d'achat.
+// Le coach choisit la formule et la remise, puis encaisse à la main ou envoie un lien de paiement Stripe.
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Share, Text, View } from 'react-native';
 
 import { depot } from '@/data';
 import { abonnements } from '@/data/abonnements';
 import { useSession } from '@/data/session';
-import { MAX_VIDEOS_MOIS, mensualite, PACKS, restantes, soldeSeances, TARIFS, type Abonnement, type TypePack } from '@/domain/abonnements';
+import {
+  CLES_FORMULES,
+  droitsFormule,
+  estFormule,
+  FORMULES,
+  LIBELLES_STATUT_STRIPE,
+  libelleRemise,
+  lireRemise,
+  MAX_VIDEOS_MOIS,
+  PACKS,
+  prixAvecRemise,
+  prixMensuel,
+  remiseEnCours,
+  restantes,
+  soldeSeances,
+  statutOuvreAcces,
+  TARIFS,
+  type Abonnement,
+  type Remise,
+  type TypePack,
+} from '@/domain/abonnements';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Erreur, SousTitre, Texte } from './composants';
@@ -14,7 +36,173 @@ import { Selecteur } from './coque';
 import { CaseACocher, Saisie } from './crm/dossier';
 import { couleurs, espace, polices } from './theme';
 
-const euros = (n: number) => `${n.toLocaleString('fr-FR')} €`;
+const euros = (n: number) => `${n.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`;
+const aujourdhui = () => new Date().toISOString().slice(0, 10);
+const dateFr = (j: string) => j.split('-').reverse().join('/');
+
+/** Remise exceptionnelle : 100 % pour un testeur, ou un pourcentage ou un montant au choix. */
+function RemiseCoach({ a, occupe, changer }: { a: Abonnement; occupe: boolean; changer: (m: Partial<Abonnement>) => Promise<void> }) {
+  const [ouvert, setOuvert] = useState(false);
+  // Pré-rempli avec la remise en place, sinon avec l'offre testeur (100 %).
+  const [type, setType] = useState<Remise['type']>(a.remise?.type ?? 'pourcent');
+  const [valeur, setValeur] = useState(String(a.remise?.valeur ?? 100).replace('.', ','));
+  const [motif, setMotif] = useState(a.remise ? (a.remise.motif ?? '') : 'Merci d’être testeur');
+  const [fin, setFin] = useState(a.remise?.jusquAu ? dateFr(a.remise.jusquAu) : '');
+  const [erreur, setErreur] = useState<string>();
+  const p = prixAvecRemise(prixMensuel(a), a.remise, aujourdhui());
+  const enCours = remiseEnCours(a.remise, aujourdhui());
+
+  const appliquer = () => {
+    const r = lireRemise(type, valeur, motif, fin);
+    if (typeof r === 'string') return setErreur(r);
+    setErreur(undefined);
+    void changer({ remise: r }).then(() => setOuvert(false));
+  };
+
+  return (
+    <View style={{ gap: espace(2) }}>
+      <Texte style={{ fontSize: 14 }}>
+        {enCours
+          ? `Prix ${euros(p.prix)} · remise −${euros(p.remise)} · à encaisser ${euros(p.aPayer)} par mois${p.offert ? ' (offert)' : ''}.`
+          : `À encaisser : ${euros(p.prix)} par mois.`}
+      </Texte>
+      {a.remise && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: espace(2) }}>
+          <Texte doux style={{ fontSize: 13, flexShrink: 1 }}>
+            Remise : {libelleRemise(a.remise)}
+            {a.remise.motif ? ` · « ${a.remise.motif} »` : ''}
+            {!enCours ? ' · terminée' : ''}
+          </Texte>
+          <Pressable accessibilityRole="button" onPress={() => !occupe && changer({ remise: undefined })} disabled={occupe}>
+            <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.rouge }}>Retirer</Text>
+          </Pressable>
+        </View>
+      )}
+      {!ouvert ? (
+        <Bouton variante="discret" libelle={a.remise ? 'Changer la remise' : 'Accorder une remise (testeur, geste…)'} onPress={() => setOuvert(true)} desactive={occupe} />
+      ) : (
+        <View style={{ gap: espace(2) }}>
+          <Selecteur
+            libelle="Type de remise"
+            options={[
+              { cle: 'pourcent', libelle: 'En pourcentage (100 % = offert)' },
+              { cle: 'montant', libelle: 'En euros par mois' },
+            ]}
+            valeur={type}
+            onChange={(v) => setType(v as Remise['type'])}
+          />
+          <Saisie libelle={type === 'pourcent' ? 'Remise (%)' : 'Remise (€ par mois)'} type="nombre" valeur={valeur} onChange={setValeur} />
+          <Saisie libelle="Message affiché au client" valeur={motif} onChange={setMotif} aide="Par exemple « Merci d’être testeur ». Il voit le prix normal et ta remise." />
+          <Saisie libelle="Jusqu’au (facultatif)" valeur={fin} onChange={setFin} placeholder="31/12/2026" aide="Vide : la remise reste jusqu’à ce que tu la retires." />
+          {erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{erreur}</Texte>}
+          <View style={{ flexDirection: 'row', gap: espace(2) }}>
+            <View style={{ flex: 1 }}>
+              <Bouton libelle="Appliquer la remise" onPress={appliquer} chargement={occupe} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Bouton variante="discret" libelle="Annuler" onPress={() => setOuvert(false)} />
+            </View>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** Mode de paiement : à la main (lignes « En attente » dans la Gestion) ou prélèvement Stripe. */
+function PaiementCoach({ clientId, prenom, a, recharger }: { clientId: string; prenom: string; a: Abonnement; recharger: () => void }) {
+  const [occupe, setOccupe] = useState(false);
+  const [erreur, setErreur] = useState<string>();
+  const [info, setInfo] = useState<string>();
+  const [lien, setLien] = useState<string>();
+  const [resilier, setResilier] = useState(false);
+  const p = prixAvecRemise(prixMensuel(a), a.remise, aujourdhui());
+  const statut = a.statutStripe;
+  const enCours = !!statut && statutOuvreAcces(statut);
+
+  async function faire(action: () => Promise<void>) {
+    setErreur(undefined);
+    setInfo(undefined);
+    setOccupe(true);
+    try {
+      await action();
+      recharger();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Action impossible pour le moment.');
+    } finally {
+      setOccupe(false);
+    }
+  }
+  const demarrer = () =>
+    faire(async () => {
+      const r = await abonnements.demarrerStripe(clientId);
+      setLien(r.lien);
+      if (r.demarre) setInfo(enCours ? 'Prélèvement mis à jour : la formule et la remise s’appliquent au prochain mois.' : `Abonnement démarré : ${prenom} n’a rien à payer.`);
+    });
+  const message = (url: string) =>
+    `Bonjour ${prenom}, voici le lien pour régler ton abonnement CoachGo (${a.formule ? FORMULES[a.formule].nom : 'appli'}, ${euros(p.aPayer)} par mois) : ${url}`;
+
+  return (
+    <View style={{ gap: espace(2) }}>
+      <Selecteur
+        libelle="Paiement"
+        options={[
+          { cle: 'manuel', libelle: 'À la main (virement, espèces…)' },
+          { cle: 'stripe', libelle: 'Prélèvement automatique (Stripe)' },
+        ]}
+        valeur={a.paiement ?? 'manuel'}
+        onChange={(v) => !occupe && faire(() => abonnements.changer(clientId, { paiement: v as 'manuel' | 'stripe' }))}
+      />
+      {a.paiement !== 'stripe' ? (
+        <Texte doux style={{ fontSize: 13 }}>
+          {p.offert ? 'Offert : la ligne du mois arrive « Payé » à 0 € dans ta Gestion.' : 'Chaque mois, une ligne « En attente » arrive dans ta Gestion : passe-la à « Payé » quand tu as encaissé.'}
+        </Texte>
+      ) : (
+        <>
+          <Texte style={{ fontSize: 14 }}>
+            {statut ? LIBELLES_STATUT_STRIPE[statut] : 'Pas encore démarré'}
+            {a.prochaineEcheance ? ` · prochain prélèvement le ${dateFr(a.prochaineEcheance)}` : ''}
+          </Texte>
+          {!a.formule && <Texte doux style={{ fontSize: 13 }}>Choisis une des 4 formules pour passer par Stripe.</Texte>}
+          {a.formule && (
+            <Bouton
+              libelle={enCours ? 'Appliquer la formule et la remise au prélèvement' : p.offert ? 'Démarrer l’abonnement offert' : 'Créer le lien de paiement'}
+              onPress={demarrer}
+              chargement={occupe}
+            />
+          )}
+          {lien && (
+            <View style={{ gap: espace(2) }}>
+              <Text selectable style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux }}>
+                {lien}
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>
+                <View style={{ flexGrow: 1 }}>
+                  <Bouton variante="discret" libelle="Envoyer par WhatsApp" onPress={() => void ouvrirLien(`https://wa.me/?text=${encodeURIComponent(message(lien))}`)} />
+                </View>
+                {Platform.OS !== 'web' && (
+                  <View style={{ flexGrow: 1 }}>
+                    <Bouton variante="discret" libelle="Partager…" onPress={() => void Share.share({ message: message(lien) })} />
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+          {enCours && (
+            <Bouton
+              variante="discret"
+              libelle={resilier ? 'Confirmer : arrêter à la fin du mois payé' : 'Résilier le prélèvement'}
+              onPress={() => (resilier ? faire(() => abonnements.resilierStripe(clientId)).then(() => setResilier(false)) : setResilier(true))}
+              desactive={occupe}
+            />
+          )}
+        </>
+      )}
+      {info && <Texte style={{ fontSize: 14 }}>{info}</Texte>}
+      {erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{erreur}</Texte>}
+    </View>
+  );
+}
 
 /** Fiche du contact : ce que le client a payé, et donc ce qu'il voit dans l'appli. */
 export function AbonnementClient({ clientId, prenom, onChange }: { clientId: string; prenom: string; onChange?: (a: Abonnement) => void }) {
@@ -88,31 +276,66 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
       <SousTitre>Abonnement</SousTitre>
       {a && (
         <>
-          <CaseACocher
-            libelle={`Accès à l’appli · ${euros(TARIFS.appli)}/mois (programmes, séances, suivi, macros)`}
-            valeur={a.accesAppli}
-            onChange={(v) => !occupe && changer(v ? { accesAppli: true } : { accesAppli: false, optionNutrition: false })}
+          <Selecteur
+            libelle="Formule"
+            options={[
+              ...CLES_FORMULES.map((c) => ({ cle: c as string, libelle: `${FORMULES[c].nom} · ${euros(FORMULES[c].prix)}/mois` })),
+              { cle: 'sur-mesure', libelle: 'Sur mesure (cases ci-dessous)' },
+              { cle: 'aucune', libelle: 'Séances seulement, sans appli' },
+            ]}
+            valeur={a.formule ?? (a.accesAppli ? 'sur-mesure' : 'aucune')}
+            onChange={(v) =>
+              !occupe &&
+              changer(
+                estFormule(v)
+                  ? droitsFormule(v)
+                  : v === 'aucune'
+                    ? { formule: undefined, accesAppli: false, optionNutrition: false }
+                    : { formule: undefined, accesAppli: true },
+              )
+            }
           />
-          {a.accesAppli && (
-            <CaseACocher
-              libelle={`Option nutrition · +${euros(TARIFS.optionNutrition)}/mois (recettes, plan de repas)`}
-              valeur={a.optionNutrition}
-              onChange={(v) => !occupe && changer({ optionNutrition: v })}
-            />
+          {a.formule && (
+            <Texte doux style={{ fontSize: 13 }}>
+              {[
+                FORMULES[a.formule].optionNutrition ? 'Appli + nutrition' : 'Appli (nutrition limitée aux macros)',
+                FORMULES[a.formule].seancesMois
+                  ? `${FORMULES[a.formule].seancesMois} séance${FORMULES[a.formule].seancesMois > 1 ? 's' : ''} avec toi créditée${FORMULES[a.formule].seancesMois > 1 ? 's' : ''} chaque mois`
+                  : '',
+                FORMULES[a.formule].videosMois ? `${FORMULES[a.formule].videosMois} vidéos corrigées par mois` : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Texte>
           )}
-          {a.accesAppli && (
-            <Selecteur
-              libelle={`Vidéos corrigées incluses par mois (au-delà : ${euros(TARIFS.video)} la vidéo)`}
-              options={Array.from({ length: MAX_VIDEOS_MOIS + 1 }, (_, n) => ({ cle: String(n), libelle: n === 0 ? 'Aucune' : `${n} par mois` }))}
-              valeur={String(a.videosMois ?? 0)}
-              onChange={(v) => !occupe && changer({ videosMois: Number(v) })}
-            />
+          {a.accesAppli && !a.formule && (
+            <>
+              <CaseACocher
+                libelle={`Accès à l’appli · ${euros(TARIFS.appli)}/mois (programmes, séances, suivi, macros)`}
+                valeur={a.accesAppli}
+                onChange={(v) => !occupe && changer(v ? { accesAppli: true } : { accesAppli: false, optionNutrition: false })}
+              />
+              <CaseACocher
+                libelle={`Option nutrition · +${euros(TARIFS.optionNutrition)}/mois (recettes, plan de repas)`}
+                valeur={a.optionNutrition}
+                onChange={(v) => !occupe && changer({ optionNutrition: v })}
+              />
+              <Selecteur
+                libelle={`Vidéos corrigées incluses par mois (au-delà : ${euros(TARIFS.video)} la vidéo)`}
+                options={Array.from({ length: MAX_VIDEOS_MOIS + 1 }, (_, n) => ({ cle: String(n), libelle: n === 0 ? 'Aucune' : `${n} par mois` }))}
+                valeur={String(a.videosMois ?? 0)}
+                onChange={(v) => !occupe && changer({ videosMois: Number(v) })}
+              />
+            </>
           )}
-          <Texte doux style={{ fontSize: 13 }}>
-            {a.accesAppli
-              ? `À encaisser : ${euros(mensualite(a))} par mois.`
-              : `${prenom} n’a pas accès à l’appli : tu l’enregistres ici, il ne peut pas se connecter.`}
-          </Texte>
+          {a.accesAppli ? (
+            <>
+              <RemiseCoach a={a} occupe={occupe} changer={changer} />
+              <PaiementCoach clientId={clientId} prenom={prenom} a={a} recharger={abo.recharger} />
+            </>
+          ) : (
+            <Texte doux style={{ fontSize: 13 }}>{`${prenom} n’a pas accès à l’appli : tu l’enregistres ici, il ne peut pas se connecter.`}</Texte>
+          )}
         </>
       )}
 

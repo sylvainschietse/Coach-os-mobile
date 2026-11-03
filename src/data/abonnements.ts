@@ -1,4 +1,19 @@
-import { mensualite, PACKS, packADecompter, TARIFS, type Abonnement, type PackSeances, type TypePack } from '@/domain/abonnements';
+import {
+  estFormule,
+  FORMULES,
+  mensualite,
+  PACKS,
+  packADecompter,
+  prixAvecRemise,
+  prixMensuel,
+  remiseEnCours,
+  TARIFS,
+  type Abonnement,
+  type PackSeances,
+  type Remise,
+  type StatutStripe,
+  type TypePack,
+} from '@/domain/abonnements';
 import { jourLocal } from '@/domain/crm';
 import { nouvelId } from '@/lib/identifiant';
 
@@ -18,8 +33,29 @@ export interface DepotAbonnements {
   decompter(clientId: string, sens: 1 | -1): Promise<void>;
   /** Pack ajouté par erreur : supprimé avec sa ligne de paiement encore « En attente ». */
   supprimerPack(packId: string): Promise<void>;
-  /** Coach : crée la ligne « En attente » du mois pour chaque abonnement appli qui n'en a pas encore. */
+  /** Coach : crée la ligne « En attente » du mois pour chaque abonnement appli payé à la main, et crédite les séances des formules Hybride. */
   preparerEcheances(): Promise<void>;
+  /**
+   * Coach : passe le client au prélèvement Stripe avec sa formule et sa remise.
+   * Offert à 100 % : l'abonnement démarre tout de suite, sans carte. Sinon : un lien de paiement à envoyer au client.
+   */
+  demarrerStripe(clientId: string): Promise<{ lien?: string; demarre: boolean }>;
+  /** Coach : résilie le prélèvement Stripe à la fin du mois payé (l'accès reste ouvert jusque-là). */
+  resilierStripe(clientId: string): Promise<void>;
+  /** Client : page Stripe pour changer sa carte, voir ses factures ou résilier. */
+  portailStripe(): Promise<string>;
+}
+
+/** Message d'erreur renvoyé par la fonction serveur, sinon un message général. */
+async function erreurFonction(error: unknown, defaut: string) {
+  const ctx = (error as { context?: Response } | null)?.context;
+  try {
+    const corps = ctx ? await ctx.json() : undefined;
+    if (corps?.erreur) return new Error(corps.erreur);
+  } catch {
+    /* corps illisible */
+  }
+  return new Error(defaut);
 }
 
 /** En démo, tout est ouvert et reste en mémoire. */
@@ -40,6 +76,10 @@ const demo: DepotAbonnements = {
         optionNutrition: true,
         tarifSeance: TARIFS.seance,
         videosMois: 2,
+        // Exemple de client testeur : la formule complète, offerte par le coach.
+        formule: 'hybride_complet',
+        remise: { type: 'pourcent', valeur: 100, motif: 'Merci d’être testeur' },
+        paiement: 'manuel',
       }
     );
   },
@@ -80,7 +120,22 @@ const demo: DepotAbonnements = {
   },
   // En démo, les paiements restent ceux saisis à la main.
   async preparerEcheances() {},
+  async demarrerStripe() {
+    throw new Error('Le paiement par Stripe n’est pas disponible en démo.');
+  },
+  async resilierStripe() {
+    throw new Error('Le paiement par Stripe n’est pas disponible en démo.');
+  },
+  async portailStripe() {
+    throw new Error('Le paiement par Stripe n’est pas disponible en démo.');
+  },
 };
+
+type LigneRemise = { remise_type?: string | null; remise_valeur?: number | string | null; remise_motif?: string | null; remise_jusqu_au?: string | null };
+const versRemise = (l: LigneRemise): Remise | undefined =>
+  (l.remise_type === 'pourcent' || l.remise_type === 'montant') && l.remise_valeur != null
+    ? { type: l.remise_type, valeur: Number(l.remise_valeur), motif: l.remise_motif ?? undefined, jusquAu: l.remise_jusqu_au ?? undefined }
+    : undefined;
 
 type Ligne = {
   id: string;
@@ -106,21 +161,41 @@ const versPack = (l: Ligne, pour: string): PackSeances => ({
 function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
   const depot: DepotAbonnements = {
     async lire(clientId) {
-      const { data, error } = await db.from('clients').select('acces_appli, option_nutrition, tarif_seance, videos_mois').eq('id', clientId).maybeSingle();
+      const { data, error } = await db
+        .from('clients')
+        .select(
+          'acces_appli, option_nutrition, tarif_seance, videos_mois, formule, remise_type, remise_valeur, remise_motif, remise_jusqu_au, paiement, statut_stripe, prochaine_echeance',
+        )
+        .eq('id', clientId)
+        .maybeSingle();
       if (error) throw new Error('Impossible de lire l’abonnement. Vérifie ta connexion.');
       return {
         accesAppli: data?.acces_appli ?? false,
         optionNutrition: data?.option_nutrition ?? false,
         tarifSeance: data?.tarif_seance == null ? TARIFS.seance : Number(data.tarif_seance),
         videosMois: data?.videos_mois ?? 0,
+        formule: estFormule(data?.formule) ? data.formule : undefined,
+        remise: versRemise(data ?? {}),
+        paiement: data?.paiement === 'stripe' ? 'stripe' : 'manuel',
+        statutStripe: (data?.statut_stripe as StatutStripe | null) ?? undefined,
+        prochaineEcheance: data?.prochaine_echeance ?? undefined,
       };
     },
     async changer(clientId, modif) {
-      const champs: Record<string, boolean | number> = {};
+      const champs: Record<string, boolean | number | string | null> = {};
       if (modif.tarifSeance !== undefined) champs.tarif_seance = modif.tarifSeance;
       if (modif.accesAppli !== undefined) champs.acces_appli = modif.accesAppli;
       if (modif.optionNutrition !== undefined) champs.option_nutrition = modif.optionNutrition;
       if (modif.videosMois !== undefined) champs.videos_mois = modif.videosMois;
+      // « formule » et « remise » présentes mais vides : on les retire (réglage sur mesure, plus de remise).
+      if ('formule' in modif) champs.formule = modif.formule ?? null;
+      if ('remise' in modif) {
+        champs.remise_type = modif.remise?.type ?? null;
+        champs.remise_valeur = modif.remise?.valeur ?? null;
+        champs.remise_motif = modif.remise?.motif ?? null;
+        champs.remise_jusqu_au = modif.remise?.jusquAu ?? null;
+      }
+      if (modif.paiement !== undefined) champs.paiement = modif.paiement;
       const { error } = await db.from('clients').update(champs).eq('id', clientId);
       if (error) throw new Error('L’abonnement n’a pas pu être enregistré. Réessaie.');
     },
@@ -184,27 +259,66 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
       if (error || !data?.length) throw new Error('Le décompte n’a pas pu être enregistré. Réessaie.');
     },
     async preparerEcheances() {
-      const mois = jourLocal(new Date()).slice(0, 7);
+      const jour = jourLocal(new Date());
+      const mois = jour.slice(0, 7);
       const [clients, deja, ecartees] = await Promise.all([
-        db.from('clients').select('id, prenom, option_nutrition, contacts(id)').eq('acces_appli', true).eq('actif', true),
+        db
+          .from('clients')
+          .select('id, prenom, option_nutrition, formule, remise_type, remise_valeur, remise_motif, remise_jusqu_au, paiement, contacts(id)')
+          .eq('acces_appli', true)
+          .eq('actif', true),
         db.from('paiements').select('reference').like('reference', `abonnement:${mois}:%`),
         // Lignes du mois supprimées par le coach : elles ne reviennent pas.
         db.from('echeances_ecartees').select('reference').like('reference', `abonnement:${mois}:%`),
       ]);
       if (clients.error || deja.error || ecartees.error) return;
       const faites = new Set([...(deja.data ?? []), ...(ecartees.data ?? [])].map((p) => p.reference as string));
-      const lignes = (clients.data as { id: string; prenom: string; option_nutrition: boolean; contacts: { id: string }[] }[])
-        .filter((c) => !faites.has(`abonnement:${mois}:${c.id}`))
-        .map((c) => ({
-          titre: `Abonnement ${mois.split('-').reverse().join('/')} · ${c.prenom}`,
-          contact_id: c.contacts[0]?.id ?? null,
-          date: `${mois}-01`,
-          montant: mensualite({ accesAppli: true, optionNutrition: c.option_nutrition }),
-          statut: 'En attente',
-          reference: `abonnement:${mois}:${c.id}`,
-        }));
+      type Fiche = LigneRemise & { id: string; prenom: string; option_nutrition: boolean; formule: string | null; paiement: string; contacts: { id: string }[] };
+      const fiches = clients.data as Fiche[];
+      const lignes = fiches
+        // Stripe crée lui-même la ligne du mois quand le prélèvement passe.
+        .filter((c) => c.paiement !== 'stripe' && !faites.has(`abonnement:${mois}:${c.id}`))
+        .map((c) => {
+          const abo: Abonnement = { accesAppli: true, optionNutrition: c.option_nutrition, formule: estFormule(c.formule) ? c.formule : undefined, remise: versRemise(c) };
+          const p = prixAvecRemise(prixMensuel(abo), abo.remise, jour);
+          const remise = remiseEnCours(abo.remise, jour) ? abo.remise : undefined;
+          return {
+            titre: `Abonnement ${mois.split('-').reverse().join('/')} · ${c.prenom}${p.offert ? ' · offert' : ''}`,
+            contact_id: c.contacts[0]?.id ?? null,
+            date: `${mois}-01`,
+            montant: mensualite(abo, jour),
+            // Offert : rien à encaisser, la ligne est réglée d'office.
+            statut: p.offert ? 'Payé' : 'En attente',
+            notes: remise ? `Prix ${p.prix} €, remise ${p.remise} €${remise.motif ? ` (${remise.motif})` : ''}` : null,
+            reference: `abonnement:${mois}:${c.id}`,
+          };
+        });
       // Une ligne à la fois : si un autre chargement l'a déjà créée, la base refuse le doublon et on passe à la suivante.
       for (const ligne of lignes) await db.from('paiements').insert(ligne);
+
+      // Séances incluses (Hybride), payées à la main : créditées au début du mois. Côté Stripe, au prélèvement.
+      for (const c of fiches) {
+        const f = estFormule(c.formule) ? FORMULES[c.formule] : undefined;
+        if (!f?.seancesMois || c.paiement === 'stripe') continue;
+        // Déjà crédité ce mois-ci : la base refuse le doublon.
+        await db.from('packs_seances').insert({ client_id: c.id, seances_total: f.seancesMois, prix: 0, achete_le: `${mois}-01`, reference: `formule:${mois}` });
+      }
+    },
+    async demarrerStripe(clientId) {
+      const { data, error } = await db.functions.invoke<{ lien?: string; demarre?: boolean; erreur?: string }>('abonnement-stripe', {
+        body: { action: 'demarrer', clientId },
+      });
+      if (error || !data) throw await erreurFonction(error, 'Le paiement Stripe n’a pas pu être préparé. Réessaie.');
+      return { lien: data.lien, demarre: !!data.demarre };
+    },
+    async resilierStripe(clientId) {
+      const { error } = await db.functions.invoke('abonnement-stripe', { body: { action: 'resilier', clientId } });
+      if (error) throw await erreurFonction(error, 'La résiliation n’a pas pu être enregistrée. Réessaie.');
+    },
+    async portailStripe() {
+      const { data, error } = await db.functions.invoke<{ lien?: string }>('abonnement-stripe', { body: { action: 'portail' } });
+      if (error || !data?.lien) throw await erreurFonction(error, 'La page de ton abonnement ne s’ouvre pas pour le moment. Réessaie.');
+      return data.lien;
     },
   };
   return depot;

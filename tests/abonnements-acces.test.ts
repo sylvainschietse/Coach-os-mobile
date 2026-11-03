@@ -154,3 +154,45 @@ describe('packs de séances', () => {
     await expect(en(ids.userCoach2, `insert into public.packs_seances (client_id, seances_total) values ($1, 1)`, [ids.clientA])).rejects.toThrow();
   });
 });
+
+describe('formule, remise et prélèvement Stripe', () => {
+  it('le coach règle la formule et une remise de 100 % pour un testeur', async () => {
+    const { rows } = await en(
+      ids.userCoach1,
+      `update public.clients set formule = 'appli_nutrition', remise_type = 'pourcent', remise_valeur = 100, remise_motif = 'Merci d’être testeur', paiement = 'stripe'
+       where id = $1 returning formule, remise_valeur`,
+      [ids.clientA],
+    );
+    expect(rows).toEqual([{ formule: 'appli_nutrition', remise_valeur: '100.00' }]);
+  });
+
+  it('refuse une formule inconnue, une remise au-delà de 100 % et une remise sans montant', async () => {
+    await expect(en(ids.userCoach1, `update public.clients set formule = 'gratuit' where id = $1`, [ids.clientA])).rejects.toThrow();
+    await expect(en(ids.userCoach1, `update public.clients set remise_type = 'pourcent', remise_valeur = 120 where id = $1`, [ids.clientA])).rejects.toThrow();
+    await expect(en(ids.userCoach1, `update public.clients set remise_type = 'montant', remise_valeur = null where id = $1`, [ids.clientA])).rejects.toThrow();
+  });
+
+  it('seul Stripe écrit l’état du prélèvement, ni le coach ni le client', async () => {
+    await expect(en(ids.userCoach1, `update public.clients set statut_stripe = 'active' where id = $1`, [ids.clientA])).rejects.toThrow();
+    await expect(en(ids.userCoach1, `update public.clients set stripe_abonnement = 'sub_x' where id = $1`, [ids.clientA])).rejects.toThrow();
+    // Côté serveur (fonction stripe-webhook), l'écriture passe.
+    await db.query(`update public.clients set statut_stripe = 'active', stripe_abonnement = 'sub_1' where id = $1`, [ids.clientA]);
+    // Le coach peut toujours changer la formule d'un client prélevé.
+    expect((await en(ids.userCoach1, `update public.clients set formule = 'hybride_leger' where id = $1 returning id`, [ids.clientA])).rows).toHaveLength(1);
+    // Le client lit sa formule et sa remise, sans pouvoir les changer.
+    expect((await en(ids.userClientA, `select formule, remise_motif from public.clients`)).rows).toEqual([{ formule: 'hybride_leger', remise_motif: 'Merci d’être testeur' }]);
+    expect((await en(ids.userClientA, `update public.clients set remise_valeur = 100 returning id`)).rows).toHaveLength(0);
+  });
+
+  it('les séances de la formule ne sont créditées qu’une fois par mois', async () => {
+    const credit = `insert into public.packs_seances (client_id, seances_total, prix, reference) values ($1, 1, 0, 'formule:2026-11')`;
+    await en(ids.userCoach1, credit, [ids.clientA]);
+    await expect(en(ids.userCoach1, credit, [ids.clientA])).rejects.toThrow();
+  });
+
+  it('les événements Stripe déjà traités restent invisibles pour l’appli', async () => {
+    await db.query(`insert into public.stripe_evenements (id, type) values ('evt_1', 'invoice.paid')`);
+    await expect(db.query(`insert into public.stripe_evenements (id, type) values ('evt_1', 'invoice.paid')`)).rejects.toThrow();
+    await expect(en(ids.userCoach1, `select id from public.stripe_evenements`)).rejects.toThrow();
+  });
+});

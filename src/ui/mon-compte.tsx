@@ -1,12 +1,12 @@
 // Onglet « Moi » du client : ses coordonnées, sa formule, ses documents et l'accès à ses données (RGPD).
-// La formule s'affiche sans prix : rien ne s'achète dans l'appli.
+// La formule s'affiche avec son prix et la remise du coach, sans bouton d'achat : rien ne s'achète dans l'appli.
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { abonnements } from '@/data/abonnements';
 import { mesInfos, modifierMesCoordonnees, monCoach, type MesInfos } from '@/data/acces-client';
-import { soldeSeances } from '@/domain/abonnements';
+import { FORMULES, prixAvecRemise, prixMensuel, remiseEnCours, soldeSeances, statutOuvreAcces, type Abonnement } from '@/domain/abonnements';
 import { verifierCoordonnees } from '@/domain/acces-client';
 import { formaterTelephone, normaliserTelephone } from '@/domain/crm';
 import { demanderSortie } from '@/lib/brouillon';
@@ -106,6 +106,49 @@ function MesInformations({ infos, apercu, onModifie }: { infos: MesInfos | null;
   );
 }
 
+const euros = (n: number) => `${n.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`;
+
+/** Prix normal, cadeau du coach et prochain prélèvement. */
+function MaFormule({ a, apercu }: { a: Abonnement; apercu: boolean }) {
+  const [erreur, setErreur] = useState<string>();
+  const [occupe, setOccupe] = useState(false);
+  const jour = new Date().toISOString().slice(0, 10);
+  const p = prixAvecRemise(prixMensuel(a), a.remise, jour);
+  const remise = remiseEnCours(a.remise, jour) ? a.remise : undefined;
+  // Gérer sa carte ou résilier passe par la page Stripe ; pas de lien de paiement dans l'appli iPhone (règles Apple).
+  const portail = !apercu && Platform.OS !== 'ios' && a.paiement === 'stripe' && !!a.statutStripe && statutOuvreAcces(a.statutStripe);
+  const ouvrirPortail = async () => {
+    setErreur(undefined);
+    setOccupe(true);
+    try {
+      await ouvrirLien(await abonnements.portailStripe());
+    } catch (e) {
+      setErreur(messageErreur(e));
+    } finally {
+      setOccupe(false);
+    }
+  };
+
+  return (
+    <>
+      {a.formule && <Ligne libelle="Formule" valeur={FORMULES[a.formule].nom} />}
+      {a.accesAppli && p.prix > 0 && <Ligne libelle="Prix" valeur={`${euros(p.prix)} / mois`} />}
+      {remise && (
+        <>
+          <Ligne libelle={remise.motif || 'Cadeau de ton coach'} valeur={`−${euros(p.remise)} / mois`} />
+          <Ligne libelle="Tu paies" valeur={p.offert ? '0 € · offert par ton coach' : `${euros(p.aPayer)} / mois`} />
+          {remise.jusquAu && <Texte doux style={{ fontSize: 13 }}>{`Remise valable jusqu’au ${remise.jusquAu.split('-').reverse().join('/')}.`}</Texte>}
+        </>
+      )}
+      {a.paiement === 'stripe' && a.prochaineEcheance && !p.offert && (
+        <Ligne libelle="Prochain prélèvement" valeur={a.prochaineEcheance.split('-').reverse().join('/')} />
+      )}
+      {portail && <Bouton variante="discret" libelle="Gérer mon paiement" onPress={ouvrirPortail} chargement={occupe} />}
+      {erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{erreur}</Texte>}
+    </>
+  );
+}
+
 export function MonCompte({ clientId, prenom, apercu }: { clientId: string; prenom: string; apercu: boolean }) {
   const infos = useCharger(() => mesInfos(clientId), `infos-${clientId}`);
   const abo = useCharger(() => abonnements.lire(clientId), `abo-${clientId}`);
@@ -123,6 +166,7 @@ export function MonCompte({ clientId, prenom, apercu }: { clientId: string; pren
         <SousTitre>Ma formule</SousTitre>
         {abo.donnee && (
           <>
+            <MaFormule a={abo.donnee} apercu={apercu} />
             <Ligne libelle="Appli (programme, séances, suivi)" valeur={abo.donnee.accesAppli ? 'Inclus' : 'Non'} />
             <Ligne libelle="Nutrition" valeur={abo.donnee.optionNutrition ? 'Complète (recettes, plan de repas)' : 'Macros'} />
           </>
