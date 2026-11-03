@@ -243,10 +243,12 @@ export const STATUTS_CONTACT = [
   'Perdu',
 ] as const;
 export type StatutContact = (typeof STATUTS_CONTACT)[number];
+/** Les statuts proposés dans la fiche : les autres restent lisibles sur les contacts qui les ont déjà. */
+export const STATUTS_CONTACT_PROPOSES: readonly StatutContact[] = ['Nouveau Prospect', 'Booster planifié', 'Client actif', 'A relancer', 'Coaching terminé'];
 export const OBJECTIFS = ['Perte de poids', 'Prise de masse', 'Remise en forme', 'Santé', 'Préparation physique', 'Performance', 'Autre', 'Prendre du muscle', 'Perdre du poids', 'Retrouver la forme'];
-export const PROCHAINES_ACTIONS = ['Appeler', 'Planifier booster', 'Envoyer lien stripe', 'Envoyer questionnaire', 'Créer programme', 'Relancer', 'Attendre retour', 'Aucune'];
+// Lien de paiement, questionnaire et programme ont leurs propres boutons : seules restent les actions que le coach note pour lui.
+export const PROCHAINES_ACTIONS = ['Appeler', 'Relancer', 'Planifier booster', 'Aucune'];
 export const ORIGINES = ['Booster', 'Bouche à Oreille', 'Ancien client', 'Demande en direct', 'Recommandation', 'Autre'];
-export const OFFRES_VENDUES = ['Séance Coaching', 'Formule Essentielle', 'Formule premium', 'Suivi Nutritionnel', 'Analyse vidéo'];
 
 export const STATUTS_BOOSTER = ['À préparer', 'Questionnaire reçu', 'En cours', 'Terminée', 'Annulée'] as const;
 export type StatutBooster = (typeof STATUTS_BOOSTER)[number];
