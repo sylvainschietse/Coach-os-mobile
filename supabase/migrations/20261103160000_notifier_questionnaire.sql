@@ -2,7 +2,10 @@
 -- Un déclencheur appelle la fonction Edge « notifier-questionnaire » (pg_net, appel asynchrone : la réception de la
 -- réponse n'attend pas et n'échoue jamais à cause de la notification). notifie_le évite toute double notification.
 
-create extension if not exists pg_net;
+-- pg_net existe sur Supabase ; ailleurs (base de test), on s'en passe : le déclencheur ne fait alors rien.
+do $$ begin
+  if exists (select 1 from pg_available_extensions where name = 'pg_net') then create extension if not exists pg_net; end if;
+end $$;
 
 alter table public.questionnaires add column if not exists notifie_le timestamptz;
 -- Les réponses déjà reçues ne déclenchent rien.
