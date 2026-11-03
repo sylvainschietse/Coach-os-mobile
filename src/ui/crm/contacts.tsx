@@ -1,47 +1,31 @@
 // C02 — Liste Contacts reprise de CRMWorkspace.tsx : recherche, filtre de statut, Nouveau contact,
-// « Inclure les dossiers archivés », cartes à initiales et « Actions du dossier · Booster, accès et documents ».
+// « Inclure les dossiers archivés », cartes à initiales et, sous chaque contact, le bouton de la prochaine étape du parcours.
 import { useFocusEffect } from 'expo-router';
-import { ArrowUpRight, Plus } from 'lucide-react-native';
+import { Plus } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { crm, ecouterCrm } from '@/data/crm';
-import {
-  filtrerContacts,
-  formaterTelephone,
-  lienAccesWhatsApp,
-  lienEnvoi,
-  rediger,
-  statutContact,
-  STATUTS_CONTACT,
-  type ContactResume,
-  type StatutContact,
-} from '@/domain/crm';
-import { adresseWeb } from '@/lib/adresse-web';
-import { ouvrirLien } from '@/lib/ouvrir-lien';
+import { etapeSuivante, filtrerContacts, formaterTelephone, statutContact, STATUTS_CONTACT, type ContactResume, type StatutContact } from '@/domain/crm';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Vide } from '../coque';
 import { Chargement, Erreur } from '../composants';
 import { arrondi, couleurs, espace, polices } from '../theme';
-import { adresseQuestionnaire, nomComplet, useCoachNom } from './commun';
-import { Badge, CaseACocher, Choix, Initiales, Recherche, Repliable, useBlocNomCarte } from './dossier';
-
-export const LIEN_APPLI = process.env.EXPO_PUBLIC_LIEN_APPLI || adresseWeb('/');
-/** Vidéo de mise en route (public/tuto-coachgo.mp4, publiée avec le site web). */
-export const LIEN_TUTO = process.env.EXPO_PUBLIC_LIEN_TUTO || adresseWeb('/tuto-coachgo.mp4');
+import { BoutonEtape } from './acces';
+import { EnvoiMessage, nomComplet, useMessageQuestionnaire } from './commun';
+import { Badge, CaseACocher, Choix, Initiales, Recherche, useBlocNomCarte } from './dossier';
 
 export function Contacts({
   onOuvrir,
   onNouveau,
   onPlanifierBooster,
-  onRubrique,
+  onOuvrirBooster,
 }: {
   onOuvrir: (id: string) => void;
   onNouveau: () => void;
   onPlanifierBooster: (contactId: string) => void;
-  /** Documents / Bilans filtrés sur ce dossier. */
-  onRubrique: (rubrique: 'Documents' | 'Bilans', contactId: string) => void;
+  onOuvrirBooster: (b: { id: string; contactId: string }) => void;
 }) {
   const charge = useCharger(
     async () => ({
@@ -93,7 +77,7 @@ export function Contacts({
             lienQuestionnaire={charge.donnee!.lien}
             onOuvrir={() => onOuvrir(c.id)}
             onPlanifierBooster={() => onPlanifierBooster(c.id)}
-            onRubrique={(r) => onRubrique(r, c.id)}
+            onOuvrirBooster={(id) => onOuvrirBooster({ id, contactId: c.id })}
           />
         ))}
         {!visibles.length && <Vide titre="Aucun dossier pour ces filtres." />}
@@ -128,13 +112,13 @@ function CarteContact({
   lienQuestionnaire,
   onOuvrir,
   onPlanifierBooster,
-  onRubrique,
+  onOuvrirBooster,
 }: {
   contact: ContactResume;
   lienQuestionnaire: string | null;
   onOuvrir: () => void;
   onPlanifierBooster: () => void;
-  onRubrique: (r: 'Documents' | 'Bilans') => void;
+  onOuvrirBooster: (boosterId: string) => void;
 }) {
   const blocNom = useBlocNomCarte();
   return (
@@ -155,102 +139,71 @@ function CarteContact({
           <BoutonContour libelle="Voir la fiche" onPress={onOuvrir} />
         </View>
       </View>
-      <ActionsDossier contact={c} lienQuestionnaire={lienQuestionnaire} onPlanifierBooster={onPlanifierBooster} onRubrique={onRubrique} />
+      <ProchaineEtape
+        contact={c}
+        lienQuestionnaire={lienQuestionnaire}
+        onOuvrir={onOuvrir}
+        onPlanifierBooster={onPlanifierBooster}
+        onOuvrirBooster={onOuvrirBooster}
+      />
     </View>
   );
 }
 
-function ActionsDossier({
+/**
+ * Un seul bouton, celui de l'étape à faire (questionnaire, Booster, accès à l'appli), au lieu de sept boutons
+ * cachés dans « Actions du dossier ». Le reste est dans la fiche.
+ */
+function ProchaineEtape({
   contact,
   lienQuestionnaire,
+  onOuvrir,
   onPlanifierBooster,
-  onRubrique,
+  onOuvrirBooster,
 }: {
   contact: ContactResume;
   lienQuestionnaire: string | null;
+  onOuvrir: () => void;
   onPlanifierBooster: () => void;
-  onRubrique: (r: 'Documents' | 'Bilans') => void;
+  onOuvrirBooster: (boosterId: string) => void;
 }) {
-  const coach = useCoachNom();
+  const message = useMessageQuestionnaire(contact, lienQuestionnaire);
+  const [envoi, setEnvoi] = useState(false);
   const [occupe, setOccupe] = useState(false);
-  const [retour, setRetour] = useState<{ ok: boolean; texte: string }>();
+  const [erreur, setErreur] = useState<string>();
+  const etape = etapeSuivante(contact);
   const archive = contact.statut === 'archive';
-  const questionnaire =
-    lienQuestionnaire && contact.telephone
-      ? lienEnvoi(
-          'whatsapp',
-          contact,
-          rediger('questionnaire', contact, {
-            coach,
-            lienQuestionnaire: adresseQuestionnaire(lienQuestionnaire),
-          }),
-        )
-      : null;
-  const acces = lienAccesWhatsApp(contact, coach, LIEN_APPLI, LIEN_TUTO);
 
-  async function agir(action: () => Promise<void>, succes: string) {
+  async function archiver() {
     setOccupe(true);
-    setRetour(undefined);
+    setErreur(undefined);
     try {
-      await action();
-      setRetour({ ok: true, texte: succes });
+      await (archive ? crm.reactiver(contact.id) : crm.archiver(contact.id));
     } catch (e) {
-      setRetour({
-        ok: false,
-        texte: e instanceof Error ? e.message : 'Action non confirmée',
-      });
+      setErreur(e instanceof Error ? e.message : 'Action non confirmée');
     } finally {
       setOccupe(false);
     }
   }
 
   return (
-    <Repliable resume="Actions du dossier · Booster, accès et documents">
+    <View style={{ gap: espace(2) }}>
       <View style={styles.actions}>
-        {questionnaire && <BoutonContour libelle="Questionnaire WhatsApp" icone={ArrowUpRight} onPress={() => ouvrirLien(questionnaire)} />}
-        <BoutonContour libelle="Planifier un Booster" onPress={onPlanifierBooster} desactive={archive} />
-        <BoutonContour
-          libelle={contact.clientId ? 'Actualiser l’accès client' : 'Préparer l’accès client'}
-          desactive={occupe || archive}
-          onPress={() => agir(() => crm.preparerAcces(contact.id), 'Accès client préparé. Le client se connectera avec son email.')}
-        />
-        <BoutonEnvoyerAcces
-          lien={acces}
-          raison={!contact.clientId || !contact.email ? 'Préparez l’accès avec l’email du client' : 'Renseignez un numéro de téléphone valide'}
-        />
-        <BoutonContour libelle="Documents" onPress={() => onRubrique('Documents')} />
-        <BoutonContour libelle="Bilans" onPress={() => onRubrique('Bilans')} />
-        <Pressable
-          accessibilityRole="button"
-          disabled={occupe}
-          onPress={() =>
-            agir(() => (archive ? crm.reactiver(contact.id) : crm.archiver(contact.id)), archive ? 'Dossier réactivé' : 'Dossier archivé')
-          }
-          style={({ pressed }) => [styles.fantome, (pressed || occupe) && { opacity: 0.6 }]}
-        >
-          <Text style={styles.fantomeTexte}>{archive ? 'Réactiver' : 'Archiver'}</Text>
-        </Pressable>
+        {etape.action === 'questionnaire' && !envoi && (
+          <BoutonEtape libelle="Envoyer le questionnaire" desactive={!message} onPress={() => setEnvoi(true)} />
+        )}
+        {etape.action === 'planifier' && <BoutonEtape libelle="Planifier le Booster" onPress={onPlanifierBooster} />}
+        {etape.action === 'preparer' && <BoutonEtape libelle="Préparer le Booster" onPress={() => onOuvrirBooster(etape.boosterId)} />}
+        {etape.action === 'acces' && <BoutonEtape libelle="Créer son accès à l’appli" onPress={onOuvrir} />}
+        {etape.action === 'reactiver' && <BoutonEtape libelle={occupe ? 'Réactivation…' : 'Réactiver'} desactive={occupe} onPress={archiver} />}
+        {!archive && (
+          <Text accessibilityRole="button" disabled={occupe} onPress={archiver} style={styles.discret}>
+            Archiver
+          </Text>
+        )}
       </View>
-      {retour && <Text style={[styles.retour, !retour.ok && { color: couleurs.rouge }]}>{retour.texte}</Text>}
-    </Repliable>
-  );
-}
-
-/** Ouvre WhatsApp avec le message prêt : rien n'est marqué « envoyé », l'ouverture ne le prouve pas. */
-function BoutonEnvoyerAcces({ lien, raison }: { lien: string | null; raison: string }) {
-  return (
-    <View style={{ gap: 2 }}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityHint={lien ? undefined : raison}
-        disabled={!lien}
-        onPress={() => lien && ouvrirLien(lien)}
-        style={({ pressed }) => [styles.principal, { minHeight: 44 }, !lien && { opacity: 0.5 }, pressed && { opacity: 0.85 }]}
-      >
-        <Text style={styles.principalTexte}>Envoyer l’accès client</Text>
-        <ArrowUpRight size={14} color="#FFFFFF" />
-      </Pressable>
-      {!lien && <Text style={styles.raison}>{raison}</Text>}
+      {envoi && message && <EnvoiMessage contact={contact} sujet="Ton questionnaire" message={message} />}
+      {erreur && <Text style={[styles.retour, { color: couleurs.rouge }]}>{erreur}</Text>}
     </View>
   );
 }
@@ -318,27 +271,19 @@ const styles = StyleSheet.create({
     gap: espace(2),
     alignItems: 'flex-start',
   },
-  fantome: {
+  discret: {
     minHeight: 44,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-    borderRadius: arrondi.controle,
-  },
-  fantomeTexte: {
-    fontFamily: polices.texteMoyen,
-    fontSize: 14,
-    color: couleurs.texte,
+    lineHeight: 44,
+    paddingHorizontal: 8,
+    fontFamily: polices.texte,
+    fontSize: 13,
+    color: couleurs.texteDoux,
+    textDecorationLine: 'underline',
   },
   retour: {
     marginTop: espace(2),
     fontFamily: polices.texte,
     fontSize: 13,
     color: couleurs.vert,
-  },
-  raison: {
-    fontFamily: polices.texte,
-    fontSize: 11,
-    color: couleurs.texteDoux,
-    maxWidth: 220,
   },
 });

@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useSession } from '@/data/session';
-import { formaterTelephone, lienEnvoi, MODELES, rediger, STATUTS, type Canal, type Contact, type Relance, type Statut } from '@/domain/crm';
+import { formaterTelephone, lienEnvoi, MODELES, normaliserTelephone, rediger, STATUTS, type Canal, type Contact, type Relance, type Statut } from '@/domain/crm';
 import { adresseWeb } from '@/lib/adresse-web';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 
@@ -28,8 +28,8 @@ export const jourLisible = (jour: string) => {
  * Adresse du questionnaire à envoyer aux prospects : le formulaire Tally du coach quand il est renseigné
  * (ses réponses arrivent dans l'app par le webhook), sinon le questionnaire intégré à l'app.
  */
-export function adresseQuestionnaire(lien: string) {
-  return process.env.EXPO_PUBLIC_QUESTIONNAIRE_TALLY || adresseWeb(`/questionnaire/${lien}`);
+export function adresseQuestionnaire(lien: string | null | undefined): string | undefined {
+  return process.env.EXPO_PUBLIC_QUESTIONNAIRE_TALLY || (lien ? adresseWeb(`/questionnaire/${lien}`) : undefined);
 }
 
 export function useCoachNom() {
@@ -44,9 +44,28 @@ const CANAUX: { canal: Canal; libelle: string }[] = [
 ];
 
 /** Boutons qui ouvrent l'app de messagerie avec le message déjà écrit. */
-export function BoutonsEnvoi({ contact, message, onEnvoye }: { contact: Contact; message: string; onEnvoye?: () => void }) {
-  const disponibles = CANAUX.filter((c) => lienEnvoi(c.canal, contact, message));
-  if (disponibles.length === 0) return <Texte doux style={{ fontSize: 13 }}>Ajoute un téléphone ou un e-mail pour le contacter.</Texte>;
+export function BoutonsEnvoi({
+  contact,
+  message,
+  sujet,
+  onEnvoye,
+}: {
+  contact: Pick<Contact, 'telephone' | 'email' | 'prenom'>;
+  message: string;
+  sujet?: string;
+  onEnvoye?: () => void;
+}) {
+  const disponibles = CANAUX.filter((c) => lienEnvoi(c.canal, contact, message, sujet));
+  if (disponibles.length === 0)
+    return (
+      <Texte doux style={{ fontSize: 13 }}>
+        {!message.trim()
+          ? 'Le message est vide : rien à envoyer.'
+          : contact.telephone
+            ? 'Le numéro de téléphone n’est pas reconnu. Corrige-le dans ses coordonnées.'
+            : 'Ajoute son téléphone ou son e-mail dans ses coordonnées pour lui écrire.'}
+      </Texte>
+    );
   return (
     <View style={styles.envois}>
       {disponibles.map(({ canal, libelle }) => (
@@ -54,7 +73,9 @@ export function BoutonsEnvoi({ contact, message, onEnvoye }: { contact: Contact;
           key={canal}
           accessibilityRole="button"
           onPress={async () => {
-            await ouvrirLien(lienEnvoi(canal, contact, message)!).catch(() => undefined);
+            const lien = lienEnvoi(canal, contact, message, sujet);
+            if (!lien) return;
+            await ouvrirLien(lien).catch(() => undefined);
             onEnvoye?.();
           }}
           style={({ pressed }) => [styles.envoi, pressed && { opacity: 0.8 }]}
@@ -64,6 +85,39 @@ export function BoutonsEnvoi({ contact, message, onEnvoye }: { contact: Contact;
       ))}
     </View>
   );
+}
+
+/** Le message tel qu'il partira, puis SMS / WhatsApp / E-mail : on voit ce qu'on envoie avant d'appuyer. */
+export function EnvoiMessage({
+  contact,
+  message,
+  sujet,
+  onEnvoye,
+}: {
+  contact: Pick<Contact, 'telephone' | 'email' | 'prenom'>;
+  message: string;
+  sujet?: string;
+  onEnvoye?: () => void;
+}) {
+  const destinataire = [contact.telephone ? formaterTelephone(normaliserTelephone(contact.telephone) ?? contact.telephone) : '', contact.email ?? '']
+    .filter(Boolean)
+    .join(' · ');
+  return (
+    <View style={{ gap: espace(2) }}>
+      {destinataire ? <Text style={styles.motif}>À {contact.prenom || 'ce contact'} · {destinataire}</Text> : null}
+      <Text selectable style={styles.message}>
+        {message}
+      </Text>
+      <BoutonsEnvoi contact={contact} message={message} sujet={sujet} onEnvoye={onEnvoye} />
+    </View>
+  );
+}
+
+/** Message « questionnaire » prêt à partir, avec le bon lien (Tally ou questionnaire intégré). */
+export function useMessageQuestionnaire(contact: Pick<Contact, 'prenom'>, lien: string | null | undefined): string | undefined {
+  const coach = useCoachNom();
+  const adresse = adresseQuestionnaire(lien);
+  return adresse ? rediger('questionnaire', contact, { coach, lienQuestionnaire: adresse }) : undefined;
 }
 
 /** Une relance à faire : le message prêt, l'envoi en un appui, ou « fait » / « demain ». */
@@ -89,6 +143,8 @@ export function CarteRelance({
   const coach = useCoachNom();
   const message = rediger(relance.modele, contact, { coach, lienQuestionnaire, booster });
   const tache = relance.modele === 'tache';
+  // Sans adresse de questionnaire, le message partirait sans lien : on ne propose pas l'envoi.
+  const sansLien = relance.modele === 'questionnaire' && !lienQuestionnaire;
   return (
     <View style={[styles.relance, enRetard && { borderColor: couleurs.rouge }]}>
       <Pressable onPress={onOuvrirContact} disabled={!onOuvrirContact} accessibilityRole={onOuvrirContact ? 'link' : undefined}>
@@ -104,7 +160,8 @@ export function CarteRelance({
         </Text>
       </Pressable>
       {!tache && <Text style={styles.message}>{message}</Text>}
-      {!tache && <BoutonsEnvoi contact={contact} message={message} onEnvoye={onFaite} />}
+      {!tache && !sansLien && <BoutonsEnvoi contact={contact} message={message} onEnvoye={onFaite} />}
+      {sansLien && <Texte doux style={{ fontSize: 13 }}>Le lien du questionnaire n’est pas réglé : impossible de l’envoyer pour l’instant.</Texte>}
       <View style={styles.actions}>
         <Pressable accessibilityRole="button" onPress={onFaite} style={styles.action}>
           <Text style={styles.actionTexte}>✓ Fait</Text>

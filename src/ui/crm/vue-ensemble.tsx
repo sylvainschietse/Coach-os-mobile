@@ -113,7 +113,7 @@ export function VueEnsemble({
                   relance={r}
                   contact={r.contact}
                   enRetard={r.enRetard}
-                  lienQuestionnaire={donnees.lienQuestionnaire ? adresseQuestionnaire(donnees.lienQuestionnaire) : undefined}
+                  lienQuestionnaire={adresseQuestionnaire(donnees.lienQuestionnaire)}
                   booster={donnees.boosters.find((b) => b.contactId === r.contactId && b.statut === 'prevu')?.date}
                   onFaite={() => agir(crm.terminerRelance(r.id))}
                   onReporter={() => agir(crm.reporterRelance(r.id, ajouterJours(jourLocal(new Date()), 1)))}

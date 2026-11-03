@@ -5,14 +5,14 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { crm, ecouterCrm } from '@/data/crm';
-import { filtrerBoosters, lienEnvoi, rediger, statutBooster, STATUTS_BOOSTER, type BoosterDossier, type StatutBooster } from '@/domain/crm';
-import { ouvrirLien } from '@/lib/ouvrir-lien';
+import { filtrerBoosters, statutBooster, STATUTS_BOOSTER, type BoosterDossier, type StatutBooster } from '@/domain/crm';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Vide } from '../coque';
 import { Chargement, Erreur } from '../composants';
 import { couleurs, espace, polices } from '../theme';
-import { adresseQuestionnaire, nomComplet, useCoachNom } from './commun';
+import { BoutonEtape } from './acces';
+import { EnvoiMessage, nomComplet, useMessageQuestionnaire } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
 import { Badge, CaseACocher, Choix, Recherche, useBlocNomCarte } from './dossier';
 
@@ -29,7 +29,7 @@ export function Boosters({
   onOuvrir,
   onNouveau,
   onSupprimer,
-  onDocuments,
+  onOuvrirContact,
 }: {
   /** Filtre « Dossier : X » venu d'une fiche. */
   contactId?: string;
@@ -37,12 +37,14 @@ export function Boosters({
   onOuvrir: (b: BoosterDossier) => void;
   onNouveau: () => void;
   onSupprimer: (b: BoosterDossier) => void;
-  onDocuments: (contactId: string) => void;
+  onOuvrirContact: (contactId: string) => void;
 }) {
   const charge = useCharger(
     async () => ({
       boosters: await crm.boosters(),
       lien: await crm.lienQuestionnaire(),
+      // Pour ne proposer « Envoyer le questionnaire » qu'à ceux qui ne l'ont pas encore rempli.
+      avecQuestionnaire: new Set((await crm.carnet()).questionnaires.map((q) => q.contactId)),
     }),
     'boosters',
   );
@@ -60,7 +62,7 @@ export function Boosters({
       </View>
     );
   if (!charge.donnee) return <Chargement />;
-  const { boosters, lien } = charge.donnee;
+  const { boosters, lien, avecQuestionnaire } = charge.donnee;
   const visibles = filtrerBoosters(boosters, recherche, {
     statut,
     contactId,
@@ -99,9 +101,10 @@ export function Boosters({
             key={b.id}
             booster={b}
             lienQuestionnaire={lien}
+            questionnaireRecu={avecQuestionnaire.has(b.contactId)}
             onOuvrir={() => onOuvrir(b)}
             onSupprimer={() => onSupprimer(b)}
-            onDocuments={() => onDocuments(b.contactId)}
+            onOuvrirContact={() => onOuvrirContact(b.contactId)}
           />
         ))}
         {!visibles.length && <Vide titre="Aucun dossier pour ces filtres." />}
@@ -113,57 +116,46 @@ export function Boosters({
 function CarteBooster({
   booster: b,
   lienQuestionnaire,
+  questionnaireRecu,
   onOuvrir,
   onSupprimer,
-  onDocuments,
+  onOuvrirContact,
 }: {
   booster: BoosterDossier;
   lienQuestionnaire: string | null;
+  questionnaireRecu: boolean;
   onOuvrir: () => void;
   onSupprimer: () => void;
-  onDocuments: () => void;
+  onOuvrirContact: () => void;
 }) {
   const blocNom = useBlocNomCarte();
-  const coach = useCoachNom();
   const [briefing, setBriefing] = useState(false);
-  const questionnaire =
-    lienQuestionnaire && b.contact.telephone
-      ? lienEnvoi(
-          'whatsapp',
-          b.contact,
-          rediger('questionnaire', b.contact, {
-            coach,
-            lienQuestionnaire: adresseQuestionnaire(lienQuestionnaire),
-          }),
-        )
-      : null;
+  const [envoi, setEnvoi] = useState(false);
+  const message = useMessageQuestionnaire(b.contact, lienQuestionnaire);
+  const prevu = b.statut === 'prevu';
+  const compteRendu = () => router.push({ pathname: '/coach/compte-rendu/[id]', params: { id: b.id, contact: b.contactId } });
   return (
     <View style={carteDossier}>
       <View style={styles.entete}>
         <View style={[{ flexShrink: 1, minWidth: 0, flexBasis: 220, flexGrow: 1 }, blocNom]}>
           <Text style={styles.titre}>{b.nom || 'Sans nom'}</Text>
           <Text style={styles.sous}>
-            {nomComplet(b.contact)} · {quand(b.date)}
+            <Text accessibilityRole="link" onPress={onOuvrirContact} style={{ textDecorationLine: 'underline' }}>
+              {nomComplet(b.contact)}
+            </Text>{' '}
+            · {quand(b.date)}
           </Text>
         </View>
         <View style={styles.ligne}>
           {b.contact.statut === 'archive' && <Badge variante="secondaire" libelle="Archivé" />}
           <Badge libelle={statutBooster(b)} />
-          <BoutonContour libelle="Ouvrir" onPress={onOuvrir} />
-          <Text accessibilityRole="button" onPress={onSupprimer} style={styles.supprimer}>
-            Supprimer
-          </Text>
+          {b.resultatCommercial && <Badge variante="secondaire" libelle={b.resultatCommercial} />}
         </View>
       </View>
-      {(b.resultatCommercial || b.resumeIa) && (
-        <View style={styles.ligne}>
-          {b.resultatCommercial && <Badge variante="secondaire" libelle={b.resultatCommercial} />}
-          {b.resumeIa && (
-            <Text accessibilityRole="button" onPress={() => setBriefing(!briefing)} style={styles.lien}>
-              {briefing ? 'Masquer le briefing' : 'Voir le briefing'}
-            </Text>
-          )}
-        </View>
+      {b.resumeIa && (
+        <Text accessibilityRole="button" onPress={() => setBriefing(!briefing)} style={styles.lien}>
+          {briefing ? 'Masquer le briefing' : 'Voir le briefing'}
+        </Text>
       )}
       {briefing && (
         <View style={styles.briefing}>
@@ -173,19 +165,16 @@ function CarteBooster({
           </Text>
         </View>
       )}
+      {/* Le bouton de l'étape (préparer avant, compte rendu après), puis ce qui reste utile. */}
       <View style={styles.ligne}>
-        <BoutonContour
-          libelle="Générer le compte rendu"
-          onPress={() =>
-            router.push({
-              pathname: '/coach/compte-rendu/[id]',
-              params: { id: b.id, contact: b.contactId },
-            })
-          }
-        />
-        {questionnaire && <BoutonContour libelle="Questionnaire WhatsApp" onPress={() => ouvrirLien(questionnaire)} />}
-        <BoutonContour libelle="Documents du client" onPress={onDocuments} />
+        {prevu ? <BoutonEtape libelle="Préparer le Booster" onPress={onOuvrir} /> : <BoutonContour libelle="Ouvrir" onPress={onOuvrir} />}
+        {b.statut === 'fait' && <BoutonEtape libelle="Compte rendu" onPress={compteRendu} />}
+        {prevu && !questionnaireRecu && !envoi && message && <BoutonContour libelle="Envoyer le questionnaire" onPress={() => setEnvoi(true)} />}
+        <Text accessibilityRole="button" onPress={onSupprimer} style={styles.supprimer}>
+          Supprimer
+        </Text>
       </View>
+      {envoi && message && <EnvoiMessage contact={b.contact} sujet="Ton questionnaire" message={message} />}
     </View>
   );
 }

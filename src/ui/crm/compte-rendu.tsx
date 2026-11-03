@@ -170,7 +170,9 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
     }
   }
 
-  const prevenir = () => ouvrirLien(lienEnvoi('whatsapp', contact, messageCompteRenduEnvoye(cr))!).catch(() => undefined);
+  // Numéro non reconnu : pas de lien, le bouton n'apparaît pas (avant, il ne faisait rien).
+  const lienPrevenir = lienEnvoi('whatsapp', contact, messageCompteRenduEnvoye(cr));
+  const prevenir = () => lienPrevenir && ouvrirLien(lienPrevenir).catch(() => undefined);
 
   return (
     <View style={{ gap: espace(3) }}>
@@ -348,13 +350,15 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
         {booster.planEnvoyeLe && <Texte doux style={{ fontSize: 13 }}>{`Envoi confirmé le ${dateCourte(booster.planEnvoyeLe)}`}</Texte>}
 
         <SousTitre>2. Le prévenir sur WhatsApp</SousTitre>
-        {contact.telephone ? (
+        {lienPrevenir ? (
           <>
             <Texte doux style={{ fontSize: 14 }}>{messageCompteRenduEnvoye(cr)}</Texte>
             <Bouton variante={booster.planEnvoyeLe ? undefined : 'discret'} libelle="Prévenir sur WhatsApp" onPress={prevenir} />
           </>
         ) : (
-          <Texte style={{ fontSize: 14, color: couleurs.orange }}>Pas de numéro sur la fiche.</Texte>
+          <Texte style={{ fontSize: 14, color: couleurs.orange }}>
+            {contact.telephone ? 'Le numéro de la fiche n’est pas reconnu : corrige-le dans ses coordonnées.' : 'Pas de numéro sur la fiche.'}
+          </Texte>
         )}
       </Carte>
       {erreur && <Erreur message={erreur} />}
