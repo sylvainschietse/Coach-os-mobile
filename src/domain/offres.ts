@@ -118,14 +118,20 @@ const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
 export const libellePrix = (o: Pick<Offre, 'prix' | 'periodicite'>, prix = o.prix) => `${euros(prix)} ${PERIODICITES[o.periodicite].suffixe}`;
 
 /** Ce que l'offre comprend, ligne par ligne, tel que le client le lit. */
-export function contenuOffre(o: Pick<Offre, 'periodicite' | 'accesAppli' | 'nutrition' | 'messagerie' | 'videosMois' | 'seances' | 'essaiJours'>): string[] {
+export function contenuOffre(
+  o: Pick<Offre, 'periodicite' | 'accesAppli' | 'nutrition' | 'messagerie' | 'videosMois' | 'seances' | 'essaiJours'>,
+  pour: 'client' | 'coach' = 'client',
+): string[] {
   const unique = o.periodicite === 'unique';
   const periode = o.periodicite === 'annee' ? 'par an' : o.periodicite === 'trimestre' ? 'par trimestre' : 'par mois';
+  // Le coach lit la fiche de son client : « avec toi » plutôt que « avec ton coach ».
+  const coach = pour === 'coach';
+  const avec = coach ? 'avec toi' : 'avec ton coach';
   return [
-    o.seances ? (unique ? `${pluriel(o.seances, 'séance')} avec ton coach` : `${pluriel(o.seances, 'séance')} avec ton coach ${periode}`) : '',
-    o.accesAppli ? 'Ton programme et ton suivi dans l’appli' : '',
-    o.accesAppli ? (o.nutrition ? 'Nutrition complète : recettes, plan de repas, photo d’assiette' : 'Nutrition : tes macros') : '',
-    o.messagerie ? 'Messagerie avec ton coach' : '',
+    o.seances ? (unique ? `${pluriel(o.seances, 'séance')} ${avec}` : `${pluriel(o.seances, 'séance')} ${avec} ${periode}`) : '',
+    o.accesAppli ? (coach ? 'Programme et suivi dans l’appli' : 'Ton programme et ton suivi dans l’appli') : '',
+    o.accesAppli ? (o.nutrition ? 'Nutrition complète : recettes, plan de repas, photo d’assiette' : coach ? 'Nutrition : macros' : 'Nutrition : tes macros') : '',
+    o.messagerie ? `Messagerie ${avec}` : '',
     o.videosMois ? `${pluriel(o.videosMois, 'vidéo')} corrigée${o.videosMois > 1 ? 's' : ''} par mois` : '',
     o.essaiJours && !unique ? `${pluriel(o.essaiJours, 'jour')} d’essai offert${o.essaiJours > 1 ? 's' : ''}` : '',
   ].filter(Boolean);

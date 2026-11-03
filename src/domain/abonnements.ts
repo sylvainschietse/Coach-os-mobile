@@ -101,6 +101,13 @@ export function bilanVideos(envoyees: number, incluses: number) {
   return { envoyees, incluses, restantes, enPlus, aFacturer: enPlus * TARIFS.video };
 }
 
+/** Pack que le coach ajoute à la main sur la fiche : une de ses offres « pack », ou la séance à l'unité. */
+export interface PackAVendre {
+  libelle: string;
+  seances: number;
+  prix: number;
+}
+
 export type TypePack = 'unite' | 'pack10';
 export const PACKS: Record<TypePack, { libelle: string; seances: number; prix: number }> = {
   unite: { libelle: 'Séance à l’unité', seances: 1, prix: TARIFS.seance },
