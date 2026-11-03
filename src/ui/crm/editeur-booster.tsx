@@ -113,9 +113,18 @@ export function EditeurBoosterModale({
   const charge = useCharger(
     async () => {
       const contacts = boosterId ? [] : (await crm.contacts()).filter((c) => c.statut !== 'archive');
-      const fiche = contactId ? await crm.fiche(contactId) : null;
-      const booster = boosterId ? fiche?.boosters.find((b) => b.id === boosterId) : undefined;
+      let fiche = contactId ? await crm.fiche(contactId) : null;
+      let booster = boosterId ? fiche?.boosters.find((b) => b.id === boosterId) : undefined;
       if (boosterId && !booster) throw new Error('Ce Booster n’existe plus.');
+      // Booster créé avant l'arrivée des réponses : son briefing vide est rempli et enregistré tout seul à l'ouverture,
+      // plus besoin d'appuyer sur « Reprendre les réponses du questionnaire ».
+      const q = fiche?.questionnaires[0];
+      if (booster && q && !booster.resumeIa?.trim() && !booster.pointsAttention?.trim() && booster.statut === 'prevu') {
+        const { resumeIa, pointsAttention } = depuisQuestionnaire(q);
+        await crm.modifierBooster(booster.id, { resumeIa, pointsAttention });
+        fiche = await crm.fiche(contactId!);
+        booster = fiche?.boosters.find((b) => b.id === boosterId) ?? booster;
+      }
       return { contacts, fiche, booster };
     },
     `booster-${boosterId ?? 'nouveau'}-${contactId ?? ''}`,
@@ -311,14 +320,6 @@ function Editeur({
           </Cellule>
           <Cellule pleine>
             <Saisie libelle="Résumé IA" long valeur={b.resumeIa} onChange={(resumeIa) => maj({ resumeIa })} />
-            {questionnaire && !b.resumeIa.trim() && !b.pointsAttention.trim() && (
-              <View style={{ marginTop: espace(2), alignSelf: 'flex-start' }}>
-                <BoutonPied libelle="Reprendre les réponses du questionnaire" onPress={() => maj(depuisQuestionnaire(questionnaire))} />
-                <Text style={styles.aide}>
-                  Résumé tiré des réponses, sans IA. La douleur déclarée reste un point d’attention, pas un résultat de test.
-                </Text>
-              </View>
-            )}
           </Cellule>
           <Cellule pleine>
             <Saisie libelle="Points d’attention" long valeur={b.pointsAttention} onChange={(pointsAttention) => maj({ pointsAttention })} />
