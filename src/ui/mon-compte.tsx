@@ -133,6 +133,7 @@ export function MonCompte({ clientId, prenom, apercu }: { clientId: string; pren
         />
       </Carte>
       <MesDocuments clientId={clientId} />
+      {!apercu && <Bouton variante="discret" libelle="Mes notifications" onPress={() => demanderSortie(() => router.push('/client/notifications'))} />}
       {!apercu && <Bouton variante="discret" libelle="Mes données et confidentialité" onPress={() => demanderSortie(() => router.push('/client/donnees'))} />}
       {abo.erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{abo.erreur}</Texte>}
     </>

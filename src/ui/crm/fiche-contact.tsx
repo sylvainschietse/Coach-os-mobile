@@ -38,14 +38,16 @@ import { ProgrammeClient, SuiviClient } from '../fiche-client';
 import { Bilans } from './bilans';
 import { Documents } from './documents';
 import { Chargement, Erreur } from '../composants';
+import { Conversation } from '../messagerie/conversation';
 import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
 import { Cellule, Choix, Grille, Initiales, Modale, PiedEditeur, Repliable, Saisie, Valeur } from './dossier';
 
-export type VoletFiche = 'fiche' | 'boosters' | 'programme' | 'suivi' | 'nutrition' | 'documents';
-export const VOLETS_FICHE: VoletFiche[] = ['fiche', 'boosters', 'programme', 'suivi', 'nutrition', 'documents'];
+export type VoletFiche = 'fiche' | 'messages' | 'boosters' | 'programme' | 'suivi' | 'nutrition' | 'documents';
+export const VOLETS_FICHE: VoletFiche[] = ['fiche', 'messages', 'boosters', 'programme', 'suivi', 'nutrition', 'documents'];
 const VOLETS: OngletDef<VoletFiche>[] = [
   { cle: 'fiche', libelle: 'Coordonnées' },
+  { cle: 'messages', libelle: 'Messages' },
   { cle: 'boosters', libelle: 'Boosters' },
   { cle: 'programme', libelle: 'Programme' },
   { cle: 'suivi', libelle: 'Suivi' },
@@ -53,7 +55,7 @@ const VOLETS: OngletDef<VoletFiche>[] = [
   { cle: 'documents', libelle: 'Documents' },
 ];
 /** Un prospect n'a pas encore d'espace client : ni programme, ni suivi, ni nutrition. */
-const VOLETS_CLIENT: VoletFiche[] = ['programme', 'suivi', 'nutrition'];
+const VOLETS_CLIENT: VoletFiche[] = ['messages', 'programme', 'suivi', 'nutrition'];
 
 type Brouillon = Record<keyof Required<SaisieContactFiche>, string>;
 const CLES: (keyof Brouillon)[] = [
@@ -314,6 +316,11 @@ function Editeur({
       )}
       {volet === 'programme' && contact?.clientId && <ProgrammeClient key={contact.clientId} clientId={contact.clientId} coachId={coachId} />}
       {volet === 'suivi' && contact?.clientId && <SuiviClient key={contact.clientId} clientId={contact.clientId} />}
+      {volet === 'messages' && contact?.clientId && (
+        <View style={{ marginTop: espace(4) }}>
+          <Conversation key={contact.clientId} clientId={contact.clientId} moi="coach" nomAutre={contact.prenom} />
+        </View>
+      )}
       {volet === 'nutrition' && contact && <NutritionContact contact={contact} />}
       {volet === 'documents' && contact && (
         <View style={{ marginTop: espace(4), gap: espace(6) }}>

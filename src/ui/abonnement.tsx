@@ -6,7 +6,7 @@ import { Pressable, Text, View } from 'react-native';
 import { depot } from '@/data';
 import { abonnements } from '@/data/abonnements';
 import { useSession } from '@/data/session';
-import { mensualite, PACKS, restantes, soldeSeances, TARIFS, type Abonnement, type TypePack } from '@/domain/abonnements';
+import { MAX_VIDEOS_MOIS, mensualite, PACKS, restantes, soldeSeances, TARIFS, type Abonnement, type TypePack } from '@/domain/abonnements';
 import { useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Erreur, SousTitre, Texte } from './composants';
@@ -98,6 +98,14 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
               libelle={`Option nutrition · +${euros(TARIFS.optionNutrition)}/mois (recettes, plan de repas)`}
               valeur={a.optionNutrition}
               onChange={(v) => !occupe && changer({ optionNutrition: v })}
+            />
+          )}
+          {a.accesAppli && (
+            <Selecteur
+              libelle={`Vidéos corrigées incluses par mois (au-delà : ${euros(TARIFS.video)} la vidéo)`}
+              options={Array.from({ length: MAX_VIDEOS_MOIS + 1 }, (_, n) => ({ cle: String(n), libelle: n === 0 ? 'Aucune' : `${n} par mois` }))}
+              valeur={String(a.videosMois ?? 0)}
+              onChange={(v) => !occupe && changer({ videosMois: Number(v) })}
             />
           )}
           <Texte doux style={{ fontSize: 13 }}>

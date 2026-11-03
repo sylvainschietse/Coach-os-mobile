@@ -14,6 +14,8 @@ import { AccordDonnees } from '@/ui/consentement';
 import { BoutonIcone, EnTete } from '@/ui/coque';
 import { LanceurMinuteurs, Minuteurs } from '@/ui/entrainement/minuteurs';
 import { EspaceClient, type OngletClient } from '@/ui/espace-client';
+import { BoutonMessagesClient } from '@/ui/messagerie/conversation';
+import { useRappelsClient } from '@/ui/notifications/rappels';
 import { couleurs, espace, LARGEUR_CLIENT } from '@/ui/theme';
 
 const ONGLETS: OngletClient[] = ['accueil', 'programme', 'suivi', 'nutrition', 'moi'];
@@ -23,6 +25,9 @@ export default function AccueilClient() {
   const { onglet } = useLocalSearchParams<{ onglet?: string }>();
   const clientId = profil?.role === 'client' ? profil.clientId : '';
   const accord = useAccord(clientId);
+  // Rappels et notifications : seulement une fois l'accord RGPD donné, et l'accès ouvert.
+  const pretPourRappels = profil?.role === 'client' && !profil.suspendu && !!accord.donnee && !accordAttendu(accord.donnee);
+  useRappelsClient(pretPourRappels ? clientId : '', profil?.role === 'client' ? profil.prenom : '');
   if (profil?.role !== 'client') return <Redirect href="/" />;
   const initial = ONGLETS.find((o) => o === onglet) ?? 'accueil';
 
@@ -67,6 +72,7 @@ export default function AccueilClient() {
           sousTitre="Mon espace coaching"
           droite={
             <>
+              <BoutonMessagesClient clientId={profil.clientId} />
               <LanceurMinuteurs />
               <BoutonIcone icone={LogOut} nom="Se déconnecter" onPress={() => demanderSortie(deconnecter)} />
             </>
