@@ -1,15 +1,42 @@
-// Copie pour Deno des règles de src/domain/abonnements.ts utilisées par les fonctions Stripe (aucune dépendance).
+// Copie pour Deno des règles de src/domain/abonnements.ts et offres.ts utilisées par les fonctions Stripe (aucune dépendance).
 // tests/paiements-stripe.test.ts vérifie que les deux fichiers donnent les mêmes valeurs.
 
-export type CleFormule = 'appli' | 'appli_nutrition' | 'hybride_leger' | 'hybride_complet';
+/** Offre d'un coach telle qu'elle est en base (table offres). */
+export interface LigneOffre {
+  id: string;
+  coach_id: string;
+  nom: string;
+  accroche: string | null;
+  prix: number | string;
+  periodicite: string;
+  acces_appli: boolean;
+  nutrition: boolean;
+  videos_mois: number;
+  seances: number;
+  essai_jours: number;
+  active: boolean;
+  stripe_produit: string | null;
+  stripe_prix: string | null;
+  stripe_prix_cle: string | null;
+}
 
-export const FORMULES: Record<CleFormule, { nom: string; prix: number; optionNutrition: boolean; seancesMois: number; videosMois: number }> = {
-  appli: { nom: 'Appli', prix: 59, optionNutrition: false, seancesMois: 0, videosMois: 0 },
-  appli_nutrition: { nom: 'Appli + nutrition', prix: 99, optionNutrition: true, seancesMois: 0, videosMois: 0 },
-  hybride_leger: { nom: 'Hybride léger', prix: 149, optionNutrition: true, seancesMois: 1, videosMois: 0 },
-  hybride_complet: { nom: 'Hybride complet', prix: 269, optionNutrition: true, seancesMois: 4, videosMois: 2 },
-};
-export const estFormule = (x: unknown): x is CleFormule => typeof x === 'string' && x in FORMULES;
+/** Montant en centimes et rythme de facturation : un prix Stripe ne change jamais, un nouveau tarif = un nouveau prix. */
+export function tarifStripe(o: Pick<LigneOffre, 'prix' | 'periodicite'>) {
+  const centimes = Math.round(Number(o.prix) * 100);
+  const recurring =
+    o.periodicite === 'unique'
+      ? undefined
+      : o.periodicite === 'annee'
+        ? { interval: 'year' as const, interval_count: 1 }
+        : { interval: 'month' as const, interval_count: o.periodicite === 'trimestre' ? 3 : 1 };
+  return { centimes, recurring, cle: `${centimes}_${o.periodicite}` };
+}
+
+/** Ce que l'offre ouvre sur la fiche du client (même règle que droitsOffre dans src/domain/offres.ts). */
+export function droitsOffre(o: Pick<LigneOffre, 'periodicite' | 'acces_appli' | 'nutrition' | 'videos_mois'>) {
+  if (o.periodicite === 'unique') return {};
+  return { acces_appli: o.acces_appli, option_nutrition: o.acces_appli && o.nutrition, videos_mois: o.acces_appli ? o.videos_mois : 0 };
+}
 
 /** Le client garde l'accès tant que Stripe considère l'abonnement en cours, y compris pendant les relances d'un paiement refusé. */
 export const statutOuvreAcces = (s: string) => s === 'active' || s === 'trialing' || s === 'past_due';

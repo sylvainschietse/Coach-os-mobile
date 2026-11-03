@@ -59,6 +59,7 @@ function Navigation() {
         <Stack.Screen name="coach/messages/[id]" options={{ title: 'Messages' }} />
         <Stack.Screen name="questionnaire/[lien]" options={{ title: 'Questionnaire d’accueil' }} />
         <Stack.Screen name="rdv/[jeton]" options={{ title: 'Mon rendez-vous' }} />
+        <Stack.Screen name="offre/[id]" options={{ title: 'Offre de coaching' }} />
         <Stack.Screen name="agenda-google" options={{ title: 'Google Agenda' }} />
       </Stack>
     </>
