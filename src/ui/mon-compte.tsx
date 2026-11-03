@@ -19,6 +19,7 @@ import { Hero } from './coque';
 import { Bouton, Carte, Erreur, SousTitre, Texte } from './composants';
 import { Saisie } from './crm/dossier';
 import { MesDocuments } from './mes-documents';
+import { MesFactures } from './factures';
 import { CarteOffre } from './offres/carte-offre';
 import { PhotoCoach } from './profil-coach';
 import { couleurs, espace } from './theme';
@@ -220,6 +221,7 @@ export function MonCompte({ clientId, prenom, apercu }: { clientId: string; pren
       </Carte>
       <OffresDeMonCoach a={abo.donnee} apercu={apercu} />
       <MesDocuments clientId={clientId} />
+      <MesFactures clientId={clientId} />
       {!apercu && <Bouton variante="discret" libelle="Mes notifications" onPress={() => demanderSortie(() => router.push('/client/notifications'))} />}
       {!apercu && <Bouton variante="discret" libelle="Mes données et confidentialité" onPress={() => demanderSortie(() => router.push('/client/donnees'))} />}
       {abo.erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{abo.erreur}</Texte>}

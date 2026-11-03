@@ -31,6 +31,7 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { NutritionDuClient } from '../alimentation/nutrition-coach';
 import { BoutonContour, SousNav, type OngletDef } from '../coque';
 import { AbonnementClient } from '../abonnement';
+import { FacturesClient } from '../factures';
 import { ProgrammeClient, SuiviClient } from '../fiche-client';
 import { Bilans } from './bilans';
 import { Documents } from './documents';
@@ -306,6 +307,9 @@ function Editeur({
       {volet === 'fiche' && contact?.clientId && (
         <View style={{ marginTop: espace(4) }}>
           <AbonnementClient clientId={contact.clientId} prenom={contact.prenom} onChange={() => setVersionAbo((v) => v + 1)} />
+          <View style={{ marginTop: espace(4) }}>
+            <FacturesClient clientId={contact.clientId} prenom={contact.prenom} nom={contact.nom} />
+          </View>
         </View>
       )}
       {volet === 'boosters' && fiche && (
