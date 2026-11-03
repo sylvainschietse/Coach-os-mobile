@@ -60,13 +60,22 @@ function LigneFactureListe({ f, style }: { f: Facture; style: { couleur?: string
         </View>
         <Bouton
           variante="contour"
-          libelle={Platform.OS === 'web' ? 'Voir / imprimer' : 'Ouvrir le PDF'}
+          libelle="Télécharger le PDF"
           onPress={() => ouvrirFacture(f, style).catch((e) => setErreur(e instanceof Error ? e.message : 'PDF non créé'))}
         />
       </View>
       {erreur && <Texte style={{ fontSize: 13, color: couleurs.rouge }}>{erreur}</Texte>}
     </View>
   );
+}
+
+/** Sur ordinateur, la facture passe par la fenêtre d'impression du navigateur. */
+function AideWeb() {
+  return Platform.OS === 'web' ? (
+    <Texte doux style={{ fontSize: 13 }}>
+      Dans la fenêtre qui s’ouvre, choisis « Enregistrer au format PDF » comme imprimante.
+    </Texte>
+  ) : null;
 }
 
 // ---------- Client : « Mes factures » ----------
@@ -80,6 +89,7 @@ export function MesFactures({ clientId }: { clientId: string }) {
       <SousTitre>Mes factures</SousTitre>
       {liste.erreur && <Erreur message={liste.erreur} onReessayer={liste.recharger} />}
       {liste.donnee?.map((f) => <LigneFactureListe key={f.id} f={f} style={style.donnee ?? {}} />)}
+      <AideWeb />
     </Carte>
   );
 }
@@ -129,6 +139,7 @@ export function FacturesClient({ clientId, prenom, nom }: { clientId: string; pr
       {!liste.donnee && !liste.erreur && <Chargement />}
       {liste.donnee?.length === 0 && <Texte doux>Aucune facture pour le moment.</Texte>}
       {liste.donnee?.map((f) => <LigneFactureListe key={f.id} f={f} style={style.donnee ?? {}} />)}
+      {!!liste.donnee?.length && <AideWeb />}
       {!!aFacturer.donnee?.length && (
         <View style={{ gap: espace(2), marginTop: espace(2) }}>
           <Texte style={{ fontWeight: '600' }}>Paiements encaissés sans facture</Texte>
