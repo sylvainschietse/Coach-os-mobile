@@ -53,11 +53,11 @@ function factureDemo(clientId: string): Facture {
   return {
     id: `demo-${clientId}`,
     clientId,
-    numero: 'RT38',
+    numero: 'F1',
     date: new Date().toISOString().slice(0, 10),
     objet: `Abonnement ${new Date().toISOString().slice(0, 7).split('-').reverse().join('/')}`,
     emetteur: { nom: enteteDemo.nom, adresse: enteteDemo.adresse, telephone: enteteDemo.telephone, siret: enteteDemo.siret, mentions: enteteDemo.mentions },
-    destinataire: { nom: 'Romain Tisseront', adresse: 'Route de Saint Bel\n69160 Tassin-la-Demi-Lune' },
+    destinataire: { nom: 'Client de démonstration' },
     lignes: [
       { libelle: 'Abonnement Hybride complet', quantite: 1, prixUnitaire: 269, montant: 269 },
       { libelle: 'Remise · Merci d’être testeur', quantite: 1, prixUnitaire: -269, montant: -269 },
@@ -136,8 +136,16 @@ export const factures = {
     return (data ?? []).map(versFacture);
   },
 
+  /** Coach : toutes ses factures, rangées par paiement (rubrique Paiements). */
+  async parPaiement(): Promise<Map<string, Facture>> {
+    if (!supabase) return new Map(facturesDemo.filter((f) => f.paiementId).map((f) => [f.paiementId!, f]));
+    const { data, error } = await supabase.from('factures').select('*').not('paiement_id', 'is', null);
+    if (error) throw new Error('Impossible de charger les factures pour le moment.');
+    return new Map((data ?? []).map((l) => [l.paiement_id as string, versFacture(l)]));
+  },
+
   async numerotation(clientId: string): Promise<Numerotation> {
-    if (!supabase) return numerotationsDemo.get(clientId) ?? { prefixe: 'RT', prochain: 39 };
+    if (!supabase) return numerotationsDemo.get(clientId) ?? { prochain: 2 };
     const { data, error } = await supabase.from('clients').select('facture_prefixe, facture_prochain, facture_nom').eq('id', clientId).single();
     if (error || !data) throw new Error('Impossible de charger la numérotation.');
     return { prefixe: data.facture_prefixe ?? undefined, prochain: data.facture_prochain, nomFacture: data.facture_nom ?? undefined };

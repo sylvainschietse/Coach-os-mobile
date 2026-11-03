@@ -4,7 +4,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
-import { Image, Platform, Pressable, View } from 'react-native';
+import { Image, Platform, Pressable, Text, View } from 'react-native';
 
 import { factures, type Numerotation } from '@/data/factures';
 import {
@@ -21,7 +21,7 @@ import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, SousTitre, Texte } from './composants';
-import { couleurs, espace } from './theme';
+import { couleurs, espace, polices } from './theme';
 
 const euros = (n: number) => `${n.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`;
 const dateFr = (j?: string) => (j ? j.split('-').reverse().join('/') : '');
@@ -59,7 +59,7 @@ function LigneFactureListe({ f, style }: { f: Facture; style: { couleur?: string
           </Texte>
         </View>
         <Bouton
-          variante="contour"
+          variante="discret"
           libelle="Télécharger le PDF"
           onPress={() => ouvrirFacture(f, style).catch((e) => setErreur(e instanceof Error ? e.message : 'PDF non créé'))}
         />
@@ -76,6 +76,35 @@ function AideWeb() {
       Dans la fenêtre qui s’ouvre, choisis « Enregistrer au format PDF » comme imprimante.
     </Texte>
   ) : null;
+}
+
+/** Rubrique Paiements : la facture d'une ligne (l'ouvrir), ou la créer si la ligne est payée et liée à un client. */
+export function BoutonFacture({ facture, facturable, paiementId, onCree }: { facture?: Facture; facturable: boolean; paiementId: string; onCree: () => void }) {
+  const [occupe, setOccupe] = useState(false);
+  const [erreur, setErreur] = useState<string>();
+  const style = useCharger(() => factures.style(), 'factures-style');
+  if (!facture && !facturable) return null;
+  const agir = async () => {
+    setErreur(undefined);
+    setOccupe(true);
+    try {
+      if (facture) await ouvrirFacture(facture, style.donnee ?? {});
+      else {
+        await factures.facturer(paiementId);
+        onCree();
+      }
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Facture indisponible');
+    } finally {
+      setOccupe(false);
+    }
+  };
+  return (
+    <View style={{ gap: 2 }}>
+      <Bouton variante="discret" libelle={facture ? `Facture ${facture.numero}` : 'Créer la facture'} onPress={agir} chargement={occupe} />
+      {erreur && <Texte style={{ fontSize: 12, color: couleurs.rouge }}>{erreur}</Texte>}
+    </View>
+  );
 }
 
 // ---------- Client : « Mes factures » ----------
@@ -123,7 +152,7 @@ export function FacturesClient({ clientId, prenom, nom }: { clientId: string; pr
     <Carte>
       <SousTitre>Factures</SousTitre>
       <Texte doux style={{ fontSize: 13 }}>
-        Chaque prélèvement Stripe réussi reçoit sa facture tout seul, à tes couleurs (réglages dans Mon profil). {prenom} la retrouve dans son compte.
+        Chaque mois réglé (même offert) et chaque pack payé reçoit sa facture tout seul, à tes couleurs. {prenom} la retrouve dans son compte.
       </Texte>
       {num.donnee && (
         <Numeroter
@@ -176,6 +205,7 @@ function Numeroter({
   const [prochain, setProchain] = useState(String(initial.prochain));
   const [nomFacture, setNomFacture] = useState(initial.nomFacture ?? '');
   const [message, setMessage] = useState<{ ok: boolean; texte: string }>();
+  const [ouvert, setOuvert] = useState(false);
   const n = Number(prochain);
   const modifie = prefixe !== (initial.prefixe ?? '') || n !== initial.prochain || nomFacture !== (initial.nomFacture ?? '');
 
@@ -183,14 +213,30 @@ function Numeroter({
     try {
       await factures.changerNumerotation(clientId, { prefixe, prochain: n, nomFacture });
       setMessage({ ok: true, texte: 'Numérotation enregistrée.' });
+      setOuvert(false);
       onEnregistre();
     } catch (e) {
       setMessage({ ok: false, texte: e instanceof Error ? e.message : 'Non enregistré' });
     }
   }
 
+  if (!ouvert)
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: espace(2), flexWrap: 'wrap' }}>
+        <Texte style={{ fontSize: 14 }}>
+          Prochaine facture : <Texte style={{ fontSize: 14, fontWeight: '600' }}>{prochainNumero(initial.prefixe, initial.prochain, prenom, nom)}</Texte>
+          {initial.nomFacture ? ` · au nom de ${initial.nomFacture}` : ''}
+        </Texte>
+        <Pressable accessibilityRole="button" onPress={() => setOuvert(true)}>
+          <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.rouge }}>Modifier</Text>
+        </Pressable>
+        {message && <Texte style={{ fontSize: 13, color: message.ok ? couleurs.vert : couleurs.rouge }}>{message.texte}</Texte>}
+      </View>
+    );
+
   return (
     <View style={{ gap: espace(2) }}>
+      <Texte doux style={{ fontSize: 13 }}>Reprends ta numérotation : les lettres de ce client et le numéro de sa prochaine facture.</Texte>
       <View style={{ flexDirection: 'row', gap: espace(3), flexWrap: 'wrap' }}>
         <View style={{ flex: 1, minWidth: 120 }}>
           <ChampTexte libelle="Lettres" valeur={prefixe} onChange={(v) => setPrefixe(nettoyerPrefixe(v))} placeholder="RT" />
@@ -209,7 +255,14 @@ function Numeroter({
       <Texte doux style={{ fontSize: 13 }}>
         Prochaine facture : {prochainNumero(prefixe || undefined, n || 1, prenom, nom)}
       </Texte>
-      {modifie && <Bouton variante="secondaire" libelle="Enregistrer la numérotation" onPress={enregistrer} desactive={!n} />}
+      <View style={{ flexDirection: 'row', gap: espace(2) }}>
+        <View style={{ flex: 1 }}>
+          <Bouton variante="secondaire" libelle="Enregistrer" onPress={enregistrer} desactive={!n || !modifie} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Bouton variante="discret" libelle="Annuler" onPress={() => setOuvert(false)} />
+        </View>
+      </View>
       {message && <Texte style={{ fontSize: 13, color: message.ok ? couleurs.vert : couleurs.rouge }}>{message.texte}</Texte>}
     </View>
   );
@@ -339,7 +392,7 @@ function FormulaireEntete({ initial }: { initial: EnteteFacture }) {
         <ChampTexte libelle="Mentions en bas de facture" valeur={e.mentions} onChange={(mentions) => modifier({ mentions })} multiligne />
         {erreurs.length > 0 && <Erreur message={erreurs.join('\n')} />}
         <Bouton
-          variante="contour"
+          variante="discret"
           libelle="Voir un exemple"
           onPress={() => ouvrirFacture(exemple, { couleur: e.couleur, logo: e.logo }).catch((x) => setErreurs([x instanceof Error ? x.message : 'Aperçu impossible']))}
         />

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { crm, ecouterCrm } from '@/data/crm';
+import { factures } from '@/data/factures';
 import { ecrireJour, jourLocal, lireJour, MODELES, rediger, type Carnet, type Contact, type Relance } from '@/domain/crm';
 import {
   FORMULES,
@@ -23,10 +24,12 @@ import {
   type StatutPaiement,
   type StatutTache,
 } from '@/domain/gestion';
+import type { Facture } from '@/domain/factures';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Selecteur, Vide } from '../coque';
 import { Chargement, Erreur } from '../composants';
+import { BoutonFacture } from '../factures';
 import { couleurs, espace, polices } from '../theme';
 import { adresseQuestionnaire, EnvoiMessage, nomComplet, useCoachNom } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
@@ -76,9 +79,11 @@ export function Gestion({
 }) {
   const blocNom = useBlocNomCarte();
   const charge = useCharger(() => crm.carnet(), `gestion-${module}`);
+  const lesFactures = useCharger(() => (module === 'Paiements' ? factures.parPaiement() : Promise.resolve(new Map<string, Facture>())), `factures-paiements-${module}`);
   const { donnee: lienQuestionnaire } = useCharger(() => crm.lienQuestionnaire(), 'lien-questionnaire');
   useFocusEffect(charge.recharger);
   useRechargerSur(charge.recharger, ecouterCrm);
+  useRechargerSur(lesFactures.recharger, ecouterCrm);
   const [recherche, setRecherche] = useState('');
   const [statut, setStatut] = useState<string>();
   const [archives, setArchives] = useState(false);
@@ -157,6 +162,14 @@ export function Gestion({
                   {contact?.statut === 'archive' && <Badge variante="secondaire" libelle="Archivé" />}
                   {l.statut && <Badge libelle={l.statut} />}
                   {module === 'Paiements' && <Text style={styles.montant}>{montantLisible(l.montant)}</Text>}
+                  {module === 'Paiements' && (
+                    <BoutonFacture
+                      facture={lesFactures.donnee?.get(l.id)}
+                      facturable={l.statut === 'Payé' && l.montant !== undefined && l.montant !== null && !!contact?.clientId}
+                      paiementId={l.id}
+                      onCree={lesFactures.recharger}
+                    />
+                  )}
                   <BoutonContour libelle="Ouvrir" onPress={() => onOuvrir(l.id)} />
                   <Text
                     accessibilityRole="button"
