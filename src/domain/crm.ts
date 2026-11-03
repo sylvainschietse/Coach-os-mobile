@@ -670,6 +670,27 @@ export function listeContacts(c: Carnet): ContactResume[] {
     .sort((a, b) => b.creeLe.localeCompare(a.creeLe));
 }
 
+export interface QuestionnaireATraiter {
+  questionnaire: Questionnaire;
+  contact: Contact;
+  objectif?: string;
+}
+
+/**
+ * Réponses reçues dont le coach ne s'est pas encore occupé : contact actif, sans Booster planifié ni fait.
+ * Les plus récentes d'abord. Elles s'affichent sur l'Accueil jusqu'à ce qu'un Booster soit planifié.
+ */
+export function questionnairesATraiter(c: Carnet): QuestionnaireATraiter[] {
+  const dernier = new Map<string, Questionnaire>();
+  for (const q of c.questionnaires) if ((dernier.get(q.contactId)?.recuLe ?? '') < q.recuLe) dernier.set(q.contactId, q);
+  return [...dernier.values()]
+    .map((q) => ({ questionnaire: q, contact: c.contacts.find((x) => x.id === q.contactId)! }))
+    .filter(({ contact }) => contact && contact.statut !== 'archive' && !contact.clientId)
+    .filter(({ contact }) => !c.boosters.some((b) => b.contactId === contact.id && b.statut !== 'annule'))
+    .map((x) => ({ ...x, objectif: x.questionnaire.reponses.objectif === 'Autre' ? x.questionnaire.reponses.objectifAutre : x.questionnaire.reponses.objectif }))
+    .sort((a, b) => b.questionnaire.recuLe.localeCompare(a.questionnaire.recuLe));
+}
+
 export type EtapeSuivante =
   | { action: 'reactiver' }
   | { action: 'questionnaire' }
