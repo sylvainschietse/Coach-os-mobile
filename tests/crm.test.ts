@@ -7,6 +7,7 @@ import {
   CARNET_VIDE,
   creerContact,
   devenirClient,
+  etapeSuivante,
   filtrerContacts,
   formaterTelephone,
   lienEnvoi,
@@ -202,8 +203,49 @@ describe('messages', () => {
     const texte = rediger('questionnaire', { ...julie }, { coach: 'Sylvain', lienQuestionnaire: 'https://exemple.fr/q' });
     expect(texte).toBe('Bonjour Julie, c’est Sylvain. Pour préparer notre première séance, peux-tu remplir ce court questionnaire ? https://exemple.fr/q');
     expect(lienEnvoi('whatsapp', { ...julie }, 'Salut')).toBe('https://wa.me/33612345678?text=Salut');
-    expect(lienEnvoi('sms', { ...julie }, 'Salut à toi')).toBe('sms:+33612345678?body=Salut%20%C3%A0%20toi');
+    // `?&body=` : la forme que l'iPhone et Android lisent tous les deux.
+    expect(lienEnvoi('sms', { ...julie }, 'Salut à toi')).toBe('sms:+33612345678?&body=Salut%20%C3%A0%20toi');
     expect(lienEnvoi('email', { ...julie, email: undefined }, 'Salut')).toBeNull();
+  });
+
+  it('garde le numéro du client même saisi ou importé avec des espaces', () => {
+    const saisi = { ...julie, telephone: '06 12 34 56 78' };
+    expect(lienEnvoi('whatsapp', saisi, 'Salut')).toBe('https://wa.me/33612345678?text=Salut');
+    expect(lienEnvoi('sms', saisi, 'Salut')).toBe('sms:+33612345678?&body=Salut');
+    expect(lienEnvoi('appel', saisi, '')).toBe('tel:+33612345678');
+  });
+
+  it('n’ouvre jamais un message vide ni sans destinataire', () => {
+    expect(lienEnvoi('whatsapp', { ...julie }, '   ')).toBeNull();
+    expect(lienEnvoi('sms', { ...julie }, '')).toBeNull();
+    expect(lienEnvoi('email', { ...julie }, '')).toBeNull();
+    expect(lienEnvoi('whatsapp', { ...julie, telephone: '12' }, 'Salut')).toBeNull();
+    expect(lienEnvoi('email', { ...julie, email: 'pas-une-adresse' }, 'Salut')).toBeNull();
+  });
+});
+
+describe('prochaine étape d’un dossier', () => {
+  it('suit le parcours : questionnaire, Booster, accès à l’appli', () => {
+    const ctx = contexte();
+    let { carnet, contact } = avecJulie(ctx);
+    const etape = () => etapeSuivante(listeContacts(carnet).find((c) => c.id === contact.id)!);
+    expect(etape()).toEqual({ action: 'questionnaire' });
+
+    carnet = recevoirQuestionnaire(carnet, { prenom: 'Julie', telephone: '0612345678' }, ctx).carnet;
+    expect(etape()).toEqual({ action: 'planifier' });
+
+    carnet = planifierBooster(carnet, contact.id, '2026-10-22T10:00:00', ctx);
+    const booster = carnet.boosters[0];
+    expect(etape()).toEqual({ action: 'preparer', boosterId: booster.id });
+
+    carnet = terminerBooster(carnet, booster.id, { priorites: ['a', 'b', 'c'] } as never, ctx);
+    expect(etape()).toEqual({ action: 'acces' });
+
+    carnet = devenirClient(carnet, contact.id, 'client-julie', ctx);
+    expect(etape()).toEqual({ action: 'aucune' });
+
+    carnet = archiver(carnet, contact.id, ctx);
+    expect(etape()).toEqual({ action: 'reactiver' });
   });
 });
 

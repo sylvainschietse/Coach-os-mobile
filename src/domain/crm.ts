@@ -646,16 +646,49 @@ export function filtrerBoosters(
 export interface ContactResume extends Contact {
   prochaineRelance?: string;
   prochainBooster?: string;
+  /** Le Booster à préparer (le plus proche), pour l'ouvrir d'un appui depuis la liste. */
+  prochainBoosterId?: string;
+  /** Booster terminé le plus récent : le compte rendu est à faire ou à envoyer. */
+  dernierBoosterFaitId?: string;
+  questionnaireRecu?: boolean;
 }
 
 export function listeContacts(c: Carnet): ContactResume[] {
   return c.contacts
-    .map((x) => ({
-      ...x,
-      prochaineRelance: c.relances.filter((r) => r.contactId === x.id && !r.faiteLe).map((r) => r.echeance).sort()[0],
-      prochainBooster: c.boosters.filter((b) => b.contactId === x.id && b.statut === 'prevu').map((b) => b.date).sort()[0],
-    }))
+    .map((x) => {
+      const prevus = c.boosters.filter((b) => b.contactId === x.id && b.statut === 'prevu').sort((a, b) => a.date.localeCompare(b.date));
+      const faits = c.boosters.filter((b) => b.contactId === x.id && b.statut === 'fait').sort((a, b) => b.date.localeCompare(a.date));
+      return {
+        ...x,
+        prochaineRelance: c.relances.filter((r) => r.contactId === x.id && !r.faiteLe).map((r) => r.echeance).sort()[0],
+        prochainBooster: prevus[0]?.date,
+        prochainBoosterId: prevus[0]?.id,
+        dernierBoosterFaitId: faits[0]?.id,
+        questionnaireRecu: c.questionnaires.some((q) => q.contactId === x.id),
+      };
+    })
     .sort((a, b) => b.creeLe.localeCompare(a.creeLe));
+}
+
+export type EtapeSuivante =
+  | { action: 'reactiver' }
+  | { action: 'questionnaire' }
+  | { action: 'planifier' }
+  | { action: 'preparer'; boosterId: string }
+  | { action: 'acces' }
+  | { action: 'aucune' };
+
+/**
+ * La seule chose à faire maintenant pour ce dossier, dans l'ordre du parcours :
+ * questionnaire → Booster → accès à l’appli.
+ */
+export function etapeSuivante(x: ContactResume): EtapeSuivante {
+  if (x.statut === 'archive') return { action: 'reactiver' };
+  if (x.prochainBoosterId) return { action: 'preparer', boosterId: x.prochainBoosterId };
+  if (x.clientId) return { action: 'aucune' };
+  if (x.statut === 'booster_fait' && x.dernierBoosterFaitId) return { action: 'acces' };
+  if (!x.questionnaireRecu && !x.dernierBoosterFaitId) return { action: 'questionnaire' };
+  return { action: 'planifier' };
 }
 
 export function filtrerContacts(
@@ -715,7 +748,7 @@ export const MODELES: Record<ModeleMessage, { libelle: string; texte: string }> 
 
 export function rediger(
   modele: ModeleMessage,
-  contact: Contact,
+  contact: Pick<Contact, 'prenom'>,
   infos: { coach: string; lienQuestionnaire?: string; booster?: string },
 ): string {
   const quand = infos.booster
@@ -731,14 +764,25 @@ export function rediger(
 
 export type Canal = 'sms' | 'whatsapp' | 'email' | 'appel';
 
-/** Lien qui ouvre l'app de messagerie du téléphone avec le message prérempli. Aucun envoi payant. */
-export function lienEnvoi(canal: Canal, contact: Contact, message: string, sujet = 'Coaching'): string | null {
-  const m = encodeURIComponent(message);
-  if (canal === 'email') return contact.email ? `mailto:${contact.email}?subject=${encodeURIComponent(sujet)}&body=${m}` : null;
-  if (!contact.telephone) return null;
-  if (canal === 'appel') return `tel:+${contact.telephone}`;
-  if (canal === 'whatsapp') return `https://wa.me/${contact.telephone}?text=${m}`;
-  return `sms:+${contact.telephone}?body=${m}`;
+/**
+ * Lien qui ouvre l'app de messagerie du téléphone avec le message prérempli. Aucun envoi payant.
+ * Le numéro est renormalisé ici : un numéro saisi « 06 12 34 56 78 » ou importé tel quel donnait un lien
+ * sans destinataire. `?&body=` est la forme que l'iPhone et Android lisent tous les deux (avec `?body=` seul,
+ * l'iPhone ouvrait un message vide). Sans message, aucun lien : on n'ouvre jamais une conversation vide.
+ */
+export function lienEnvoi(canal: Canal, contact: Pick<Contact, 'telephone' | 'email'>, message: string, sujet = 'Coaching'): string | null {
+  const texte = message.trim();
+  const m = encodeURIComponent(texte);
+  if (canal === 'email') {
+    const email = normaliserEmail(contact.email);
+    return email && texte ? `mailto:${email}?subject=${encodeURIComponent(sujet)}&body=${m}` : null;
+  }
+  const tel = normaliserTelephone(contact.telephone);
+  if (!tel) return null;
+  if (canal === 'appel') return `tel:+${tel}`;
+  if (!texte) return null;
+  if (canal === 'whatsapp') return `https://wa.me/${tel}?text=${m}`;
+  return `sms:+${tel}?&body=${m}`;
 }
 
 // ---------- Saisie des dates dans les éditeurs ----------
@@ -762,32 +806,4 @@ export function ecrireDateHeure(iso: string | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   return `${deux(d.getDate())}/${deux(d.getMonth() + 1)}/${d.getFullYear()}`;
-}
-
-// ---------- Accès du client à son espace ----------
-
-/**
- * Message d'origine « Envoyer l'accès client » : le client se connecte avec l'e-mail donné au coach
- * (Google, Microsoft ou son propre mot de passe), et son compte est relié à sa fiche par cet e-mail.
- */
-export function messageAccesClient(prenom: string, coach: string, lienAppli: string, lienTuto?: string): string {
-  return [
-    `Salut${prenom ? ` ${prenom}` : ''} ! Voici le lien pour accéder à ton espace CoachGo : ${lienAppli}`,
-    '',
-    'Connecte-toi avec l’adresse email que tu m’as communiquée. Tu pourras y retrouver ton programme et enregistrer tes séances.',
-    '',
-    'Tu peux aussi ajouter le lien à l’écran d’accueil de ton téléphone pour y accéder facilement.',
-    '',
-    ...(lienTuto ? [`Pour bien démarrer, regarde la vidéo (1 min 30) : ${lienTuto}`, ''] : []),
-    `À bientôt, ${coach}`,
-  ].join('\n');
-}
-
-/**
- * Lien WhatsApp « Envoyer l'accès client », seulement quand l'accès est prêt (fiche client avec e-mail),
- * le dossier actif et le numéro valide. Ouvrir ce lien ne prouve pas que le message est parti.
- */
-export function lienAccesWhatsApp(contact: Contact, coach: string, lienAppli: string, lienTuto?: string): string | null {
-  if (!contact.clientId || !contact.email || contact.statut === 'archive' || !contact.telephone) return null;
-  return lienEnvoi('whatsapp', contact, messageAccesClient(contact.prenom, coach, lienAppli, lienTuto));
 }

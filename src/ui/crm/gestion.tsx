@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { crm, ecouterCrm } from '@/data/crm';
-import { ecrireJour, jourLocal, lienEnvoi, lireJour, MODELES, type Carnet, type Contact } from '@/domain/crm';
+import { ecrireJour, jourLocal, lireJour, MODELES, rediger, type Carnet, type Contact, type Relance } from '@/domain/crm';
 import {
   FORMULES,
   montantLisible,
@@ -23,13 +23,12 @@ import {
   type StatutPaiement,
   type StatutTache,
 } from '@/domain/gestion';
-import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Selecteur, Vide } from '../coque';
 import { Chargement, Erreur } from '../composants';
 import { couleurs, espace, polices } from '../theme';
-import { nomComplet } from './commun';
+import { adresseQuestionnaire, EnvoiMessage, nomComplet, useCoachNom } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
 import { Badge, BoutonPied, CaseACocher, Cellule, Choix, Grille, Libelle, Modale, PiedEditeur, Recherche, Saisie, useBlocNomCarte } from './dossier';
 
@@ -77,6 +76,7 @@ export function Gestion({
 }) {
   const blocNom = useBlocNomCarte();
   const charge = useCharger(() => crm.carnet(), `gestion-${module}`);
+  const { donnee: lienQuestionnaire } = useCharger(() => crm.lienQuestionnaire(), 'lien-questionnaire');
   useFocusEffect(charge.recharger);
   useRechargerSur(charge.recharger, ecouterCrm);
   const [recherche, setRecherche] = useState('');
@@ -172,10 +172,10 @@ export function Gestion({
                   <BoutonContour libelle="Gérer les cycles" onPress={onCycles} />
                 </View>
               )}
-              {module === 'Taches' && (l.ouverte || contact?.telephone) && (
+              {module === 'Taches' && (l.ouverte || contact) && (
                 <View style={styles.ligne}>
                   {l.ouverte && <BoutonContour libelle={occupe === l.id ? 'Enregistrement…' : 'Terminer'} desactive={!!occupe} onPress={() => terminer(l.id)} />}
-                  {contact?.telephone && <RelanceWhatsApp contact={contact} />}
+                  {contact && <RelanceMessage contact={contact} relance={carnet.relances.find((r) => r.id === l.id)} lien={lienQuestionnaire} />}
                 </View>
               )}
             </View>
@@ -187,14 +187,28 @@ export function Gestion({
   );
 }
 
-/** Ouvre WhatsApp avec un début de message : rien n'est marqué comme envoyé. */
-function RelanceWhatsApp({ contact }: { contact: Contact }) {
-  const lien = lienEnvoi('whatsapp', contact, `Bonjour ${contact.prenom}, `);
-  if (!lien) return null;
+/**
+ * Le message de la relance (questionnaire, rappel du Booster…) et non plus un simple « Bonjour X, » :
+ * on l'affiche, puis il part par SMS, WhatsApp ou e-mail. Rien n'est marqué comme envoyé.
+ */
+function RelanceMessage({ contact, relance, lien }: { contact: Contact; relance?: Relance; lien: string | null | undefined }) {
+  const coach = useCoachNom();
+  const [ouvert, setOuvert] = useState(false);
+  if (!relance) return null;
+  const message =
+    relance.modele === 'tache'
+      ? `Bonjour ${contact.prenom}, `
+      : rediger(relance.modele, contact, { coach, lienQuestionnaire: adresseQuestionnaire(lien) });
+  if (!ouvert)
+    return (
+      <Text accessibilityRole="button" onPress={() => setOuvert(true)} style={styles.lien}>
+        Écrire à {contact.prenom || 'ce contact'}
+      </Text>
+    );
   return (
-    <Text accessibilityRole="link" onPress={() => ouvrirLien(lien).catch(() => undefined)} style={styles.lien}>
-      Relancer sur WhatsApp
-    </Text>
+    <View style={{ flexBasis: '100%' }}>
+      <EnvoiMessage contact={contact} message={message} />
+    </View>
   );
 }
 

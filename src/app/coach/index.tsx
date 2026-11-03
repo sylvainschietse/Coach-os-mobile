@@ -396,7 +396,7 @@ function Crm({
             onOuvrir={(id) => ouvrirContact(id)}
             onNouveau={() => router.setParams({ ...FERME, contact: 'nouveau' })}
             onPlanifierBooster={(id) => nouveauBooster(id)}
-            onRubrique={(r, id) => onRubrique(r, id)}
+            onOuvrirBooster={ouvrirBooster}
           />
         )}
         {rubrique === 'Boosters' && (
@@ -406,7 +406,7 @@ function Crm({
             onOuvrir={ouvrirBooster}
             onNouveau={() => nouveauBooster(params.dossier)}
             onSupprimer={(b) => setSuppression({ booster: b, contact: b.contact })}
-            onDocuments={(id) => onRubrique('Documents', id)}
+            onOuvrirContact={(id) => ouvrirContact(id)}
           />
         )}
         {rubrique === 'Documents' && (

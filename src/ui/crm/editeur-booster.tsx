@@ -31,7 +31,8 @@ import { Selecteur, SousNav, type OngletDef } from '../coque';
 import { Chargement, Erreur } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { BoutonPied, CaseACocher, Cellule, Choix, ChoixMultiple, Grille, Libelle, Modale, PiedEditeur, Saisie } from './dossier';
-import { nomComplet } from './commun';
+import { BoutonEtape } from './acces';
+import { EnvoiMessage, nomComplet, useMessageQuestionnaire } from './commun';
 
 type Rubrique = 'Préparation' | 'Entretien' | 'Tests' | 'Conclusion';
 const RUBRIQUES: OngletDef<Rubrique>[] = (['Préparation', 'Entretien', 'Tests', 'Conclusion'] as const).map((r) => ({ cle: r, libelle: r }));
@@ -240,6 +241,8 @@ function Editeur({
         </View>
       }
     >
+      {/* Pas de questionnaire reçu : le briefing reste vide. On propose de l'envoyer d'ici, sans repasser par la liste. */}
+      {rubrique === 'Préparation' && contactChoisi && !questionnaire && <QuestionnaireManquant contact={contactChoisi} />}
       {rubrique === 'Préparation' && (
         <Grille>
           <Cellule>
@@ -389,6 +392,24 @@ function Editeur({
 }
 
 /** Ce que la base a enregistré, pour vérifier après coup sans rouvrir la fiche. */
+function QuestionnaireManquant({ contact }: { contact: Contact }) {
+  const { donnee: lien } = useCharger(() => crm.lienQuestionnaire(), 'lien-questionnaire');
+  const message = useMessageQuestionnaire(contact, lien);
+  const [ouvert, setOuvert] = useState(false);
+  return (
+    <View style={[styles.encart, { marginBottom: espace(4) }]}>
+      <Text style={styles.encartTitre}>{contact.prenom || 'Ce contact'} n’a pas encore rempli le questionnaire</Text>
+      <Text style={styles.aide}>Ses réponses préparent le briefing de la séance (objectif, profil sportif, points d’attention).</Text>
+      {!ouvert && message && (
+        <View style={{ alignSelf: 'flex-start' }}>
+          <BoutonEtape libelle="Envoyer le questionnaire" onPress={() => setOuvert(true)} />
+        </View>
+      )}
+      {ouvert && message && <EnvoiMessage contact={contact} sujet="Ton questionnaire" message={message} />}
+    </View>
+  );
+}
+
 function ResumeLecture({ booster }: { booster: Booster }) {
   return (
     <Text style={styles.aide}>
@@ -474,6 +495,8 @@ function Tests({ evaluation: e, onChange }: { evaluation: Evaluation; onChange: 
 }
 
 const styles = StyleSheet.create({
+  encart: { backgroundColor: couleurs.orangeClair, borderRadius: 12, padding: 14, gap: espace(2) },
+  encartTitre: { fontFamily: polices.texteGras, fontSize: 14, color: couleurs.texte },
   contact: {
     fontFamily: polices.texte,
     fontSize: 14,

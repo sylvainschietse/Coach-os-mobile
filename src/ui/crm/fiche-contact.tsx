@@ -33,7 +33,6 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { NutritionDuClient } from '../alimentation/nutrition-coach';
 import { BoutonContour, SousNav, type OngletDef } from '../coque';
 import { AbonnementClient } from '../abonnement';
-import { AccesAppli } from './acces';
 import { ProgrammeClient, SuiviClient } from '../fiche-client';
 import { Bilans } from './bilans';
 import { Documents } from './documents';
@@ -41,6 +40,7 @@ import { Chargement, Erreur } from '../composants';
 import { Conversation } from '../messagerie/conversation';
 import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
+import { ParcoursContact } from './parcours';
 import { Cellule, Choix, Grille, Initiales, Modale, PiedEditeur, Repliable, Saisie, Valeur } from './dossier';
 
 export type VoletFiche = 'fiche' | 'messages' | 'boosters' | 'programme' | 'suivi' | 'nutrition' | 'documents';
@@ -285,6 +285,16 @@ function Editeur({
         </View>
       }
     >
+      {/* Le parcours d'abord : questionnaire, Booster, accès à l'appli, chacun avec son bouton. */}
+      {volet === 'fiche' && fiche && (
+        <ParcoursContact
+          fiche={fiche}
+          versionAbo={versionAbo}
+          onPlanifierBooster={() => onNouveauBooster(fiche.contact.id)}
+          onOuvrirBooster={onBooster}
+          onVoirAppli={onVoirAppli}
+        />
+      )}
       {volet === 'fiche' && (
         <Coordonnees
           brouillon={brouillon}
@@ -294,11 +304,9 @@ function Editeur({
           coordonneeManquante={coordonneeManquante && (!!contact || modifie)}
         />
       )}
-      {/* Le compte du client pour se connecter à l'appli : e-mail et mot de passe provisoire à lui envoyer. */}
-      {volet === 'fiche' && contact && (
-        <View style={{ marginTop: espace(4), gap: espace(4) }}>
-          {contact.clientId && <AbonnementClient clientId={contact.clientId} prenom={contact.prenom} onChange={() => setVersionAbo((v) => v + 1)} />}
-          <AccesAppli contact={contact} versionAbo={versionAbo} />
+      {volet === 'fiche' && contact?.clientId && (
+        <View style={{ marginTop: espace(4) }}>
+          <AbonnementClient clientId={contact.clientId} prenom={contact.prenom} onChange={() => setVersionAbo((v) => v + 1)} />
         </View>
       )}
       {volet === 'boosters' && fiche && (
@@ -308,11 +316,6 @@ function Editeur({
           onNouveau={() => onNouveauBooster(fiche.contact.id)}
           onSupprimer={(b) => onSupprimerBooster(b, fiche.contact)}
         />
-      )}
-      {volet === 'fiche' && contact?.clientId && (
-        <View style={{ marginTop: espace(4), alignSelf: 'flex-start' }}>
-          <BoutonContour libelle="Voir son appli" onPress={() => onVoirAppli(contact.clientId!)} />
-        </View>
       )}
       {volet === 'programme' && contact?.clientId && <ProgrammeClient key={contact.clientId} clientId={contact.clientId} coachId={coachId} />}
       {volet === 'suivi' && contact?.clientId && <SuiviClient key={contact.clientId} clientId={contact.clientId} />}
@@ -463,7 +466,7 @@ function BoostersDuContact({
         </View>
       ))}
       {!boosters.length && (
-        <Text style={styles.aide}>Aucun Booster lié à ce contact. Après réception du questionnaire, actualisez les dossiers.</Text>
+        <Text style={styles.aide}>Aucun Booster pour l’instant.</Text>
       )}
       {boosters.map((b, i) => (
         <View key={b.id} style={styles.bloc}>
@@ -594,8 +597,8 @@ function NutritionContact({ contact }: { contact: Contact }) {
   if (!contact.clientId)
     return (
       <Text style={styles.aide}>
-        {contact.prenom || 'Ce contact'} n’a pas encore d’espace client. Préparez l’accès client depuis « Actions du dossier » pour suivre sa
-        nutrition.
+        {contact.prenom || 'Ce contact'} n’a pas encore d’espace client. Crée son accès à l’appli dans « Coordonnées » (étape 3 du parcours) pour
+        suivre sa nutrition.
       </Text>
     );
   return <NutritionDuClient clientId={contact.clientId} coachId={coachId} />;
