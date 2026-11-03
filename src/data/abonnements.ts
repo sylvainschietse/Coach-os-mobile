@@ -1,11 +1,9 @@
 import {
-  estFormule,
-  FORMULES,
   mensualite,
   PACKS,
   packADecompter,
+  prixAbonnement,
   prixAvecRemise,
-  prixMensuel,
   remiseEnCours,
   TARIFS,
   type Abonnement,
@@ -15,8 +13,10 @@ import {
   type TypePack,
 } from '@/domain/abonnements';
 import { jourLocal } from '@/domain/crm';
+import { OFFRES_DEMO } from '@/domain/offres';
 import { nouvelId } from '@/lib/identifiant';
 
+import { CHAMPS_OFFRE, versOffre } from './offres';
 import { supabase } from './supabase';
 
 export interface DepotAbonnements {
@@ -33,10 +33,10 @@ export interface DepotAbonnements {
   decompter(clientId: string, sens: 1 | -1): Promise<void>;
   /** Pack ajouté par erreur : supprimé avec sa ligne de paiement encore « En attente ». */
   supprimerPack(packId: string): Promise<void>;
-  /** Coach : crée la ligne « En attente » du mois pour chaque abonnement appli payé à la main, et crédite les séances des formules Hybride. */
+  /** Coach : crée la ligne « En attente » du mois pour chaque abonnement mensuel payé à la main, et crédite les séances de son offre. */
   preparerEcheances(): Promise<void>;
   /**
-   * Coach : passe le client au prélèvement Stripe avec sa formule et sa remise.
+   * Coach : passe le client au paiement Stripe avec son offre et sa remise (l'argent arrive sur le compte Stripe du coach).
    * Offert à 100 % : l'abonnement démarre tout de suite, sans carte. Sinon : un lien de paiement à envoyer au client.
    */
   demarrerStripe(clientId: string): Promise<{ lien?: string; demarre: boolean }>;
@@ -76,8 +76,9 @@ const demo: DepotAbonnements = {
         optionNutrition: true,
         tarifSeance: TARIFS.seance,
         videosMois: 2,
-        // Exemple de client testeur : la formule complète, offerte par le coach.
-        formule: 'hybride_complet',
+        // Exemple de client testeur : l'offre complète, offerte par le coach.
+        offre: OFFRES_DEMO[3],
+        offrePrix: OFFRES_DEMO[3].prix,
         remise: { type: 'pourcent', valeur: 100, motif: 'Merci d’être testeur' },
         paiement: 'manuel',
       }
@@ -164,7 +165,7 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
       const { data, error } = await db
         .from('clients')
         .select(
-          'acces_appli, option_nutrition, tarif_seance, videos_mois, formule, remise_type, remise_valeur, remise_motif, remise_jusqu_au, paiement, statut_stripe, prochaine_echeance',
+          `acces_appli, option_nutrition, tarif_seance, videos_mois, offre_prix, remise_type, remise_valeur, remise_motif, remise_jusqu_au, paiement, statut_stripe, prochaine_echeance, offres(${CHAMPS_OFFRE})`,
         )
         .eq('id', clientId)
         .maybeSingle();
@@ -174,7 +175,8 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
         optionNutrition: data?.option_nutrition ?? false,
         tarifSeance: data?.tarif_seance == null ? TARIFS.seance : Number(data.tarif_seance),
         videosMois: data?.videos_mois ?? 0,
-        formule: estFormule(data?.formule) ? data.formule : undefined,
+        offre: data?.offres ? versOffre(data.offres as unknown as Parameters<typeof versOffre>[0]) : undefined,
+        offrePrix: data?.offre_prix == null ? undefined : Number(data.offre_prix),
         remise: versRemise(data ?? {}),
         paiement: data?.paiement === 'stripe' ? 'stripe' : 'manuel',
         statutStripe: (data?.statut_stripe as StatutStripe | null) ?? undefined,
@@ -187,8 +189,9 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
       if (modif.accesAppli !== undefined) champs.acces_appli = modif.accesAppli;
       if (modif.optionNutrition !== undefined) champs.option_nutrition = modif.optionNutrition;
       if (modif.videosMois !== undefined) champs.videos_mois = modif.videosMois;
-      // « formule » et « remise » présentes mais vides : on les retire (réglage sur mesure, plus de remise).
-      if ('formule' in modif) champs.formule = modif.formule ?? null;
+      // « offre » et « remise » présentes mais vides : on les retire (réglage sur mesure, plus de remise).
+      if ('offre' in modif) champs.offre_id = modif.offre?.id ?? null;
+      if ('offrePrix' in modif) champs.offre_prix = modif.offrePrix ?? null;
       if ('remise' in modif) {
         champs.remise_type = modif.remise?.type ?? null;
         champs.remise_valeur = modif.remise?.valeur ?? null;
@@ -264,7 +267,7 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
       const [clients, deja, ecartees] = await Promise.all([
         db
           .from('clients')
-          .select('id, prenom, option_nutrition, formule, remise_type, remise_valeur, remise_motif, remise_jusqu_au, paiement, contacts(id)')
+          .select(`id, prenom, option_nutrition, offre_prix, remise_type, remise_valeur, remise_motif, remise_jusqu_au, paiement, contacts(id), offres(${CHAMPS_OFFRE})`)
           .eq('acces_appli', true)
           .eq('actif', true),
         db.from('paiements').select('reference').like('reference', `abonnement:${mois}:%`),
@@ -273,14 +276,28 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
       ]);
       if (clients.error || deja.error || ecartees.error) return;
       const faites = new Set([...(deja.data ?? []), ...(ecartees.data ?? [])].map((p) => p.reference as string));
-      type Fiche = LigneRemise & { id: string; prenom: string; option_nutrition: boolean; formule: string | null; paiement: string; contacts: { id: string }[] };
-      const fiches = clients.data as Fiche[];
+      type Fiche = LigneRemise & {
+        id: string;
+        prenom: string;
+        option_nutrition: boolean;
+        offre_prix: number | string | null;
+        paiement: string;
+        contacts: { id: string }[];
+        offres: Parameters<typeof versOffre>[0] | null;
+      };
+      const fiches = (clients.data as unknown as Fiche[]).map((c) => ({ ...c, offre: c.offres ? versOffre(c.offres) : undefined }));
       const lignes = fiches
-        // Stripe crée lui-même la ligne du mois quand le prélèvement passe.
-        .filter((c) => c.paiement !== 'stripe' && !faites.has(`abonnement:${mois}:${c.id}`))
+        // Stripe crée lui-même la ligne quand le prélèvement passe. Trimestre ou année payés à la main : le coach note le paiement lui-même.
+        .filter((c) => c.paiement !== 'stripe' && (!c.offre || c.offre.periodicite === 'mois') && !faites.has(`abonnement:${mois}:${c.id}`))
         .map((c) => {
-          const abo: Abonnement = { accesAppli: true, optionNutrition: c.option_nutrition, formule: estFormule(c.formule) ? c.formule : undefined, remise: versRemise(c) };
-          const p = prixAvecRemise(prixMensuel(abo), abo.remise, jour);
+          const abo: Abonnement = {
+            accesAppli: true,
+            optionNutrition: c.option_nutrition,
+            offre: c.offre,
+            offrePrix: c.offre_prix == null ? undefined : Number(c.offre_prix),
+            remise: versRemise(c),
+          };
+          const p = prixAvecRemise(prixAbonnement(abo), abo.remise, jour);
           const remise = remiseEnCours(abo.remise, jour) ? abo.remise : undefined;
           return {
             titre: `Abonnement ${mois.split('-').reverse().join('/')} · ${c.prenom}${p.offert ? ' · offert' : ''}`,
@@ -292,16 +309,17 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
             notes: remise ? `Prix ${p.prix} €, remise ${p.remise} €${remise.motif ? ` (${remise.motif})` : ''}` : null,
             reference: `abonnement:${mois}:${c.id}`,
           };
-        });
+        })
+        // Sans prix (sur mesure non chiffré) : rien à encaisser chaque mois.
+        .filter((l) => l.montant > 0 || l.statut === 'Payé');
       // Une ligne à la fois : si un autre chargement l'a déjà créée, la base refuse le doublon et on passe à la suivante.
       for (const ligne of lignes) await db.from('paiements').insert(ligne);
 
-      // Séances incluses (Hybride), payées à la main : créditées au début du mois. Côté Stripe, au prélèvement.
+      // Séances incluses dans une offre mensuelle payée à la main : créditées au début du mois. Côté Stripe, au prélèvement.
       for (const c of fiches) {
-        const f = estFormule(c.formule) ? FORMULES[c.formule] : undefined;
-        if (!f?.seancesMois || c.paiement === 'stripe') continue;
+        if (!c.offre?.seances || c.offre.periodicite !== 'mois' || c.paiement === 'stripe') continue;
         // Déjà crédité ce mois-ci : la base refuse le doublon.
-        await db.from('packs_seances').insert({ client_id: c.id, seances_total: f.seancesMois, prix: 0, achete_le: `${mois}-01`, reference: `formule:${mois}` });
+        await db.from('packs_seances').insert({ client_id: c.id, seances_total: c.offre.seances, prix: 0, achete_le: `${mois}-01`, reference: `offre:${mois}` });
       }
     },
     async demarrerStripe(clientId) {

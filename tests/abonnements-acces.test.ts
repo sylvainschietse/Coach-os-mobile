@@ -196,3 +196,42 @@ describe('formule, remise et prélèvement Stripe', () => {
     await expect(en(ids.userCoach1, `select id from public.stripe_evenements`)).rejects.toThrow();
   });
 });
+
+describe('offres créées par chaque coach', () => {
+  let offre1 = '';
+  let offre2 = '';
+
+  it('chaque coach crée ses offres ; un autre coach ne les voit pas', async () => {
+    offre1 = (await en(ids.userCoach1, `insert into public.offres (nom, prix, seances) values ('Hybride', 149, 1) returning id`)).rows[0].id as string;
+    offre2 = (await en(ids.userCoach2, `insert into public.offres (nom, prix) values ('Suivi', 79) returning id`)).rows[0].id as string;
+    expect((await en(ids.userCoach1, `select nom from public.offres`)).rows).toEqual([{ nom: 'Hybride' }]);
+    expect((await en(ids.userCoach2, `update public.offres set prix = 1 where id = $1 returning id`, [offre1])).rows).toHaveLength(0);
+  });
+
+  it('le client voit les offres proposées par son coach, pas les autres, et ne les modifie pas', async () => {
+    await en(ids.userCoach1, `insert into public.offres (nom, prix, active) values ('Ancienne', 50, false)`);
+    expect((await en(ids.userClientB, `select nom from public.offres`)).rows).toEqual([{ nom: 'Hybride' }]);
+    expect((await en(ids.userClientB, `update public.offres set prix = 1 returning id`)).rows).toHaveLength(0);
+  });
+
+  it('le coach ne rattache un client qu’à ses propres offres', async () => {
+    await en(ids.userCoach1, `update public.clients set offre_id = $1, offre_prix = 149 where id = $2`, [offre1, ids.clientB]);
+    await expect(en(ids.userCoach1, `update public.clients set offre_id = $1 where id = $2`, [offre2, ids.clientB])).rejects.toThrow(/pas à toi/);
+  });
+
+  it('le produit Stripe et le compte Stripe du coach ne s’écrivent que côté serveur', async () => {
+    await expect(en(ids.userCoach1, `update public.offres set stripe_prix = 'price_x' where id = $1`, [offre1])).rejects.toThrow();
+    await expect(en(ids.userCoach1, `update public.coachs set stripe_compte = 'acct_x', stripe_pret = true where id = $1`, [ids.coach1])).rejects.toThrow();
+  });
+
+  it('un pack payé en une fois contient des séances et n’ouvre pas l’appli', async () => {
+    await expect(en(ids.userCoach1, `insert into public.offres (nom, prix, periodicite, seances) values ('Pack', 550, 'unique', 10)`)).rejects.toThrow();
+    const { rows } = await en(ids.userCoach1, `insert into public.offres (nom, prix, periodicite, seances, acces_appli, messagerie) values ('Pack', 550, 'unique', 10, false, false) returning id`);
+    expect(rows).toHaveLength(1);
+  });
+
+  it('une offre retirée garde ses clients', async () => {
+    await en(ids.userCoach1, `update public.offres set active = false where id = $1`, [offre1]);
+    expect((await en(ids.userCoach1, `select offre_id from public.clients where id = $1`, [ids.clientB])).rows[0].offre_id).toBe(offre1);
+  });
+});

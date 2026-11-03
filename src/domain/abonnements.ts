@@ -1,18 +1,20 @@
-// Abonnements de CoachGo : les 4 formules du site, la remise que le coach accorde, et ce que chaque formule ouvre dans l'appli.
-// Le paiement se fait hors de l'appli : lien de paiement Stripe envoyé par le coach, ou encaissement à la main.
-// Rien ne s'achète dans l'appli (règles Apple et Google) : le client voit sa formule et sa remise, sans bouton d'achat.
+// Abonnement d'un client : l'offre de son coach (voir offres.ts), la remise que le coach accorde, et ce qu'elle ouvre dans l'appli.
+// Le client paie son coach par Stripe (page de paiement), ou le coach encaisse à la main.
+import type { Offre } from './offres';
 
 export interface Abonnement {
-  /** Abonnement appli (59 €/mois) : programmes, séances, suivi, documents et nutrition limitée aux macros. */
+  /** Accès à l'appli : programmes, séances, suivi, documents et nutrition limitée aux macros. */
   accesAppli: boolean;
-  /** Option nutrition (+40 €/mois) : recettes, plan de repas automatique et photo d'assiette. */
+  /** Nutrition complète : recettes, plan de repas automatique et photo d'assiette. */
   optionNutrition: boolean;
   /** Tarif d'une séance à l'unité pour ce client (60 € par défaut, au cas par cas sinon). */
   tarifSeance?: number;
   /** Vidéos corrigées incluses chaque mois dans sa formule (0 : chaque vidéo est facturée). */
   videosMois?: number;
-  /** Formule du site choisie par le coach ; absente : réglage « sur mesure » (cases cochées une à une). */
-  formule?: CleFormule;
+  /** Offre du coach ; absente : réglage « sur mesure » (cases cochées une à une). */
+  offre?: Offre;
+  /** Prix que paie ce client : celui de l'offre quand il s'est abonné (les anciens abonnés gardent leur prix), ou le prix sur mesure. */
+  offrePrix?: number;
   /** Remise exceptionnelle accordée par le coach (testeur, geste commercial…). */
   remise?: Remise;
   /** Comment le client paie : à la main (virement, espèces…) ou par prélèvement Stripe. */
@@ -21,59 +23,6 @@ export interface Abonnement {
   statutStripe?: StatutStripe;
   /** Prochain prélèvement prévu (AAAA-MM-JJ), quand le client paie par Stripe. */
   prochaineEcheance?: string;
-}
-
-export type CleFormule = 'appli' | 'appli_nutrition' | 'hybride_leger' | 'hybride_complet';
-
-export interface Formule {
-  cle: CleFormule;
-  nom: string;
-  accroche: string;
-  prix: number;
-  optionNutrition: boolean;
-  /** Séances avec le coach créditées chaque mois (reportées au mois suivant si elles ne sont pas faites). */
-  seancesMois: number;
-  videosMois: number;
-}
-
-/** Les 4 formules du site, dans l'ordre d'affichage. */
-export const FORMULES: Record<CleFormule, Formule> = {
-  appli: { cle: 'appli', nom: 'Appli', accroche: 'Pour t’entraîner seul, bien guidé.', prix: 59, optionNutrition: false, seancesMois: 0, videosMois: 0 },
-  appli_nutrition: {
-    cle: 'appli_nutrition',
-    nom: 'Appli + nutrition',
-    accroche: 'Pour des résultats aussi dans l’assiette.',
-    prix: 99,
-    optionNutrition: true,
-    seancesMois: 0,
-    videosMois: 0,
-  },
-  hybride_leger: {
-    cle: 'hybride_leger',
-    nom: 'Hybride léger',
-    accroche: 'Pour garder le contact avec ton coach.',
-    prix: 149,
-    optionNutrition: true,
-    seancesMois: 1,
-    videosMois: 0,
-  },
-  hybride_complet: {
-    cle: 'hybride_complet',
-    nom: 'Hybride complet',
-    accroche: 'Pour progresser vite, aux côtés de ton coach.',
-    prix: 269,
-    optionNutrition: true,
-    seancesMois: 4,
-    videosMois: 2,
-  },
-};
-export const CLES_FORMULES = Object.keys(FORMULES) as CleFormule[];
-export const estFormule = (x: unknown): x is CleFormule => typeof x === 'string' && x in FORMULES;
-
-/** Ce que la formule ouvre dans l'appli : appliqué tel quel sur la fiche du client. */
-export function droitsFormule(cle: CleFormule): Pick<Abonnement, 'accesAppli' | 'optionNutrition' | 'videosMois' | 'formule'> {
-  const f = FORMULES[cle];
-  return { formule: cle, accesAppli: true, optionNutrition: f.optionNutrition, videosMois: f.videosMois };
 }
 
 export type ModePaiement = 'manuel' | 'stripe';
@@ -192,14 +141,16 @@ export function packADecompter(packs: PackSeances[]): PackSeances | undefined {
   return [...packs].filter((p) => restantes(p) > 0).sort((a, b) => a.acheteLe.localeCompare(b.acheteLe))[0];
 }
 
-/** Prix mensuel avant remise : celui de la formule, ou appli + option nutrition en réglage sur mesure. */
-export function prixMensuel(a: Abonnement) {
-  if (!a.accesAppli) return 0;
-  if (a.formule) return FORMULES[a.formule].prix;
-  return TARIFS.appli + (a.optionNutrition ? TARIFS.optionNutrition : 0);
+/** Prix d'une échéance avant remise : celui que le client paie pour son offre, ou le prix sur mesure. Un pack payé en une fois n'en a pas. */
+export function prixAbonnement(a: Abonnement) {
+  if (a.offre) return a.offre.periodicite === 'unique' ? 0 : (a.offrePrix ?? a.offre.prix);
+  return a.accesAppli ? (a.offrePrix ?? 0) : 0;
 }
 
-/** Montant mensuel à encaisser ce mois-là (AAAA-MM-JJ, aujourd'hui par défaut), remise déduite. */
+/** « / mois », « / trimestre », « / an » selon l'offre. */
+export const suffixeAbonnement = (a: Abonnement) => (a.offre?.periodicite === 'trimestre' ? '/ trimestre' : a.offre?.periodicite === 'annee' ? '/ an' : '/ mois');
+
+/** Montant à encaisser à l'échéance (AAAA-MM-JJ, aujourd'hui par défaut), remise déduite. */
 export function mensualite(a: Abonnement, jour = new Date().toISOString().slice(0, 10)) {
-  return prixAvecRemise(prixMensuel(a), a.remise, jour).aPayer;
+  return prixAvecRemise(prixAbonnement(a), a.remise, jour).aPayer;
 }
