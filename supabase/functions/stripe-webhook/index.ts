@@ -4,6 +4,7 @@
 //   impayé, résilié ou expiré → accès coupé (tout son suivi est gardé, comme une pause).
 // · paiement par le lien partageable d'une offre, sans fiche → la fiche du nouveau client est créée chez le coach.
 // · paiement par une page Stripe terminé → le coach est prévenu sur son téléphone (notification).
+// · passage à une offre supérieure → la différence payée au prorata a sa propre ligne « Payé ».
 // · paiement réussi → ligne « Payé » dans la Gestion du coach (remise notée), et séances créditées (offre avec séances ou pack).
 // Webhook à créer dans Stripe (Développeurs › Webhooks), « Événements sur les comptes connectés » :
 //   <projet>/functions/v1/stripe-webhook
@@ -15,6 +16,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@17';
 
 import { droitsOffre, type LigneOffre, statutOuvreAcces } from '../_shared/abonnements.ts';
+import { lienFiche, prevenirCoach } from '../_shared/prevenir-coach.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '');
 const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
@@ -45,25 +47,6 @@ async function coachDuCompte(compte: Compte) {
   if (!compte) return undefined;
   const { data } = await admin.from('coachs').select('id').eq('stripe_compte', compte.stripeAccount).maybeSingle();
   return data?.id as string | undefined;
-}
-
-const EXPO_PUSH = 'https://exp.host/--/api/v2/push/send';
-
-/** Prévient le coach sur son téléphone. Sans appareil enregistré ou si l'envoi échoue, rien ne bloque le reste. */
-async function prevenirCoach(coachId: string, titre: string, corps: string, url: string) {
-  try {
-    const { data: coach } = await admin.from('coachs').select('user_id').eq('id', coachId).single();
-    if (!coach?.user_id) return;
-    const { data: appareils } = await admin.from('appareils_push').select('jeton').eq('user_id', coach.user_id);
-    if (!appareils?.length) return;
-    await fetch(EXPO_PUSH, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(appareils.map((a) => ({ to: a.jeton, title: titre, body: corps, data: { url, genre: 'paiement' }, sound: 'default', channelId: 'messages', priority: 'high' }))),
-    });
-  } catch (e) {
-    console.error('notification coach', e);
-  }
 }
 
 /** Paiement par le lien partageable, sans fiche : on retrouve la personne par son e-mail chez ce coach, sinon on crée sa fiche. */
@@ -158,6 +141,14 @@ async function enregistrerFacture(facture: Stripe.Invoice, compte: Compte) {
   const fiche = await ficheDe(typeof abonnementId === 'string' ? abonnementId : abonnementId.id, meta?.client_id);
   if (!fiche) return;
   if (compte && fiche.coach_id !== (await coachDuCompte(compte))) return;
+  // Passage à une offre supérieure en cours de mois : la différence au prorata a sa propre ligne, sans toucher à celle du mois.
+  if (facture.billing_reason === 'subscription_update') {
+    const paye = (facture.amount_paid ?? 0) / 100;
+    if (paye <= 0) return;
+    const offre = await lireOffre(meta?.offre_id ?? fiche.offre_id);
+    await lignePaiement(fiche, `changement:${facture.id}`, `Passage à ${offre?.nom ?? 'une autre offre'} (prorata)`, facture.created, paye, paye);
+    return;
+  }
   const debut = facture.lines.data[0]?.period?.start ?? facture.created;
   const mois = jour(debut).slice(0, 7);
   const prix = (facture.subtotal ?? 0) / 100;
@@ -179,12 +170,12 @@ async function paiementTermine(s: Stripe.Checkout.Session, compte: Compte) {
   if (!fiche) return;
   // Une seule fois, quand l'argent est là (un paiement différé arrive en deux événements).
   if (offre && s.payment_status !== 'unpaid') {
-    const { data: contact } = await admin.from('contacts').select('id').eq('client_id', fiche.id).limit(1).maybeSingle();
     await prevenirCoach(
+      admin,
       fiche.coach_id,
       nouveau ? 'Nouveau client payé en ligne' : 'Paiement reçu',
       nouveau ? `${fiche.prenom} a pris « ${offre.nom} ». Crée son accès à l’appli depuis sa fiche.` : `${fiche.prenom} a payé « ${offre.nom} ».`,
-      contact ? `/coach?onglet=crm&rubrique=Contacts&contact=${contact.id}` : '/coach?onglet=crm&rubrique=Contacts',
+      await lienFiche(admin, fiche.id),
     );
   }
 

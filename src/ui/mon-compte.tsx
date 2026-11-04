@@ -9,8 +9,18 @@ import { Platform, View } from 'react-native';
 import { abonnements } from '@/data/abonnements';
 import { offres } from '@/data/offres';
 import { mesInfos, modifierMesCoordonnees, monCoach, type MesInfos } from '@/data/acces-client';
-import { prixAbonnement, prixAvecRemise, remiseEnCours, soldeSeances, statutOuvreAcces, suffixeAbonnement, type Abonnement } from '@/domain/abonnements';
-import { contenuOffre } from '@/domain/offres';
+import {
+  peutPasserA,
+  prixAbonnement,
+  prixAvecRemise,
+  prorataChangement,
+  remiseEnCours,
+  soldeSeances,
+  statutOuvreAcces,
+  suffixeAbonnement,
+  type Abonnement,
+} from '@/domain/abonnements';
+import { contenuOffre, libellePrix, type Offre } from '@/domain/offres';
 import { verifierCoordonnees } from '@/domain/acces-client';
 import { formaterTelephone, normaliserTelephone } from '@/domain/crm';
 import { demanderSortie } from '@/lib/brouillon';
@@ -156,18 +166,62 @@ function MaFormule({ a, apercu }: { a: Abonnement; apercu: boolean }) {
   );
 }
 
+/** Passer tout de suite à une offre plus chère : deux appuis, avec la différence à payer aujourd'hui. */
+function PasserA({ a, o, onFait }: { a: Abonnement; o: Offre; onFait: () => void }) {
+  const [confirmer, setConfirmer] = useState(false);
+  const [occupe, setOccupe] = useState(false);
+  const [erreur, setErreur] = useState<string>();
+  const [fait, setFait] = useState<string>();
+  const jour = new Date().toISOString().slice(0, 10);
+  const prorata = prorataChangement(a, o, jour);
+  const passer = async () => {
+    setErreur(undefined);
+    setOccupe(true);
+    try {
+      const r = await offres.changer(o.id);
+      setFait(`C’est fait : ton offre est maintenant « ${o.nom} »${r.paye > 0 ? `, ${euros(r.paye)} de différence payés` : ''}. Ton coach est prévenu.`);
+      onFait();
+    } catch (e) {
+      setErreur(messageErreur(e));
+    } finally {
+      setOccupe(false);
+    }
+  };
+  if (fait) return <Texte style={{ fontSize: 14 }}>{fait}</Texte>;
+  return (
+    <>
+      {confirmer && (
+        <Texte doux style={{ fontSize: 13 }}>
+          {`Ça change tout de suite. Tu paies aujourd’hui la différence jusqu’à ton prochain prélèvement${prorata !== undefined ? ` (environ ${euros(prorata)})` : ''}, puis ${libellePrix(o)}.`}
+        </Texte>
+      )}
+      <Bouton
+        variante={confirmer ? 'primaire' : 'discret'}
+        libelle={confirmer ? 'Confirmer et payer la différence' : 'Passer à cette offre'}
+        onPress={() => (confirmer ? passer() : setConfirmer(true))}
+        chargement={occupe}
+      />
+      {confirmer && !occupe && <Bouton variante="discret" libelle="Annuler" onPress={() => setConfirmer(false)} />}
+      {erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{erreur}</Texte>}
+    </>
+  );
+}
+
 /** Les offres proposées par son coach : sur Android et le web, il choisit et paie sur la page Stripe de son coach. */
-function OffresDeMonCoach({ a, apercu }: { a?: Abonnement | null; apercu: boolean }) {
+function OffresDeMonCoach({ a, apercu, onChange }: { a?: Abonnement | null; apercu: boolean; onChange: () => void }) {
   const liste = useCharger(() => offres.lister(), 'offres-de-mon-coach');
   const [occupe, setOccupe] = useState<string>();
   const [erreur, setErreur] = useState<string>();
-  // Déjà une offre (payée en ligne, à la main ou offerte) : seuls les packs de séances restent à acheter ici ;
-  // changer d'offre se voit avec le coach, pour ne jamais payer deux abonnements.
-  const aUneOffre = !!a?.offre || !!a?.accesAppli;
-  const proposees = (liste.donnee ?? []).filter((o) => o.active && o.id !== a?.offre?.id && (!aUneOffre || o.periodicite === 'unique'));
-  if (!proposees.length) return null;
   // Pas de paiement depuis l'appli iPhone (règles Apple) : le coach envoie le lien.
   const payable = !apercu && Platform.OS !== 'ios';
+  // Déjà une offre (payée en ligne, à la main ou offerte) : il voit les packs de séances, et les offres supérieures
+  // vers lesquelles il peut passer tout de suite si son abonnement est payé par carte. Le reste se voit avec le coach,
+  // pour ne jamais payer deux abonnements.
+  const aUneOffre = !!a?.offre || !!a?.accesAppli;
+  const proposees = (liste.donnee ?? []).filter(
+    (o) => o.active && o.id !== a?.offre?.id && (!aUneOffre || o.periodicite === 'unique' || (payable && !!a && peutPasserA(a, o))),
+  );
+  if (!proposees.length) return null;
   const choisir = async (id: string) => {
     setErreur(undefined);
     setOccupe(id);
@@ -181,17 +235,19 @@ function OffresDeMonCoach({ a, apercu }: { a?: Abonnement | null; apercu: boolea
   };
   return (
     <>
-      <SousTitre>{aUneOffre ? 'Séances en plus' : 'Les offres de mon coach'}</SousTitre>
+      <SousTitre>{aUneOffre ? 'Aller plus loin' : 'Les offres de mon coach'}</SousTitre>
       {proposees.map((o) => (
         <CarteOffre key={o.id} offre={o}>
-          {payable ? (
+          {aUneOffre && a && o.periodicite !== 'unique' ? (
+            <PasserA a={a} o={o} onFait={onChange} />
+          ) : payable ? (
             <Bouton variante="discret" libelle={o.periodicite === 'unique' ? 'Acheter ce pack' : 'Choisir cette offre'} onPress={() => choisir(o.id)} chargement={occupe === o.id} />
           ) : (
             <Texte doux style={{ fontSize: 13 }}>Envie de cette offre ? Demande le lien à ton coach.</Texte>
           )}
         </CarteOffre>
       ))}
-      {aUneOffre && <Texte doux style={{ fontSize: 13 }}>Pour changer d’offre, écris à ton coach.</Texte>}
+      {aUneOffre && <Texte doux style={{ fontSize: 13 }}>Pour une autre offre, écris à ton coach.</Texte>}
       {erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{erreur}</Texte>}
     </>
   );
@@ -238,7 +294,7 @@ export function MonCompte({ clientId, prenom, apercu }: { clientId: string; pren
           valeur={solde.total ? `${solde.restantes} restante${solde.restantes > 1 ? 's' : ''} sur ${solde.total}` : 'Aucune en cours'}
         />
       </Carte>
-      <OffresDeMonCoach a={abo.donnee} apercu={apercu} />
+      <OffresDeMonCoach a={abo.donnee} apercu={apercu} onChange={abo.recharger} />
       <MesDocuments clientId={clientId} />
       <MesFactures clientId={clientId} />
       {!apercu && <Bouton variante="discret" libelle="Mes notifications" onPress={() => demanderSortie(() => router.push('/client/notifications'))} />}

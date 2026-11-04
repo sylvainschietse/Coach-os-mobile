@@ -38,6 +38,8 @@ export interface DepotOffres {
   /** Page de paiement de l'offre : pour le client connecté, ou pour la personne qui a reçu le lien. */
   payer(offreId: string): Promise<string>;
   voir(offreId: string): Promise<OffrePublique>;
+  /** Client : passe tout de suite à une offre plus chère ; renvoie la différence payée au prorata. */
+  changer(offreId: string): Promise<{ paye: number }>;
 }
 
 /** Message d'erreur renvoyé par la fonction serveur, sinon un message général. */
@@ -83,6 +85,9 @@ const demo: DepotOffres = {
     throw new Error(SANS_STRIPE);
   },
   async payer() {
+    throw new Error(SANS_STRIPE);
+  },
+  async changer() {
     throw new Error(SANS_STRIPE);
   },
   async voir(offreId) {
@@ -210,6 +215,10 @@ function enLigne(db: NonNullable<typeof supabase>): DepotOffres {
       const d = await appeler<{ lien?: string }>({ action: 'payer', offreId }, 'La page de paiement ne s’ouvre pas pour le moment. Réessaie.');
       if (!d.lien) throw new Error('La page de paiement ne s’ouvre pas pour le moment. Réessaie.');
       return d.lien;
+    },
+    async changer(offreId) {
+      const d = await appeler<{ paye?: number }>({ action: 'changer', offreId }, 'Le changement d’offre n’a pas pu se faire. Réessaie.');
+      return { paye: Number(d.paye ?? 0) };
     },
     async voir(offreId) {
       return appeler<OffrePublique>({ action: 'voir', offreId }, 'Cette offre ne s’affiche pas pour le moment.');

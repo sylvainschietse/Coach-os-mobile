@@ -161,3 +161,30 @@ export const suffixeAbonnement = (a: Abonnement) => (a.offre?.periodicite === 't
 export function mensualite(a: Abonnement, jour = new Date().toISOString().slice(0, 10)) {
   return prixAvecRemise(prixAbonnement(a), a.remise, jour).aPayer;
 }
+
+/**
+ * Le client peut passer seul, tout de suite, à cette offre de son coach : prélèvement Stripe en cours,
+ * offre plus chère avec le même rythme de paiement. Pour baisser ou changer de rythme, il passe par son coach.
+ */
+export function peutPasserA(a: Abonnement, o: Offre) {
+  if (a.paiement !== 'stripe' || !a.offre || (a.statutStripe !== 'active' && a.statutStripe !== 'trialing')) return false;
+  return o.active && o.id !== a.offre.id && o.periodicite !== 'unique' && o.periodicite === a.offre.periodicite && o.prix > prixAbonnement(a);
+}
+
+const MOIS_PERIODE: Record<string, number> = { mois: 1, trimestre: 3, annee: 12 };
+
+/**
+ * Estimation de la différence payée aujourd'hui en passant à l'offre o : écart de prix au prorata des jours qui restent
+ * jusqu'au prochain prélèvement (Stripe fait le calcul exact). undefined sans date de prochain prélèvement.
+ */
+export function prorataChangement(a: Abonnement, o: Pick<Offre, 'prix' | 'periodicite'>, aujourdhui: string) {
+  if (!a.prochaineEcheance) return undefined;
+  const fin = new Date(`${a.prochaineEcheance}T00:00:00Z`);
+  const debut = new Date(fin);
+  debut.setUTCMonth(debut.getUTCMonth() - (MOIS_PERIODE[o.periodicite] ?? 1));
+  const jour = new Date(`${aujourdhui}T00:00:00Z`);
+  const total = (fin.getTime() - debut.getTime()) / 86_400_000;
+  const restants = Math.max(0, Math.min(total, (fin.getTime() - jour.getTime()) / 86_400_000));
+  if (!total) return undefined;
+  return Math.round(((o.prix - prixAbonnement(a)) * restants * 100) / total) / 100;
+}
