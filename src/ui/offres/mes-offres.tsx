@@ -5,10 +5,15 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Platform, Pressable, Share, Text, View } from 'react-native';
 
+import { factures } from '@/data/factures';
 import { offres, type EtatStripe } from '@/data/offres';
+import { useSession } from '@/data/session';
+import { brochureHtml, offresDeLaBrochure } from '@/domain/brochure';
 import { libellePrix, lireOffre, MODELES, PERIODICITES, type ModeleOffre, type Offre, type Periodicite, type SaisieOffre } from '@/domain/offres';
 import { adresseWeb } from '@/lib/adresse-web';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
+import { ouvrirPdf } from '@/lib/pdf';
+import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { messageErreur, useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, Erreur, SousTitre, Texte } from '../composants';
@@ -288,6 +293,38 @@ function LigneOffre({ offre, pret, onModifier, onChange }: { offre: Offre; pret:
   );
 }
 
+/** Brochure PDF des prix, faite à partir des offres en vente : toujours à jour, aux couleurs des factures du coach. */
+function Brochure({ liste }: { liste: Offre[] }) {
+  const { profil } = useSession();
+  const [occupe, setOccupe] = useState(false);
+  const [erreur, setErreur] = useState<string>();
+  const enVente = offresDeLaBrochure(liste);
+  if (!enVente.length) return null;
+  const creer = async () => {
+    setErreur(undefined);
+    setOccupe(true);
+    try {
+      const entete = await factures.entete().catch(() => undefined);
+      const nom = profil?.role === 'coach' ? profil.nom : (entete?.nom ?? 'Coach');
+      const html = brochureHtml(enVente, { nom, telephone: entete?.telephone || undefined }, { couleur: entete?.couleur, logo: entete?.logo, police: BEBAS_NEUE_BASE64, lien: lienOffre });
+      await ouvrirPdf(html, `Les offres de ${nom}`);
+    } catch (e) {
+      setErreur(messageErreur(e));
+    } finally {
+      setOccupe(false);
+    }
+  };
+  return (
+    <View style={{ gap: espace(1) }}>
+      <Bouton variante="discret" libelle="Ma brochure des prix (PDF)" onPress={creer} chargement={occupe} />
+      <Texte doux style={{ fontSize: 13 }}>
+        {`Faite avec tes ${enVente.length} offre${enVente.length > 1 ? 's' : ''} en vente,, à tes couleurs (réglées dans Mon profil). Toujours à jour : elle reprend tes prix du moment.`}
+      </Texte>
+      {erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{erreur}</Texte>}
+    </View>
+  );
+}
+
 export function MesOffres() {
   const liste = useCharger(() => offres.lister(), 'offres');
   const stripe = useCharger(() => offres.etatStripe().catch(() => ({ compte: false, pret: false })), 'etat-stripe');
@@ -310,6 +347,7 @@ export function MesOffres() {
       ) : (
         <>
           <Bouton libelle="+ Créer une offre" onPress={() => setEdition('nouvelle')} />
+          <Brochure liste={toutes} />
           {liste.erreur && <Erreur message={liste.erreur} onReessayer={liste.recharger} />}
           {!liste.donnee && !liste.erreur && <Chargement />}
           {liste.donnee && toutes.length === 0 && (
