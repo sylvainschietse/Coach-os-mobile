@@ -346,7 +346,7 @@ export function resumer(suivi: Pick<IndicateurSuivi, 'def' | 'cible'>, releves: 
 }
 
 /** Indicateurs lus sur le téléphone ou la montre (Health Connect). */
-export const LUS_SUR_TELEPHONE: Indicateur[] = ['pas', 'sommeil'];
+export const LUS_SUR_TELEPHONE: Indicateur[] = ['pas', 'sommeil', 'sommeil_qualite'];
 
 /**
  * Une valeur lue sur le téléphone remplace-t-elle le relevé du jour ? Jamais une saisie à la main

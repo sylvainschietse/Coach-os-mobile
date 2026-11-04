@@ -5,7 +5,7 @@
 import { Platform } from 'react-native';
 import type * as HC from 'react-native-health-connect';
 
-import { aImporter, heuresDeSommeil, heureParis, plageJourParis, sportHealthConnect, titreHealthConnect, type NouvelleActivite, type PeriodeSommeil } from '@/domain/activites';
+import { aImporter, heuresDeSommeil, qualiteDeSommeil, heureParis, plageJourParis, sportHealthConnect, titreHealthConnect, type NouvelleActivite, type PeriodeSommeil } from '@/domain/activites';
 import { ajouterJours } from '@/domain/entrainement';
 
 type Module = typeof HC;
@@ -98,20 +98,37 @@ export async function lirePas(jour: string): Promise<number | null> {
 }
 
 /** Heures dormies la nuit qui se termine le matin de `jour` (null si rien n'est enregistré). */
-export async function lireSommeil(jour: string): Promise<number | null> {
+async function lirePeriodes(jour: string): Promise<PeriodeSommeil[] | null> {
   const hc = await accesPret(['SleepSession']);
   if (!hc) return null;
   const { records } = await hc.readRecords('SleepSession', {
     timeRangeFilter: { operator: 'between', startTime: heureParis(ajouterJours(jour, -1), 12), endTime: heureParis(jour, 14) },
   });
-  const eveil = [hc.SleepStageType.AWAKE, hc.SleepStageType.OUT_OF_BED] as number[];
-  const periodes: PeriodeSommeil[] = records.map((s) => ({
+  const t = hc.SleepStageType;
+  const eveil = [t.AWAKE, t.OUT_OF_BED] as number[];
+  const phase = (stage: number) => (stage === t.DEEP ? 'profond' : stage === t.REM ? 'paradoxal' : stage === t.LIGHT ? 'leger' : null);
+  return records.map((s) => ({
     debut: s.startTime,
     fin: s.endTime,
     origine: s.metadata?.dataOrigin ?? '',
     eveils: (s.stages ?? []).filter((x) => eveil.includes(x.stage)).map((x) => ({ debut: x.startTime, fin: x.endTime })),
+    phases: (s.stages ?? []).flatMap((x) => {
+      const type = phase(x.stage);
+      return type ? [{ type, debut: x.startTime, fin: x.endTime }] : [];
+    }),
   }));
-  return heuresDeSommeil(periodes, jour);
+}
+
+/** Heures dormies la nuit qui se termine le matin de `jour` (null si rien n'est enregistré). */
+export async function lireSommeil(jour: string): Promise<number | null> {
+  const p = await lirePeriodes(jour);
+  return p && heuresDeSommeil(p, jour);
+}
+
+/** Heures dormies et note de qualité estimée (1 à 5, null sans phases de sommeil) de la nuit qui se termine le matin de `jour`. */
+export async function lireNuit(jour: string): Promise<{ heures: number | null; qualite: number | null }> {
+  const p = await lirePeriodes(jour);
+  return p ? { heures: heuresDeSommeil(p, jour), qualite: qualiteDeSommeil(p, jour) } : { heures: null, qualite: null };
 }
 
 /**

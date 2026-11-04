@@ -1,7 +1,7 @@
 // Activités sportives : heures de Paris, sommeil de la nuit, allure et totaux.
 import { describe, expect, it } from 'vitest';
 
-import { aImporter, allure, erreursActivite, estTechnogym, sportAppleSante, titreHealthConnect, heuresDeSommeil, heureParis, plageJourParis, rythme, sportHealthConnect, totauxParSemaine } from '../src/domain/activites';
+import { aImporter, allure, erreursActivite, estTechnogym, sportAppleSante, titreHealthConnect, heuresDeSommeil, qualiteDeSommeil, heureParis, plageJourParis, rythme, sportHealthConnect, totauxParSemaine } from '../src/domain/activites';
 import { jourParis, lundiDe } from '../src/domain/entrainement';
 
 describe('heures de Paris', () => {
@@ -31,6 +31,20 @@ describe('sommeil', () => {
     expect(h).toBe(8);
   });
   it('rien d’enregistré : null', () => expect(heuresDeSommeil([], '2026-10-29')).toBeNull());
+  it('note de qualité estimée d’après les phases de la montre', () => {
+    const p = (debut: string, fin: string, type: 'leger' | 'profond' | 'paradoxal') => ({ debut, fin, type });
+    const bonne = {
+      ...nuit('2026-10-28T22:00:00Z', '2026-10-29T06:00:00Z'),
+      phases: [p('2026-10-28T22:00:00Z', '2026-10-29T00:00:00Z', 'profond'), p('2026-10-29T00:00:00Z', '2026-10-29T04:00:00Z', 'leger'), p('2026-10-29T04:00:00Z', '2026-10-29T06:00:00Z', 'paradoxal')],
+    };
+    expect(qualiteDeSommeil([bonne], '2026-10-29')).toBe(5);
+    const courte = {
+      ...nuit('2026-10-29T01:00:00Z', '2026-10-29T06:00:00Z', 'montre', [{ debut: '2026-10-29T03:00:00Z', fin: '2026-10-29T04:00:00Z' }]),
+      phases: [p('2026-10-29T01:00:00Z', '2026-10-29T03:00:00Z', 'leger'), p('2026-10-29T04:00:00Z', '2026-10-29T06:00:00Z', 'leger')],
+    };
+    expect(qualiteDeSommeil([courte], '2026-10-29')).toBe(1);
+    expect(qualiteDeSommeil([nuit('2026-10-28T22:00:00Z', '2026-10-29T06:00:00Z')], '2026-10-29')).toBeNull();
+  });
 });
 
 describe('affichage', () => {
