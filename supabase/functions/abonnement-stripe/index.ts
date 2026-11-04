@@ -13,6 +13,8 @@
 // Client (connecté) :
 // · portail   : page Stripe pour changer de carte, voir ses factures ou résilier.
 // · payer     : page de paiement d'une offre de son coach.
+// · changer   : passe tout de suite à une offre plus chère de son coach (même rythme). La différence jusqu'au prochain
+//               prélèvement est payée maintenant, au prorata des jours restants, avec la carte enregistrée.
 // Sans compte (lien partageable de l'offre) :
 // · voir      : l'offre et le prénom du coach, pour la page publique.
 // · payer     : page de paiement ; à la fin, le webhook crée la fiche du nouveau client chez le coach.
@@ -25,6 +27,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@17';
 
 import { coupon, droitsOffre, type LigneOffre, tarifStripe } from '../_shared/abonnements.ts';
+import { lienFiche, prevenirCoach } from '../_shared/prevenir-coach.ts';
 
 const entetes = {
   'Access-Control-Allow-Origin': '*',
@@ -214,6 +217,57 @@ Deno.serve(async (req) => {
         session = await ouvrir();
       }
       return repondre({ lien: session.url });
+    }
+
+    if (action === 'changer') {
+      const { data: c } = await admin
+        .from('clients')
+        .select('id, prenom, coach_id, stripe_client, stripe_abonnement, statut_stripe')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (!c) throw new Refus('Fiche client introuvable.', 404);
+      const o = await lireOffre(corps.offreId);
+      if (!o.active || o.coach_id !== c.coach_id || o.periodicite === 'unique') throw new Refus('Cette offre n’est pas proposée par ton coach.', 404);
+      if (!c.stripe_abonnement || !['active', 'trialing'].includes(c.statut_stripe ?? ''))
+        throw new Refus('Ton abonnement n’est pas payé par carte : écris à ton coach pour changer d’offre.', 409);
+      const compte = compteDe(await lireCoach(c.coach_id), false);
+      const abo = await stripe.subscriptions.retrieve(c.stripe_abonnement, compte);
+      const ligne = abo.items.data[0];
+      const t = tarifStripe(o);
+      const rythme = ligne.price.recurring;
+      if (!rythme || rythme.interval !== t.recurring?.interval || rythme.interval_count !== t.recurring?.interval_count)
+        throw new Refus('Cette offre n’a pas le même rythme de paiement : écris à ton coach pour changer.', 409);
+      if (t.centimes <= (ligne.price.unit_amount ?? 0)) throw new Refus('Pour une offre moins chère, écris à ton coach.', 409);
+      // Le prorata se paie tout de suite : il faut une carte enregistrée.
+      let carte = abo.default_payment_method;
+      if (!carte && c.stripe_client) {
+        const cs = await stripe.customers.retrieve(c.stripe_client, compte);
+        if (!('deleted' in cs && cs.deleted)) carte = (cs as Stripe.Customer).invoice_settings?.default_payment_method ?? null;
+      }
+      if (!carte) throw new Refus('Ajoute d’abord ta carte dans « Gérer mon paiement », puis réessaie.', 409);
+      const prix = await publier(o, compte);
+      let maj: Stripe.Subscription;
+      try {
+        maj = await stripe.subscriptions.update(
+          abo.id,
+          {
+            items: [{ id: ligne.id, price: prix }],
+            // Différence facturée et prélevée maintenant ; si la carte refuse, rien ne change.
+            proration_behavior: 'always_invoice',
+            payment_behavior: 'error_if_incomplete',
+            metadata: { ...abo.metadata, offre_id: o.id },
+          },
+          compte,
+        );
+      } catch (e) {
+        if (e instanceof Stripe.errors.StripeCardError) throw new Refus('Ta carte a été refusée : rien n’a changé. Mets-la à jour dans « Gérer mon paiement ».', 402);
+        throw e;
+      }
+      await admin.from('clients').update({ offre_id: o.id, offre_prix: Number(o.prix), ...droitsOffre(o) }).eq('id', c.id);
+      const facture = maj.latest_invoice ? await stripe.invoices.retrieve(typeof maj.latest_invoice === 'string' ? maj.latest_invoice : maj.latest_invoice.id, compte) : undefined;
+      const paye = facture && facture.billing_reason === 'subscription_update' ? (facture.amount_paid ?? 0) / 100 : 0;
+      await prevenirCoach(admin, c.coach_id, 'Changement d’offre', `${c.prenom} passe à « ${o.nom} »${paye > 0 ? ` (${paye.toLocaleString('fr-FR')} € de différence payés)` : ''}.`, await lienFiche(admin, c.id));
+      return repondre({ ok: true, paye });
     }
 
     // ——— Coach connecté ———
