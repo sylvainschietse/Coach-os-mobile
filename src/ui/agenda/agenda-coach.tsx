@@ -68,13 +68,13 @@ function titrePeriode(vue: Vue, date: Date) {
   return memeMois ? `${du.getDate()} – ${fin.getDate()} ${mois(fin)}` : `${du.getDate()} ${mois(du)} – ${fin.getDate()} ${mois(fin)}`;
 }
 
-export function AgendaCoach({ coachId }: { coachId: string }) {
+/** Réglages de l'agenda et Google Agenda : rangés dans Mon profil ; « Réglages » de l'agenda y mène. */
+export function AgendaCoach({ coachId, onReglages }: { coachId: string; onReglages: () => void }) {
   const { width } = useWindowDimensions();
   const large = width >= LARGEUR_LARGE;
   const [vue, setVue] = useState<Vue>(large ? 'semaine' : 'jour');
   const [date, setDate] = useState(() => new Date());
   const [edition, setEdition] = useState<{ rdv?: RendezVous; jour?: string; heure?: string; clientId?: string }>();
-  const [reglagesOuverts, setReglagesOuverts] = useState(false);
   const [boosterOuvert, setBoosterOuvert] = useState<BoosterAgenda>();
 
   const { du, au } = periode(vue, date);
@@ -119,7 +119,7 @@ export function AgendaCoach({ coachId }: { coachId: string }) {
           <Puce libelle="Mois" actif={vue === 'mois'} onPress={() => setVue('mois')} />
         </Puces>
         <View style={{ flexDirection: 'row', gap: espace(2) }}>
-          <BoutonContour libelle="Réglages" icone={Settings} iconeAGauche onPress={() => setReglagesOuverts((o) => !o)} />
+          <BoutonContour libelle="Réglages" icone={Settings} iconeAGauche onPress={onReglages} />
           <BoutonContour libelle="Rendez-vous" icone={CalendarPlus} iconeAGauche onPress={() => nouveau()} />
         </View>
       </View>
@@ -135,16 +135,6 @@ export function AgendaCoach({ coachId }: { coachId: string }) {
         </Pressable>
       </View>
 
-      {reglagesOuverts && <GoogleAgenda onChange={recharger} />}
-      {reglagesOuverts && reglages.donnee && (
-        <Reglages
-          initial={reglages.donnee}
-          onEnregistre={() => {
-            setReglagesOuverts(false);
-            reglages.recharger();
-          }}
-        />
-      )}
 
       {rdv.erreur && <Erreur message={rdv.erreur} onReessayer={rdv.recharger} />}
       {!rdv.donnee && !rdv.erreur && <Chargement />}
@@ -783,6 +773,30 @@ function LigneAlerte({ texte, couleur, action }: { texte: string; couleur: strin
           <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.rouge }}>{action.libelle}</Text>
         </Pressable>
       )}
+    </View>
+  );
+}
+
+/** Mon profil › Agenda : Google Agenda et réglages des rendez-vous. */
+export function ReglagesAgendaCoach() {
+  const reglages = useCharger(() => agenda.reglages(), 'agenda-reglages');
+  const [enregistre, setEnregistre] = useState(false);
+  return (
+    <View style={{ gap: espace(4) }}>
+      <GoogleAgenda onChange={() => undefined} />
+      {reglages.erreur && <Erreur message={reglages.erreur} onReessayer={reglages.recharger} />}
+      {!reglages.donnee && !reglages.erreur && <Chargement />}
+      {reglages.donnee && (
+        <Reglages
+          key={JSON.stringify(reglages.donnee)}
+          initial={reglages.donnee}
+          onEnregistre={() => {
+            setEnregistre(true);
+            reglages.recharger();
+          }}
+        />
+      )}
+      {enregistre && <Texte style={{ fontSize: 14, color: couleurs.vert }}>Réglages enregistrés.</Texte>}
     </View>
   );
 }
