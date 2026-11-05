@@ -80,8 +80,12 @@ export function construireCompteRendu(contact: Contact, booster: Booster, repons
 
   ajouter('Le mot de ton coach', [booster.compteRendu]);
   ajouter('Le regard du coach', [regard]);
+  // Sans questionnaire, l'objectif vient de l'entretien (saisi ou dicté par le coach).
+  const objectifBilan = (bilan?.objectif.filter((l) => !l.startsWith('Ce qui l’amène')) ?? []).map((l, i) => (i === 0 ? `Objectif : ${l}` : l));
+  const objectifEntretien = propre(entretien.objectif);
   ajouter('Ton point de départ', [
-    ...(bilan?.objectif.filter((l) => !l.startsWith('Ce qui l’amène')) ?? []).map((l, i) => (i === 0 ? `Objectif : ${l}` : l)),
+    ...(objectifBilan.length ? objectifBilan : [objectifEntretien && `Objectif : ${objectifEntretien}`]),
+    !bilan?.objectif.some((l) => l.startsWith('Pourquoi : ')) && propre(entretien.pourquoiMaintenant) && `Pourquoi maintenant : ${propre(entretien.pourquoiMaintenant)}`,
     entretien.projection && `Dans six mois : ${entretien.projection}`,
   ]);
   ajouter(
@@ -131,8 +135,8 @@ export function construireCompteRendu(contact: Contact, booster: Booster, repons
     pdf: {
       mot: propre(booster.compteRendu),
       regard: propre(regard),
-      objectif: bilan?.objectif[0] && !bilan.objectif[0].includes(' : ') ? bilan.objectif[0] : undefined,
-      pourquoi: valeur('Pourquoi : '),
+      objectif: bilan?.objectif[0] && !bilan.objectif[0].includes(' : ') ? bilan.objectif[0] : objectifEntretien,
+      pourquoi: valeur('Pourquoi : ') ?? propre(entretien.pourquoiMaintenant),
       echeance: valeur('Échéance : '),
       projection: propre(entretien.projection),
       tests,

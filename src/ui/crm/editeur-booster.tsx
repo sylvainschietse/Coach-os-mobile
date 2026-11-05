@@ -23,12 +23,14 @@ import {
   type SaisieFicheBooster,
   type StatutBooster,
 } from '@/domain/crm';
+import { ajouterDicteeBooster, LIBELLES_DICTEE, rangerDicteeBooster, type RubriqueDictee } from '@/domain/dictee-booster';
 import { ENTRETIEN, evaluationVide, TESTS, type Evaluation, type IdTest } from '@/domain/evaluation';
 import { prioritesAuto } from '@/domain/redaction';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Selecteur, SousNav, type OngletDef } from '../coque';
-import { Chargement, Erreur } from '../composants';
+import { Bouton, Chargement, Erreur } from '../composants';
+import { BoutonDictee } from '../dictee';
 import { couleurs, espace, polices } from '../theme';
 import { BoutonPied, CaseACocher, Cellule, Choix, ChoixMultiple, Grille, Libelle, Modale, PiedEditeur, Saisie } from './dossier';
 import { BoutonEtape } from './acces';
@@ -52,6 +54,8 @@ interface Brouillon {
   dateRelance: string;
   planEnvoye: boolean;
   notesInternes: string;
+  /** Le mot du coach, en ouverture du compte rendu. */
+  mot: string;
 }
 
 function brouillonDe(b: Booster | undefined, contact: Contact | undefined, reponses: Record<string, string> | undefined): Brouillon {
@@ -73,6 +77,7 @@ function brouillonDe(b: Booster | undefined, contact: Contact | undefined, repon
     dateRelance: ecrireJour(b?.dateRelance),
     planEnvoye: !!b?.planEnvoyeLe,
     notesInternes: b?.notesInternes ?? '',
+    mot: b?.compteRendu ?? '',
   };
 }
 
@@ -95,6 +100,7 @@ function saisieDe(b: Brouillon, initial: Brouillon, booster: Booster | undefined
   if (change('dateRelance')) s.dateRelance = lireJour(b.dateRelance);
   if (change('planEnvoye')) s.planEnvoyeLe = b.planEnvoye ? (booster?.planEnvoyeLe ?? new Date().toISOString()) : undefined;
   if (change('notesInternes')) s.notesInternes = vide(b.notesInternes);
+  if (change('mot')) s.compteRendu = vide(b.mot);
   return s;
 }
 
@@ -328,13 +334,23 @@ function Editeur({
       )}
 
       {rubrique === 'Entretien' && (
-        <Grille>
-          {ENTRETIEN.map((q) => (
-            <Cellule key={q.id} pleine>
-              <Saisie libelle={q.libelle} long valeur={b.entretien[q.id] ?? ''} onChange={(v) => maj({ entretien: { ...b.entretien, [q.id]: v } })} />
+        <>
+          <DicteeEntretien
+            sansQuestionnaire={!questionnaire}
+            onRanger={(rangement) => maj(ajouterDicteeBooster({ entretien: b.entretien, mot: b.mot }, rangement))}
+          />
+          <Grille>
+            {ENTRETIEN.map((q) => (
+              <Cellule key={q.id} pleine>
+                <Saisie libelle={q.libelle} long dictee valeur={b.entretien[q.id] ?? ''} onChange={(v) => maj({ entretien: { ...b.entretien, [q.id]: v } })} />
+              </Cellule>
+            ))}
+            <Cellule pleine>
+              <Saisie libelle="Le mot du coach" long dictee valeur={b.mot} onChange={(mot) => maj({ mot })} />
+              <Text style={styles.aide}>Quelques lignes personnelles, en ouverture du compte rendu remis au client.</Text>
             </Cellule>
-          ))}
-        </Grille>
+          </Grille>
+        </>
       )}
 
       {rubrique === 'Tests' && <Tests evaluation={b.evaluation} onChange={(evaluation) => maj({ evaluation })} />}
@@ -393,6 +409,48 @@ function Editeur({
   );
 }
 
+/**
+ * Le coach dicte tout l'entretien d'une traite ; « Ranger » répartit les phrases dans les rubriques, en ajoutant à ce
+ * qui est déjà écrit. Rien n'est enregistré avant « Enregistrer » : le coach relit d'abord.
+ */
+function DicteeEntretien({ sansQuestionnaire, onRanger }: { sansQuestionnaire: boolean; onRanger: (r: ReturnType<typeof rangerDicteeBooster>) => void }) {
+  const [texte, setTexte] = useState('');
+  const [ranges, setRanges] = useState<RubriqueDictee[]>();
+  function ranger() {
+    const rangement = rangerDicteeBooster(texte);
+    const rubriques = Object.keys(rangement) as RubriqueDictee[];
+    if (!rubriques.length) return;
+    onRanger(rangement);
+    setRanges(rubriques);
+    setTexte('');
+  }
+  return (
+    <View style={[styles.encart, { marginBottom: espace(4), backgroundColor: couleurs.fond }]}>
+      <Text style={styles.encartTitre}>Dicter l’entretien</Text>
+      <Text style={styles.aide}>
+        {sansQuestionnaire ? 'Pas de questionnaire ? Raconte ce que tu sais du client, le compte rendu se fera avec. ' : ''}
+        Annonce chaque rubrique avant d’en parler : « Objectif… Antécédents… Freins… Mot du coach… ». Sans annonce, l’application devine.
+      </Text>
+      <BoutonDictee valeur={texte} onChange={(v) => (setTexte(v), setRanges(undefined))} />
+      <Saisie
+        libelle="Texte dicté"
+        long
+        valeur={texte}
+        onChange={(v) => (setTexte(v), setRanges(undefined))}
+        placeholder="Objectif : perdre 5 kilos pour l’été. Antécédents : opéré du genou. Freins : horaires décalés…"
+      />
+      <View style={{ alignSelf: 'flex-start' }}>
+        <Bouton variante="secondaire" libelle="Ranger dans les rubriques" onPress={ranger} desactive={!texte.trim()} />
+      </View>
+      {ranges && (
+        <Text accessibilityRole="alert" style={styles.aide}>
+          {`Ajouté à : ${ranges.map((r) => LIBELLES_DICTEE[r]).join(', ')}. Relis ci-dessous, puis Enregistrer.`}
+        </Text>
+      )}
+    </View>
+  );
+}
+
 /** Ce que la base a enregistré, pour vérifier après coup sans rouvrir la fiche. */
 function QuestionnaireManquant({ contact }: { contact: Contact }) {
   const { donnee: lien } = useCharger(() => crm.lienQuestionnaire(), 'lien-questionnaire');
@@ -402,6 +460,10 @@ function QuestionnaireManquant({ contact }: { contact: Contact }) {
     <View style={[styles.encart, { marginBottom: espace(4) }]}>
       <Text style={styles.encartTitre}>{contact.prenom || 'Ce contact'} n’a pas encore rempli le questionnaire</Text>
       <Text style={styles.aide}>Ses réponses préparent le briefing de la séance (objectif, profil sportif, points d’attention).</Text>
+      <Text style={styles.aide}>
+        Sans réponses, tu peux quand même faire le compte rendu : dans Entretien, dicte ce que tu sais (objectif, antécédents, freins, ton mot pour
+        lui) et l’application le range dans les bonnes rubriques.
+      </Text>
       {!ouvert && message && (
         <View style={{ alignSelf: 'flex-start' }}>
           <BoutonEtape libelle="Envoyer le questionnaire" onPress={() => setOuvert(true)} />
@@ -490,7 +552,7 @@ function Tests({ evaluation: e, onChange }: { evaluation: Evaluation; onChange: 
         />
       </Cellule>
       <Cellule pleine>
-        <Saisie libelle="Observations tests" long valeur={e.notes ?? ''} onChange={(notes) => onChange({ ...e, notes })} />
+        <Saisie libelle="Observations tests" long dictee valeur={e.notes ?? ''} onChange={(notes) => onChange({ ...e, notes })} />
       </Cellule>
     </Grille>
   );

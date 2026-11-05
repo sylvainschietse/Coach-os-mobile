@@ -239,7 +239,7 @@ export function prioritesAuto(booster: Pick<Booster, 'evaluation' | 'entretien'>
   const seances = Number(r.seancesActuelles?.match(/\d/)?.[0] ?? NaN);
   if (r.activiteReguliere === 'Non' || r.seancesActuelles === 'Aucune' || seances <= 1) ajouter('regularite', 1.5);
 
-  const objectif = [r.objectif === 'Autre' ? r.objectifAutre : r.objectif, booster.entretien?.pourquoiMaintenant].filter(Boolean).join(' ');
+  const objectif = [r.objectif === 'Autre' ? r.objectifAutre : r.objectif, booster.entretien?.objectif, booster.entretien?.pourquoiMaintenant].filter(Boolean).join(' ');
   for (const [motif, poids] of OBJECTIF_THEMES) {
     if (!motif.test(objectif)) continue;
     // L'objectif départage les thèmes déjà repérés ; il ne crée une priorité que s'il en manque.
@@ -281,7 +281,8 @@ export function redactionModele(contact: Contact, booster: Booster, reponses: Re
     h.sommeil ? 'le sommeil' : '',
     h.stress ? 'la gestion du stress' : '',
   ].filter(Boolean);
-  const objectif = r.objectif === 'Autre' ? r.objectifAutre : r.objectif;
+  // Sans questionnaire, l'objectif dit (ou dicté) pendant l'entretien.
+  const objectif = (r.objectif === 'Autre' ? r.objectifAutre : r.objectif) || booster.entretien?.objectif?.trim().split(/[.!?\n]/)[0].trim();
   const regard = [
     `${contact.prenom}, merci pour ton investissement pendant ce Booster.`,
     atouts.length ? `Tu as de bonnes bases, notamment sur ${liste(atouts)}, et c’est un vrai point d’appui pour la suite.` : 'Tu as fait le premier pas, et c’est souvent le plus difficile.',
