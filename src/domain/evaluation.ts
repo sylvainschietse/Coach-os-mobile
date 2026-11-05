@@ -71,6 +71,9 @@ export interface Evaluation {
 }
 
 export const ENTRETIEN: { id: string; libelle: string }[] = [
+  // Objectif et antécédents : remplis par le coach quand le client n'a pas répondu au questionnaire (ou pour compléter).
+  { id: 'objectif', libelle: 'Objectif du client' },
+  { id: 'antecedents', libelle: 'Antécédents et profil sportif' },
   { id: 'pourquoiMaintenant', libelle: 'Pourquoi maintenant ?' },
   { id: 'dejaEssaye', libelle: 'Ce qui a déjà été essayé' },
   { id: 'freins', libelle: 'Freins identifiés' },

@@ -17,6 +17,7 @@ import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, SousTitre, Texte } from '../composants';
+import { BoutonDictee } from '../dictee';
 import { choisirFichier, copieLocale, ouvrirFichier } from '../fichiers';
 import { couleurs, espace, polices } from '../theme';
 import { dateCourte, TitreSection, useCoachNom } from './commun';
@@ -177,6 +178,7 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
   return (
     <View style={{ gap: espace(3) }}>
       <Carte>
+        <BoutonDictee valeur={mot} onChange={setMot} />
         <ChampTexte
           libelle="Le mot du coach (facultatif)"
           multiligne
@@ -185,6 +187,11 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
           placeholder="Quelques lignes personnelles en ouverture du compte rendu"
         />
         <Texte doux style={{ fontSize: 14 }}>{`Priorités déterminées par l’application : ${priorites.filter(Boolean).join(' · ')}.`}</Texte>
+        {!reponses && (
+          <Texte doux style={{ fontSize: 14 }}>
+            Pas de questionnaire : l’objectif et le point de départ viennent de l’entretien. Tu peux le dicter dans « Modifier la séance ».
+          </Texte>
+        )}
         <Bouton variante="discret" libelle="Modifier la séance (tests, entretien)" onPress={onModifierSeance} />
       </Carte>
 
