@@ -62,6 +62,7 @@ const demo: DepotOffres = {
     return [...memoire.offres].sort((a, b) => a.ordre - b.ordre);
   },
   async enregistrer(offre, id) {
+    if (offre.conseil) memoire.offres = memoire.offres.map((o) => ({ ...o, conseil: false }));
     if (id) {
       memoire.offres = memoire.offres.map((o) => (o.id === id ? { ...o, ...offre } : o));
       return id;
@@ -111,12 +112,13 @@ type Ligne = {
   seances: number;
   essai_jours: number;
   active: boolean;
+  conseil: boolean | null;
   ordre: number;
   stripe_prix: string | null;
   stripe_prix_cle: string | null;
 };
 export const CHAMPS_OFFRE =
-  'id, modele, nom, accroche, prix, periodicite, acces_appli, nutrition, messagerie, videos_mois, seances, essai_jours, active, ordre, stripe_prix, stripe_prix_cle';
+  'id, modele, nom, accroche, prix, periodicite, acces_appli, nutrition, messagerie, videos_mois, seances, essai_jours, active, conseil, ordre, stripe_prix, stripe_prix_cle';
 
 export function versOffre(l: Ligne): Offre {
   const prix = Number(l.prix);
@@ -134,6 +136,7 @@ export function versOffre(l: Ligne): Offre {
     seances: l.seances,
     essaiJours: l.essai_jours,
     active: l.active,
+    conseil: !!l.conseil,
     ordre: l.ordre,
     // Même clé que tarifStripe() côté serveur : le prix en ligne correspond au prix affiché.
     enLigne: !!l.stripe_prix && l.stripe_prix_cle === `${Math.round(prix * 100)}_${l.periodicite}`,
@@ -153,6 +156,7 @@ const versLigne = (o: SaisieOffre) => ({
   seances: o.seances,
   essai_jours: o.essaiJours,
   active: o.active,
+  conseil: o.active && o.conseil,
 });
 
 function enLigne(db: NonNullable<typeof supabase>): DepotOffres {
@@ -168,6 +172,11 @@ function enLigne(db: NonNullable<typeof supabase>): DepotOffres {
       return (data as Ligne[]).map(versOffre);
     },
     async enregistrer(offre, id) {
+      // Une seule offre conseillée : les autres du coach perdent le badge (la règle d'accès limite au coach).
+      if (offre.conseil && offre.active) {
+        const { error } = await db.from('offres').update({ conseil: false }).eq('conseil', true);
+        if (error) throw new Error('L’offre n’a pas pu être enregistrée. Réessaie.');
+      }
       if (id) {
         const { error } = await db.from('offres').update(versLigne(offre)).eq('id', id);
         if (error) throw new Error('L’offre n’a pas pu être enregistrée. Réessaie.');

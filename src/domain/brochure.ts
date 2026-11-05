@@ -16,7 +16,7 @@ function echapper(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-type OffreBrochure = Pick<Offre, 'id' | 'nom' | 'accroche' | 'prix' | 'periodicite' | 'accesAppli' | 'nutrition' | 'messagerie' | 'videosMois' | 'seances' | 'essaiJours' | 'active' | 'ordre'>;
+type OffreBrochure = Pick<Offre, 'id' | 'nom' | 'accroche' | 'prix' | 'periodicite' | 'accesAppli' | 'nutrition' | 'messagerie' | 'videosMois' | 'seances' | 'essaiJours' | 'active' | 'ordre'> & { conseil?: boolean };
 
 /** Offres à mettre dans la brochure : celles en vente, abonnements d'abord puis packs, dans l'ordre du coach. */
 export function offresDeLaBrochure<T extends OffreBrochure>(offres: T[]): T[] {
@@ -77,7 +77,8 @@ export function brochureHtml(
         .join('');
       const lien = options.lien ? options.lien(o.id) : '';
       // Les offres où le coach est là en personne ressortent en noir, comme sur le tract.
-      return `<div class="carte${o.seances ? ' sombre' : ''}">
+      return `<div class="carte${o.seances ? ' sombre' : ''}${o.conseil ? ' conseil' : ''}">
+  ${o.conseil ? '<div class="badge">Mon conseil</div>' : ''}
   <div class="nom">${echapper(o.nom)}</div>
   ${o.accroche ? `<div class="accroche">${echapper(o.accroche)}</div>` : ''}
   <div class="prix"><span class="montant">${echapper(montant)}</span> <span class="suffixe">${echapper(suffixe)}</span></div>
@@ -128,6 +129,8 @@ body { margin: 0; font-family: 'Texte', 'Jost', -apple-system, 'Helvetica Neue',
 .grille { margin-bottom: 3mm; display: grid; grid-template-columns: 1fr 1fr; gap: ${serre ? '4mm' : '4.5mm'}; margin-top: ${serre ? '3mm' : '3.5mm'}; }
 .carte { background: #fff; border: 0.3mm solid #E4DCCB; border-radius: 4mm; padding: ${serre ? '3mm 4.5mm' : '4.5mm 5.5mm'}; break-inside: avoid; }
 .carte.sombre { background: ${NOIR}; border-color: ${NOIR}; color: #fff; }
+.carte.conseil { position: relative; border: 0.8mm solid ${accent}; }
+.badge { position: absolute; top: -3.2mm; right: 7mm; background: ${accent}; color: #fff; font-weight: 600; font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; padding: 1mm 3.5mm; border-radius: 99mm; }
 .nom { font-size: ${serre ? '17pt' : '21pt'}; line-height: 1; text-transform: uppercase; }
 .accroche { color: #6B6B73; margin-top: .6mm; font-size: ${serre ? '9pt' : '9.5pt'}; }
 .sombre .accroche { color: #B9B9C0; }

@@ -21,6 +21,8 @@ export interface Offre {
   seances: number;
   essaiJours: number;
   active: boolean;
+  /** L'offre que le coach conseille : badge « Mon conseil » sur la brochure et pour ses clients. Une seule à la fois. */
+  conseil: boolean;
   ordre: number;
   /** Le prix actuel est en place sur le compte Stripe du coach : la page de paiement est prête. */
   enLigne: boolean;
@@ -53,6 +55,7 @@ export const MODELES: Record<Exclude<ModeleOffre, 'libre'>, { libelle: string; d
       seances: 0,
       essaiJours: 0,
       active: true,
+      conseil: false,
     },
   },
   hybride: {
@@ -71,6 +74,7 @@ export const MODELES: Record<Exclude<ModeleOffre, 'libre'>, { libelle: string; d
       seances: 2,
       essaiJours: 0,
       active: true,
+      conseil: false,
     },
   },
   presentiel: {
@@ -89,6 +93,7 @@ export const MODELES: Record<Exclude<ModeleOffre, 'libre'>, { libelle: string; d
       seances: 4,
       essaiJours: 0,
       active: true,
+      conseil: false,
     },
   },
   seances: {
@@ -107,6 +112,7 @@ export const MODELES: Record<Exclude<ModeleOffre, 'libre'>, { libelle: string; d
       seances: 10,
       essaiJours: 0,
       active: true,
+      conseil: false,
     },
   },
 };
@@ -185,6 +191,6 @@ export const OFFRES_DEMO: Offre[] = [
     ordre: 2,
     enLigne: true,
   },
-  { ...MODELES.hybride.base, id: 'offre-hybride-leger', nom: 'Hybride léger', accroche: 'Pour garder le contact avec ton coach.', prix: 149, videosMois: 0, seances: 1, ordre: 3, enLigne: true },
+  { ...MODELES.hybride.base, id: 'offre-hybride-leger', nom: 'Hybride léger', accroche: 'Pour garder le contact avec ton coach.', prix: 149, videosMois: 0, seances: 1, conseil: true, ordre: 3, enLigne: true },
   { ...MODELES.hybride.base, id: 'offre-hybride-complet', nom: 'Hybride complet', prix: 269, videosMois: 2, seances: 4, ordre: 4, enLigne: true },
 ];

@@ -237,7 +237,7 @@ function OffresDeMonCoach({ a, apercu, onChange }: { a?: Abonnement | null; aper
     <>
       <SousTitre>{aUneOffre ? 'Aller plus loin' : 'Les offres de mon coach'}</SousTitre>
       {proposees.map((o) => (
-        <CarteOffre key={o.id} offre={o}>
+        <CarteOffre key={o.id} offre={o} mention={o.conseil ? 'Conseillée par ton coach' : undefined}>
           {aUneOffre && a && o.periodicite !== 'unique' ? (
             <PasserA a={a} o={o} onFait={onChange} />
           ) : payable ? (

@@ -183,6 +183,7 @@ function EditeurOffre({ offre, onFini }: { offre?: Offre; onFini: () => void }) 
             />
           </>
         )}
+        <CaseACocher libelle="Mon conseil : mettre cette offre en avant" valeur={b.conseil} onChange={(v) => maj({ conseil: v })} />
         {erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{erreur}</Texte>}
         <View style={{ flexDirection: 'row', gap: espace(2) }}>
           <View style={{ flex: 1 }}>
@@ -196,7 +197,7 @@ function EditeurOffre({ offre, onFini }: { offre?: Offre; onFini: () => void }) 
       <Texte doux style={{ fontSize: 13, marginTop: espace(3), marginBottom: espace(1) }}>
         Aperçu : ce que tes clients verront
       </Texte>
-      <CarteOffre offre={apercu} />
+      <CarteOffre offre={apercu} mention={b.conseil ? 'Mon conseil' : undefined} />
     </>
   );
 }
@@ -224,7 +225,7 @@ function LigneOffre({ offre, pret, onModifier, onChange }: { offre: Offre; pret:
   };
 
   return (
-    <CarteOffre offre={offre} mention={!offre.active ? 'Plus proposée' : undefined}>
+    <CarteOffre offre={offre} mention={!offre.active ? 'Plus proposée' : offre.conseil ? 'Mon conseil' : undefined}>
       {offre.active && (
         <>
           <Text selectable style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux }}>
