@@ -1,12 +1,14 @@
 import { Redirect, router } from 'expo-router';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CLIENTS_DEMO, COACH_DEMO } from '@/data/demo';
 import { useSession } from '@/data/session';
 import { connexions, supabase, type Fournisseur } from '@/data/supabase';
 import { verifierMotDePasse } from '@/domain/acces-client';
+import { DefilementClavier } from '@/ui/clavier';
 import { Bouton, Texte } from '@/ui/composants';
 import { LienPolitique } from '@/ui/consentement';
 import { couleurs, espace, polices } from '@/ui/theme';
@@ -24,7 +26,8 @@ export default function Accueil() {
 function Cadre({ children }: { children: ReactNode }) {
   return (
     <SafeAreaView style={styles.fond}>
-      <View style={styles.contenu}>
+      {/* Défile quand le clavier sort : le champ en cours de saisie reste visible au-dessus. */}
+      <DefilementClavier contentContainerStyle={styles.contenu}>
         <View style={{ gap: espace(1) }}>
           <Text style={styles.marque}>
             COACH<Text style={{ color: couleurs.rouge }}>GO</Text>
@@ -37,7 +40,7 @@ function Cadre({ children }: { children: ReactNode }) {
             <LienPolitique clair />
           </View>
         </View>
-      </View>
+      </DefilementClavier>
     </SafeAreaView>
   );
 }
@@ -101,28 +104,42 @@ function NouveauMotDePasse() {
     <View style={{ gap: espace(3) }}>
       <Text style={styles.libelle}>Choisis ton mot de passe</Text>
       <Texte style={{ color: '#C9C9CF' }}>Remplace le mot de passe provisoire par le tien. Toi seul le connaîtras.</Texte>
-      <TextInput
-        style={styles.saisie}
-        placeholder="Nouveau mot de passe (8 caractères ou plus)"
-        placeholderTextColor="#8A8A92"
-        secureTextEntry
-        autoComplete="new-password"
-        value={motDePasse}
-        onChangeText={setMotDePasse}
-      />
-      <TextInput
-        style={styles.saisie}
-        placeholder="Le même, une seconde fois"
-        placeholderTextColor="#8A8A92"
-        secureTextEntry
-        autoComplete="new-password"
-        value={confirmation}
-        onChangeText={setConfirmation}
-        onSubmitEditing={valider}
-      />
+      <ChampMotDePasse placeholder="Nouveau mot de passe (8 caractères ou plus)" nouveau valeur={motDePasse} onChange={setMotDePasse} />
+      <ChampMotDePasse placeholder="Le même, une seconde fois" nouveau valeur={confirmation} onChange={setConfirmation} onValider={valider} />
       {erreur && <Texte style={{ color: '#FF8A8F' }}>{erreur}</Texte>}
       <Bouton libelle="Enregistrer" onPress={valider} chargement={envoi} desactive={!motDePasse || !confirmation} />
       <Bouton variante="contour" libelle="Se déconnecter" onPress={deconnecter} />
+    </View>
+  );
+}
+
+/** Mot de passe masqué, avec un œil pour l'afficher le temps de vérifier ce qu'on a tapé. */
+function ChampMotDePasse({ placeholder, nouveau, valeur, onChange, onValider }: { placeholder: string; nouveau?: boolean; valeur: string; onChange: (v: string) => void; onValider?: () => void }) {
+  const [visible, setVisible] = useState(false);
+  const Icone = visible ? EyeOff : Eye;
+  return (
+    <View style={{ justifyContent: 'center' }}>
+      <TextInput
+        style={[styles.saisie, { paddingRight: 52 }]}
+        placeholder={placeholder}
+        placeholderTextColor="#8A8A92"
+        secureTextEntry={!visible}
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete={nouveau ? 'new-password' : 'password'}
+        value={valeur}
+        onChangeText={onChange}
+        onSubmitEditing={onValider}
+      />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+        onPress={() => setVisible((v) => !v)}
+        hitSlop={8}
+        style={{ position: 'absolute', right: 6, padding: 10 }}
+      >
+        <Icone size={20} color="#C9C9CF" />
+      </Pressable>
     </View>
   );
 }
@@ -207,15 +224,12 @@ function Connexion() {
         value={email}
         onChangeText={setEmail}
       />
-      <TextInput
-        style={styles.saisie}
+      <ChampMotDePasse
         placeholder={mode === 'inscription' ? 'Choisis un mot de passe (8 caractères ou plus)' : 'Mot de passe'}
-        placeholderTextColor="#8A8A92"
-        secureTextEntry
-        autoComplete={mode === 'inscription' ? 'new-password' : 'password'}
-        value={motDePasse}
-        onChangeText={setMotDePasse}
-        onSubmitEditing={valider}
+        nouveau={mode === 'inscription'}
+        valeur={motDePasse}
+        onChange={setMotDePasse}
+        onValider={valider}
       />
       {erreur && <Texte style={{ color: '#FF8A8F' }}>{erreur}</Texte>}
       {info && <Texte style={{ color: '#C9C9CF' }}>{info}</Texte>}
@@ -243,7 +257,7 @@ function Connexion() {
 const styles = StyleSheet.create({
   resultat: { fontFamily: polices.texte, fontSize: 15, lineHeight: 21, color: '#C9C9CF' },
   fond: { flex: 1, backgroundColor: couleurs.noir },
-  contenu: { flex: 1, justifyContent: 'space-between', padding: espace(6), paddingTop: espace(20), width: '100%', maxWidth: 480, alignSelf: 'center' },
+  contenu: { flexGrow: 1, justifyContent: 'space-between', padding: espace(6), paddingTop: espace(20), width: '100%', maxWidth: 480, alignSelf: 'center' },
   marque: { fontFamily: polices.titre, fontSize: 64, color: '#FFFFFF', letterSpacing: 1 },
   libelle: { fontFamily: polices.texteMoyen, color: '#8A8A92', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 },
   saisie: {

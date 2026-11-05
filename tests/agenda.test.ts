@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   annulableEnLigne,
+  boostersDansPeriode,
   chevauchements,
   clientsInactifs,
   cleJour,
@@ -96,5 +97,31 @@ describe('agenda', () => {
       ['d', 34],
       ['a', 31],
     ]);
+  });
+});
+
+describe('Boosters dans l’agenda', () => {
+  const du = new Date(2026, 10, 9);
+  const au = new Date(2026, 10, 16);
+  const contact = { prenom: 'Sophie', nom: 'Martin' };
+  const boosters = [
+    { id: 'b1', contactId: 'c1', date: new Date(2026, 10, 12, 18, 30).toISOString(), statut: 'prevu' as const, contact },
+    { id: 'b2', contactId: 'c1', date: new Date(2026, 10, 10, 9, 0).toISOString(), statut: 'fait' as const, nom: 'Bilan de rentrée', contact },
+    { id: 'b3', contactId: 'c1', date: new Date(2026, 10, 11, 9, 0).toISOString(), statut: 'annule' as const, contact },
+    { id: 'b4', contactId: 'c1', date: new Date(2026, 10, 16, 9, 0).toISOString(), statut: 'prevu' as const, contact },
+  ];
+
+  it('montre les Boosters prévus et faits de la période, à leur heure, dans l’ordre', () => {
+    const liste = boostersDansPeriode(boosters, du, au);
+    expect(liste.map((b) => b.id)).toEqual(['b2', 'b1']);
+    expect(new Date(liste[1].debut).getHours()).toBe(18);
+    expect(new Date(liste[1].debut).getMinutes()).toBe(30);
+    expect(new Date(liste[1].fin).getTime() - new Date(liste[1].debut).getTime()).toBe(60 * 60_000);
+  });
+
+  it('nomme le Booster comme dans le CRM, ou d’après le contact', () => {
+    const liste = boostersDansPeriode(boosters, du, au);
+    expect(liste[0]).toMatchObject({ titre: 'Bilan de rentrée', fait: true });
+    expect(liste[1]).toMatchObject({ titre: 'Booster · Sophie Martin', fait: false });
   });
 });

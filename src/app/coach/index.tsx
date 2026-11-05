@@ -18,7 +18,7 @@ import {
   Workflow,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View, useWindowDimensions } from 'react-native';
+import { View, useWindowDimensions } from 'react-native';
 
 import { depot } from '@/data';
 import { abonnements } from '@/data/abonnements';
@@ -29,6 +29,7 @@ import { aEncaisser, encaissementsDuMois } from '@/domain/gestion';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { useRetourAndroid } from '@/lib/retour-android';
 import { AgendaCoach } from '@/ui/agenda/agenda-coach';
+import { DefilementClavier } from '@/ui/clavier';
 import { NutritionCoach } from '@/ui/alimentation/nutrition-coach';
 import {
   BandeauDemo,
@@ -192,10 +193,9 @@ export default function EspaceCoach() {
   return (
     <View style={{ flex: 1, backgroundColor: couleurs.fond }}>
       {enTete}
-      <ScrollView
+      <DefilementClavier
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: espace(4), paddingTop: width <= 640 ? 18.4 : width >= 640 ? 32 : 24, paddingBottom: 48 }}
-        keyboardShouldPersistTaps="handled"
       >
         <View style={{ width: '100%', maxWidth: LARGEUR_COACH, alignSelf: 'center' }}>
           {depot.mode === 'demo' && (
@@ -277,7 +277,7 @@ export default function EspaceCoach() {
             <NutritionCoach coachId={coachId} clientId={params.client} onClient={(id) => router.setParams({ onglet: 'nutrition', client: id })} />
           )}
         </View>
-      </ScrollView>
+      </DefilementClavier>
     </View>
   );
 }

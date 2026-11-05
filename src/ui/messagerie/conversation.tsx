@@ -15,6 +15,7 @@ import { genrePiece, heureMessage, MAX_TEXTE, verifierPiece, type Auteur, type M
 import { dureeLisible } from '@/domain/videos-mouvement';
 import { messageErreur, useCharger } from '@/lib/useCharger';
 
+import { ZoneClavier } from '../clavier';
 import { Action, Ligne, ts } from '../entrainement/commun';
 import { Camera, choisirDansGalerie, EnregistreurVocal, LecteurVideo, LecteurVocal, lireLocal, type Vocal } from '../entrainement/videos-mouvement';
 import { couleurs, espace, polices } from '../theme';
@@ -338,6 +339,7 @@ export function Conversation({ clientId, moi, nomAutre, horaires, pleinEcran }: 
     );
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+      <ZoneClavier style={{ flex: 1 }}>
       <ScrollView
         ref={defilement}
         style={{ flex: 1 }}
@@ -349,6 +351,7 @@ export function Conversation({ clientId, moi, nomAutre, horaires, pleinEcran }: 
         {corps}
       </ScrollView>
       <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center' }}>{saisie}</View>
+      </ZoneClavier>
     </KeyboardAvoidingView>
   );
 }

@@ -216,3 +216,37 @@ export function surLeJour<T extends { debut: string; fin: string }>(liste: T[], 
   const f = ajouterJours(new Date(d), 1).getTime();
   return liste.filter((o) => ms(o.debut) < f && ms(o.fin) > d);
 }
+
+/** Booster du CRM montré dans l'agenda du coach (il n'est pas un rendez-vous : il s'ouvre dans l'éditeur Booster). */
+export interface BoosterAgenda {
+  id: string;
+  contactId: string;
+  debut: string;
+  fin: string;
+  /** Nom du Booster, sinon prénom et nom du contact. */
+  titre: string;
+  fait: boolean;
+}
+
+/** Durée affichée d'un Booster dans l'agenda : la base n'en garde pas. */
+export const DUREE_BOOSTER_MINUTES = 60;
+
+/** Boosters prévus ou faits qui commencent dans [du, au[ ; les annulés n'occupent pas l'agenda. */
+export function boostersDansPeriode(
+  boosters: { id: string; contactId: string; date: string; statut: 'prevu' | 'fait' | 'annule'; nom?: string; contact?: { prenom: string; nom: string } }[],
+  du: Date,
+  au: Date,
+  dureeMinutes = DUREE_BOOSTER_MINUTES,
+): BoosterAgenda[] {
+  return boosters
+    .filter((b) => b.statut !== 'annule' && ms(b.date) >= du.getTime() && ms(b.date) < au.getTime())
+    .map((b) => ({
+      id: b.id,
+      contactId: b.contactId,
+      debut: new Date(b.date).toISOString(),
+      fin: new Date(ms(b.date) + dureeMinutes * MINUTE).toISOString(),
+      titre: b.nom?.trim() || `Booster · ${[b.contact?.prenom, b.contact?.nom].filter(Boolean).join(' ')}`.trim(),
+      fait: b.statut === 'fait',
+    }))
+    .sort((a, b) => a.debut.localeCompare(b.debut));
+}
