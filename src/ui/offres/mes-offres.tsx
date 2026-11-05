@@ -14,6 +14,7 @@ import { adresseWeb } from '@/lib/adresse-web';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { ouvrirPdf, voirPdf } from '@/lib/pdf';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
+import { JOST_400_BASE64, JOST_600_BASE64, PHOTO_BROCHURE_BASE64 } from '@/lib/visuels-brochure-pdf';
 import { messageErreur, useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, Erreur, SousTitre, Texte } from '../composants';
@@ -306,7 +307,13 @@ function Brochure({ liste }: { liste: Offre[] }) {
     try {
       const entete = await factures.entete().catch(() => undefined);
       const nom = profil?.role === 'coach' ? profil.nom : (entete?.nom ?? 'Coach');
-      const html = brochureHtml(enVente, { nom, telephone: entete?.telephone || undefined }, { logo: entete?.logo, police: BEBAS_NEUE_BASE64, lien: lienOffre });
+      const html = brochureHtml(enVente, { nom, telephone: entete?.telephone || undefined }, {
+        logo: entete?.logo,
+        police: BEBAS_NEUE_BASE64,
+        texte: { normal: JOST_400_BASE64, gras: JOST_600_BASE64 },
+        photo: PHOTO_BROCHURE_BASE64,
+        lien: lienOffre,
+      });
       if (quoi === 'voir') await voirPdf(html);
       else await ouvrirPdf(html, `Les offres de ${nom}`);
     } catch (e) {
