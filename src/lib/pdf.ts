@@ -1,8 +1,20 @@
-// PDF A4 depuis une page HTML : fenêtre d'impression sur le web (« Enregistrer au format PDF »),
-// fichier PDF à partager sur téléphone (WhatsApp, mail, Fichiers).
+// PDF A4 depuis une page HTML.
+// · voirPdf : l'ouvrir pour le regarder (aperçu du téléphone, ou nouvel onglet sur le web).
+// · ouvrirPdf : l'envoyer (partage du téléphone : WhatsApp, mail, Fichiers ; fenêtre « Enregistrer au format PDF » sur le web).
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
+
+export async function voirPdf(html: string) {
+  if (Platform.OS === 'web') {
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    return;
+  }
+  // Aperçu du téléphone : on voit le PDF page par page, et on peut l'enregistrer ou l'imprimer de là.
+  await Print.printAsync({ html, width: 595, height: 842 });
+}
 
 export async function ouvrirPdf(html: string, titre: string) {
   if (Platform.OS === 'web') {
