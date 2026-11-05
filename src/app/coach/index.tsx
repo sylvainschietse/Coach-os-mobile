@@ -46,10 +46,7 @@ import {
 import { Carte, Chargement, Erreur, Puce, Puces, Texte } from '@/ui/composants';
 import { Bilans, EditeurBilan } from '@/ui/crm/bilans';
 import { Boosters } from '@/ui/crm/boosters';
-import { Automatisations } from '@/ui/crm/automatisations';
-import { MonProfilCoach } from '@/ui/profil-coach';
-import { EnteteFactures } from '@/ui/factures';
-import { MesOffres } from '@/ui/offres/mes-offres';
+import { EspaceProfil, SECTIONS_PROFIL, type SectionProfil } from '@/ui/espace-profil';
 import { BoutonMessages, useNonLus } from '@/ui/messagerie/conversation';
 import { ConversationsCoach } from '@/ui/messagerie/conversations-coach';
 import { messagerie } from '@/data/messagerie';
@@ -74,8 +71,8 @@ import { DetailProgramme } from '@/ui/entrainement/programme';
 import { EditeurSeance } from '@/ui/entrainement/seance';
 import { couleurs, espace, LARGEUR_COACH, LARGEUR_LG } from '@/ui/theme';
 
-type Onglet = 'crm' | 'agenda' | 'airtable' | 'suivis' | 'prospects' | 'boosters' | 'bilan' | 'hebdo' | 'nutrition';
-const TOUS: Onglet[] = ['crm', 'agenda', 'airtable', 'suivis', 'prospects', 'boosters', 'bilan', 'hebdo', 'nutrition'];
+type Onglet = 'crm' | 'agenda' | 'airtable' | 'suivis' | 'prospects' | 'boosters' | 'bilan' | 'hebdo' | 'nutrition' | 'profil';
+const TOUS: Onglet[] = ['crm', 'agenda', 'airtable', 'suivis', 'prospects', 'boosters', 'bilan', 'hebdo', 'nutrition', 'profil'];
 /**
  * Cinq onglets : « Agenda » pour les rendez-vous ; « Clients » regroupe les clients actifs (cycles), les prospects, les
  * Boosters et les bilans de la semaine ; les séances réalisées sont dans la fiche.
@@ -85,9 +82,9 @@ const ONGLETS: OngletDef<OngletVisible>[] = [
   { cle: 'crm', libelle: 'Accueil' },
   { cle: 'agenda', libelle: 'Agenda' },
   { cle: 'clients', libelle: 'Clients' },
+  { cle: 'airtable', libelle: 'Programmes' },
   // Ajout demandé par Sylvain (absent de Zite) : recettes, clients suivis et plans alimentaires.
   { cle: 'nutrition', libelle: 'Nutrition' },
-  { cle: 'airtable', libelle: 'Programmes' },
 ];
 const SUIVI_CLIENTS: { cle: Onglet; libelle: string }[] = [
   { cle: 'suivis', libelle: 'Clients actifs' },
@@ -95,7 +92,10 @@ const SUIVI_CLIENTS: { cle: Onglet; libelle: string }[] = [
   { cle: 'boosters', libelle: 'Boosters' },
   { cle: 'hebdo', libelle: 'Bilans de la semaine' },
 ];
-const visible = (o: Onglet): OngletVisible => (o === 'suivis' || o === 'prospects' || o === 'boosters' || o === 'bilan' || o === 'hebdo' ? 'clients' : o);
+/** Mon profil s'ouvre par le bouton de l'en-tête : aucun onglet n'est alors surligné. */
+const visible = (o: Onglet): OngletVisible | 'profil' => (o === 'suivis' || o === 'prospects' || o === 'boosters' || o === 'bilan' || o === 'hebdo' ? 'clients' : o);
+/** Anciennes rubriques de l'Accueil rangées dans Mon profil. */
+const SECTION_DE_LA_RUBRIQUE: Partial<Record<Rubrique, SectionProfil>> = { Profil: 'infos', Offres: 'offres', Automations: 'relances' };
 /** Prospects et Boosters ont quitté le menu de l'Accueil pour l'onglet Clients : leurs anciennes adresses y mènent. */
 const RUBRIQUE_DE_L_ONGLET: Partial<Record<Onglet, Rubrique>> = { prospects: 'Contacts', boosters: 'Boosters' };
 
@@ -116,22 +116,30 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Profil', libelle: 'Mon profil', icone: UserRound },
 ];
 /**
- * Automatisations, Coachings, Tâches et Bilans restent joignables par leur adresse : les tâches vivent dans « À faire »
- * de l'Accueil, les bilans complets dans le volet Documents de la fiche.
+ * Menu de l'Accueil réduit au suivi de l'activité. Les autres rubriques restent joignables : Messages par son bouton en
+ * haut, profil, offres et relances dans Mon profil, Contacts et Boosters dans Clients, les tâches dans « À faire » de
+ * l'Accueil, les bilans complets dans le volet Documents de la fiche.
  */
-const MENU_RUBRIQUES = RUBRIQUES.filter((r) => !['Automations', 'Coachings', 'Taches', 'Bilans', 'Contacts', 'Boosters'].includes(r.cle));
+const MENU_RUBRIQUES = RUBRIQUES.filter((r) => ['Accueil', 'Bilan', 'Paiements', 'Documents'].includes(r.cle));
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 
 export default function EspaceCoach() {
   const { profil, email, deconnecter } = useSession();
   const { width } = useWindowDimensions();
-  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; client?: string; programme?: string; seance?: string; apercu?: string } & ParamsDossier>();
+  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; section?: string; client?: string; programme?: string; seance?: string; apercu?: string } & ParamsDossier>();
   const ongletDemande = TOUS.find((o) => o === params.onglet) ?? 'crm';
   const rubriqueDemandee = RUBRIQUES.find((r) => r.cle === params.rubrique)?.cle ?? 'Accueil';
   // Anciennes adresses (Accueil › Contacts ou Boosters) : ouvertes dans l'onglet Clients.
   const onglet: Onglet =
-    ongletDemande === 'crm' && rubriqueDemandee === 'Contacts' ? 'prospects' : ongletDemande === 'crm' && rubriqueDemandee === 'Boosters' ? 'boosters' : ongletDemande;
+    ongletDemande === 'crm' && rubriqueDemandee === 'Contacts'
+      ? 'prospects'
+      : ongletDemande === 'crm' && rubriqueDemandee === 'Boosters'
+        ? 'boosters'
+        : ongletDemande === 'crm' && SECTION_DE_LA_RUBRIQUE[rubriqueDemandee]
+          ? 'profil'
+          : ongletDemande;
+  const section: SectionProfil = SECTIONS_PROFIL.find((x) => x.cle === params.section)?.cle ?? SECTION_DE_LA_RUBRIQUE[rubriqueDemandee] ?? 'infos';
   const rubrique = RUBRIQUE_DE_L_ONGLET[onglet] ?? rubriqueDemandee;
   const coachId = profil?.role === 'coach' ? profil.coachId : '';
   const clients = useCharger(() => depot.clientsDuCoach(coachId), coachId);
@@ -172,7 +180,9 @@ export default function EspaceCoach() {
           {params.apercu && <CommutateurApercu valeur="client" onChange={() => router.setParams({ apercu: undefined })} />}
           {!params.apercu && <BoutonMessages nonLus={nonLus} onPress={() => naviguer('crm', 'Messages')} />}
           {/* Zite gérait la session hors de l'app : sans ce bouton, impossible de changer de compte. */}
-          <BoutonIcone icone={LogOut} nom="Se déconnecter" onPress={deconnecter} />
+          {/* Mon profil : infos, facturation, offres, réglages de l'agenda, relances ; la déconnexion y est aussi. */}
+          {!params.apercu && <BoutonIcone icone={UserRound} nom="Mon profil" onPress={() => router.setParams({ onglet: 'profil', rubrique: undefined, section: undefined, client: undefined, programme: undefined, seance: undefined, ...FERME })} />}
+          {params.apercu && <BoutonIcone icone={LogOut} nom="Se déconnecter" onPress={deconnecter} />}
         </>
       }
     />
@@ -238,7 +248,10 @@ export default function EspaceCoach() {
               onAgenda={() => naviguer('agenda')}
             />
           )}
-          {onglet === 'agenda' && <AgendaCoach coachId={coachId} />}
+          {onglet === 'agenda' && <AgendaCoach coachId={coachId} onReglages={() => router.setParams({ onglet: 'profil', section: 'agenda' })} />}
+          {onglet === 'profil' && (
+            <EspaceProfil section={section} onSection={(x) => router.setParams({ onglet: 'profil', rubrique: undefined, section: x })} onDeconnecter={deconnecter} />
+          )}
           {onglet === 'airtable' &&
             (params.seance ? (
               <EditeurSeance
@@ -469,14 +482,6 @@ function Crm({
           />
         )}
         {rubrique === 'Bilan' && <BilanMois onPaiements={() => onRubrique('Paiements')} />}
-        {rubrique === 'Automations' && <Automatisations />}
-        {rubrique === 'Offres' && <MesOffres />}
-        {rubrique === 'Profil' && (
-          <>
-            <MonProfilCoach />
-            <EnteteFactures />
-          </>
-        )}
         {rubrique === 'Messages' && <ConversationsCoach />}
       </View>
       )}
