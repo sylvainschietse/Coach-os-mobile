@@ -1,5 +1,6 @@
 import type { PlanProgramme, PropositionSeance } from '@/domain/assistant-seance';
 import type { Booster, Contact } from '@/domain/crm';
+import { rangementPropre, rangerDicteeBooster, type RangementDictee } from '@/domain/dictee-booster';
 import { dossierRedaction, redactionModele, type RedactionGeneree } from '@/domain/redaction';
 
 import { supabase } from './supabase';
@@ -43,4 +44,18 @@ export async function proposerPlanProgramme(demande: string): Promise<PlanProgra
     throw new Error(data?.erreur ?? corps?.erreur ?? 'L’assistant n’a pas pu proposer de programme. Réessaie, ou crée-le à la main.');
   }
   return data;
+}
+
+/**
+ * Entretien Booster dicté : avec le compte en ligne, Claude range la dictée dans les rubriques (fonction
+ * ranger-entretien) ; en démo, on suit les rubriques annoncées par le coach. Rien n'est enregistré ici.
+ */
+export async function rangerEntretien(texte: string): Promise<RangementDictee> {
+  if (!supabase) return rangerDicteeBooster(texte);
+  const { data, error } = await supabase.functions.invoke<{ rubriques?: Record<string, unknown>; erreur?: string }>('ranger-entretien', { body: { texte } });
+  if (error || !data || data.erreur) {
+    const corps = await (error as { context?: Response } | null)?.context?.json?.().catch(() => null);
+    throw new Error(data?.erreur ?? corps?.erreur ?? 'Le rangement n’a pas abouti. Réessaie, ou complète les rubriques à la main.');
+  }
+  return rangementPropre(data.rubriques);
 }
