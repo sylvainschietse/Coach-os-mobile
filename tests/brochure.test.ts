@@ -27,6 +27,11 @@ describe('brochure des prix', () => {
     expect(brochureHtml(OFFRES_DEMO, { nom: 'S' })).not.toContain('<svg');
   });
 
+  it('met le badge « Mon conseil » sur l’offre conseillée seulement', () => {
+    const html = brochureHtml(OFFRES_DEMO, { nom: 'S' });
+    expect(html.match(/class="badge"/g)).toHaveLength(OFFRES_DEMO.filter((o) => o.conseil).length);
+  });
+
   it('écrit le lien WhatsApp au format international', () => {
     expect(lienWhatsApp('06 48 64 08 45')).toBe('https://wa.me/33648640845');
     expect(lienWhatsApp('+32 470 12 34 56')).toBe('https://wa.me/32470123456');
