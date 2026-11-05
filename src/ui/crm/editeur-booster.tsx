@@ -23,7 +23,8 @@ import {
   type SaisieFicheBooster,
   type StatutBooster,
 } from '@/domain/crm';
-import { ajouterDicteeBooster, LIBELLES_DICTEE, rangerDicteeBooster, type RubriqueDictee } from '@/domain/dictee-booster';
+import { iaDisponible, rangerEntretien } from '@/data/redaction';
+import { ajouterDicteeBooster, LIBELLES_DICTEE, type RangementDictee, type RubriqueDictee } from '@/domain/dictee-booster';
 import { ENTRETIEN, evaluationVide, TESTS, type Evaluation, type IdTest } from '@/domain/evaluation';
 import { prioritesAuto } from '@/domain/redaction';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
@@ -54,8 +55,6 @@ interface Brouillon {
   dateRelance: string;
   planEnvoye: boolean;
   notesInternes: string;
-  /** Le mot du coach, en ouverture du compte rendu. */
-  mot: string;
 }
 
 function brouillonDe(b: Booster | undefined, contact: Contact | undefined, reponses: Record<string, string> | undefined): Brouillon {
@@ -77,7 +76,6 @@ function brouillonDe(b: Booster | undefined, contact: Contact | undefined, repon
     dateRelance: ecrireJour(b?.dateRelance),
     planEnvoye: !!b?.planEnvoyeLe,
     notesInternes: b?.notesInternes ?? '',
-    mot: b?.compteRendu ?? '',
   };
 }
 
@@ -100,7 +98,6 @@ function saisieDe(b: Brouillon, initial: Brouillon, booster: Booster | undefined
   if (change('dateRelance')) s.dateRelance = lireJour(b.dateRelance);
   if (change('planEnvoye')) s.planEnvoyeLe = b.planEnvoye ? (booster?.planEnvoyeLe ?? new Date().toISOString()) : undefined;
   if (change('notesInternes')) s.notesInternes = vide(b.notesInternes);
-  if (change('mot')) s.compteRendu = vide(b.mot);
   return s;
 }
 
@@ -337,7 +334,7 @@ function Editeur({
         <>
           <DicteeEntretien
             sansQuestionnaire={!questionnaire}
-            onRanger={(rangement) => maj(ajouterDicteeBooster({ entretien: b.entretien, mot: b.mot }, rangement))}
+            onRanger={(rangement) => setB((x) => ({ ...x, entretien: ajouterDicteeBooster(x.entretien, rangement) }))}
           />
           <Grille>
             {ENTRETIEN.map((q) => (
@@ -345,10 +342,6 @@ function Editeur({
                 <Saisie libelle={q.libelle} long dictee valeur={b.entretien[q.id] ?? ''} onChange={(v) => maj({ entretien: { ...b.entretien, [q.id]: v } })} />
               </Cellule>
             ))}
-            <Cellule pleine>
-              <Saisie libelle="Le mot du coach" long dictee valeur={b.mot} onChange={(mot) => maj({ mot })} />
-              <Text style={styles.aide}>Quelques lignes personnelles, en ouverture du compte rendu remis au client.</Text>
-            </Cellule>
           </Grille>
         </>
       )}
@@ -410,38 +403,61 @@ function Editeur({
 }
 
 /**
- * Le coach dicte tout l'entretien d'une traite ; « Ranger » répartit les phrases dans les rubriques, en ajoutant à ce
- * qui est déjà écrit. Rien n'est enregistré avant « Enregistrer » : le coach relit d'abord.
+ * Le coach dicte tout l'entretien d'une traite ; « Ranger » répartit ce qu'il a dit dans les rubriques (par l'IA avec
+ * le compte en ligne), en ajoutant à ce qui est déjà écrit. Rien n'est enregistré avant « Enregistrer » : il relit d'abord.
  */
-function DicteeEntretien({ sansQuestionnaire, onRanger }: { sansQuestionnaire: boolean; onRanger: (r: ReturnType<typeof rangerDicteeBooster>) => void }) {
+function DicteeEntretien({ sansQuestionnaire, onRanger }: { sansQuestionnaire: boolean; onRanger: (r: RangementDictee) => void }) {
   const [texte, setTexte] = useState('');
   const [ranges, setRanges] = useState<RubriqueDictee[]>();
-  function ranger() {
-    const rangement = rangerDicteeBooster(texte);
-    const rubriques = Object.keys(rangement) as RubriqueDictee[];
-    if (!rubriques.length) return;
-    onRanger(rangement);
-    setRanges(rubriques);
-    setTexte('');
+  const [occupe, setOccupe] = useState(false);
+  const [erreur, setErreur] = useState<string>();
+  const changer = (v: string) => {
+    setTexte(v);
+    setRanges(undefined);
+    setErreur(undefined);
+  };
+  async function ranger() {
+    setOccupe(true);
+    setErreur(undefined);
+    try {
+      const rangement = await rangerEntretien(texte);
+      const rubriques = Object.keys(rangement) as RubriqueDictee[];
+      if (!rubriques.length) throw new Error('Rien à ranger dans ce texte. Complète les rubriques à la main.');
+      onRanger(rangement);
+      setRanges(rubriques);
+      setTexte('');
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Le rangement n’a pas abouti.');
+    } finally {
+      setOccupe(false);
+    }
   }
   return (
     <View style={[styles.encart, { marginBottom: espace(4), backgroundColor: couleurs.fond }]}>
       <Text style={styles.encartTitre}>Dicter l’entretien</Text>
       <Text style={styles.aide}>
         {sansQuestionnaire ? 'Pas de questionnaire ? Raconte ce que tu sais du client, le compte rendu se fera avec. ' : ''}
-        Annonce chaque rubrique avant d’en parler : « Objectif… Antécédents… Freins… Mot du coach… ». Sans annonce, l’application devine.
+        {iaDisponible
+          ? 'Parle librement : l’IA range chaque information dans la bonne rubrique, tu relis avant d’enregistrer.'
+          : 'Annonce chaque rubrique avant d’en parler : « Objectif… Antécédents… Freins… ». Le reste va dans Observations.'}
       </Text>
-      <BoutonDictee valeur={texte} onChange={(v) => (setTexte(v), setRanges(undefined))} />
+      <BoutonDictee valeur={texte} onChange={changer} desactive={occupe} />
       <Saisie
         libelle="Texte dicté"
         long
         valeur={texte}
-        onChange={(v) => (setTexte(v), setRanges(undefined))}
+        onChange={changer}
+        desactive={occupe}
         placeholder="Objectif : perdre 5 kilos pour l’été. Antécédents : opéré du genou. Freins : horaires décalés…"
       />
       <View style={{ alignSelf: 'flex-start' }}>
-        <Bouton variante="secondaire" libelle="Ranger dans les rubriques" onPress={ranger} desactive={!texte.trim()} />
+        <Bouton variante="secondaire" libelle="Ranger dans les rubriques" onPress={ranger} desactive={!texte.trim()} chargement={occupe} />
       </View>
+      {erreur && (
+        <Text accessibilityRole="alert" style={styles.erreur}>
+          {erreur}
+        </Text>
+      )}
       {ranges && (
         <Text accessibilityRole="alert" style={styles.aide}>
           {`Ajouté à : ${ranges.map((r) => LIBELLES_DICTEE[r]).join(', ')}. Relis ci-dessous, puis Enregistrer.`}
@@ -461,8 +477,8 @@ function QuestionnaireManquant({ contact }: { contact: Contact }) {
       <Text style={styles.encartTitre}>{contact.prenom || 'Ce contact'} n’a pas encore rempli le questionnaire</Text>
       <Text style={styles.aide}>Ses réponses préparent le briefing de la séance (objectif, profil sportif, points d’attention).</Text>
       <Text style={styles.aide}>
-        Sans réponses, tu peux quand même faire le compte rendu : dans Entretien, dicte ce que tu sais (objectif, antécédents, freins, ton mot pour
-        lui) et l’application le range dans les bonnes rubriques.
+        Sans réponses, tu peux quand même faire le compte rendu : dans Entretien, dicte ce que tu sais (objectif, antécédents, freins…) et
+        l’application le range dans les bonnes rubriques.
       </Text>
       {!ouvert && message && (
         <View style={{ alignSelf: 'flex-start' }}>

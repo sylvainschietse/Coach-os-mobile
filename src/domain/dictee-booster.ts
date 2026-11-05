@@ -1,12 +1,13 @@
-// Dictée du Booster : le coach raconte la séance d'une traite (« Objectif : perdre 5 kilos pour l'été. Antécédents :
-// opéré du genou en 2020. Freins : horaires décalés… Mot du coach : bravo pour ta séance ») et chaque phrase va dans
-// sa rubrique. Utile surtout quand le client n'a pas rempli le questionnaire : le compte rendu se construit avec ce que
-// le coach a dit. Tout se fait sur le téléphone, sans serveur ; le coach relit et corrige avant d'enregistrer.
+// Dictée du Booster : le coach raconte l'entretien d'une traite et chaque information va dans sa rubrique. Utile
+// surtout quand le client n'a pas rempli le questionnaire : le compte rendu se construit avec ce que le coach a dit.
+// Avec le compte en ligne, c'est l'IA qui range (fonction ranger-entretien) ; sans elle, on applique la règle
+// ci-dessous. Dans les deux cas le coach relit et corrige avant d'enregistrer.
 //
-// La règle, simple à expliquer : si le coach dit le nom d'une rubrique, tout ce qui suit y va jusqu'à la rubrique
-// suivante. Sinon l'application devine phrase par phrase avec des mots repères, et range le reste dans « Observations ».
+// Règle sans IA : si le coach dit le nom d'une rubrique (« Objectif : … Freins : … »), tout ce qui suit y va jusqu'à
+// la rubrique suivante. Ce qui n'est pas annoncé va dans « Observations du coach » : on ne devine pas, deviner rangeait
+// trop de phrases au mauvais endroit. Le mot du coach ne se remplit jamais par la dictée globale.
 
-/** Les rubriques de l'entretien (identifiants de ENTRETIEN) et le mot du coach, qui ouvre le compte rendu. */
+/** Les rubriques de l'entretien (identifiants de ENTRETIEN). */
 export type RubriqueDictee =
   | 'objectif'
   | 'antecedents'
@@ -15,8 +16,7 @@ export type RubriqueDictee =
   | 'freins'
   | 'attentesCoach'
   | 'projection'
-  | 'observationsCoach'
-  | 'mot';
+  | 'observationsCoach';
 
 export const LIBELLES_DICTEE: Record<RubriqueDictee, string> = {
   objectif: 'Objectif',
@@ -27,12 +27,10 @@ export const LIBELLES_DICTEE: Record<RubriqueDictee, string> = {
   attentesCoach: 'Attentes',
   projection: 'Projection à 6 mois',
   observationsCoach: 'Observations du coach',
-  mot: 'Mot du coach',
 };
 
 /** Ce que le coach dit pour annoncer une rubrique, en début de phrase (texte sans accents, en minuscules). */
 const MARQUEURS: [RubriqueDictee, RegExp][] = [
-  ['mot', /^(?:le |mon |un )?(?:petit )?(?:mot|message)(?: du coach| pour (?:lui|elle|le client|la cliente))?\b/],
   ['objectif', /^(?:son |sa |ses |l'|mon )?(?:objectif|but)s?(?: principal| principaux)?\b/],
   ['antecedents', /^(?:ses |les |son |sa |l')?(?:antecedents?|profil(?: sportif)?|sante|passe sportif|historique)(?: medica(?:l|ux))?(?: et (?:profil|passe) sportif)?\b/],
   ['pourquoiMaintenant', /^pourquoi maintenant\b/],
@@ -41,22 +39,6 @@ const MARQUEURS: [RubriqueDictee, RegExp][] = [
   ['attentesCoach', /^(?:ses |les )?attentes?(?: envers (?:le coach|moi|son coach))?\b/],
   ['projection', /^(?:la )?projection(?: a (?:6|six) mois)?\b/],
   ['observationsCoach', /^(?:mes |les )?observations?(?: du coach)?\b/],
-];
-
-/** Mots repères quand le coach n'a pas annoncé de rubrique. */
-const INDICES: [RubriqueDictee, RegExp][] = [
-  ['mot', /\b(?:tu|ton|ta|tes|toi|bravo|felicitations)\b|\bt'/],
-  ['objectif', /\b(?:objectif|veut|voudrait|souhaite|aimerait|perdre|maigrir|mincir|se muscler|prendre du muscle|tonifier|affiner|remettre en forme|retrouver la forme|marathon|semi|10 ?km)\b/],
-  [
-    'antecedents',
-    /\b(?:antecedents?|blessures?|blesse|operee?|operation|chirurgie|entorse|fracture|tendinite|hernie|lombalgie|sciatique|douleurs?|mal (?:au|a la|aux|de)|genou|cheville|epaule|dos|hanche|traitement|asthme|diabete|cardiaque|enceinte|grossesse|accouche|sante|pratique|sportif|sportive|club|salle de sport|course a pied|footing|velo|natation|foot|tennis|danse|yoga|pilates|crossfit|muscu|musculation|sedentaire)\b/,
-  ],
-  ['pourquoiMaintenant', /\b(?:declic|mariage|vacances|cet ete|pour l'ete|rentree|nouvel an|anniversaire|medecin|bilan sanguin)\b/],
-  ['dejaEssaye', /\b(?:deja essaye|a essaye|a teste|a deja fait|regimes?|applis?|application|abonnement|a abandonne|jeune intermittent|weight watchers)\b/],
-  ['freins', /\b(?:freins?|temps|horaires?|enfants|boulot|travail|deplacements?|fatigue|fatiguee?|motivation|difficile|du mal|grignote|grignotage|stress|stresse|decroche|flemme|budget|organisation)\b/],
-  ['attentesCoach', /\b(?:attend|attentes?|cadre|suivi|accompagne|accompagnement|pousse|motive|recadre|rendre des comptes)\b/],
-  ['projection', /\b(?:dans (?:6|six) mois|d'ici (?:6|six) mois|dans un an|se voit|s'imagine|se projette|a terme)\b/],
-  ['observationsCoach', /\b(?:j'ai (?:observe|remarque|note|vu)|je (?:note|remarque|trouve)|posture|technique|coordination|souffle|essouffle)\b/],
 ];
 
 /** Ce qui suit le nom d'une rubrique et n'apporte rien (« Son objectif est de… », « Freins : … »). */
@@ -92,13 +74,7 @@ export function rangerDicteeBooster(texte: string): RangementDictee {
       phrase = reste.slice(normaliser(reste).match(LIAISON)?.[0].length ?? 0);
       break;
     }
-    if (!rubrique) {
-      if (annoncee) rubrique = annoncee;
-      else {
-        const n = normaliser(phrase);
-        rubrique = INDICES.find(([, re]) => re.test(n))?.[0] ?? 'observationsCoach';
-      }
-    }
+    rubrique ??= annoncee ?? 'observationsCoach';
     phrase = phrase.trim();
     if (!phrase || !/[\p{L}\d]/u.test(phrase)) continue;
     (ranges[rubrique] ??= []).push(majuscule(phrase));
@@ -106,18 +82,18 @@ export function rangerDicteeBooster(texte: string): RangementDictee {
   return Object.fromEntries(Object.entries(ranges).map(([r, l]) => [r, l!.join(' ')])) as RangementDictee;
 }
 
-/**
- * Ajoute une dictée rangée à ce qui est déjà écrit, sans rien effacer : l'entretien (par identifiant de ENTRETIEN)
- * et le mot du coach.
- */
-export function ajouterDicteeBooster(
-  actuel: { entretien: Record<string, string>; mot: string },
-  rangement: RangementDictee,
-): { entretien: Record<string, string>; mot: string } {
-  const ajout = (avant: string | undefined, texte: string | undefined) => [avant?.trim(), texte?.trim()].filter(Boolean).join('\n');
-  const entretien = { ...actuel.entretien };
-  for (const [r, texte] of Object.entries(rangement) as [RubriqueDictee, string][]) {
-    if (r !== 'mot') entretien[r] = ajout(entretien[r], texte);
+/** Ne garde que les rubriques connues et non vides (la réponse de l'IA passe par ici aussi). */
+export function rangementPropre(brut: Record<string, unknown> | undefined): RangementDictee {
+  return Object.fromEntries(
+    Object.entries(brut ?? {}).filter(([k, v]) => k in LIBELLES_DICTEE && typeof v === 'string' && v.trim()).map(([k, v]) => [k, (v as string).trim()]),
+  ) as RangementDictee;
+}
+
+/** Ajoute une dictée rangée à l'entretien déjà écrit (par identifiant de ENTRETIEN), sans rien effacer. */
+export function ajouterDicteeBooster(entretien: Record<string, string>, rangement: RangementDictee): Record<string, string> {
+  const resultat = { ...entretien };
+  for (const [r, texte] of Object.entries(rangementPropre(rangement))) {
+    resultat[r] = [resultat[r]?.trim(), texte].filter(Boolean).join('\n');
   }
-  return { entretien, mot: ajout(actuel.mot, rangement.mot) };
+  return resultat;
 }
