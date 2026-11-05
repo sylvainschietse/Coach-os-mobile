@@ -2,7 +2,9 @@
 // Elle se refait à chaque fois depuis « Mes offres », donc elle suit toujours ses prix du moment.
 import { contenuOffre, libellePrix, type Offre } from './offres';
 
-const COULEUR_DEFAUT = '#D71920';
+// Design doré sur noir, choisi par Camille ; une couleur de factures valide peut le remplacer si on la passe.
+const COULEUR_DEFAUT = '#C9A24D';
+const NOIR = '#111114';
 const estCouleur = (c: string) => /^#[0-9A-Fa-f]{6}$/.test(c);
 
 function echapper(s: string) {
@@ -44,37 +46,35 @@ export function brochureHtml(
     })
     .join('');
   const contact = [coach.telephone, coach.email].filter(Boolean).map((c) => echapper(c!)).join(' · ');
-  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Les offres de ${echapper(coach.nom)}</title><style>
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Les offres de ${echapper(coach.nom)}</title><style>
 ${fontFace}
 @page { size: A4; margin: 0; }
 * { box-sizing: border-box; }
-body { margin: 0; font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #17171A; font-size: 10.5pt; line-height: 1.4; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-.page { width: 210mm; min-height: 297mm; position: relative; padding-bottom: 22mm; }
-.bandeau { background: ${couleur}; height: 6mm; }
-.haut { display: flex; justify-content: space-between; align-items: center; padding: 12mm 16mm 0; gap: 10mm; }
+body { margin: 0; font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #17171A; font-size: 10.5pt; line-height: 1.4; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.page { width: 210mm; min-height: 297mm; position: relative; padding-bottom: 22mm; margin: 0 auto; background: #fff; }
+.haut { background: ${NOIR}; color: #fff; display: flex; justify-content: space-between; align-items: center; padding: 14mm 16mm 12mm; gap: 10mm; border-bottom: 1.6mm solid ${couleur}; }
 .logo { max-height: 22mm; max-width: 60mm; object-fit: contain; display: block; }
-.titre { font-family: 'Titre', 'Bebas Neue', 'Oswald', Impact, 'Arial Narrow', sans-serif; font-size: 44pt; line-height: .9; letter-spacing: .02em; }
+.titre { font-family: 'Titre', 'Bebas Neue', 'Oswald', Impact, 'Arial Narrow', sans-serif; font-size: 46pt; line-height: .9; letter-spacing: .03em; }
 .titre span { color: ${couleur}; }
-.sous { color: #6B6B73; margin-top: 2mm; font-size: 11pt; }
+.sous { color: ${couleur}; margin-top: 3mm; font-size: 9pt; letter-spacing: .3em; text-transform: uppercase; }
 .grille { display: grid; grid-template-columns: 1fr 1fr; gap: ${serre ? '5mm' : '7mm'}; padding: ${serre ? '8mm' : '12mm'} 16mm 0; }
-.carte { border: 0.4mm solid #E4E4E7; border-top: 2mm solid ${couleur}; border-radius: 3mm; padding: ${serre ? '4mm 5mm' : '6mm'}; break-inside: avoid; }
-.nom { font-family: 'Titre', 'Bebas Neue', 'Oswald', Impact, 'Arial Narrow', sans-serif; font-size: ${serre ? '20pt' : '24pt'}; line-height: 1; letter-spacing: .02em; }
-.accroche { color: #6B6B73; margin-top: 1.5mm; }
-.prix { color: ${couleur}; font-weight: 700; font-size: ${serre ? '15pt' : '17pt'}; margin-top: 3mm; }
+.carte { border: 0.3mm solid #E7E1D3; border-top: 1.4mm solid ${couleur}; border-radius: 2.5mm; padding: ${serre ? '4mm 5mm' : '6mm'}; break-inside: avoid; background: #FFFDF8; }
+.nom { font-family: 'Titre', 'Bebas Neue', 'Oswald', Impact, 'Arial Narrow', sans-serif; font-size: ${serre ? '20pt' : '24pt'}; line-height: 1; letter-spacing: .03em; color: ${NOIR}; }
+.accroche { color: #6B6B73; margin-top: 1.5mm; font-style: italic; }
+.prix { color: ${couleur}; font-weight: 700; font-size: ${serre ? '15pt' : '17pt'}; margin-top: 3mm; padding-bottom: 2.5mm; border-bottom: 0.3mm solid #E7E1D3; }
 ul { list-style: none; padding: 0; margin: 3mm 0 0; }
 li { padding-left: 5mm; position: relative; margin-top: 1.2mm; }
 li::before { content: '✓'; position: absolute; left: 0; color: ${couleur}; font-weight: 700; }
 .lien { margin-top: 3mm; font-size: 8pt; color: #6B6B73; word-break: break-all; }
-.lien span { color: #17171A; }
+.lien span { color: ${NOIR}; }
 .vide { padding: 12mm 16mm; color: #6B6B73; }
-.bas { position: absolute; left: 16mm; right: 16mm; bottom: 10mm; border-top: 0.3mm solid #E4E4E7; padding-top: 3mm; display: flex; justify-content: space-between; color: #6B6B73; font-size: 9pt; }
-.bas strong { color: #17171A; }
+.bas { position: absolute; left: 0; right: 0; bottom: 0; background: ${NOIR}; color: #C9C9CF; padding: 4mm 16mm; display: flex; justify-content: space-between; font-size: 9pt; }
+.bas strong { color: ${couleur}; }
 </style></head><body><div class="page">
-<div class="bandeau"></div>
 <div class="haut">
   <div>
     <div class="titre">Coaching <span>${echapper(coach.nom)}</span></div>
-    <div class="sous">Mes formules et mes tarifs</div>
+    <div class="sous">Formules et tarifs</div>
   </div>
   ${options.logo ? `<img class="logo" src="${echapper(options.logo)}" alt="">` : ''}
 </div>

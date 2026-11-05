@@ -12,7 +12,7 @@ import { brochureHtml, offresDeLaBrochure } from '@/domain/brochure';
 import { libellePrix, lireOffre, MODELES, PERIODICITES, type ModeleOffre, type Offre, type Periodicite, type SaisieOffre } from '@/domain/offres';
 import { adresseWeb } from '@/lib/adresse-web';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
-import { ouvrirPdf } from '@/lib/pdf';
+import { ouvrirPdf, voirPdf } from '@/lib/pdf';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { messageErreur, useCharger } from '@/lib/useCharger';
 
@@ -296,29 +296,38 @@ function LigneOffre({ offre, pret, onModifier, onChange }: { offre: Offre; pret:
 /** Brochure PDF des prix, faite à partir des offres en vente : toujours à jour, aux couleurs des factures du coach. */
 function Brochure({ liste }: { liste: Offre[] }) {
   const { profil } = useSession();
-  const [occupe, setOccupe] = useState(false);
+  const [occupe, setOccupe] = useState<'voir' | 'envoyer'>();
   const [erreur, setErreur] = useState<string>();
   const enVente = offresDeLaBrochure(liste);
   if (!enVente.length) return null;
-  const creer = async () => {
+  const faire = async (quoi: 'voir' | 'envoyer') => {
     setErreur(undefined);
-    setOccupe(true);
+    setOccupe(quoi);
     try {
       const entete = await factures.entete().catch(() => undefined);
       const nom = profil?.role === 'coach' ? profil.nom : (entete?.nom ?? 'Coach');
-      const html = brochureHtml(enVente, { nom, telephone: entete?.telephone || undefined }, { couleur: entete?.couleur, logo: entete?.logo, police: BEBAS_NEUE_BASE64, lien: lienOffre });
-      await ouvrirPdf(html, `Les offres de ${nom}`);
+      const html = brochureHtml(enVente, { nom, telephone: entete?.telephone || undefined }, { logo: entete?.logo, police: BEBAS_NEUE_BASE64, lien: lienOffre });
+      if (quoi === 'voir') await voirPdf(html);
+      else await ouvrirPdf(html, `Les offres de ${nom}`);
     } catch (e) {
       setErreur(messageErreur(e));
     } finally {
-      setOccupe(false);
+      setOccupe(undefined);
     }
   };
   return (
     <View style={{ gap: espace(1) }}>
-      <Bouton variante="discret" libelle="Ma brochure des prix (PDF)" onPress={creer} chargement={occupe} />
+      <Texte style={{ fontFamily: polices.texteMoyen, fontSize: 15 }}>Ma brochure des prix (PDF)</Texte>
+      <View style={{ flexDirection: 'row', gap: espace(2) }}>
+        <View style={{ flex: 1 }}>
+          <Bouton variante="discret" libelle="Voir" onPress={() => faire('voir')} chargement={occupe === 'voir'} desactive={!!occupe} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Bouton variante="discret" libelle="Envoyer" onPress={() => faire('envoyer')} chargement={occupe === 'envoyer'} desactive={!!occupe} />
+        </View>
+      </View>
       <Texte doux style={{ fontSize: 13 }}>
-        {`Faite avec tes ${enVente.length} offre${enVente.length > 1 ? 's' : ''} en vente,, à tes couleurs (réglées dans Mon profil). Toujours à jour : elle reprend tes prix du moment.`}
+        {`Faite avec tes ${enVente.length} offre${enVente.length > 1 ? 's' : ''} en vente. Toujours à jour : elle reprend tes prix du moment.`}
       </Texte>
       {erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{erreur}</Texte>}
     </View>
