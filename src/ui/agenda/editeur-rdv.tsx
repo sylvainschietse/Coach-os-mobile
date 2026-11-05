@@ -1,6 +1,6 @@
 // Création et modification d'un rendez-vous : une ou plusieurs personnes (duo, couple), jour, heure, durée, lieu,
 // répétition chaque semaine. Pour un rendez-vous existant : son statut et ce qui a été compté (pack ou paiement).
-import { ChevronLeft, ChevronRight, X } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
@@ -29,6 +29,7 @@ import { useCharger } from '@/lib/useCharger';
 import { Selecteur } from '../coque';
 import { Puce, Puces, Texte } from '../composants';
 import { BoutonPied, Cellule, Grille, Libelle, Modale, Saisie } from '../crm/dossier';
+import { ChampDate, ChampHeure } from '../date-heure';
 import { couleurs, espace, polices } from '../theme';
 
 import { jourLong } from './commun';
@@ -239,17 +240,10 @@ export function EditeurRendezVous({
         ))}
       </Puces>
 
-      <View style={{ gap: espace(2) }}>
-        <Libelle>Jour</Libelle>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: espace(2) }}>
-          <Fleche nom="Jour précédent" gauche onPress={() => setJour(cleJour(ajouterJours(new Date(`${jour}T12:00:00`), -1)))} />
-          <Text style={{ flex: 1, textAlign: 'center', fontFamily: polices.texteMoyen, fontSize: 15, color: couleurs.texte }}>{jourLong(jour)}</Text>
-          <Fleche nom="Jour suivant" onPress={() => setJour(cleJour(ajouterJours(new Date(`${jour}T12:00:00`), 1)))} />
-        </View>
-      </View>
+      <ChampDate libelle="Jour" jour={jour} onChange={setJour} />
       <Grille>
         <Cellule>
-          <Saisie libelle="Heure" valeur={heure} onChange={setHeure} placeholder="18:30" erreur={heure && !/^\d{1,2}:\d{2}$/.test(heure.trim()) ? 'Écris l’heure comme 18:30.' : undefined} />
+          <ChampHeure libelle="Heure" heure={heure} onChange={setHeure} />
         </Cellule>
         <Cellule>
           <Saisie libelle="Durée (minutes)" type="nombre" valeur={duree} onChange={setDuree} />
@@ -311,11 +305,3 @@ export function EditeurRendezVous({
   );
 }
 
-function Fleche({ nom, gauche, onPress }: { nom: string; gauche?: boolean; onPress: () => void }) {
-  const Icone = gauche ? ChevronLeft : ChevronRight;
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={nom} onPress={onPress} style={{ padding: espace(2), borderRadius: 10, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.carte }}>
-      <Icone size={18} color={couleurs.texte} />
-    </Pressable>
-  );
-}

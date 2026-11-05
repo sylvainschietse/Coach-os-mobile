@@ -5,11 +5,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { crm, ecouterCrm } from '@/data/crm';
 import { preparerSeance } from '@/domain/briefing';
+import { cleJour, heureDe, heureValide, versIso } from '@/domain/agenda';
 import {
-  ecrireDateHeure,
-  ecrireJour,
-  lireDateHeure,
-  lireJour,
   nomBooster,
   OFFRES_RECOMMANDEES,
   RESULTATS_COMMERCIAUX,
@@ -31,6 +28,7 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Selecteur, SousNav, type OngletDef } from '../coque';
 import { Bouton, Chargement, Erreur } from '../composants';
+import { ChampDate, ChampHeure } from '../date-heure';
 import { BoutonDictee } from '../dictee';
 import { couleurs, espace, polices } from '../theme';
 import { BoutonPied, CaseACocher, Cellule, Choix, ChoixMultiple, Grille, Libelle, Modale, PiedEditeur, Saisie } from './dossier';
@@ -43,7 +41,10 @@ const RUBRIQUES: OngletDef<Rubrique>[] = (['Préparation', 'Entretien', 'Tests',
 interface Brouillon {
   nom: string;
   contactId: string;
-  date: string;
+  /** AAAA-MM-JJ, choisi dans le mini calendrier. */
+  jour: string;
+  /** « 18:30 », choisi dans la grille des heures. */
+  heure: string;
   statut: StatutBooster;
   resumeIa: string;
   pointsAttention: string;
@@ -63,7 +64,8 @@ function brouillonDe(b: Booster | undefined, contact: Contact | undefined, repon
   return {
     nom: b?.nom ?? (contact ? nomBooster(contact) : ''),
     contactId: b?.contactId ?? contact?.id ?? '',
-    date: ecrireDateHeure(b?.date),
+    jour: b?.date ? cleJour(b.date) : '',
+    heure: b?.date ? heureDe(b.date) : '',
     statut: b ? statutBooster(b) : 'À préparer',
     resumeIa: b?.resumeIa ?? '',
     pointsAttention: b?.pointsAttention ?? '',
@@ -73,7 +75,7 @@ function brouillonDe(b: Booster | undefined, contact: Contact | undefined, repon
     priorites: troisPriorites(prioritesAuto({ evaluation, entretien }, reponses)),
     offreRecommandee: b?.offreRecommandee ?? '',
     resultatCommercial: b?.resultatCommercial ?? '',
-    dateRelance: ecrireJour(b?.dateRelance),
+    dateRelance: b?.dateRelance ?? '',
     planEnvoye: !!b?.planEnvoyeLe,
     notesInternes: b?.notesInternes ?? '',
   };
@@ -81,12 +83,15 @@ function brouillonDe(b: Booster | undefined, contact: Contact | undefined, repon
 
 const vide = (t: string) => t.trim() || undefined;
 
+/** Date et heure du Booster en ISO, ou undefined tant que l'une des deux manque. */
+const dateBooster = (b: Pick<Brouillon, 'jour' | 'heure'>) => (/^\d{4}-\d{2}-\d{2}$/.test(b.jour) && heureValide(b.heure) ? versIso(b.jour, b.heure.trim()) : undefined);
+
 /** Ce qui a changé depuis l'ouverture, au format du dépôt. */
 function saisieDe(b: Brouillon, initial: Brouillon, booster: Booster | undefined): SaisieFicheBooster {
   const s: SaisieFicheBooster = {};
   const change = <K extends keyof Brouillon>(k: K) => JSON.stringify(b[k]) !== JSON.stringify(initial[k]);
   if (change('nom')) s.nom = vide(b.nom);
-  if (change('date')) s.date = lireDateHeure(b.date, new Date());
+  if (change('jour') || change('heure')) s.date = dateBooster(b);
   if (change('statut')) s.statutCrm = b.statut;
   if (change('resumeIa')) s.resumeIa = vide(b.resumeIa);
   if (change('pointsAttention')) s.pointsAttention = vide(b.pointsAttention);
@@ -95,7 +100,7 @@ function saisieDe(b: Brouillon, initial: Brouillon, booster: Booster | undefined
   if (change('priorites')) s.priorites = b.priorites;
   if (change('offreRecommandee')) s.offreRecommandee = vide(b.offreRecommandee);
   if (change('resultatCommercial')) s.resultatCommercial = vide(b.resultatCommercial);
-  if (change('dateRelance')) s.dateRelance = lireJour(b.dateRelance);
+  if (change('dateRelance')) s.dateRelance = b.dateRelance || undefined;
   if (change('planEnvoye')) s.planEnvoyeLe = b.planEnvoye ? (booster?.planEnvoyeLe ?? new Date().toISOString()) : undefined;
   if (change('notesInternes')) s.notesInternes = vide(b.notesInternes);
   return s;
@@ -183,11 +188,10 @@ function Editeur({
   const demanderSortie = (suite: () => void) => (modifie ? setSortie(() => suite) : suite());
   const maj = (patch: Partial<Brouillon>) => setB((x) => ({ ...x, ...patch }));
 
-  const date = lireDateHeure(b.date, new Date());
-  const relance = b.dateRelance.trim() ? lireJour(b.dateRelance) : undefined;
+  const date = dateBooster(b);
   const erreurs = {
-    date: !b.date.trim() ? 'La date est nécessaire.' : !date ? 'Écrivez la date comme 24/10/2026' : undefined,
-    relance: b.dateRelance.trim() && !relance ? 'Écrivez la date comme 30/10/2026' : undefined,
+    date: !b.jour ? 'Choisissez la date.' : !heureValide(b.heure) ? 'Choisissez l’heure.' : undefined,
+    relance: undefined as string | undefined,
     contact: !b.contactId ? 'Choisissez le contact de ce Booster.' : undefined,
   };
   const invalide = Object.values(erreurs).some(Boolean);
@@ -294,22 +298,20 @@ function Editeur({
             )}
           </Cellule>
           <Cellule>
-            <Saisie
+            <ChampDate
               libelle="Date de la Booster"
-              valeur={b.date}
-              onChange={(d) => maj({ date: d })}
-              placeholder="24/10/2026"
-              erreur={b.date || booster ? erreurs.date : undefined}
-              aide={
-                date
-                  ? new Date(date).toLocaleDateString('fr-FR', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })
-                  : 'Jour/mois/année'
-              }
+              jour={b.jour}
+              onChange={(jour) => maj({ jour })}
+              erreur={(booster || b.heure) && !b.jour ? 'Choisissez la date.' : undefined}
+            />
+          </Cellule>
+          <Cellule>
+            <ChampHeure
+              libelle="Heure"
+              heure={b.heure}
+              onChange={(heure) => maj({ heure })}
+              erreur={(booster || b.jour) && !heureValide(b.heure) ? 'Choisissez l’heure.' : undefined}
+              aide={date ? 'Le Booster apparaîtra dans votre agenda à cette heure-là.' : undefined}
             />
           </Cellule>
           <Cellule>
@@ -379,13 +381,7 @@ function Editeur({
             />
           </Cellule>
           <Cellule>
-            <Saisie
-              libelle="Date de relance"
-              valeur={b.dateRelance}
-              onChange={(dateRelance) => maj({ dateRelance })}
-              placeholder="30/10/2026"
-              erreur={erreurs.relance}
-            />
+            <ChampDate libelle="Date de relance" jour={b.dateRelance} onChange={(dateRelance) => maj({ dateRelance })} effacable />
           </Cellule>
           <Cellule>
             <CaseACocher libelle="Plan d’action envoyé" valeur={b.planEnvoye} onChange={(planEnvoye) => maj({ planEnvoye })} />

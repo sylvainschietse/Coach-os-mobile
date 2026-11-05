@@ -1,14 +1,16 @@
 // Agenda du coach : vues Jour, Semaine et Mois (sur téléphone comme sur ordinateur), création d'un rendez-vous en touchant
 // un créneau, alertes « fin de pack » et « client inactif », réglages de l'agenda.
-import { CalendarPlus, ChevronLeft, ChevronRight, Settings } from 'lucide-react-native';
+import { CalendarPlus, ChevronLeft, ChevronRight, Settings, Zap } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { depot } from '@/data';
 import { abonnements } from '@/data/abonnements';
 import { agenda, retenirClientsDemo } from '@/data/agenda';
+import { crm, ecouterCrm } from '@/data/crm';
 import {
   ajouterJours,
+  boostersDansPeriode,
   cleJour,
   clientsInactifs,
   grilleMois,
@@ -19,16 +21,20 @@ import {
   packsBientotFinis,
   surLeJour,
   TYPES_RDV,
+  type BoosterAgenda,
   type ReglagesAgenda,
   type RendezVous,
 } from '@/domain/agenda';
 import { soldeSeances } from '@/domain/abonnements';
 import type { Occupation } from '@/domain/agenda-google';
-import { useCharger } from '@/lib/useCharger';
+import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Vide } from '../coque';
 import { Carte, Chargement, Erreur, Puce, Puces, SousTitre, Texte } from '../composants';
+import { nomComplet } from '../crm/commun';
 import { CaseACocher, Saisie } from '../crm/dossier';
+import { EditeurBoosterModale } from '../crm/editeur-booster';
+import { ConfirmerSuppression } from '../crm/suppression';
 import { couleurs, espace, LARGEUR_LARGE, polices } from '../theme';
 
 import { COULEURS_STATUT, jourCourt, jourLong, majuscule, PastilleStatutRdv } from './commun';
@@ -69,6 +75,7 @@ export function AgendaCoach({ coachId }: { coachId: string }) {
   const [date, setDate] = useState(() => new Date());
   const [edition, setEdition] = useState<{ rdv?: RendezVous; jour?: string; heure?: string; clientId?: string }>();
   const [reglagesOuverts, setReglagesOuverts] = useState(false);
+  const [boosterOuvert, setBoosterOuvert] = useState<BoosterAgenda>();
 
   const { du, au } = periode(vue, date);
   const clients = useCharger(async () => {
@@ -80,6 +87,7 @@ export function AgendaCoach({ coachId }: { coachId: string }) {
   const rdv = useCharger(() => agenda.rendezVous(du.toISOString(), au.toISOString()), `agenda-${vue}-${cleJour(du)}`);
   const perso = useCharger(() => agenda.occupations(du.toISOString(), au.toISOString()), `agenda-perso-${vue}-${cleJour(du)}`);
   const alertes = useAlertes(clients.donnee, reglages.donnee);
+  const boosters = useBoosters();
 
   const recharger = useCallback(() => {
     rdv.recharger();
@@ -97,6 +105,8 @@ export function AgendaCoach({ coachId }: { coachId: string }) {
 
   const liste = rdv.donnee ?? [];
   const occupations = perso.donnee ?? [];
+  const lesBoosters = boostersDansPeriode(boosters.donnee ?? [], du, au);
+  const ouvrirBooster = (b: BoosterAgenda) => setBoosterOuvert(b);
   const jours = vue === 'mois' ? grilleMois(date) : vue === 'semaine' ? Array.from({ length: 7 }, (_, i) => ajouterJours(du, i)) : [du];
   const duJour = (d: Date) => liste.filter((r) => cleJour(r.debut) === cleJour(d));
 
@@ -140,15 +150,15 @@ export function AgendaCoach({ coachId }: { coachId: string }) {
       {!rdv.donnee && !rdv.erreur && <Chargement />}
       {rdv.donnee &&
         (vue === 'jour' ? (
-          <VueJour rdv={duJour(du)} perso={surLeJour(occupations, du)} onOuvrir={(r) => setEdition({ rdv: r })} onNouveau={() => nouveau(cleJour(du))} />
+          <VueJour rdv={duJour(du)} perso={surLeJour(occupations, du)} boosters={lesBoosters} onOuvrir={(r) => setEdition({ rdv: r })} onBooster={ouvrirBooster} onNouveau={() => nouveau(cleJour(du))} />
         ) : vue === 'semaine' ? (
           large ? (
-            <GrilleSemaine jours={jours} rdv={liste} perso={occupations} onOuvrir={(r) => setEdition({ rdv: r })} onCreneau={(j, h) => nouveau(j, h)} onJour={ouvrirJour} />
+            <GrilleSemaine jours={jours} rdv={liste} perso={occupations} boosters={lesBoosters} onOuvrir={(r) => setEdition({ rdv: r })} onBooster={ouvrirBooster} onCreneau={(j, h) => nouveau(j, h)} onJour={ouvrirJour} />
           ) : (
-            <ListeSemaine jours={jours} rdv={liste} perso={occupations} onOuvrir={(r) => setEdition({ rdv: r })} onJour={ouvrirJour} onNouveau={(j) => nouveau(j)} />
+            <ListeSemaine jours={jours} rdv={liste} perso={occupations} boosters={lesBoosters} onOuvrir={(r) => setEdition({ rdv: r })} onBooster={ouvrirBooster} onJour={ouvrirJour} onNouveau={(j) => nouveau(j)} />
           )
         ) : (
-          <GrilleMois jours={jours} mois={date.getMonth()} rdv={liste} perso={occupations} large={large} onJour={ouvrirJour} />
+          <GrilleMois jours={jours} mois={date.getMonth()} rdv={liste} perso={occupations} boosters={lesBoosters} large={large} onJour={ouvrirJour} />
         ))}
 
       <AlertesAgenda alertes={alertes} onProposer={(clientId) => nouveau(undefined, undefined, clientId)} />
@@ -168,7 +178,38 @@ export function AgendaCoach({ coachId }: { coachId: string }) {
           }}
         />
       )}
+
+      <BoosterDepuisAgenda booster={boosterOuvert} onFermer={() => setBoosterOuvert(undefined)} />
     </View>
+  );
+}
+
+/** Tous les Boosters du coach ; rechargés quand le CRM change (création, nouvelle date, suppression). */
+function useBoosters() {
+  const boosters = useCharger(() => crm.boosters().catch(() => []), 'agenda-boosters');
+  useRechargerSur(boosters.recharger, ecouterCrm);
+  return boosters;
+}
+
+/** Un Booster touché dans l'agenda s'ouvre dans son éditeur, sans quitter l'agenda. */
+function BoosterDepuisAgenda({ booster, onFermer }: { booster?: BoosterAgenda; onFermer: () => void }) {
+  const [suppression, setSuppression] = useState<{ booster: { id: string; nom?: string }; contact: { prenom: string; nom: string } }>();
+  return (
+    <>
+      {booster && !suppression && <EditeurBoosterModale key={booster.id} boosterId={booster.id} contactId={booster.contactId} onFermer={onFermer} onSupprimer={(booster, contact) => setSuppression({ booster, contact })} />}
+      {suppression && (
+        <ConfirmerSuppression
+          quoi="ce Booster"
+          nom={suppression.booster.nom || 'Booster'}
+          contact={nomComplet(suppression.contact)}
+          onSupprimer={async () => {
+            await crm.supprimerBooster(suppression.booster.id);
+            onFermer();
+          }}
+          onFermer={() => setSuppression(undefined)}
+        />
+      )}
+    </>
   );
 }
 
@@ -179,8 +220,11 @@ export function AgendaDuJour({ onOuvrirAgenda }: { onOuvrirAgenda: () => void })
   const au = ajouterJours(jour, 1).toISOString();
   const rdv = useCharger(() => agenda.rendezVous(du, au), `accueil-agenda-${cleJour(jour)}`);
   const perso = useCharger(() => agenda.occupations(du, au).catch(() => [] as Occupation[]), `accueil-perso-${cleJour(jour)}`);
+  const boosters = useBoosters();
+  const [boosterOuvert, setBoosterOuvert] = useState<BoosterAgenda>();
   const duJour = (rdv.donnee ?? []).filter((r) => cleJour(r.debut) === cleJour(jour) && r.statut !== 'annule' && r.statut !== 'refuse');
   const occupations = surLeJour(perso.donnee ?? [], jour);
+  const boostersDuJour = boostersDansPeriode(boosters.donnee ?? [], jour, ajouterJours(jour, 1));
   return (
     <Carte style={{ padding: 20, gap: espace(2) }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: espace(3) }}>
@@ -192,10 +236,11 @@ export function AgendaDuJour({ onOuvrirAgenda }: { onOuvrirAgenda: () => void })
       </View>
       {rdv.erreur && <Erreur message={rdv.erreur} onReessayer={rdv.recharger} />}
       {!rdv.donnee && !rdv.erreur && <Chargement />}
-      {rdv.donnee && !duJour.length && !occupations.length && (
+      {rdv.donnee && !duJour.length && !occupations.length && !boostersDuJour.length && (
         <Text style={{ fontSize: 13, fontFamily: polices.texte, color: couleurs.texteDoux }}>Aucun rendez-vous aujourd’hui.</Text>
       )}
-      {rdv.donnee && <JourMele rdv={duJour} perso={occupations} onOuvrir={onOuvrirAgenda} />}
+      {rdv.donnee && <JourMele rdv={duJour} perso={occupations} boosters={boostersDuJour} onOuvrir={onOuvrirAgenda} onBooster={setBoosterOuvert} />}
+      <BoosterDepuisAgenda booster={boosterOuvert} onFermer={() => setBoosterOuvert(undefined)} />
     </Carte>
   );
 }
@@ -262,18 +307,92 @@ function CartePerso({ o }: { o: Occupation }) {
   );
 }
 
-/** Rendez-vous et événements perso d'une journée, dans l'ordre de l'heure. */
-function JourMele({ rdv, perso, compacte, onOuvrir }: { rdv: RendezVous[]; perso: Occupation[]; compacte?: boolean; onOuvrir: (r: RendezVous) => void }) {
-  const elements = [...rdv.map((r) => ({ debut: r.debut, r })), ...perso.map((o) => ({ debut: o.journee ? '' : o.debut, o }))].sort((a, b) => a.debut.localeCompare(b.debut));
+/** Booster du CRM : barre et fond rouges, pour le distinguer d'un rendez-vous. */
+function CarteBooster({ b, onPress, compacte }: { b: BoosterAgenda; onPress: () => void; compacte?: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${b.titre}, ${heureDe(b.debut)}${b.fait ? ', fait' : ''}`}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        gap: espace(3),
+        padding: compacte ? espace(2) : espace(3),
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: couleurs.bordure,
+        borderLeftWidth: 4,
+        borderLeftColor: couleurs.rouge,
+        backgroundColor: couleurs.rougeClair,
+        opacity: pressed ? 0.85 : b.fait ? 0.7 : 1,
+      })}
+    >
+      <Text style={{ fontFamily: polices.chiffres, fontSize: 13, color: couleurs.texte, minWidth: 44 }}>{heureDe(b.debut)}</Text>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontFamily: polices.texteGras, fontSize: 15, color: couleurs.texte }} numberOfLines={1}>
+          {b.titre}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Zap size={12} color={couleurs.rougeTexte} />
+          <Text style={{ fontFamily: polices.texteMoyen, fontSize: 12, color: couleurs.rougeTexte }}>{b.fait ? 'Booster fait' : 'Booster'}</Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+/** Rendez-vous, Boosters et événements perso d'une journée, dans l'ordre de l'heure. */
+function JourMele({
+  rdv,
+  perso,
+  boosters = [],
+  compacte,
+  onOuvrir,
+  onBooster,
+}: {
+  rdv: RendezVous[];
+  perso: Occupation[];
+  boosters?: BoosterAgenda[];
+  compacte?: boolean;
+  onOuvrir: (r: RendezVous) => void;
+  onBooster?: (b: BoosterAgenda) => void;
+}) {
+  const elements = [
+    ...rdv.map((r) => ({ debut: r.debut, r })),
+    ...boosters.map((b) => ({ debut: b.debut, b })),
+    ...perso.map((o) => ({ debut: o.journee ? '' : o.debut, o })),
+  ].sort((a, b) => a.debut.localeCompare(b.debut));
   return (
     <>
-      {elements.map((e) => ('r' in e && e.r ? <CarteRdv key={e.r.id} r={e.r} compacte={compacte} onPress={() => onOuvrir(e.r!)} /> : 'o' in e && e.o ? <CartePerso key={`g-${e.o.id}`} o={e.o} /> : null))}
+      {elements.map((e) =>
+        'r' in e ? (
+          <CarteRdv key={e.r.id} r={e.r} compacte={compacte} onPress={() => onOuvrir(e.r)} />
+        ) : 'b' in e ? (
+          <CarteBooster key={`b-${e.b.id}`} b={e.b} compacte={compacte} onPress={() => onBooster?.(e.b)} />
+        ) : (
+          <CartePerso key={`g-${e.o.id}`} o={e.o} />
+        ),
+      )}
     </>
   );
 }
 
-function VueJour({ rdv, perso, onOuvrir, onNouveau }: { rdv: RendezVous[]; perso: Occupation[]; onOuvrir: (r: RendezVous) => void; onNouveau: () => void }) {
-  if (!rdv.length && !perso.length)
+function VueJour({
+  rdv,
+  perso,
+  boosters,
+  onOuvrir,
+  onBooster,
+  onNouveau,
+}: {
+  rdv: RendezVous[];
+  perso: Occupation[];
+  boosters: BoosterAgenda[];
+  onOuvrir: (r: RendezVous) => void;
+  onBooster: (b: BoosterAgenda) => void;
+  onNouveau: () => void;
+}) {
+  if (!rdv.length && !perso.length && !boosters.length)
     return (
       <Vide titre="Aucun rendez-vous ce jour-là" texte="Touche « Rendez-vous » pour en poser un.">
         <BoutonContour libelle="Ajouter un rendez-vous" icone={CalendarPlus} iconeAGauche onPress={onNouveau} />
@@ -281,7 +400,7 @@ function VueJour({ rdv, perso, onOuvrir, onNouveau }: { rdv: RendezVous[]; perso
     );
   return (
     <View style={{ gap: espace(2) }}>
-      <JourMele rdv={rdv} perso={perso} onOuvrir={onOuvrir} />
+      <JourMele rdv={rdv} perso={perso} boosters={boosters} onOuvrir={onOuvrir} onBooster={onBooster} />
       {!rdv.length && (
         <BoutonContour libelle="Ajouter un rendez-vous" icone={CalendarPlus} iconeAGauche onPress={onNouveau} />
       )}
@@ -294,14 +413,18 @@ function ListeSemaine({
   jours,
   rdv,
   perso,
+  boosters,
   onOuvrir,
+  onBooster,
   onJour,
   onNouveau,
 }: {
   jours: Date[];
   rdv: RendezVous[];
   perso: Occupation[];
+  boosters: BoosterAgenda[];
   onOuvrir: (r: RendezVous) => void;
+  onBooster: (b: BoosterAgenda) => void;
   onJour: (d: Date) => void;
   onNouveau: (jour: string) => void;
 }) {
@@ -311,6 +434,7 @@ function ListeSemaine({
       {jours.map((d) => {
         const siens = rdv.filter((r) => cleJour(r.debut) === cleJour(d));
         const occupes = surLeJour(perso, d);
+        const sesBoosters = boosters.filter((b) => cleJour(b.debut) === cleJour(d));
         return (
           <View key={cleJour(d)} style={{ gap: espace(2) }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -323,8 +447,8 @@ function ListeSemaine({
                 <CalendarPlus size={18} color={couleurs.texteDoux} />
               </Pressable>
             </View>
-            {siens.length || occupes.length ? (
-              <JourMele rdv={siens} perso={occupes} compacte onOuvrir={onOuvrir} />
+            {siens.length || occupes.length || sesBoosters.length ? (
+              <JourMele rdv={siens} perso={occupes} boosters={sesBoosters} compacte onOuvrir={onOuvrir} onBooster={onBooster} />
             ) : (
               <Text style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.suggestion }}>Libre</Text>
             )}
@@ -340,20 +464,24 @@ function GrilleSemaine({
   jours,
   rdv,
   perso,
+  boosters,
   onOuvrir,
+  onBooster,
   onCreneau,
   onJour,
 }: {
   jours: Date[];
   rdv: RendezVous[];
   perso: Occupation[];
+  boosters: BoosterAgenda[];
   onOuvrir: (r: RendezVous) => void;
+  onBooster: (b: BoosterAgenda) => void;
   onCreneau: (jour: string, heure: string) => void;
   onJour: (d: Date) => void;
 }) {
-  const heures = rdv.map((r) => new Date(r.debut).getHours());
-  const debut = Math.min(7, ...heures);
-  const fin = Math.max(21, ...rdv.map((r) => new Date(r.fin).getHours() + 1));
+  const blocs = [...rdv, ...boosters];
+  const debut = Math.min(7, ...blocs.map((r) => new Date(r.debut).getHours()));
+  const fin = Math.max(21, ...blocs.map((r) => new Date(r.fin).getHours() + 1));
   const plage = Array.from({ length: fin - debut }, (_, i) => debut + i);
   const aujourdhui = cleJour(new Date());
   return (
@@ -387,6 +515,7 @@ function GrilleSemaine({
         {jours.map((d) => {
           const siens = rdv.filter((r) => cleJour(r.debut) === cleJour(d));
           const occupes = surLeJour(perso, d).filter((o) => !o.journee);
+          const sesBoosters = boosters.filter((b) => cleJour(b.debut) === cleJour(d));
           const jourMs = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
           return (
             <View key={cleJour(d)} style={{ flex: 1, borderLeftWidth: 1, borderLeftColor: couleurs.bordure }}>
@@ -467,6 +596,38 @@ function GrilleSemaine({
                   </Pressable>
                 );
               })}
+              {sesBoosters.map((b) => {
+                const dd = new Date(b.debut);
+                const top = (dd.getHours() - debut + dd.getMinutes() / 60) * HAUTEUR_HEURE;
+                const hauteur = Math.max(24, ((new Date(b.fin).getTime() - dd.getTime()) / 3_600_000) * HAUTEUR_HEURE - 2);
+                return (
+                  <Pressable
+                    key={`b-${b.id}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${b.titre}, ${heureDe(b.debut)}`}
+                    onPress={() => onBooster(b)}
+                    style={{
+                      position: 'absolute',
+                      top,
+                      left: 2,
+                      right: 2,
+                      height: hauteur,
+                      borderRadius: 8,
+                      padding: 4,
+                      backgroundColor: couleurs.rougeClair,
+                      borderLeftWidth: 3,
+                      borderLeftColor: couleurs.rouge,
+                      opacity: b.fait ? 0.7 : 1,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: couleurs.texte }} numberOfLines={hauteur > 40 ? 2 : 1}>
+                      {heureDe(b.debut)} {b.titre.replace(/^Booster · /, '')}
+                    </Text>
+                    {hauteur > 40 && <Text style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.rougeTexte }}>{b.fait ? 'Booster fait' : 'Booster'}</Text>}
+                  </Pressable>
+                );
+              })}
             </View>
           );
         })}
@@ -481,6 +642,7 @@ function GrilleMois({
   mois,
   rdv,
   perso,
+  boosters,
   large,
   onJour,
 }: {
@@ -488,6 +650,7 @@ function GrilleMois({
   mois: number;
   rdv: RendezVous[];
   perso: Occupation[];
+  boosters: BoosterAgenda[];
   large: boolean;
   onJour: (d: Date) => void;
 }) {
@@ -506,13 +669,18 @@ function GrilleMois({
         <View key={cleJour(s[0])} style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: couleurs.discret }}>
           {s.map((d) => {
             const siens = rdv.filter((r) => cleJour(r.debut) === cleJour(d) && occupe(r));
+            const sesBoosters = boosters.filter((b) => cleJour(b.debut) === cleJour(d));
             const occupes = surLeJour(perso, d);
+            const lignes = [
+              ...siens.map((r) => ({ cle: r.id, debut: r.debut, texte: `${heureDe(r.debut)} ${r.participants.map((p) => p.prenom).join(', ')}`, couleur: COULEURS_STATUT[r.statut].texte })),
+              ...sesBoosters.map((b) => ({ cle: `b-${b.id}`, debut: b.debut, texte: `${heureDe(b.debut)} Booster ${b.titre.replace(/^Booster · /, '')}`, couleur: couleurs.rouge })),
+            ].sort((a, b) => a.debut.localeCompare(b.debut));
             const horsMois = d.getMonth() !== mois;
             return (
               <Pressable
                 key={cleJour(d)}
                 accessibilityRole="button"
-                accessibilityLabel={`${jourLong(cleJour(d))} : ${siens.length} rendez-vous`}
+                accessibilityLabel={`${jourLong(cleJour(d))} : ${siens.length} rendez-vous${sesBoosters.length ? `, ${sesBoosters.length} Booster` : ''}`}
                 onPress={() => onJour(d)}
                 style={({ pressed }) => ({
                   flex: 1,
@@ -530,13 +698,13 @@ function GrilleMois({
                 </Text>
                 {large ? (
                   <>
-                    {siens.slice(0, 3).map((r) => (
-                      <Text key={r.id} numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 11, color: COULEURS_STATUT[r.statut].texte }}>
-                        {heureDe(r.debut)} {r.participants.map((p) => p.prenom).join(', ')}
+                    {lignes.slice(0, 3).map((l) => (
+                      <Text key={l.cle} numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 11, color: l.couleur }}>
+                        {l.texte}
                       </Text>
                     ))}
-                    {siens.length > 3 && <Text style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }}>+{siens.length - 3}</Text>}
-                    {occupes.slice(0, siens.length >= 3 ? 0 : 3 - siens.length).map((o) => (
+                    {lignes.length > 3 && <Text style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }}>+{lignes.length - 3}</Text>}
+                    {occupes.slice(0, lignes.length >= 3 ? 0 : 3 - lignes.length).map((o) => (
                       <Text key={`g-${o.id}`} numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }}>
                         {o.journee ? '' : `${heureDe(o.debut)} `}
                         {o.titre}
@@ -550,6 +718,7 @@ function GrilleMois({
                         <Text style={{ fontFamily: polices.texteGras, fontSize: 11, color: '#FFFFFF', textAlign: 'center' }}>{siens.length}</Text>
                       </View>
                     )}
+                    {sesBoosters.length > 0 && <Zap accessibilityLabel="Booster" size={12} color={couleurs.rouge} fill={couleurs.rouge} />}
                     {occupes.length > 0 && <View accessibilityLabel="Occupé dans Google Agenda" style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: couleurs.suggestion }} />}
                   </View>
                 )}

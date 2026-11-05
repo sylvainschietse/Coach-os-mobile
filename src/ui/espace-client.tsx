@@ -11,6 +11,7 @@ import { demanderSortie } from '@/lib/brouillon';
 import { useCharger } from '@/lib/useCharger';
 
 import { SeancesRestantes } from './abonnement';
+import { DefilementClavier } from './clavier';
 import { MesRendezVous } from './agenda/mes-rendez-vous';
 import { EntrainementClient } from './entrainement/espace-entrainement';
 import { useMinuteurs } from './entrainement/minuteurs';
@@ -83,7 +84,7 @@ export function EspaceClient({
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView ref={defilement} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: espace(4), paddingTop: espace(5), paddingBottom: minuteurs?.actif ? 240 : 128 }} keyboardShouldPersistTaps="handled">
+      <DefilementClavier ref={defilement} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: espace(4), paddingTop: espace(5), paddingBottom: minuteurs?.actif ? 240 : 128 }}>
         <View style={{ width: '100%', maxWidth: LARGEUR_CLIENT, alignSelf: 'center', gap: espace(5) }}>
           {depot.mode === 'demo' && <BandeauDemo />}
           {apercu && (
@@ -135,7 +136,7 @@ export function EspaceClient({
           {onglet === 'nutrition' && abo.donnee && <NutritionProfil key={clientId} clientId={clientId} optionNutrition={abo.donnee.optionNutrition} />}
           {onglet === 'moi' && <MonCompte key={clientId} clientId={clientId} prenom={prenom} apercu={!!apercu} />}
         </View>
-      </ScrollView>
+      </DefilementClavier>
       <BarreClient onglets={ONGLETS} valeur={onglet} onChange={(o) => demanderSortie(() => aller(o))} />
     </View>
   );

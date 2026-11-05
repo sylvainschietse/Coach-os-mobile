@@ -1,7 +1,7 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { LogOut } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
 import { consentements } from '@/data/consentement';
 import { useSession } from '@/data/session';
@@ -9,6 +9,7 @@ import { accordAttendu, type Consentement } from '@/domain/consentement';
 import { demanderSortie } from '@/lib/brouillon';
 import { messageErreur } from '@/lib/useCharger';
 import { AccesSuspendu } from '@/ui/abonnement';
+import { DefilementClavier } from '@/ui/clavier';
 import { Chargement, Erreur } from '@/ui/composants';
 import { AccordDonnees } from '@/ui/consentement';
 import { BoutonIcone, EnTete } from '@/ui/coque';
@@ -35,11 +36,11 @@ export default function AccueilClient() {
     return (
       <View style={{ flex: 1, backgroundColor: couleurs.fond }}>
         <EnTete largeur={LARGEUR_CLIENT} sousTitre="Mon espace coaching" droite={<BoutonIcone icone={LogOut} nom="Se déconnecter" onPress={deconnecter} />} />
-        <ScrollView contentContainerStyle={{ padding: espace(4) }}>
+        <DefilementClavier contentContainerStyle={{ padding: espace(4) }}>
           <View style={{ width: '100%', maxWidth: LARGEUR_CLIENT, alignSelf: 'center' }}>
             <AccesSuspendu prenom={profil.prenom} />
           </View>
-        </ScrollView>
+        </DefilementClavier>
       </View>
     );
   }
@@ -49,7 +50,7 @@ export default function AccueilClient() {
     return (
       <View style={{ flex: 1, backgroundColor: couleurs.fond }}>
         <EnTete largeur={LARGEUR_CLIENT} sousTitre="Mon espace coaching" droite={<BoutonIcone icone={LogOut} nom="Se déconnecter" onPress={deconnecter} />} />
-        <ScrollView contentContainerStyle={{ padding: espace(4), paddingBottom: espace(12) }}>
+        <DefilementClavier contentContainerStyle={{ padding: espace(4), paddingBottom: espace(12) }}>
           <View style={{ width: '100%', maxWidth: LARGEUR_CLIENT, alignSelf: 'center' }}>
             {accord.erreur ? (
               <Erreur message={accord.erreur} onReessayer={accord.recharger} />
@@ -59,7 +60,7 @@ export default function AccueilClient() {
               <AccordDonnees clientId={profil.clientId} prenom={profil.prenom} onFait={accord.definir} onRefuser={deconnecter} />
             )}
           </View>
-        </ScrollView>
+        </DefilementClavier>
       </View>
     );
   }

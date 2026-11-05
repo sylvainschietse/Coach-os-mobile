@@ -3,9 +3,10 @@
 // barre du bas client (`client-bottom-nav`), hero, statistiques et états vides.
 import { ChevronDown, Eye, type LucideIcon } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
-import { Image, Modal, Pressable, type PressableStateCallbackType, ScrollView, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, Modal, Pressable, type PressableStateCallbackType, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useHauteurClavier } from './clavier';
 import { arrondi, couleurs, espace, espacementTitre, polices } from './theme';
 
 /** Survol souris (web) : absent des types natifs de Pressable. */
@@ -269,24 +270,73 @@ export function Selecteur<T extends string>({
         <ChevronDown size={16} color={couleurs.texteDoux} />
       </Pressable>
       <Modal visible={ouvert} transparent animationType="fade" onRequestClose={() => setOuvert(false)}>
-        <Pressable style={styles.voile} onPress={() => setOuvert(false)}>
-          <View style={styles.liste}>
-            {options.map((r) => (
-              <Pressable
-                key={r.cle}
-                accessibilityRole="menuitem"
-                onPress={() => {
-                  setOuvert(false);
-                  if (r.cle !== valeur) onChange(r.cle);
-                }}
-                style={[styles.listeLigne, r.cle === valeur && { backgroundColor: couleurs.rougeClair }]}
-              >
-                <Text style={[styles.selecteurTexte, r.cle === valeur && { color: couleurs.rouge }]}>{r.libelle}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Pressable>
+        <ListeSelecteur
+          libelle={libelle}
+          options={options}
+          valeur={valeur}
+          onFermer={() => setOuvert(false)}
+          onChoisir={(cle) => {
+            setOuvert(false);
+            if (cle !== valeur) onChange(cle);
+          }}
+        />
       </Modal>
+    </View>
+  );
+}
+
+/**
+ * Liste du sélecteur : elle défile quand elle dépasse l'écran (longue liste de clients) et propose une recherche
+ * au-delà de 10 choix. Toucher à côté ferme la liste.
+ */
+function ListeSelecteur<T extends string>({
+  libelle,
+  options,
+  valeur,
+  onFermer,
+  onChoisir,
+}: {
+  libelle: string;
+  options: OngletDef<T>[];
+  valeur: T;
+  onFermer: () => void;
+  onChoisir: (cle: T) => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const clavier = useHauteurClavier();
+  const [recherche, setRecherche] = useState('');
+  const simple = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const q = simple(recherche.trim());
+  const visibles = q ? options.filter((r) => simple(r.libelle).includes(q)) : options;
+  return (
+    <View style={[styles.voile, { paddingTop: insets.top + espace(5), paddingBottom: Math.max(insets.bottom, clavier) + espace(5) }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Fermer la liste" style={StyleSheet.absoluteFill} onPress={onFermer} />
+      <View accessibilityLabel={libelle} style={[styles.liste, { flexShrink: 1 }]}>
+        {options.length > 10 && (
+          <TextInput
+            accessibilityLabel={`Rechercher : ${libelle}`}
+            value={recherche}
+            onChangeText={setRecherche}
+            placeholder="Rechercher…"
+            placeholderTextColor={couleurs.suggestion}
+            autoCorrect={false}
+            style={styles.listeRecherche}
+          />
+        )}
+        <ScrollView style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled">
+          {visibles.map((r) => (
+            <Pressable
+              key={r.cle}
+              accessibilityRole="menuitem"
+              onPress={() => onChoisir(r.cle)}
+              style={[styles.listeLigne, r.cle === valeur && { backgroundColor: couleurs.rougeClair }]}
+            >
+              <Text style={[styles.selecteurTexte, r.cle === valeur && { color: couleurs.rouge }]}>{r.libelle}</Text>
+            </Pressable>
+          ))}
+          {!visibles.length && <Text style={[styles.selecteurTexte, { padding: 12, color: couleurs.texteDoux }]}>Aucun résultat.</Text>}
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -550,6 +600,17 @@ const styles = StyleSheet.create({
   selecteurTexte: { fontSize: 14, fontFamily: polices.texte, color: couleurs.texte },
   voile: { flex: 1, backgroundColor: 'rgba(17,18,22,0.35)', justifyContent: 'center', padding: espace(5) },
   liste: { backgroundColor: couleurs.carte, borderRadius: 20, padding: 8, maxWidth: 420, width: '100%', alignSelf: 'center' },
+  listeRecherche: {
+    minHeight: 44,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: couleurs.saisie,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontFamily: polices.texte,
+    fontSize: 15,
+    color: couleurs.texte,
+  },
   listeLigne: { minHeight: 46, borderRadius: 12, paddingHorizontal: 12, justifyContent: 'center' },
   libelleSection: { fontSize: 11.5, fontFamily: polices.texteGras, textTransform: 'uppercase', letterSpacing: 1.15, color: couleurs.texteDoux },
   rubrique: { minHeight: 46, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },

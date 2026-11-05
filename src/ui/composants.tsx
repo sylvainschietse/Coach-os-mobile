@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,14 +12,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DefilementClavier } from './clavier';
 import { arrondi, couleurs, espace, espacementTitre, polices } from './theme';
 
 export function Ecran({ children, largeurMax = 640 }: { children: ReactNode; largeurMax?: number }) {
   return (
     <SafeAreaView style={styles.ecran} edges={['bottom', 'left', 'right']}>
-      <ScrollView contentContainerStyle={styles.defilement} keyboardShouldPersistTaps="handled">
+      <DefilementClavier contentContainerStyle={styles.defilement}>
         <View style={{ width: '100%', maxWidth: largeurMax, alignSelf: 'center', gap: espace(4) }}>{children}</View>
-      </ScrollView>
+      </DefilementClavier>
     </SafeAreaView>
   );
 }

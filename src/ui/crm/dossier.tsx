@@ -3,10 +3,11 @@
 // cases à cocher, badges, initiales (`premium-avatar`) et volet repliable (`<details>`).
 import { Check, ChevronDown, ChevronRight, Search, X } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type ViewStyle } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Selecteur } from '../coque';
+import { DefilementClavier, useHauteurClavier } from '../clavier';
 import { Bouton } from '../composants';
 import { BoutonDictee } from '../dictee';
 import { arrondi, couleurs, espace, polices } from '../theme';
@@ -36,6 +37,9 @@ export function Modale({
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const etroit = width < SM;
+  // Clavier sorti : la fenêtre se rétrécit au-dessus, le pied (Enregistrer) reste visible.
+  const clavier = useHauteurClavier();
+  const bas = insets.bottom + (etroit ? 8 : 24);
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onFermer}>
       <View
@@ -43,7 +47,7 @@ export function Modale({
           styles.voile,
           {
             paddingTop: insets.top + (etroit ? 8 : 24),
-            paddingBottom: insets.bottom + (etroit ? 8 : 24),
+            paddingBottom: clavier ? Math.max(bas, clavier + 8) : bas,
           },
         ]}
       >
@@ -56,10 +60,10 @@ export function Modale({
               <X size={18} color={couleurs.texteDoux} />
             </Pressable>
           </View>
-          <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={styles.corps} keyboardShouldPersistTaps="handled">
+          <DefilementClavier style={{ flexShrink: 1 }} contentContainerStyle={styles.corps}>
             {enTete}
             {children}
-          </ScrollView>
+          </DefilementClavier>
           {pied && <View style={styles.pied}>{pied}</View>}
         </View>
       </View>

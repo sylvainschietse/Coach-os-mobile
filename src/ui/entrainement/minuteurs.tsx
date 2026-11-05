@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { Pause, Play, RotateCcw, Timer, Volume2, VolumeX, X } from 'lucide-react-native';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, Text, View } from 'react-native';
 
 import { CONFIG_DEFAUT, configValide, duree, ecoule, etape, horloge, mettreEnPause, relireMarche, reprendre, type ConfigMinuteurs, type Marche } from '@/domain/minuteurs';
 import { roleWeb } from '@/lib/role-web';
@@ -13,6 +13,7 @@ import { maintenantMs } from '@/lib/temps';
 import { vibrer } from '@/lib/vibrer';
 
 import { BoutonIcone } from '../coque';
+import { DefilementClavier } from '../clavier';
 import { Saisie } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
 import { Action, Confirmation, Ligne, ts } from './commun';
@@ -268,7 +269,7 @@ export function Minuteurs({ utilisateurId, children }: { utilisateurId: string; 
       <Modal visible={ouvert} transparent animationType="fade" onRequestClose={() => setOuvert(false)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 16 }}>
           <View {...roleWeb('dialog')} accessibilityLabel="Mes minuteurs" style={{ width: '100%', maxWidth: 512, maxHeight: '90%', alignSelf: 'center', backgroundColor: couleurs.carte, borderRadius: 16 }}>
-            <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }}>
+            <DefilementClavier contentContainerStyle={{ padding: 24, gap: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
                 <View style={{ flex: 1, gap: 4 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -389,7 +390,7 @@ export function Minuteurs({ utilisateurId, children }: { utilisateurId: string; 
                 Gardez l’application au premier plan pour entendre les alertes. La vibration dépend du téléphone. Le temps se recale à votre retour si l’écran a été
                 verrouillé.
               </Text>
-            </ScrollView>
+            </DefilementClavier>
           </View>
         </View>
       </Modal>
