@@ -62,7 +62,7 @@ export function VueEnsemble({
   const relances = donnees.relances.filter((r) => !(r.modele === 'booster' && nouveaux.has(r.contactId)));
   const aFaire = tout ? relances : relances.slice(0, 5);
   const relanceBooster = (contactId: string) => donnees.relances.find((r) => r.modele === 'booster' && r.contactId === contactId);
-  const actifs = donnees.contacts.filter((c) => c.statut !== 'archive');
+  const actifs = donnees.contacts.filter((c) => c.statut !== 'archive' && c.statut !== 'client');
   // Comme à l'origine : tout Booster ni Terminé ni Annulé d'un dossier actif, le plus proche d'abord.
   const prochains = donnees.boosters
     .filter((b) => b.statut === 'prevu' && b.contact.statut !== 'archive')
@@ -121,7 +121,7 @@ export function VueEnsemble({
         </Carte>
       )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-        <Stat style={{ flexBasis: base }} libelle="Contacts" valeur={String(actifs.length)} onPress={() => onRubrique('Contacts')} />
+        <Stat style={{ flexBasis: base }} libelle="Prospects" valeur={String(actifs.length)} onPress={() => onRubrique('Contacts')} />
         <Stat style={{ flexBasis: base }} libelle="Boosters à réaliser" valeur={String(prochains.length)} onPress={() => onRubrique('Boosters')} />
         <Stat style={{ flexBasis: base }} libelle="À faire en retard" valeur={String(enRetard)} />
         {/* Paiements « Payé » datés du mois en cours. */}

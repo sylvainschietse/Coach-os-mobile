@@ -17,11 +17,14 @@ import { EnvoiMessage, nomComplet, useMessageQuestionnaire } from './commun';
 import { Badge, CaseACocher, Choix, Initiales, Recherche, useBlocNomCarte } from './dossier';
 
 export function Contacts({
+  prospects,
   onOuvrir,
   onNouveau,
   onPlanifierBooster,
   onOuvrirBooster,
 }: {
+  /** Onglet Clients › Prospects : les clients actifs ont leur propre liste (Clients actifs), on ne les répète pas ici. */
+  prospects?: boolean;
   onOuvrir: (id: string) => void;
   onNouveau: () => void;
   onPlanifierBooster: (contactId: string) => void;
@@ -50,7 +53,8 @@ export function Contacts({
   if (!charge.donnee) return <Chargement />;
   const visibles = filtrerContacts(charge.donnee.contacts, recherche, statut, {
     archives,
-  });
+  }).filter((c) => !prospects || c.statut !== 'client');
+  const statuts = prospects ? STATUTS_CONTACT.filter((x) => x !== 'Client actif') : STATUTS_CONTACT;
 
   return (
     <View style={{ gap: espace(4) }}>
@@ -61,12 +65,12 @@ export function Contacts({
             libelle="Filtrer le statut"
             sansLibelle
             vide="Tous les statuts"
-            choix={STATUTS_CONTACT}
+            choix={statuts}
             valeur={statut}
             onChange={(v) => setStatut(v as StatutContact | undefined)}
           />
         </View>
-        <BoutonPrincipal libelle="Nouveau contact" onPress={onNouveau} />
+        <BoutonPrincipal libelle={prospects ? 'Nouveau prospect' : 'Nouveau contact'} onPress={onNouveau} />
       </View>
       <CaseACocher petite libelle="Inclure les dossiers archivés" valeur={archives} onChange={setArchives} />
       <View style={{ gap: espace(3) }}>
