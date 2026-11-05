@@ -4,6 +4,7 @@ import {
   Activity,
   ArrowLeft,
   CalendarCheck,
+  ChartColumnIncreasing,
   FileText,
   LayoutDashboard,
   ListTodo,
@@ -59,6 +60,7 @@ import { EditeurBoosterModale } from '@/ui/crm/editeur-booster';
 import { FicheContactModale, VOLETS_FICHE, type VoletFiche } from '@/ui/crm/fiche-contact';
 import { EditeurGestion, Gestion, QUOI, type ASupprimer, type ModuleGestion } from '@/ui/crm/gestion';
 import { ConfirmerSuppression } from '@/ui/crm/suppression';
+import { BilanMois } from '@/ui/crm/bilan-mois';
 import { VueEnsemble } from '@/ui/crm/vue-ensemble';
 import { BilansCoach } from '@/ui/suivi/bilans-coach';
 import { EspaceClient } from '@/ui/espace-client';
@@ -89,9 +91,10 @@ const SUIVI_CLIENTS: { cle: Onglet; libelle: string }[] = [
 ];
 const visible = (o: Onglet): OngletVisible => (o === 'suivis' || o === 'bilan' || o === 'hebdo' ? 'clients' : o);
 
-type Rubrique = 'Accueil' | 'Messages' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Offres' | 'Automations' | 'Profil';
+type Rubrique = 'Accueil' | 'Bilan' | 'Messages' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Offres' | 'Automations' | 'Profil';
 const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Accueil', libelle: 'Accueil', icone: LayoutDashboard },
+  { cle: 'Bilan', libelle: 'Bilan du mois', icone: ChartColumnIncreasing },
   { cle: 'Messages', libelle: 'Messages', icone: MessageCircle },
   { cle: 'Contacts', libelle: 'Contacts', icone: Users },
   { cle: 'Boosters', libelle: 'Boosters', icone: CalendarCheck },
@@ -444,6 +447,7 @@ function Crm({
             onSupprimer={(x) => setASupprimer({ quoi: 'ce bilan', nom: x.nom, contact: x.contact, action: () => crm.supprimerBilan(x.id) })}
           />
         )}
+        {rubrique === 'Bilan' && <BilanMois onPaiements={() => onRubrique('Paiements')} />}
         {rubrique === 'Automations' && <Automatisations />}
         {rubrique === 'Offres' && <MesOffres />}
         {rubrique === 'Profil' && (

@@ -109,6 +109,8 @@ export function carnetDemo(maintenant: Date): Carnet {
         id: 'paiement-lea', titre: 'Coaching Essentiel · mois en cours', contactId: 'contact-lea', coachingId: 'coaching-lea', date: jour, montant: 150,
         devise: 'EUR', moyen: 'Virement', statut: 'Payé', creeLe: ilYA(0),
       },
+      // Historique pour le Bilan du mois : abonnements de Léa et Thomas sur les mois passés, un pack de Thomas.
+      ...historiqueDemo(maintenant),
     ],
     bilans: [],
   };
@@ -125,3 +127,20 @@ const EVALUATION_SOPHIE: Evaluation = {
   },
   douleur: 'Non',
 };
+
+/** Quatorze mois d'abonnements (Léa à 79 €, Thomas à 59 € depuis huit mois) et un pack de dix séances. */
+function historiqueDemo(maintenant: Date): Carnet['paiements'] {
+  const lignes: Carnet['paiements'] = [];
+  for (let i = 1; i <= 14; i++) {
+    const d = new Date(maintenant.getFullYear(), maintenant.getMonth() - i, 2);
+    const mois = jourLocal(d).slice(0, 7);
+    const date = jourLocal(d);
+    const creeLe = d.toISOString();
+    lignes.push({ id: `demo-lea-${mois}`, titre: `Abonnement Appli · ${mois}`, contactId: 'contact-lea', date, montant: 79, devise: 'EUR', moyen: 'Carte bancaire', statut: 'Payé', reference: `abonnement:${mois}:contact-lea`, creeLe });
+    if (i <= 8)
+      lignes.push({ id: `demo-thomas-${mois}`, titre: `Abonnement Appli + nutrition · ${mois}`, contactId: 'contact-thomas', date, montant: i === 8 ? 0 : 59, devise: 'EUR', moyen: 'Carte bancaire', statut: 'Payé', reference: `abonnement:${mois}:contact-thomas`, creeLe });
+  }
+  const pack = new Date(maintenant.getFullYear(), maintenant.getMonth() - 3, 12);
+  lignes.push({ id: 'demo-pack-thomas', titre: 'Pack 10 séances', contactId: 'contact-thomas', date: jourLocal(pack), montant: 450, devise: 'EUR', moyen: 'Virement', statut: 'Payé', reference: 'pack:demo-thomas', creeLe: pack.toISOString() });
+  return lignes;
+}

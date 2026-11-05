@@ -5,6 +5,7 @@ import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { crm } from '@/data/crm';
 import { ajouterJours, jourLocal, MODELES, rediger, statutBooster, type BoosterDossier, type ContactResume, type QuestionnaireATraiter, type RelanceAFaire } from '@/domain/crm';
+import { decalerMois, moisDe, nomMois } from '@/domain/bilan-mois';
 import { montantLisible } from '@/domain/gestion';
 
 import { AgendaDuJour } from '../agenda/agenda-coach';
@@ -36,7 +37,7 @@ export function VueEnsemble({
   onAgenda,
 }: {
   donnees: DonneesVueEnsemble;
-  onRubrique: (r: 'Contacts' | 'Boosters' | 'Paiements') => void;
+  onRubrique: (r: 'Contacts' | 'Boosters' | 'Paiements' | 'Bilan') => void;
   onOuvrirTache: (id: string) => void;
   onNouvelleTache: () => void;
   onOuvrirContact: (id: string) => void;
@@ -73,6 +74,18 @@ export function VueEnsemble({
   return (
     <View style={{ gap: espace(6) }}>
       <AgendaDuJour onOuvrirAgenda={onAgenda} />
+      {/* Première semaine du mois : le bilan du mois qui vient de se terminer est prêt. */}
+      {new Date().getDate() <= 7 && (
+        <Pressable accessibilityRole="button" onPress={() => onRubrique('Bilan')}>
+          <Carte style={{ padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <View style={{ flexShrink: 1 }}>
+              <Text style={[titreCarte, { marginBottom: 4 }]}>Ton bilan de {nomMois(decalerMois(moisDe(new Date()), -1))} est prêt</Text>
+              <Text style={ligneDoux}>Encaissé, abonnements réglés, séances, clients vus et l’évolution sur l’année.</Text>
+            </View>
+            <BoutonContour libelle="Voir le bilan" onPress={() => onRubrique('Bilan')} />
+          </Carte>
+        </Pressable>
+      )}
       {/* Une réponse au questionnaire arrive toute seule (Tally ou l'app) : on la voit ici, avec ses réponses et le Booster à planifier. */}
       {donnees.questionnaires.length > 0 && (
         <Carte style={{ padding: 20, borderColor: couleurs.rouge }}>
