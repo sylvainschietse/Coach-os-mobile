@@ -1,21 +1,11 @@
-// Notification sur le téléphone du coach (Expo Push). Sans appareil enregistré ou si l'envoi échoue, rien ne bloque l'appelant.
+// Notification sur le téléphone du coach : passe par notifier() dans la base, qui respecte les alertes qu'il a coupées
+// et appelle « envoyer-notification ». Si l'enregistrement échoue, rien ne bloque l'appelant.
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
-
-const EXPO_PUSH = 'https://exp.host/--/api/v2/push/send';
 
 export async function prevenirCoach(admin: SupabaseClient, coachId: string, titre: string, corps: string, url: string) {
   try {
-    const { data: coach } = await admin.from('coachs').select('user_id').eq('id', coachId).single();
-    if (!coach?.user_id) return;
-    const { data: appareils } = await admin.from('appareils_push').select('jeton').eq('user_id', coach.user_id);
-    if (!appareils?.length) return;
-    await fetch(EXPO_PUSH, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(
-        appareils.map((a: { jeton: string }) => ({ to: a.jeton, title: titre, body: corps, data: { url, genre: 'paiement' }, sound: 'default', channelId: 'messages', priority: 'high' })),
-      ),
-    });
+    const { error } = await admin.rpc('notifier_coach', { p_coach: coachId, p_genre: 'paiement', p_titre: titre, p_corps: corps, p_url: url });
+    if (error) console.error('notification coach', error.message);
   } catch (e) {
     console.error('notification coach', e);
   }

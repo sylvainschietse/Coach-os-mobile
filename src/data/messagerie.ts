@@ -1,6 +1,6 @@
 // Accès à la messagerie : en démo sur l'appareil, ou dans Supabase (table messages sous RLS et compartiment
-// privé « messagerie »). Après chaque envoi, la fonction serveur « notifier-message » prévient le destinataire
-// sur son téléphone ; si elle n'est pas installée, le message part quand même.
+// privé « messagerie »). Le destinataire est prévenu sur son téléphone par la base elle-même (déclencheur
+// notif_message), sans rien bloquer.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -189,8 +189,6 @@ export function creerMessagerieSupabase(db: SupabaseClient): DepotMessagerie {
         if (m.pieceChemin) await stock().remove([m.pieceChemin]);
         throw new Error('Message non envoyé. Vérifie ta connexion et réessaie.');
       }
-      // Notification sur le téléphone du destinataire : au mieux, sans bloquer l'envoi.
-      db.functions.invoke('notifier-message', { body: { id: m.id } }).catch(() => undefined);
       prevenirMessages();
       return depuisLigne(data);
     },
