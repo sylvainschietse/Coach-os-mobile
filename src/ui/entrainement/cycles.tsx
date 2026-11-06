@@ -4,12 +4,13 @@ import { Activity, ArrowDown, ArrowUp, ExternalLink, Library, Pencil, Play, Plus
 import { useCallback, useState } from 'react';
 import { Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';
 
+import { ecouterCrm } from '@/data/crm';
 import { entrainement, lierProgramme } from '@/data/entrainement';
 import { ecrireJour, lireJour } from '@/domain/crm';
 import { ajouterJours, aujourdhuiParis, correspondRecherche, dansDates, finSuivi, LIBELLES_CYCLES, titreClient, type StatutCycle } from '@/domain/entrainement';
 import type { CycleClient, ModeLien, ModeleResume, SuiviClient } from '@/domain/entrainement-etat';
 import { nouvelId } from '@/lib/identifiant';
-import { useCharger } from '@/lib/useCharger';
+import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { TitreDisplay } from '../coque';
 import { Choix, Modale, Recherche, Saisie } from '../crm/dossier';
@@ -489,6 +490,8 @@ export function CyclesClients({
   onOuvrirEntrainement: (clientId: string) => void;
 }) {
   const profils = useCharger(() => entrainement.suivis(coachId), `suivis-${coachId}`);
+  // Un client ajouté (Nouveau client, statut « Client actif ») apparaît sans recharger la page.
+  useRechargerSur(profils.recharger, ecouterCrm);
   const modeles = useCharger(() => entrainement.bibliotheque(coachId), `modeles-${coachId}`);
   const recharger = useCallback(() => profils.recharger(), [profils]);
   return (

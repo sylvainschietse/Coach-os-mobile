@@ -12,6 +12,7 @@ import {
   MessageCircle,
   RefreshCw,
   Tag,
+  UserPlus,
   UserRound,
   Users,
   Wallet,
@@ -286,12 +287,18 @@ export default function EspaceCoach() {
                 />
               </View>
             ) : (
-              <CyclesClients
+              <View style={{ gap: espace(4) }}>
+                {/* Client qui commence directement (abonnement à l'appli ou coaching en présence), sans Booster. */}
+                <View style={{ alignSelf: 'flex-start' }}>
+                  <Action petit icone={UserPlus} libelle="Nouveau client" onPress={() => router.setParams({ ...FERME, contact: 'nouveau-client' })} />
+                </View>
+                <CyclesClients
                 coachId={coachId}
                 onOuvrirProgramme={(id) => router.setParams({ onglet: 'airtable', programme: id, seance: undefined })}
                 onOuvrirFiche={ouvrirFicheClient}
                 onOuvrirEntrainement={(id) => router.setParams({ client: id })}
-              />
+                />
+              </View>
             ))}
           {onglet === 'bilan' && (
             <SeancesRealisees
@@ -523,7 +530,8 @@ function Crm({
       ) : params.contact ? (
         <FicheContactModale
           key={params.contact}
-          id={params.contact === 'nouveau' ? undefined : params.contact}
+          id={params.contact === 'nouveau' || params.contact === 'nouveau-client' ? undefined : params.contact}
+          nouveauClient={params.contact === 'nouveau-client'}
           volet={volet}
           onVolet={(v) => router.setParams({ volet: v })}
           onFermer={() => router.setParams(FERME)}
