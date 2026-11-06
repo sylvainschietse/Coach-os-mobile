@@ -22,6 +22,7 @@ import { BandeauDemo, BarreClient, Selecteur, SousNav, type OngletDef } from './
 import { Carte, Puce, Puces, Texte } from './composants';
 import { BilanSemaine } from './suivi/bilan-semaine';
 import { Mensurations } from './suivi/mensurations';
+import { MesSeances } from './suivi/mes-seances';
 import { Objectifs } from './suivi/objectifs';
 import { Photos } from './suivi/photos';
 import { Quotidien } from './suivi/quotidien';
@@ -31,7 +32,7 @@ import { AjoutActiviteLibre } from './suivi/activite-libre';
 import { couleurs, espace, LARGEUR_CLIENT, polices } from './theme';
 
 export type OngletClient = 'accueil' | 'programme' | 'suivi' | 'nutrition' | 'moi';
-type RubriqueSuivi = 'hebdo' | 'mesures' | 'pr' | 'activite';
+type RubriqueSuivi = 'seances' | 'hebdo' | 'mesures' | 'pr' | 'activite';
 
 const ONGLETS: OngletDef<OngletClient>[] = [
   { cle: 'accueil', libelle: 'Accueil', icone: Home },
@@ -41,6 +42,7 @@ const ONGLETS: OngletDef<OngletClient>[] = [
   { cle: 'moi', libelle: 'Moi', icone: User },
 ];
 const SUIVI: OngletDef<RubriqueSuivi>[] = [
+  { cle: 'seances', libelle: 'Mes séances' },
   { cle: 'hebdo', libelle: 'Bilan semaine' },
   { cle: 'mesures', libelle: 'Mensurations et photos' },
   { cle: 'pr', libelle: 'Performances' },
@@ -71,7 +73,7 @@ export function EspaceClient({
     setInitialVu(ongletInitial);
     setOnglet(ongletInitial);
   }
-  const [suivi, setSuivi] = useState<RubriqueSuivi>('hebdo');
+  const [suivi, setSuivi] = useState<RubriqueSuivi>('seances');
   const minuteurs = useMinuteurs();
   const defilement = useRef<ComponentRef<typeof ScrollView>>(null);
   const abo = useCharger(() => abonnements.lire(clientId), `abo-${clientId}`);
@@ -121,6 +123,8 @@ export function EspaceClient({
           {onglet === 'suivi' && (
             <>
               <SousNav nom="Rubriques du suivi" grille="suivi" onglets={SUIVI} valeur={suivi} onChange={(r) => demanderSortie(() => setSuivi(r))} />
+              {/* Le tableau semaine par semaine et « Ajouter une séance » : tout ce que le client a fait, au même endroit. */}
+              {suivi === 'seances' && <MesSeances key={clientId} clientId={clientId} apercu={!!apercu} />}
               {suivi === 'hebdo' && <BilanSemaine key={clientId} clientId={clientId} apercu={!!apercu} />}
               {/* Les photos de progression accompagnent les mesures : une seule rubrique. */}
               {suivi === 'mesures' && (
