@@ -73,14 +73,14 @@ const CLES: (keyof Brouillon)[] = [
   'dateNaissance',
 ];
 
-function brouillonDe(c?: Contact): Brouillon {
+function brouillonDe(c?: Contact, statutDefaut: StatutContact = 'Nouveau Prospect'): Brouillon {
   return {
     nom: c?.nom ?? '',
     prenom: c?.prenom ?? '',
     telephone: formaterTelephone(c?.telephone),
     email: c?.email ?? '',
     adresse: c?.adresse ?? '',
-    statutCrm: c ? statutContact(c) : 'Nouveau Prospect',
+    statutCrm: c ? statutContact(c) : statutDefaut,
     objectifPrincipal: c?.objectifPrincipal ?? '',
     prochaineAction: c?.prochaineAction ?? '',
     notes: c?.notes ?? '',
@@ -99,10 +99,13 @@ export function FicheContactModale({
   onBooster,
   onNouveauBooster,
   onSupprimerBooster,
+  nouveauClient,
   ...autres
 }: {
   /** Absent : création d'un contact. */
   id?: string;
+  /** Création d'un client qui commence directement (sans Booster) : statut « Client actif » d'emblée. */
+  nouveauClient?: boolean;
   volet: VoletFiche;
   onVolet: (v: VoletFiche) => void;
   onFermer: () => void;
@@ -133,6 +136,7 @@ export function FicheContactModale({
       onBooster={onBooster}
       onNouveauBooster={onNouveauBooster}
       onSupprimerBooster={onSupprimerBooster}
+      nouveauClient={!id && nouveauClient}
       {...autres}
     />
   );
@@ -159,8 +163,10 @@ function Editeur({
   onBilan,
   onSupprimerBilan,
   onVoirAppli,
+  nouveauClient,
 }: {
   fiche?: Fiche;
+  nouveauClient?: boolean;
   volet: VoletFiche;
   onVolet: (v: VoletFiche) => void;
   onFermer: () => void;
@@ -173,7 +179,7 @@ function Editeur({
   const { profil } = useSession();
   const coachId = profil?.role === 'coach' ? profil.coachId : '';
   const volets = VOLETS.filter((v) => contact?.clientId || !VOLETS_CLIENT.includes(v.cle));
-  const [initial, setInitial] = useState(() => brouillonDe(contact));
+  const [initial, setInitial] = useState(() => brouillonDe(contact, nouveauClient ? 'Client actif' : undefined));
   const [brouillon, setBrouillon] = useState(initial);
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string>();
@@ -205,7 +211,9 @@ function Editeur({
           setDoublon(r.doublon);
           return;
         }
-        onFermer();
+        // Client direct : sa fiche s'ouvre pour choisir tout de suite son offre ou son pack (carte Abonnement).
+        if (nouveauClient) onOuvrirAutre(r.contact.id);
+        else onFermer();
         return;
       }
       await crm.modifierContact(contact.id, versSaisie(brouillon, modifies, contact));
@@ -218,7 +226,7 @@ function Editeur({
     }
   }
 
-  const titre = contact ? nomComplet(contact) : 'Créer · Contacts';
+  const titre = contact ? nomComplet(contact) : nouveauClient ? 'Nouveau client' : 'Créer · Contacts';
   return (
     <Modale
       titre={titre}
