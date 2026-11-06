@@ -285,6 +285,9 @@ function Editeur({
         </View>
       }
     >
+      {volet === 'fiche' && contact && contact.statutCrm === 'Client actif' && contact.statut !== 'client' && (
+        <ClientAConfirmer contactId={contact.id} prenom={contact.prenom} />
+      )}
       {/* Le parcours d'abord : questionnaire, Booster, accès à l'appli, chacun avec son bouton. */}
       {volet === 'fiche' && fiche && (
         <ParcoursContact
@@ -335,6 +338,35 @@ function Editeur({
         </View>
       )}
     </Modale>
+  );
+}
+
+/**
+ * Dossiers marqués « Client actif » avant que ce statut ouvre la fiche client : ils n'étaient ni dans Clients actifs ni
+ * proposés pour un rendez-vous. Un appui les y ajoute.
+ */
+function ClientAConfirmer({ contactId, prenom }: { contactId: string; prenom: string }) {
+  const [occupe, setOccupe] = useState(false);
+  const [erreur, setErreur] = useState<string>();
+  async function confirmer() {
+    setOccupe(true);
+    setErreur(undefined);
+    try {
+      await crm.devenirClient(contactId);
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Ajout non confirmé');
+    } finally {
+      setOccupe(false);
+    }
+  }
+  return (
+    <View style={[styles.alerte, { marginTop: espace(4) }]}>
+      <Text style={styles.alerteTexte}>
+        {prenom || 'Ce contact'} est marqué « Client actif » mais n’est pas encore dans tes clients actifs : tu ne peux pas encore l’ajouter à un rendez-vous.
+      </Text>
+      <BoutonContour libelle={occupe ? 'Ajout…' : 'Ajouter à mes clients actifs'} onPress={confirmer} desactive={occupe} />
+      {erreur && <Text style={styles.erreur}>{erreur}</Text>}
+    </View>
   );
 }
 

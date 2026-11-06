@@ -106,6 +106,18 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
     return r.id;
   }
 
+  /**
+   * Le statut « Client actif » choisi à la main (fiche ou coaching vendu) fait vraiment du contact un client :
+   * fiche client ouverte, il apparaît dans Clients actifs et peut être ajouté à un rendez-vous.
+   */
+  async function confirmerClient(contactId: string) {
+    const avant = await lire();
+    const contact = avant.contacts.find((x) => x.id === contactId);
+    if (!contact || contact.statut === 'client' || contact.statutCrm !== 'Client actif') return;
+    const clientId = contact.clientId ?? (await extra.ouvrirEspaceClient(contact));
+    await ecrire(avant, regles.devenirClient(avant, contactId, clientId, contexte()));
+  }
+
   return {
     async contacts() {
       return regles.listeContacts(await lire());
@@ -128,10 +140,12 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
       const r = regles.creerContact(avant, saisie, contexte());
       if ('doublon' in r) return { doublon: r.doublon };
       await ecrire(avant, r.carnet);
+      await confirmerClient(r.contact.id);
       return { contact: r.contact };
     },
     async modifierContact(id, patch) {
       await appliquer((c) => regles.modifierContact(c, id, patch));
+      if (patch.statutCrm === 'Client actif') await confirmerClient(id);
       // Les coordonnées vont aussi sur la fiche client, que le client voit dans « Mon compte » (et ses factures).
       if (!(['prenom', 'nom', 'telephone', 'email', 'adresse'] as const).some((cle) => cle in patch)) return;
       const contact = (await lire()).contacts.find((x) => x.id === id);
@@ -188,7 +202,11 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
     async coachingDepuisBooster(boosterId) {
       const avant = await lire();
       const r = gestion.coachingDepuisBooster(avant, boosterId, contexte());
-      if (!r.existant) await ecrire(avant, r.carnet);
+      if (!r.existant) {
+        await ecrire(avant, r.carnet);
+        const contactId = r.carnet.boosters.find((b) => b.id === boosterId)?.contactId;
+        if (contactId) await confirmerClient(contactId);
+      }
       return { id: r.id, existant: r.existant };
     },
     creerTache: (saisie) => creer((c, ctx) => gestion.creerTache(c, saisie, ctx)),
