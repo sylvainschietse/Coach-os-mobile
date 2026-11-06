@@ -6,6 +6,7 @@ import { Platform, Pressable, Share, Text, View } from 'react-native';
 
 import { depot } from '@/data';
 import { abonnements } from '@/data/abonnements';
+import { ecouterCrm } from '@/data/crm';
 import { offres } from '@/data/offres';
 import { useSession } from '@/data/session';
 import {
@@ -28,7 +29,7 @@ import {
 } from '@/domain/abonnements';
 import { contenuOffre, droitsOffre, libellePrix } from '@/domain/offres';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
-import { useCharger } from '@/lib/useCharger';
+import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Bouton, Carte, Erreur, SousTitre, Texte } from './composants';
 import { Selecteur } from './coque';
@@ -216,6 +217,11 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
   const { profil } = useSession();
   const coachId = profil?.role === 'coach' ? profil.coachId : '';
   const autres = useCharger(() => (coachId ? depot.clientsDuCoach(coachId) : Promise.resolve([])), `clients-${coachId}`);
+  // Un client ajouté entre-temps (conjoint, duo) doit pouvoir recevoir le partage sans recharger.
+  useRechargerSur(autres.recharger, ecouterCrm);
+  const [packChoisi, setPackChoisi] = useState('');
+  const [nbAutre, setNbAutre] = useState('');
+  const [partageA, setPartageA] = useState('');
   const mesOffres = useCharger(() => offres.lister(), 'offres');
   const [prixSurMesure, setPrixSurMesure] = useState<string>();
 
@@ -244,9 +250,15 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
   const prixValide = prixSaisi === undefined || (Number.isFinite(prixSaisi) && prixSaisi >= 0);
   const ajouter = (pack: PackAVendre) =>
     faire(
-      () => abonnements.ajouterPack(clientId, pack, prixSaisi),
+      async () => {
+        const id = await abonnements.ajouterPack(clientId, pack, prixSaisi);
+        if (partageA) await abonnements.partagerPack(id, partageA);
+      },
       () => {
         setPrixNegocie('');
+        setPackChoisi('');
+        setNbAutre('');
+        setPartageA('');
         packs.recharger();
       },
     );
@@ -273,10 +285,21 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
   const packsDuCoach = (mesOffres.donnee ?? [])
     .filter((o) => o.active && o.periodicite === 'unique')
     .map((o) => ({ libelle: o.nom, seances: o.seances, prix: o.prix }));
+  const tarifUnite = a?.tarifSeance ?? PACKS.unite.prix;
+  // Toujours un pack de 10 proposé, même si « Mes offres » n'en contient pas (ou ne se charge pas).
   const aVendre: PackAVendre[] = [
-    { ...PACKS.unite, prix: a?.tarifSeance ?? PACKS.unite.prix },
-    ...(packsDuCoach.length ? packsDuCoach : mesOffres.donnee ? [PACKS.pack10] : []),
+    { ...PACKS.unite, prix: tarifUnite },
+    ...packsDuCoach,
+    ...(packsDuCoach.some((x) => x.seances === 10) ? [] : [{ libelle: 'Pack 10 séances', seances: 10, prix: 10 * tarifUnite }]),
   ];
+  const nbSaisi = Number(nbAutre);
+  const packAAjouter: PackAVendre | undefined =
+    packChoisi === 'autre'
+      ? Number.isInteger(nbSaisi) && nbSaisi > 0 && nbSaisi <= 200
+        ? { libelle: `Pack ${nbSaisi} séances`, seances: nbSaisi, prix: nbSaisi * tarifUnite }
+        : undefined
+      : aVendre[Number(packChoisi)];
+  const autresClients = (autres.donnee ?? []).filter((c) => c.id !== clientId);
   const liste = packs.donnee ?? [];
   const solde = soldeSeances(liste);
   const dejaFaites = liste.some((p) => p.seancesFaites > 0);
@@ -419,14 +442,14 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
                     </Pressable>
                   </View>
                 ))}
-              {!p.titulaire && (autres.donnee ?? []).length > 1 && (
+              {!p.titulaire && autresClients.length > 0 && (
                 <Selecteur
                   libelle="Partager ce pack avec…"
                   sansLibelle
                   options={[
                     { cle: '', libelle: 'Partager ce pack avec… (couple, duo)' },
-                    ...(autres.donnee ?? [])
-                      .filter((c) => c.id !== clientId && !p.partageAvec?.some((x) => x.clientId === c.id))
+                    ...autresClients
+                      .filter((c) => !p.partageAvec?.some((x) => x.clientId === c.id))
                       .map((c) => ({ cle: c.id, libelle: `${c.prenom} ${c.nom}`.trim() })),
                   ]}
                   valeur=""
@@ -444,26 +467,55 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
         ))}
       <Texte doux style={{ fontSize: 13 }}>Les séances de l’agenda se décomptent toutes seules une fois passées. Ce bouton sert aux séances faites hors agenda.</Texte>
       <Bouton libelle="Séance faite (−1)" onPress={() => decompter(1)} desactive={!solde.restantes} chargement={occupe} />
-      <Saisie
-        libelle="Prix négocié du prochain pack (€, facultatif)"
-        type="nombre"
-        valeur={prixNegocie}
-        onChange={setPrixNegocie}
-        erreur={prixValide ? undefined : 'Montant illisible.'}
-        aide="Vide : prix habituel du pack."
+      <View style={{ height: 1, backgroundColor: couleurs.bordure, marginVertical: espace(2) }} />
+      <SousTitre>Ajouter un pack acheté</SousTitre>
+      <Selecteur
+        libelle="Pack"
+        options={[
+          { cle: '', libelle: 'Choisis le pack…' },
+          ...aVendre.map((pack, i) => ({ cle: String(i), libelle: `${pack.libelle} · ${euros(pack.prix)}` })),
+          { cle: 'autre', libelle: 'Autre nombre de séances' },
+        ]}
+        valeur={packChoisi}
+        onChange={setPackChoisi}
       />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>
-        {aVendre.map((pack) => (
-          <View key={pack.libelle} style={{ flexGrow: 1 }}>
-            <Bouton
-              variante="discret"
-              libelle={`+ ${pack.libelle} · ${euros(prixSaisi ?? pack.prix)}`}
-              onPress={() => ajouter(pack)}
-              desactive={occupe || !prixValide}
+      {packChoisi === 'autre' && (
+        <Saisie
+          libelle="Nombre de séances"
+          type="nombre"
+          valeur={nbAutre}
+          onChange={setNbAutre}
+          erreur={nbAutre && !packAAjouter ? 'Écris un nombre de séances, comme 5 ou 20.' : undefined}
+        />
+      )}
+      {packChoisi !== '' && (
+        <>
+          <Saisie
+            libelle="Prix payé (€)"
+            type="nombre"
+            valeur={prixNegocie}
+            onChange={setPrixNegocie}
+            placeholder={packAAjouter ? String(packAAjouter.prix).replace('.', ',') : undefined}
+            erreur={prixValide ? undefined : 'Montant illisible.'}
+            aide={packAAjouter ? `Vide : ${euros(packAAjouter.prix)}.` : undefined}
+          />
+          {autresClients.length > 0 && (
+            <Selecteur
+              libelle="Partagé avec (facultatif)"
+              options={[
+                { cle: '', libelle: 'Personne d’autre' },
+                ...autresClients.map((c) => ({ cle: c.id, libelle: `${c.prenom} ${c.nom}`.trim() })),
+              ]}
+              valeur={partageA}
+              onChange={setPartageA}
             />
-          </View>
-        ))}
-      </View>
+          )}
+          <Texte doux style={{ fontSize: 13 }}>
+            Partagé : les séances de chacun, ensemble ou séparément, se décomptent du même pack.
+          </Texte>
+          <Bouton libelle="Ajouter le pack" onPress={() => packAAjouter && ajouter(packAAjouter)} desactive={occupe || !prixValide || !packAAjouter} chargement={occupe} />
+        </>
+      )}
       {dejaFaites && <Bouton variante="discret" libelle="Annuler la dernière séance décomptée" onPress={() => decompter(-1)} desactive={occupe} />}
       {erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{erreur}</Texte>}
     </Carte>

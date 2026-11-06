@@ -24,7 +24,8 @@ export interface DepotAbonnements {
   changer(clientId: string, modif: Partial<Abonnement>): Promise<void>;
   packs(clientId: string): Promise<PackSeances[]>;
   /** prix : tarif négocié au cas par cas ; sinon le prix du pack. */
-  ajouterPack(clientId: string, pack: PackAVendre, prix?: number): Promise<void>;
+  /** Rend l'identifiant du pack créé (pour le partager aussitôt). */
+  ajouterPack(clientId: string, pack: PackAVendre, prix?: number): Promise<string>;
   /** Pack partagé (couple, duo) : la séance faite par l'un ou l'autre se décompte une fois. */
   partagerPack(packId: string, clientId: string): Promise<void>;
   retirerPartage(packId: string, clientId: string): Promise<void>;
@@ -93,14 +94,16 @@ const demo: DepotAbonnements = {
     return memoire.packs.filter((p) => p.clientId === clientId || p.partageAvec?.some((x) => x.clientId === clientId));
   },
   async ajouterPack(clientId, pack, prix) {
+    const id = nouvelId();
     memoire.packs.push({
-      id: nouvelId(),
+      id,
       clientId,
       seancesTotal: pack.seances,
       seancesFaites: 0,
       prix: prix ?? pack.prix,
       acheteLe: aujourdhui(),
     });
+    return id;
   },
   async partagerPack(packId, clientId) {
     const p = memoire.packs.find((x) => x.id === packId);
@@ -241,6 +244,7 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
         statut: 'En attente',
         reference: `pack:${data.id}`,
       });
+      return data.id as string;
     },
     async supprimerPack(packId) {
       const { error } = await db.from('packs_seances').delete().eq('id', packId);
