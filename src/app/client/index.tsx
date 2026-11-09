@@ -14,10 +14,10 @@ import { Chargement, Erreur } from '@/ui/composants';
 import { AccordDonnees } from '@/ui/consentement';
 import { BoutonIcone, EnTete } from '@/ui/coque';
 import { LanceurMinuteurs, Minuteurs } from '@/ui/entrainement/minuteurs';
-import { EspaceClient, type OngletClient } from '@/ui/espace-client';
+import { EspaceClient, UNIVERS_CLIENT, type OngletClient } from '@/ui/espace-client';
 import { BoutonMessagesClient } from '@/ui/messagerie/conversation';
 import { useRappelsClient } from '@/ui/notifications/rappels';
-import { couleurs, espace, LARGEUR_CLIENT } from '@/ui/theme';
+import { couleurs, espace, LARGEUR_CLIENT, univers } from '@/ui/theme';
 
 const ONGLETS: OngletClient[] = ['accueil', 'programme', 'suivi', 'nutrition', 'moi'];
 
@@ -26,6 +26,7 @@ export default function AccueilClient() {
   const { onglet } = useLocalSearchParams<{ onglet?: string }>();
   const clientId = profil?.role === 'client' ? profil.clientId : '';
   const accord = useAccord(clientId);
+  const [ouvert, setOuvert] = useState<OngletClient>('accueil');
   // Rappels et notifications : seulement une fois l'accord RGPD donné, et l'accès ouvert.
   const pretPourRappels = profil?.role === 'client' && !profil.suspendu && !!accord.donnee && !accordAttendu(accord.donnee);
   useRappelsClient(pretPourRappels ? clientId : '', profil?.role === 'client' ? profil.prenom : '');
@@ -71,6 +72,7 @@ export default function AccueilClient() {
         <EnTete
           largeur={LARGEUR_CLIENT}
           sousTitre="Mon espace coaching"
+          univers={univers[UNIVERS_CLIENT[ouvert]]}
           droite={
             <>
               <BoutonMessagesClient clientId={profil.clientId} />
@@ -79,7 +81,7 @@ export default function AccueilClient() {
             </>
           }
         />
-        <EspaceClient clientId={profil.clientId} prenom={profil.prenom} ongletInitial={initial} />
+        <EspaceClient clientId={profil.clientId} prenom={profil.prenom} ongletInitial={initial} onOnglet={setOuvert} />
       </View>
     </Minuteurs>
   );

@@ -71,7 +71,8 @@ import { CyclesClients } from '@/ui/entrainement/cycles';
 import { EntrainementClient } from '@/ui/entrainement/suivi-client';
 import { DetailProgramme } from '@/ui/entrainement/programme';
 import { EditeurSeance } from '@/ui/entrainement/seance';
-import { couleurs, espace, LARGEUR_COACH, LARGEUR_LG } from '@/ui/theme';
+import { couleurs, espace, LARGEUR_COACH, LARGEUR_LG, univers, type CleUnivers } from '@/ui/theme';
+import { UniversPage } from '@/ui/univers';
 
 type Onglet = 'crm' | 'agenda' | 'airtable' | 'suivis' | 'prospects' | 'boosters' | 'bilan' | 'hebdo' | 'nutrition' | 'profil';
 const TOUS: Onglet[] = ['crm', 'agenda', 'airtable', 'suivis', 'prospects', 'boosters', 'bilan', 'hebdo', 'nutrition', 'profil'];
@@ -100,6 +101,18 @@ const visible = (o: Onglet): OngletVisible | 'profil' => (o === 'suivis' || o ==
 const SECTION_DE_LA_RUBRIQUE: Partial<Record<Rubrique, SectionProfil>> = { Profil: 'infos', Offres: 'offres', Automations: 'relances' };
 /** Prospects et Boosters ont quitté le menu de l'Accueil pour l'onglet Clients : leurs anciennes adresses y mènent. */
 const RUBRIQUE_DE_L_ONGLET: Partial<Record<Onglet, Rubrique>> = { prospects: 'Contacts', boosters: 'Boosters' };
+
+/** Couleur de chaque onglet : bleu l'agenda, rouge et doré les clients, vert la nutrition, rouge l'accueil et les programmes. */
+const UNIVERS_ONGLET: Record<OngletVisible | 'profil', CleUnivers> = {
+  crm: 'rouge',
+  agenda: 'bleu',
+  clients: 'rougeDore',
+  airtable: 'rouge',
+  nutrition: 'vert',
+  profil: 'rougeDore',
+};
+/** Dans l'Accueil, l'argent (paiements, bilan du mois) passe en ambre, les échanges en rouge et doré. */
+const UNIVERS_RUBRIQUE: Partial<Record<Rubrique, CleUnivers>> = { Paiements: 'ambre', Bilan: 'ambre', Messages: 'rougeDore', Documents: 'rougeDore' };
 
 type Rubrique = 'Accueil' | 'Bilan' | 'Messages' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Offres' | 'Automations' | 'Profil';
 const RUBRIQUES: OngletDef<Rubrique>[] = [
@@ -171,9 +184,16 @@ export default function EspaceCoach() {
     else router.push({ pathname: '/coach/client/[id]', params: { id: clientId } });
   };
 
+  const cleUnivers: CleUnivers = params.apercu
+    ? 'rouge'
+    : visible(onglet) === 'crm'
+      ? (UNIVERS_RUBRIQUE[rubrique] ?? 'rouge')
+      : UNIVERS_ONGLET[visible(onglet)];
+
   const enTete = (
     <EnTete
       largeur={LARGEUR_COACH}
+      univers={params.apercu ? undefined : univers[cleUnivers]}
       badge="Espace coach"
       email={email ?? (depot.mode === 'demo' ? 'Démonstration, sans compte' : '')}
       droite={
@@ -217,7 +237,8 @@ export default function EspaceCoach() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: couleurs.fond }}>
+    <UniversPage cle={cleUnivers}>
+    <View style={{ flex: 1, backgroundColor: couleurs.fond, backgroundImage: `linear-gradient(180deg, ${univers[cleUnivers].clair} 0%, ${couleurs.fond} 420px)` }}>
       {enTete}
       <DefilementClavier
         style={{ flex: 1 }}
@@ -229,7 +250,7 @@ export default function EspaceCoach() {
               <BandeauDemo />
             </View>
           )}
-          <OngletsCoach onglets={ONGLETS} valeur={visible(onglet)} onChange={(o) => naviguer(o === 'clients' ? 'suivis' : o)} />
+          <OngletsCoach onglets={ONGLETS} valeur={visible(onglet)} universDe={(o) => univers[UNIVERS_ONGLET[o]]} onChange={(o) => naviguer(o === 'clients' ? 'suivis' : o)} />
           {visible(onglet) === 'clients' && (
             <View style={{ marginBottom: espace(4) }}>
               <Puces>
@@ -316,6 +337,7 @@ export default function EspaceCoach() {
         </View>
       </DefilementClavier>
     </View>
+    </UniversPage>
   );
 }
 

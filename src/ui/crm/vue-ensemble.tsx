@@ -14,7 +14,7 @@ import { AgendaCoach } from '../agenda/agenda-coach';
 import { CeQuiSestPasse } from '../accueil/ce-qui-s-est-passe';
 import { BoutonContour } from '../coque';
 import { Carte } from '../composants';
-import { couleurs, espace, polices } from '../theme';
+import { couleurs, espace, polices, univers, type CleUnivers } from '../theme';
 import { adresseQuestionnaire, CarteRelance, dateCourte, EnvoiMessage, jourLisible, nomComplet, useCoachNom } from './commun';
 
 export type DonneesVueEnsemble = {
@@ -130,15 +130,15 @@ export function VueEnsemble({
         <Text style={[titreCarte, { marginBottom: 12 }]}>En bref</Text>
         <View style={{ gap: 8 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Chiffre libelle="Prospects" valeur={String(actifs.length)} onPress={() => onRubrique('Contacts')} />
-            <Chiffre libelle="Boosters" valeur={String(prochains.length)} onPress={() => onRubrique('Boosters')} />
-            <Chiffre libelle="En retard" valeur={String(enRetard)} alerte={enRetard > 0} />
+            <Chiffre teinte="rougeDore" libelle="Prospects" valeur={String(actifs.length)} onPress={() => onRubrique('Contacts')} />
+            <Chiffre teinte="bleu" libelle="Boosters" valeur={String(prochains.length)} onPress={() => onRubrique('Boosters')} />
+            <Chiffre teinte="rouge" libelle="En retard" valeur={String(enRetard)} alerte={enRetard > 0} />
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {/* Paiements « Payé » datés du mois en cours. */}
-            <Chiffre libelle="Encaissé ce mois" valeur={montantLisible(donnees.encaissements)} onPress={() => onRubrique('Paiements')} />
+            <Chiffre teinte="ambre" libelle="Encaissé ce mois" valeur={montantLisible(donnees.encaissements)} onPress={() => onRubrique('Paiements')} />
             {/* Paiements « En attente » : abonnements du mois et packs vendus, à passer en « Payé » une fois reçus. */}
-            <Chiffre libelle="À encaisser" valeur={montantLisible(donnees.aEncaisser)} alerte={donnees.aEncaisser > 0} onPress={() => onRubrique('Paiements')} />
+            <Chiffre teinte="ambre" libelle="À encaisser" valeur={montantLisible(donnees.aEncaisser)} alerte={donnees.aEncaisser > 0} onPress={() => onRubrique('Paiements')} />
           </View>
         </View>
       </Carte>
@@ -210,15 +210,31 @@ export function VueEnsemble({
   );
 }
 
-/** Une case de la carte « En bref » : libellé discret, chiffre en gras ; rouge quand il demande une action. */
-function Chiffre({ libelle, valeur, onPress, alerte }: { libelle: string; valeur: string; onPress?: () => void; alerte?: boolean }) {
+/**
+ * Une case de la carte « En bref » : libellé discret, chiffre en gras ; rouge quand il demande une action. Le fond pâle
+ * et le halo dans le coin donnent la couleur de son univers (ambre l'argent, bleu les rendez-vous…).
+ */
+function Chiffre({ libelle, valeur, onPress, alerte, teinte }: { libelle: string; valeur: string; onPress?: () => void; alerte?: boolean; teinte: CleUnivers }) {
+  const u = univers[teinte];
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={`${libelle} : ${valeur}`}
       onPress={onPress}
       disabled={!onPress}
-      style={({ pressed }) => ({ flex: 1, minWidth: 0, borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8, opacity: pressed ? 0.7 : 1 })}
+      style={({ pressed }) => ({
+        flex: 1,
+        minWidth: 0,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: couleurs.bordure,
+        borderRadius: 14,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        backgroundColor: couleurs.carte,
+        backgroundImage: `radial-gradient(circle at 100% 0%, ${u.accent}38 0%, ${u.accent}00 45%), linear-gradient(140deg, ${u.clair} 0%, #FFFFFF 80%)`,
+        opacity: pressed ? 0.7 : 1,
+      })}
     >
       <Text numberOfLines={1} style={{ fontSize: 12, fontFamily: polices.texte, color: couleurs.texteDoux }}>{libelle}</Text>
       <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 20, fontFamily: polices.texteGras, color: alerte ? couleurs.rouge : couleurs.texte, marginTop: 2 }}>

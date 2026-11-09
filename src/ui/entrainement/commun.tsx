@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 
 import { arrondi, couleurs, espace, polices } from '../theme';
+import { useUnivers } from '../univers';
 
 import { photoProgramme, type ProgrammeIllustre } from '@/data/photos-programmes';
 import { roleWeb } from '@/lib/role-web';
@@ -47,7 +48,8 @@ export function Action({
   /** Libellé lu par les lecteurs d'écran pour un bouton icône. */
   nom?: string;
 }) {
-  const fond = variante === 'plein' ? couleurs.rouge : variante === 'danger' ? '#DC2626' : variante === 'contour' ? couleurs.carte : 'transparent';
+  const u = useUnivers();
+  const fond = variante === 'plein' ? (u.cle === 'rouge' ? couleurs.rouge : u.uni) : variante === 'danger' ? '#DC2626' : variante === 'contour' ? couleurs.carte : 'transparent';
   const texte = variante === 'plein' || variante === 'danger' ? '#FFFFFF' : couleurs.texte;
   return (
     <Pressable
@@ -61,6 +63,7 @@ export function Action({
         petit && styles.actionPetite,
         !libelle && { width: petit ? 36 : 44, paddingHorizontal: 0 },
         { backgroundColor: fond },
+        variante === 'plein' && { backgroundImage: u.degrade },
         variante === 'contour' && { borderWidth: 1, borderColor: couleurs.saisie },
         (survol(e) || e.pressed) && variante !== 'plein' && variante !== 'danger' && { backgroundColor: couleurs.discret },
         { opacity: desactive ? 0.45 : e.pressed ? 0.85 : 1 },
