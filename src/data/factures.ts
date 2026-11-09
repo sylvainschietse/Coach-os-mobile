@@ -1,6 +1,6 @@
 // Factures : en-tête du coach, numérotation de chaque client, factures émises (lecture seule) et émission d'un bouton.
 // Les prélèvements, mois et séances du mois sont facturés d'office par la base ; ici, le coach facture une ligne d'un bouton.
-import { COULEUR_FACTURE, erreursEntete, MENTIONS_FACTURE, nettoyerPrefixe, type EnteteFacture, type Facture, type LigneFacture } from '@/domain/factures';
+import { COULEUR_FACTURE, erreursEntete, MENTIONS_FACTURE, nettoyerIban, nettoyerPrefixe, type EnteteFacture, type Facture, type LigneFacture } from '@/domain/factures';
 
 import { supabase } from './supabase';
 
@@ -50,6 +50,9 @@ let enteteDemo: EnteteFacture = {
   telephone: '06 48 64 08 45',
   siret: '51896650200016',
   mentions: MENTIONS_FACTURE,
+  tarifBase: '60',
+  iban: '',
+  bic: '',
   couleur: COULEUR_FACTURE,
 };
 const numerotationsDemo = new Map<string, Numerotation>();
@@ -83,7 +86,7 @@ export const factures = {
     if (!supabase) return enteteDemo;
     const { data, error } = await supabase
       .from('coachs')
-      .select('nom, telephone, facture_nom, facture_adresse, facture_telephone, facture_siret, facture_mentions, facture_couleur, facture_logo')
+      .select('nom, telephone, facture_nom, facture_adresse, facture_telephone, facture_siret, facture_mentions, facture_couleur, facture_logo, facture_iban, facture_bic, facture_tarif_base')
       .eq('id', await monCoach())
       .single();
     if (error || !data) throw new Error('Impossible de charger tes réglages de facture.');
@@ -95,6 +98,9 @@ export const factures = {
       mentions: data.facture_mentions ?? MENTIONS_FACTURE,
       couleur: data.facture_couleur ?? COULEUR_FACTURE,
       logo: data.facture_logo ?? undefined,
+      tarifBase: String(data.facture_tarif_base ?? 60),
+      iban: data.facture_iban ?? '',
+      bic: data.facture_bic ?? '',
     };
   },
 
@@ -110,6 +116,9 @@ export const factures = {
       facture_mentions: e.mentions.trim(),
       facture_couleur: e.couleur.toUpperCase(),
       facture_logo: e.logo ?? null,
+      facture_tarif_base: Number(e.tarifBase.replace(',', '.')),
+      facture_iban: nettoyerIban(e.iban) || null,
+      facture_bic: nettoyerIban(e.bic) || null,
     };
     if (!supabase) {
       enteteDemo = { ...e, couleur: ligne.facture_couleur };
@@ -119,15 +128,20 @@ export const factures = {
     if (error) throw new Error('Réglages non enregistrés, réessaie dans un instant.');
   },
 
-  /** Couleur et logo du coach, pour afficher une facture (coach ou client). */
-  async style(): Promise<{ couleur: string; logo?: string }> {
-    if (!supabase) return { couleur: enteteDemo.couleur, logo: enteteDemo.logo };
+  /** Couleur, logo et coordonnées bancaires du coach, pour afficher une facture (coach ou client). */
+  async style(): Promise<{ couleur: string; logo?: string; iban?: string; bic?: string }> {
+    if (!supabase) return { couleur: enteteDemo.couleur, logo: enteteDemo.logo, iban: enteteDemo.iban || undefined, bic: enteteDemo.bic || undefined };
     const { data: coach } = await supabase.rpc('mon_coach_id');
     const { data: duClient } = coach ? { data: null } : await supabase.rpc('coach_de_mon_client');
     const id = (coach ?? duClient) as string | null;
     if (!id) return { couleur: COULEUR_FACTURE };
-    const { data } = await supabase.from('coachs').select('facture_couleur, facture_logo').eq('id', id).maybeSingle();
-    return { couleur: data?.facture_couleur ?? COULEUR_FACTURE, logo: data?.facture_logo ?? undefined };
+    const { data } = await supabase.from('coachs').select('facture_couleur, facture_logo, facture_iban, facture_bic').eq('id', id).maybeSingle();
+    return {
+      couleur: data?.facture_couleur ?? COULEUR_FACTURE,
+      logo: data?.facture_logo ?? undefined,
+      iban: data?.facture_iban ?? undefined,
+      bic: data?.facture_bic ?? undefined,
+    };
   },
 
   /** Factures d'un client (coach), ou les siennes (client). Les plus récentes d'abord. */
