@@ -198,7 +198,7 @@ describe('factures à régler', () => {
     // Tarif de base 60 € : chaque ligne montre le tarif de base, le % de remise et le prix remisé.
     expect(f.lignes).toEqual([
       { libelle: 'Séances seul : 02/10, 09/10, 16/10, 29/10, 30/10', quantite: 5, prix_unitaire: 40, montant: 200, prix_base: 60, remise_pct: 33.3 },
-      { libelle: 'Séances avec Romain : 06/10, 15/10, 20/10', quantite: 3, prix_unitaire: 20, montant: 60, prix_base: 60, remise_pct: 66.7 },
+      { libelle: 'Séances avec Romain : 06/10, 15/10, 20/10', quantite: 3, prix_unitaire: 20, montant: 60, prix_base: 30, remise_pct: 33.3 },
     ]);
     const numero = f.numero;
     await db.query(`update public.paiements set montant = 150, notes = '09/10, 22/10, 26/10 · 50 € la séance' where id = $1`, [p.rows[0].id]);
@@ -222,7 +222,7 @@ describe('factures à régler', () => {
     expect(Number(f.total)).toBe(60);
     expect(f.lignes.map((l: any) => [l.libelle, l.prix_base, l.remise_pct, l.montant])).toEqual([
       ['Séance du 03/12', 60, 33.3, 40],
-      ['Séance du 10/12', 60, 66.7, 20],
+      ['Séance du 10/12 en duo', 30, 33.3, 20],
     ]);
     expect((await en(ids.userCoach1, `select public.facturer_mois($1, '2026-12') as id`, [ids.clientB])).rows[0].id).toBeNull();
     const liees = await en(ids.userCoach1, `select paiement_id from public.factures_paiements where facture_id = $1`, [f.id]);
