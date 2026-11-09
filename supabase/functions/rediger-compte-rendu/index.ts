@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     const reponse = await claude.beta.messages.parse({
       model: 'claude-opus-5-5',
       max_tokens: 16000,
-      output_config: { effort: 'medium', format: betaZodOutputFormat(Redaction) },
+      output_config: { effort: 'low', format: betaZodOutputFormat(Redaction) }, // low : la rédaction répond bien plus vite, les consignes suffisent à la guider
       // En cas de refus par les filtres de sécurité, l'API retente sur le modèle de repli recommandé.
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
