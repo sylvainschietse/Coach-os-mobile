@@ -68,11 +68,14 @@ function titrePeriode(vue: Vue, date: Date) {
   return memeMois ? `${du.getDate()} – ${fin.getDate()} ${mois(fin)}` : `${du.getDate()} ${mois(du)} – ${fin.getDate()} ${mois(fin)}`;
 }
 
-/** Réglages de l'agenda et Google Agenda : rangés dans Mon profil ; « Réglages » de l'agenda y mène. */
-export function AgendaCoach({ coachId, onReglages }: { coachId: string; onReglages: () => void }) {
+/**
+ * Réglages de l'agenda et Google Agenda : rangés dans Mon profil ; « Réglages » de l'agenda y mène.
+ * Sur l'accueil (`accueil`) : même agenda, ouvert sur le jour, sans Réglages ni alertes, pour rester court.
+ */
+export function AgendaCoach({ coachId, onReglages, accueil }: { coachId: string; onReglages?: () => void; accueil?: boolean }) {
   const { width } = useWindowDimensions();
   const large = width >= LARGEUR_LARGE;
-  const [vue, setVue] = useState<Vue>(large ? 'semaine' : 'jour');
+  const [vue, setVue] = useState<Vue>(large && !accueil ? 'semaine' : 'jour');
   const [date, setDate] = useState(() => new Date());
   const [edition, setEdition] = useState<{ rdv?: RendezVous; jour?: string; heure?: string; clientId?: string }>();
   const [boosterOuvert, setBoosterOuvert] = useState<BoosterAgenda>();
@@ -119,8 +122,8 @@ export function AgendaCoach({ coachId, onReglages }: { coachId: string; onReglag
           <Puce libelle="Mois" actif={vue === 'mois'} onPress={() => setVue('mois')} />
         </Puces>
         <View style={{ flexDirection: 'row', gap: espace(2) }}>
-          <BoutonContour libelle="Réglages" icone={Settings} iconeAGauche onPress={onReglages} />
-          <BoutonContour libelle="Rendez-vous" icone={CalendarPlus} iconeAGauche onPress={() => nouveau()} />
+          {onReglages && !accueil && <BoutonContour libelle="Réglages" icone={Settings} iconeAGauche onPress={onReglages} />}
+          <BoutonContour libelle={accueil ? 'RDV' : 'Rendez-vous'} icone={CalendarPlus} iconeAGauche onPress={() => nouveau()} />
         </View>
       </View>
 
@@ -151,7 +154,7 @@ export function AgendaCoach({ coachId, onReglages }: { coachId: string; onReglag
           <GrilleMois jours={jours} mois={date.getMonth()} rdv={liste} perso={occupations} boosters={lesBoosters} large={large} onJour={ouvrirJour} />
         ))}
 
-      <AlertesAgenda alertes={alertes} onProposer={(clientId) => nouveau(undefined, undefined, clientId)} />
+      {!accueil && <AlertesAgenda alertes={alertes} onProposer={(clientId) => nouveau(undefined, undefined, clientId)} />}
 
       {edition && clients.donnee && reglages.donnee && (
         <EditeurRendezVous
