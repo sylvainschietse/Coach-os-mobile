@@ -26,7 +26,7 @@ import {
   type Releve,
   type Resume,
 } from '@/domain/quotidien';
-import { accesAccordes, demanderAcces, etatHealthConnect, lirePas, lireSommeil, ouvrirReglages, type EtatHealthConnect } from '@/lib/health-connect';
+import { accesAccordes, demanderAcces, etatHealthConnect, lireNuit, lirePas, ouvrirReglages, type EtatHealthConnect } from '@/lib/health-connect';
 import { useCharger } from '@/lib/useCharger';
 
 import { BoutonContour } from '../coque';
@@ -232,7 +232,11 @@ function Telephone({
         const jour = decalerJour(aujourdhui, -i);
         const lus: [Indicateur, number | null][] = [];
         if (suivis.includes('pas')) lus.push(['pas', await lirePas(jour)]);
-        if (suivis.includes('sommeil')) lus.push(['sommeil', await lireSommeil(jour)]);
+        if (suivis.includes('sommeil') || suivis.includes('sommeil_qualite')) {
+          const nuit = await lireNuit(jour);
+          if (suivis.includes('sommeil')) lus.push(['sommeil', nuit.heures]);
+          if (suivis.includes('sommeil_qualite')) lus.push(['sommeil_qualite', nuit.qualite]);
+        }
         for (const [k, v] of lus) {
           const valeur = v === null ? null : k === 'sommeil' ? Math.round(v * 4) / 4 : Math.round(v);
           if (aImporter(releves, jour, k, valeur)) nouveaux[jour] = { ...nouveaux[jour], [k]: valeur };

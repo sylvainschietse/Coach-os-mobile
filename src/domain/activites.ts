@@ -115,6 +115,8 @@ export interface PeriodeSommeil {
   origine: string;
   /** Phases d'éveil ou hors du lit, retirées du temps dormi. */
   eveils: { debut: string; fin: string }[];
+  /** Phases de sommeil enregistrées par la montre (absentes si elle ne donne que l'heure du coucher et du lever). */
+  phases?: { type: 'leger' | 'profond' | 'paradoxal'; debut: string; fin: string }[];
 }
 
 const duree = (a: string, b: string) => Math.max(0, Date.parse(b) - Date.parse(a));
@@ -124,17 +126,53 @@ const duree = (a: string, b: string) => Math.max(0, Date.parse(b) - Date.parse(a
  * d'une seule application (celle qui en compte le plus) pour ne pas additionner montre et téléphone.
  */
 export function heuresDeSommeil(periodes: PeriodeSommeil[], jour: string): number | null {
+  const n = nuitDe(periodes, jour);
+  return n ? Math.round((n.dormi / 3600e3) * 100) / 100 : null;
+}
+
+const totalPhases = (l: { debut: string; fin: string }[]) => l.reduce((s, e) => s + duree(e.debut, e.fin), 0);
+
+/** La nuit retenue : périodes de l'application qui compte le plus de sommeil, avec leurs totaux en millisecondes. */
+function nuitDe(periodes: PeriodeSommeil[], jour: string) {
   const de = Date.parse(heureParis(ajouterJours(jour, -1), 18));
   const a = Date.parse(heureParis(jour, 14));
   const nuit = periodes.filter((p) => Date.parse(p.fin) > de && Date.parse(p.fin) <= a);
   if (!nuit.length) return null;
-  const parOrigine = new Map<string, number>();
-  for (const p of nuit) {
-    const eveil = p.eveils.reduce((s, e) => s + duree(e.debut, e.fin), 0);
-    parOrigine.set(p.origine, (parOrigine.get(p.origine) ?? 0) + Math.max(0, duree(p.debut, p.fin) - eveil));
-  }
-  const ms = Math.max(...parOrigine.values());
-  return Math.round((ms / 3600e3) * 100) / 100;
+  const parOrigine = new Map<string, PeriodeSommeil[]>();
+  for (const p of nuit) parOrigine.set(p.origine, [...(parOrigine.get(p.origine) ?? []), p]);
+  const totaux = [...parOrigine.values()].map((l) => {
+    const auLit = l.reduce((s, p) => s + duree(p.debut, p.fin), 0);
+    const eveil = l.reduce((s, p) => s + totalPhases(p.eveils), 0);
+    const phases = l.flatMap((p) => p.phases ?? []);
+    return {
+      auLit,
+      eveil,
+      dormi: Math.max(0, auLit - eveil),
+      profond: totalPhases(phases.filter((x) => x.type === 'profond')),
+      paradoxal: totalPhases(phases.filter((x) => x.type === 'paradoxal')),
+      avecPhases: phases.length > 0,
+    };
+  });
+  return totaux.reduce((m, t) => (t.dormi > m.dormi ? t : m));
+}
+
+/**
+ * Note de qualité de la nuit (1 à 5), estimée d'après les phases données par la montre. Health Connect ne transmet pas
+ * le score de sommeil de Garmin ou Samsung : on le remplace par une note sur 100 points ramenée à 5 —
+ * durée (40 points, pleine entre 7 et 9 h), sommeil profond (20, plein à 15 %), paradoxal (20, plein à 20 %)
+ * et éveils (20, pleins sous 5 % du temps au lit, nuls à 20 %). Sans phases, pas de note : la durée seule ne suffit pas.
+ */
+export function qualiteDeSommeil(periodes: PeriodeSommeil[], jour: string): number | null {
+  const n = nuitDe(periodes, jour);
+  if (!n || !n.avecPhases || !n.dormi) return null;
+  const h = n.dormi / 3600e3;
+  const borne = (x: number) => Math.max(0, Math.min(1, x));
+  const points =
+    40 * (h < 7 ? borne((h - 4) / 3) : h <= 9 ? 1 : borne(1 - (h - 9) / 3)) +
+    20 * borne(n.profond / n.dormi / 0.15) +
+    20 * borne(n.paradoxal / n.dormi / 0.2) +
+    20 * borne(1 - (n.eveil / n.auLit - 0.05) / 0.15);
+  return points >= 85 ? 5 : points >= 70 ? 4 : points >= 55 ? 3 : points >= 40 ? 2 : 1;
 }
 
 // ---------- Health Connect et Apple Santé ----------
