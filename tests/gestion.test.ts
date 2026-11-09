@@ -160,3 +160,22 @@ describe('détail des séances d’une ligne du mois', () => {
     expect(jourMois('3/9')).toBe('03/09');
   });
 });
+
+describe('pack partagé', () => {
+  it('compte les séances de chacun seul, à deux et hors agenda', async () => {
+    const { detailPack, detailPackLisible } = await import('@/domain/abonnements');
+    const d = detailPack(
+      5,
+      [
+        { rendezVousId: 'r1', clientId: 'b' },
+        { rendezVousId: 'r1', clientId: 'r' },
+        { rendezVousId: 'r2', clientId: 'b' },
+        { rendezVousId: 'r3', clientId: 'r' },
+        { rendezVousId: 'r4', clientId: 'b' },
+      ],
+      new Map([['b', 'Benjamin'], ['r', 'Romain']]),
+    );
+    expect(d).toEqual({ seuls: [{ clientId: 'b', prenom: 'Benjamin', n: 2 }, { clientId: 'r', prenom: 'Romain', n: 1 }], aDeux: 1, horsAgenda: 1 });
+    expect(detailPackLisible(d)).toBe('Benjamin seul : 2 · Romain seul : 1 · à deux : 1 · hors agenda : 1');
+  });
+});

@@ -6,6 +6,7 @@ import {
   remiseEnCours,
   TARIFS,
   type Abonnement,
+  detailPack,
   type PackSeances,
   type Remise,
   type StatutStripe,
@@ -221,7 +222,23 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
         .or(filtre)
         .order('achete_le');
       if (error) throw new Error('Impossible de lire les séances. Vérifie ta connexion.');
-      return (data as unknown as Ligne[]).map((l) => versPack(l, clientId));
+      const packs = (data as unknown as Ligne[]).map((l) => versPack(l, clientId));
+      // Pack partagé : qui a fait quelles séances, seul ou à deux.
+      const enCommun = packs.filter((p) => p.partageAvec?.length || p.titulaire);
+      if (enCommun.length) {
+        const rv = await db.from('rendez_vous_participants').select('rendez_vous_id, client_id, pack_id').in('pack_id', enCommun.map((p) => p.id));
+        if (!rv.error)
+          for (const p of enCommun) {
+            const l = (data as unknown as Ligne[]).find((x) => x.id === p.id)!;
+            const prenoms = new Map<string, string>([[l.client_id, l.clients?.prenom ?? ''], ...(l.packs_partages ?? []).map((x) => [x.client_id, x.clients?.prenom ?? ''] as [string, string])]);
+            p.detail = detailPack(
+              p.seancesFaites,
+              (rv.data ?? []).filter((x) => x.pack_id === p.id).map((x) => ({ rendezVousId: x.rendez_vous_id as string, clientId: x.client_id as string })),
+              prenoms,
+            );
+          }
+      }
+      return packs;
     },
     async soldePacks() {
       const { data, error } = await db.from('packs_seances').select('id, seances_total, seances_faites');
