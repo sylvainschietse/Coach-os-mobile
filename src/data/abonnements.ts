@@ -6,6 +6,7 @@ import {
   remiseEnCours,
   TARIFS,
   type Abonnement,
+  detailPack,
   type PackSeances,
   type Remise,
   type StatutStripe,
@@ -23,6 +24,8 @@ export interface DepotAbonnements {
   /** Réservé au coach : la base refuse qu'un client change son propre abonnement. */
   changer(clientId: string, modif: Partial<Abonnement>): Promise<void>;
   packs(clientId: string): Promise<PackSeances[]>;
+  /** Décompte de tous les packs du coach, par identifiant de pack (pour la liste Paiements). */
+  soldePacks(): Promise<Map<string, { total: number; faites: number }>>;
   /** prix : tarif négocié au cas par cas ; sinon le prix du pack. */
   /** Rend l'identifiant du pack créé (pour le partager aussitôt). */
   ajouterPack(clientId: string, pack: PackAVendre, prix?: number): Promise<string>;
@@ -92,6 +95,9 @@ const demo: DepotAbonnements = {
   },
   async packs(clientId) {
     return memoire.packs.filter((p) => p.clientId === clientId || p.partageAvec?.some((x) => x.clientId === clientId));
+  },
+  async soldePacks() {
+    return new Map(memoire.packs.map((p) => [p.id, { total: p.seancesTotal, faites: p.seancesFaites }]));
   },
   async ajouterPack(clientId, pack, prix) {
     const id = nouvelId();
@@ -212,11 +218,32 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
       const filtre = ids.length ? `client_id.eq.${clientId},id.in.(${ids.join(',')})` : `client_id.eq.${clientId}`;
       const { data, error } = await db
         .from('packs_seances')
-        .select('id, client_id, seances_total, seances_faites, prix, achete_le, clients(prenom), packs_partages(client_id, clients(prenom))')
+        .select('id, client_id, seances_total, seances_faites, prix, achete_le, clients!packs_seances_client_id_fkey(prenom), packs_partages(client_id, clients!packs_partages_client_id_fkey(prenom))')
         .or(filtre)
         .order('achete_le');
       if (error) throw new Error('Impossible de lire les séances. Vérifie ta connexion.');
-      return (data as unknown as Ligne[]).map((l) => versPack(l, clientId));
+      const packs = (data as unknown as Ligne[]).map((l) => versPack(l, clientId));
+      // Pack partagé : qui a fait quelles séances, seul ou à deux.
+      const enCommun = packs.filter((p) => p.partageAvec?.length || p.titulaire);
+      if (enCommun.length) {
+        const rv = await db.from('rendez_vous_participants').select('rendez_vous_id, client_id, pack_id').in('pack_id', enCommun.map((p) => p.id));
+        if (!rv.error)
+          for (const p of enCommun) {
+            const l = (data as unknown as Ligne[]).find((x) => x.id === p.id)!;
+            const prenoms = new Map<string, string>([[l.client_id, l.clients?.prenom ?? ''], ...(l.packs_partages ?? []).map((x) => [x.client_id, x.clients?.prenom ?? ''] as [string, string])]);
+            p.detail = detailPack(
+              p.seancesFaites,
+              (rv.data ?? []).filter((x) => x.pack_id === p.id).map((x) => ({ rendezVousId: x.rendez_vous_id as string, clientId: x.client_id as string })),
+              prenoms,
+            );
+          }
+      }
+      return packs;
+    },
+    async soldePacks() {
+      const { data, error } = await db.from('packs_seances').select('id, seances_total, seances_faites');
+      if (error) throw new Error('Impossible de lire les séances. Vérifie ta connexion.');
+      return new Map((data ?? []).map((p) => [p.id as string, { total: Number(p.seances_total), faites: Number(p.seances_faites) }]));
     },
     async partagerPack(packId, clientId) {
       const { error } = await db.from('packs_partages').insert({ pack_id: packId, client_id: clientId });

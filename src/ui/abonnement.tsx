@@ -18,6 +18,7 @@ import {
   prixAbonnement,
   prixAvecRemise,
   remiseEnCours,
+  detailPackLisible,
   restantes,
   soldeSeances,
   statutOuvreAcces,
@@ -433,6 +434,7 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
                 {p.seancesFaites > 1 ? 's' : ''}
                 {p.titulaire ? ` · pack de ${p.titulaire.prenom || 'un autre client'}, partagé` : ''}
               </Texte>
+              {p.detail && <Texte doux style={{ fontSize: 13 }}>{detailPackLisible(p.detail)}</Texte>}
               {!p.titulaire &&
                 p.partageAvec?.map((x) => (
                   <View key={x.clientId} style={{ flexDirection: 'row', alignItems: 'center', gap: espace(2) }}>

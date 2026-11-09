@@ -130,6 +130,41 @@ export interface PackSeances {
   partageAvec?: { clientId: string; prenom: string }[];
   /** Pack d'une autre personne, partagé avec ce client. */
   titulaire?: { clientId: string; prenom: string };
+  /** Pack partagé : séances faites par chacun seul, à deux, et hors agenda (bouton « Séance faite »). */
+  detail?: { seuls: { clientId: string; prenom: string; n: number }[]; aDeux: number; horsAgenda: number };
+}
+
+/**
+ * Détail d'un pack partagé d'après les participants des rendez-vous qui l'ont utilisé :
+ * un rendez-vous où plusieurs personnes du pack étaient là compte « à deux ».
+ */
+export function detailPack(
+  faites: number,
+  participants: { rendezVousId: string; clientId: string }[],
+  prenoms: Map<string, string>,
+): NonNullable<PackSeances['detail']> {
+  const parRdv = new Map<string, Set<string>>();
+  for (const x of participants) parRdv.set(x.rendezVousId, (parRdv.get(x.rendezVousId) ?? new Set()).add(x.clientId));
+  let aDeux = 0;
+  const seuls = new Map<string, number>();
+  for (const qui of parRdv.values()) {
+    if (qui.size > 1) aDeux++;
+    else for (const c of qui) seuls.set(c, (seuls.get(c) ?? 0) + 1);
+  }
+  return {
+    seuls: [...prenoms].map(([clientId, prenom]) => ({ clientId, prenom, n: seuls.get(clientId) ?? 0 })),
+    aDeux,
+    horsAgenda: Math.max(0, faites - parRdv.size),
+  };
+}
+
+/** « Benjamin seul : 2 · Romain seul : 1 · à deux : 3 · hors agenda : 1 ». */
+export function detailPackLisible(d: NonNullable<PackSeances['detail']>) {
+  return [
+    ...d.seuls.map((x) => `${x.prenom || 'un client'} seul : ${x.n}`),
+    `à deux : ${d.aDeux}`,
+    ...(d.horsAgenda ? [`hors agenda : ${d.horsAgenda}`] : []),
+  ].join(' · ');
 }
 
 export const restantes = (p: PackSeances) => p.seancesTotal - p.seancesFaites;
