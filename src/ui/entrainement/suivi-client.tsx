@@ -1,9 +1,9 @@
 // Entraînement d'un client vu par le coach : où il en est dans son cycle, ses séances semaine par semaine
 // (vert faite, rouge manquée, orange à venir), le détail d'une séance faite comparé à la fois précédente,
 // et les évolutions par exercice et par semaine.
-import { ArrowDown, ArrowRight, ArrowUp, Check, Clock, Plus, Video, X } from 'lucide-react-native';
+import { ArrowDown, ArrowRight, ArrowUp, Video } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 import { activites } from '@/data/activites';
 import { entrainement } from '@/data/entrainement';
@@ -20,9 +20,7 @@ import {
   detailSeance,
   ressentiMoyen,
   semainesDuCycle,
-  type Pastille,
   type PointExercice,
-  type StatutPastille,
 } from '@/domain/suivi-entrainement';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
@@ -31,15 +29,8 @@ import { DetailActiviteLibre, resumeActivite } from '../suivi/activite-libre';
 import { Courbe } from '../suivi/courbe';
 import { couleurs, polices } from '../theme';
 import { Action, Ligne, TexteLong, jourCourt, ts } from './commun';
+import { GrilleSemaines, jourMois, Legende } from './grille-semaines';
 import { serieLisible, VideosMouvementCoach } from './videos-mouvement';
-
-const STATUTS: Record<StatutPastille, { libelle: string; couleur: string; fond: string; Icone: typeof Check }> = {
-  faite: { libelle: 'Faite', couleur: couleurs.vert, fond: couleurs.vertClair, Icone: Check },
-  manquee: { libelle: 'Manquée', couleur: couleurs.rouge, fond: couleurs.rougeClair, Icone: X },
-  // Orange franc (ambre) : le rouge-orangé du thème se confond avec le rouge « manquée » sur une pastille.
-  prevue: { libelle: 'À venir', couleur: '#E68A00', fond: '#FFF4DE', Icone: Clock },
-  libre: { libelle: 'Activité libre', couleur: couleurs.bleu, fond: '#E8F0FE', Icone: Plus },
-};
 
 const MESURES: { cle: keyof Omit<PointExercice, 'date'>; libelle: string; unite: string }[] = [
   { cle: 'chargeMax', libelle: 'Charge max', unite: 'kg' },
@@ -49,8 +40,6 @@ const MESURES: { cle: keyof Omit<PointExercice, 'date'>; libelle: string; unite:
   { cle: 'duree', libelle: 'Durée', unite: 's' },
 ];
 
-/** « 5 oct. » */
-const jourMois = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 const joursDepuis = (d: string, jour: string) => Math.round((new Date(`${jour}T12:00:00Z`).getTime() - new Date(`${d}T12:00:00Z`).getTime()) / 86_400_000);
 const ilYa = (n: number) => (n <= 0 ? 'aujourd’hui' : n === 1 ? 'hier' : `il y a ${n} jours`);
 
@@ -235,38 +224,6 @@ function Chiffre({ libelle, valeur, detail }: { libelle: string; valeur: string;
   );
 }
 
-function Rond({ p, choisi, onPress }: { p: Pastille; choisi: boolean; onPress: () => void }) {
-  const s = STATUTS[p.statut];
-  const quand = p.date ? jourMois(p.date) : 'pas de date';
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${titreClient(p.titre)}, ${quand} : ${s.libelle.toLowerCase()}`}
-      accessibilityState={{ selected: choisi }}
-      onPress={onPress}
-      style={{ alignItems: 'center', gap: 2, width: 46 }}
-    >
-      <View
-        style={{
-          width: 34,
-          height: 34,
-          borderRadius: 17,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: p.statut === 'faite' || p.statut === 'libre' ? s.couleur : s.fond,
-          borderWidth: choisi ? 3 : 1.5,
-          borderColor: choisi ? couleurs.noir : s.couleur,
-        }}
-      >
-        <s.Icone size={16} color={p.statut === 'faite' || p.statut === 'libre' ? '#FFFFFF' : s.couleur} />
-      </View>
-      <Text numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }}>
-        {p.date ? jourMois(p.date) : '—'}
-      </Text>
-    </Pressable>
-  );
-}
-
 function Semaines({
   semaines,
   realisations,
@@ -293,49 +250,12 @@ function Semaines({
   return (
     <View style={ts.carte}>
       <Text style={ts.titreSection}>Semaine par semaine</Text>
-      <Ligne style={{ gap: 12 }}>
-        {(Object.keys(STATUTS) as StatutPastille[]).map((k) => (
-          <View key={k} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: STATUTS[k].couleur }} />
-            <Text style={ts.doux}>{STATUTS[k].libelle}</Text>
-          </View>
-        ))}
-      </Ligne>
-      <View style={{ gap: 4 }}>
-        {semaines.map((s) => (
-          <View
-            key={s.numero}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 4,
-              paddingVertical: 8,
-              paddingHorizontal: 6,
-              borderRadius: 10,
-              backgroundColor: s.enCours ? couleurs.fond : 'transparent',
-            }}
-          >
-            <View style={{ width: 70 }}>
-              <Text style={ts.titreChamp}>Semaine {s.numero}</Text>
-              <Text style={ts.doux}>{s.enCours ? 'en cours' : `${jourMois(s.debut)}`}</Text>
-            </View>
-            <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 2 }}>
-              {s.pastilles.length === 0 ? (
-                <Text style={ts.doux}>Rien de prévu</Text>
-              ) : (
-                s.pastilles.map((p, i) => (
-                  <Rond
-                    key={`${s.numero}-${i}`}
-                    p={p}
-                    choisi={choix ? choix.semaine === s.numero && choix.index === i : p.realisationId === derniere?.id && !!p.realisationId}
-                    onPress={() => setChoix({ semaine: s.numero, index: i })}
-                  />
-                ))
-              )}
-            </View>
-          </View>
-        ))}
-      </View>
+      <Legende />
+      <GrilleSemaines
+        semaines={semaines}
+        estChoisi={(c, p) => (choix ? choix.semaine === c.semaine && choix.index === c.index : p.realisationId === derniere?.id && !!p.realisationId)}
+        onChoisir={setChoix}
+      />
       {libre ? (
         <View style={{ borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: 12, gap: 8 }}>
           <Text style={ts.titre}>{titreActivite(libre)}</Text>
@@ -366,7 +286,7 @@ function Semaines({
   );
 }
 
-function DetailSeance({
+export function DetailSeance({
   r,
   toutes,
   prescriptions,

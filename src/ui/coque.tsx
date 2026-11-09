@@ -139,8 +139,10 @@ export function SousNav<T extends string>({
   grille?: 'suivi' | 'nutrition';
 }) {
   const petit = useWindowDimensions().width <= 640;
-  const colonnes = grille === 'suivi' ? (petit ? 2 : 4) : 5;
-  const bouton = (o: OngletDef<T>) => {
+  const colonnes = grille === 'suivi' ? (petit ? 2 : Math.min(onglets.length, 5)) : 5;
+  const bouton = (o: OngletDef<T>, i: number) => {
+    // Nombre impair sur deux colonnes : le dernier prend toute la largeur au lieu de rester seul à gauche.
+    const seulEnBas = grille === 'suivi' && colonnes === 2 && onglets.length % 2 === 1 && i === onglets.length - 1;
     const actif = o.cle === valeur;
     return (
       <Pressable
@@ -152,7 +154,7 @@ export function SousNav<T extends string>({
         onPress={() => onChange(o.cle)}
         style={[
           styles.sousOnglet,
-          grille ? { width: `${100 / colonnes}%`, padding: 3 } : { flexGrow: 1 },
+          grille ? { width: seulEnBas ? '100%' : `${100 / colonnes}%`, padding: 3 } : { flexGrow: 1 },
         ]}
       >
         <View style={[styles.sousOngletInterne, grille === 'nutrition' && { paddingHorizontal: 2 }, actif && styles.sousOngletActif]}>

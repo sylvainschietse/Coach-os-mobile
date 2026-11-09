@@ -10,7 +10,8 @@ import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-na
 
 import { entrainement } from '@/data/entrainement';
 import { ecouterVideos, videos } from '@/data/videos-mouvement';
-import { dureeCourte, formatDeLigne, lireObjectif, prescriptionClient, suggestionPourcentage, titreClient, typeDeLigne, type Reference } from '@/domain/entrainement';
+import { heureParis } from '@/domain/activites';
+import { aujourdhuiParis, dureeCourte, formatDeLigne, lireObjectif, prescriptionClient, suggestionPourcentage, titreClient, typeDeLigne, type Reference } from '@/domain/entrainement';
 import type { RealisationLue } from '@/domain/entrainement-etat';
 import { circuitAlterne, resumeAlternance, resumeMinuteur } from '@/domain/minuteur';
 import type { LignePrescription, Mesure, Seance, SerieRealisee, Valeurs } from '@/domain/types';
@@ -65,9 +66,12 @@ export function SeanceLog({
   ouverture,
   ouverteAuDepart,
   apercu,
+  jour,
   onRepos,
   onEnregistre,
 }: {
+  /** Séance faite un autre jour (ajoutée après coup depuis le suivi) : enregistrée à midi ce jour-là. */
+  jour?: string;
   clientId: string;
   cycleId: string;
   seance: Seance;
@@ -158,6 +162,7 @@ export function SeanceLog({
     requestAnimationFrame(() => commentaire.current?.focus());
   };
 
+  const autreJour = jour && jour !== aujourdhuiParis() ? heureParis(jour, 12) : undefined;
   const enregistrer = async () => {
     if (envoi.current || apercu) return;
     envoi.current = true;
@@ -180,8 +185,8 @@ export function SeanceLog({
         seanceId: seance.id,
         cycleId,
         planificationId,
-        debut: d.debut,
-        fin: new Date().toISOString(),
+        debut: autreJour ? autreJour : d.debut,
+        fin: autreJour ? autreJour : new Date().toISOString(),
         note: d.note ?? undefined,
         // Séance d'activité (RPM, yoga…) validée sans ressenti ni commentaire : la base demande au moins une trace.
         commentaire: activite && d.note === null && !d.com.trim() ? 'Séance faite.' : d.com,

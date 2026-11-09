@@ -301,6 +301,16 @@ export function FormulaireActiviteLibre({
   // Dernier poids connu du client, pour estimer la dépense (70 kg sinon).
   const poids = useCharger(async () => (await depot.mensurations(clientId).catch(() => [])).find((m) => m.poidsKg)?.poidsKg, `poids-${clientId}`);
   const calories = sport && minutes ? estimerCalories({ sport, titre, dureeS: minutes * 60, ressenti }, poids.donnee) : undefined;
+  // Kcal données par le client (montre, machine de la salle) : elles remplacent l'estimation.
+  const [kcal, setKcal] = useState('');
+  const [kcalLues, setKcalLues] = useState(!existante?.calories);
+  if (!kcalLues && (poids.donnee !== null || poids.erreur) && existante?.calories) {
+    setKcalLues(true);
+    // À la modification : on ne reprend le chiffre que s'il avait été saisi (différent de l'estimation).
+    const estimee = estimerCalories({ sport: existante.sport, titre: existante.titre ?? '', dureeS: existante.dureeS, ressenti: existante.ressenti }, poids.donnee);
+    if (existante.calories !== estimee) setKcal(String(existante.calories));
+  }
+  const kcalSaisies = nombre(kcal);
 
   const date =
     jour === 'aujourdhui' ? aujourdhui : jour === 'hier' ? ajouterJours(aujourdhui, -1) : jour === 'avant-hier' ? ajouterJours(aujourdhui, -2) : lireDate(autreDate);
@@ -323,7 +333,7 @@ export function FormulaireActiviteLibre({
       ressenti,
       note,
       exercices: montrerExercices ? exercices : [],
-      calories: estimerCalories({ sport, titre, dureeS, ressenti }, poids.donnee),
+      calories: kcalSaisies !== undefined ? Math.round(kcalSaisies) : estimerCalories({ sport, titre, dureeS, ressenti }, poids.donnee),
     };
   }
 
@@ -414,11 +424,14 @@ export function FormulaireActiviteLibre({
         </View>
       </View>
 
-      {!!calories && (
-        <Texte doux style={{ fontSize: 13 }}>
-          Dépense estimée : environ {calories} kcal{poids.donnee ? '' : ' (calculée pour 70 kg, ajoute ton poids dans tes mensurations pour l’affiner)'}.
-        </Texte>
-      )}
+      <View style={{ gap: espace(1) }}>
+        <ChampTexte libelle="Kcal dépensées (si tu les connais)" valeur={kcal} onChange={setKcal} type="nombre" placeholder={calories ? `environ ${calories}` : 'facultatif'} />
+        {kcalSaisies === undefined && !!calories && (
+          <Texte doux style={{ fontSize: 13 }}>
+            Sinon, dépense estimée : environ {calories} kcal{poids.donnee ? '' : ' (calculée pour 70 kg, ajoute ton poids dans tes mensurations pour l’affiner)'}.
+          </Texte>
+        )}
+      </View>
 
       {montrerExercices ? (
         <Exercices exercices={exercices} onChange={setExercices} />
