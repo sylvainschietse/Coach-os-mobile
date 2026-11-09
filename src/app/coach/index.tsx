@@ -47,6 +47,7 @@ import {
 import { Carte, Chargement, Erreur, Puce, Puces, Texte } from '@/ui/composants';
 import { Bilans, EditeurBilan } from '@/ui/crm/bilans';
 import { Boosters } from '@/ui/crm/boosters';
+import { BoutonCloche } from '@/ui/notifications/cloche';
 import { EspaceProfil, SECTIONS_PROFIL, type SectionProfil } from '@/ui/espace-profil';
 import { BoutonMessages, useNonLus } from '@/ui/messagerie/conversation';
 import { ConversationsCoach } from '@/ui/messagerie/conversations-coach';
@@ -179,6 +180,7 @@ export default function EspaceCoach() {
         <>
           {/* « Voir son appli » depuis la fiche : l'appli telle que ce client la voit, et le retour à l'espace coach. */}
           {params.apercu && <CommutateurApercu valeur="client" onChange={() => router.setParams({ apercu: undefined })} />}
+          {!params.apercu && <BoutonCloche />}
           {!params.apercu && <BoutonMessages nonLus={nonLus} onPress={() => naviguer('crm', 'Messages')} />}
           {/* Zite gérait la session hors de l'app : sans ce bouton, impossible de changer de compte. */}
           {/* Mon profil : infos, facturation, offres, réglages de l'agenda, relances ; la déconnexion y est aussi. */}

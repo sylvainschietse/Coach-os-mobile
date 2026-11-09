@@ -13,6 +13,7 @@ import { SessionProvider, useSession } from '@/data/session';
 import { prevenirMessages } from '@/data/messagerie';
 import { preparerNotifications } from '@/lib/notifications';
 import { preparerCanaux } from '@/lib/rappels';
+import { prevenirCloche } from '@/data/cloche';
 import { couleurs, polices } from '@/ui/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -98,6 +99,7 @@ export default function RootLayout() {
         ? { remove: () => undefined }
         : Notifications.addNotificationReceivedListener((n) => {
             if (n.request.content.data?.genre === 'message') prevenirMessages();
+            else prevenirCloche();
           });
     envoyerEnAttente();
     // Au retour sur l'app (réseau revenu en salle), on renvoie ce qui attend.

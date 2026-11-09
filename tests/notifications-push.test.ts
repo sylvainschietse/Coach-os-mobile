@@ -174,3 +174,30 @@ describe('client inactif', () => {
     expect((await recues(ids.userCoach)).map((n) => n.titre)).toEqual(['Paul décroche']);
   });
 });
+
+describe('cloche', () => {
+  it('chacun marque les siennes comme lues, pas celles des autres', async () => {
+    await en(ids.userClientA, `insert into public.messages (coach_id, client_id, auteur, texte) values ($1, $2, 'client', 'Un')`, [ids.coach, ids.clientA]);
+    await en(ids.userCoach, `insert into public.programmes (coach_id, client_id, titre) values ($1, $2, 'Cardio')`, [ids.coach, ids.clientA]);
+    await en(ids.userClientA, 'select public.marquer_notifications_lues()');
+    const lues = (await db.query<{ user_id: string; lue: boolean }>('select user_id, lue_le is not null as lue from public.notifications order by user_id')).rows;
+    expect(lues).toEqual([
+      { user_id: ids.userCoach, lue: false },
+      { user_id: ids.userClientA, lue: true },
+    ]);
+  });
+
+  it('une séance libre du client prévient le coach ; un vieil import de la montre, non', async () => {
+    await db.exec(`
+      insert into public.activites_sport (coach_id, client_id, source, id_externe, sport, titre, debut, duree_s) values
+        ('${ids.coach}', '${ids.clientA}', 'manuel', 'a1', 'musculation', 'Jambes', now(), 2700),
+        ('${ids.coach}', '${ids.clientA}', 'health_connect', 'a2', 'course', '', now() - interval '10 days', 1800),
+        ('${ids.coach}', '${ids.clientA}', 'health_connect', 'a3', 'course', '', now() - interval '2 hours', 1800);
+      update public.activites_sport set distance_m = 5200 where id_externe = 'a3';
+    `);
+    expect((await recues(ids.userCoach)).map((n) => [n.titre, n.corps])).toEqual([
+      ['Inès a ajouté une séance libre', 'Jambes · 45 min'],
+      ['Inès a fait une activité', 'Course · 30 min'],
+    ]);
+  });
+});
