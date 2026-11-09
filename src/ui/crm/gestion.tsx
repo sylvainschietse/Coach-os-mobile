@@ -2,15 +2,18 @@
 // recherche, filtre de statut, « Inclure les dossiers archivés », filtre « Dossier : X », Ouvrir et Supprimer.
 import { useFocusEffect } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { crm, ecouterCrm } from '@/data/crm';
 import { factures } from '@/data/factures';
 import { ecrireJour, jourLocal, lireJour, MODELES, rediger, type Carnet, type Contact, type Relance } from '@/domain/crm';
 import {
   FORMULES,
+  moisDe,
+  moisLisible,
   montantLisible,
   MOYENS_PAIEMENT,
+  parClient,
   PRIORITES_TACHE,
   statutTache,
   STATUTS_COACHING,
@@ -89,6 +92,9 @@ export function Gestion({
   const [archives, setArchives] = useState(false);
   const [occupe, setOccupe] = useState<string>();
   const [erreur, setErreur] = useState<string>();
+  // Paiements : un mois à la fois, puis par client (repliés).
+  const [moisChoisi, setMoisChoisi] = useState<string>();
+  const [ouverts, setOuverts] = useState<Set<string>>(new Set());
 
   if (charge.erreur && !charge.donnee)
     return (
@@ -110,43 +116,13 @@ export function Gestion({
     .filter((l) => !q || `${l.recherche} ${nomContact(l.contactId)}`.toLowerCase().includes(q))
     .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
 
-  async function terminer(id: string) {
-    setOccupe(id);
-    setErreur(undefined);
-    try {
-      await crm.terminerTache(id);
-    } catch (e) {
-      setErreur(e instanceof Error ? e.message : 'Action non confirmée');
-    } finally {
-      setOccupe(undefined);
-    }
-  }
+  // Paiements : mois présents, du plus récent au plus ancien ; par défaut le plus récent.
+  const moisListe = [...new Set(visibles.map((l) => moisDe(l.date)))].sort((a, b) => (a === 'sans-date' ? 1 : b === 'sans-date' ? -1 : b.localeCompare(a)));
+  const mois = moisChoisi && moisListe.includes(moisChoisi) ? moisChoisi : (moisListe[0] ?? '');
+  const iMois = moisListe.indexOf(mois);
+  const groupes = module === 'Paiements' ? parClient(visibles.filter((l) => moisDe(l.date) === mois), nomContact) : [];
 
-  return (
-    <View style={{ gap: espace(4) }}>
-      <View style={styles.outils}>
-        <Recherche valeur={recherche} onChange={setRecherche} />
-        <View style={{ minWidth: 180 }}>
-          <Choix libelle="Filtrer le statut" sansLibelle vide="Tous les statuts" choix={STATUTS[module]} valeur={statut} onChange={setStatut} />
-        </View>
-        <BoutonPrincipal libelle={NOUVEAU[module]} onPress={onNouveau} />
-      </View>
-      {contactId && (
-        <Text style={styles.filtre}>
-          Dossier : {nomContact(contactId)}{' '}
-          <Text accessibilityRole="button" onPress={onToutAfficher} style={{ textDecorationLine: 'underline' }}>
-            Afficher tous
-          </Text>
-        </Text>
-      )}
-      <CaseACocher petite libelle="Inclure les dossiers archivés" valeur={archives} onChange={setArchives} />
-      {erreur && (
-        <Text accessibilityRole="alert" style={styles.erreur}>
-          {erreur}
-        </Text>
-      )}
-      <View style={{ gap: espace(3) }}>
-        {visibles.map((l) => {
+  const carte = (l: Ligne) => {
           const contact = l.contactId ? contacts.get(l.contactId) : undefined;
           return (
             <View key={l.id} style={carteDossier}>
@@ -195,7 +171,93 @@ export function Gestion({
               )}
             </View>
           );
-        })}
+        };
+
+  async function terminer(id: string) {
+    setOccupe(id);
+    setErreur(undefined);
+    try {
+      await crm.terminerTache(id);
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Action non confirmée');
+    } finally {
+      setOccupe(undefined);
+    }
+  }
+
+  return (
+    <View style={{ gap: espace(4) }}>
+      <View style={styles.outils}>
+        <Recherche valeur={recherche} onChange={setRecherche} />
+        <View style={{ minWidth: 180 }}>
+          <Choix libelle="Filtrer le statut" sansLibelle vide="Tous les statuts" choix={STATUTS[module]} valeur={statut} onChange={setStatut} />
+        </View>
+        <BoutonPrincipal libelle={NOUVEAU[module]} onPress={onNouveau} />
+      </View>
+      {contactId && (
+        <Text style={styles.filtre}>
+          Dossier : {nomContact(contactId)}{' '}
+          <Text accessibilityRole="button" onPress={onToutAfficher} style={{ textDecorationLine: 'underline' }}>
+            Afficher tous
+          </Text>
+        </Text>
+      )}
+      <CaseACocher petite libelle="Inclure les dossiers archivés" valeur={archives} onChange={setArchives} />
+      {erreur && (
+        <Text accessibilityRole="alert" style={styles.erreur}>
+          {erreur}
+        </Text>
+      )}
+      <View style={{ gap: espace(3) }}>
+        {module === 'Paiements' ? (
+          <>
+            {moisListe.length > 0 && (
+              <View style={styles.mois}>
+                <BoutonContour libelle="‹" desactive={iMois >= moisListe.length - 1} onPress={() => setMoisChoisi(moisListe[iMois + 1])} />
+                <Text style={styles.moisTitre}>{mois === 'sans-date' ? 'Sans date' : moisLisible(mois)}</Text>
+                <BoutonContour libelle="›" desactive={iMois <= 0} onPress={() => setMoisChoisi(moisListe[iMois - 1])} />
+                <Text style={styles.sous}>
+                  {montantLisible(groupes.reduce((t, g) => t + g.total, 0))}
+                  {groupes.some((g) => g.enAttente) ? ` · ${montantLisible(groupes.reduce((t, g) => t + g.enAttente, 0))} en attente` : ''}
+                </Text>
+              </View>
+            )}
+            {groupes.map((g) => {
+              const ouvert = ouverts.has(g.cle) || !!contactId || groupes.length === 1;
+              return (
+                <View key={g.cle || 'sans-contact'} style={{ gap: espace(2) }}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: ouvert }}
+                    onPress={() =>
+                      setOuverts((o) => {
+                        const n = new Set(o);
+                        if (n.has(g.cle)) n.delete(g.cle);
+                        else n.add(g.cle);
+                        return n;
+                      })
+                    }
+                    style={[carteDossier, styles.groupe]}
+                  >
+                    <View style={{ flexShrink: 1 }}>
+                      <Text style={styles.titre}>
+                        {ouvert ? '▾' : '▸'} {g.nom}
+                      </Text>
+                      <Text style={styles.sous}>
+                        {g.lignes.length} {g.lignes.length > 1 ? 'lignes' : 'ligne'}
+                        {g.enAttente ? ` · ${montantLisible(g.enAttente)} en attente` : ''}
+                      </Text>
+                    </View>
+                    <Text style={styles.montant}>{montantLisible(g.total)}</Text>
+                  </Pressable>
+                  {ouvert && <View style={{ gap: espace(2) }}>{g.lignes.map(carte)}</View>}
+                </View>
+              );
+            })}
+          </>
+        ) : (
+          visibles.map(carte)
+        )}
         {!visibles.length && <Vide titre="Aucun dossier pour ces filtres." />}
       </View>
     </View>
@@ -565,6 +627,9 @@ const styles = StyleSheet.create({
   sous: { marginTop: 4, fontFamily: polices.texte, fontSize: 14, color: couleurs.texteDoux },
   ligne: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: espace(2) },
   montant: { fontFamily: polices.texteGras, fontSize: 15, color: couleurs.texte },
+  mois: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: espace(2) },
+  moisTitre: { fontFamily: polices.texteGras, fontSize: 18, color: couleurs.texte, minWidth: 150, textAlign: 'center' },
+  groupe: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: espace(3) },
   supprimer: { paddingHorizontal: 12, lineHeight: 44, fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.rouge },
   lien: { paddingHorizontal: 12, lineHeight: 44, fontFamily: polices.texte, fontSize: 12, color: couleurs.texte, textDecorationLine: 'underline' },
   erreur: { fontFamily: polices.texte, fontSize: 14, color: couleurs.rouge },
