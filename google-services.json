@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "739311848639",
+    "project_id": "coachgo-91e3f",
+    "storage_bucket": "coachgo-91e3f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:739311848639:android:4b310ec1e2702a426fca0a",
+        "android_client_info": {
+          "package_name": "com.coachgo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAv-YgiTpL4JvwUdkzGb7QmnmpvFZf50bk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
