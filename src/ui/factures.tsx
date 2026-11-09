@@ -6,7 +6,7 @@ import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
 import { Image, Platform, Pressable, Text, View } from 'react-native';
 
-import { factures, type Numerotation } from '@/data/factures';
+import { factures, type Numerotation, type PaiementAFacturer } from '@/data/factures';
 import {
   COULEURS_FACTURE,
   erreursEntete,
@@ -56,6 +56,7 @@ function LigneFactureListe({ f, style }: { f: Facture; style: { couleur?: string
           </Texte>
           <Texte doux style={{ fontSize: 13 }}>
             {dateFr(f.date)} · {f.total === 0 ? 'offert' : euros(f.total)}
+            {f.total > 0 && !f.payeLe ? ' · à régler' : ''}
           </Texte>
         </View>
         <Bouton
@@ -78,8 +79,26 @@ function AideWeb() {
   ) : null;
 }
 
-/** Rubrique Paiements : la facture d'une ligne (l'ouvrir), ou la créer si la ligne est payée et liée à un client. */
-export function BoutonFacture({ facture, facturable, paiementId, onCree }: { facture?: Facture; facturable: boolean; paiementId: string; onCree: () => void }) {
+/**
+ * Rubrique Paiements : la facture d'une ligne (l'ouvrir), ou la créer si la ligne est payée ou en attente et liée à un client.
+ * Une séance seule (référence « seance:… ») se facture avec les autres séances du mois du client.
+ */
+export function BoutonFacture({
+  facture,
+  facturable,
+  paiementId,
+  reference,
+  date,
+  onCree,
+}: {
+  facture?: Facture;
+  facturable: boolean;
+  paiementId: string;
+  reference?: string;
+  date?: string;
+  onCree: () => void;
+}) {
+  const seance = seanceDuMois(reference, date);
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string>();
   const style = useCharger(() => factures.style(), 'factures-style');
@@ -90,7 +109,8 @@ export function BoutonFacture({ facture, facturable, paiementId, onCree }: { fac
     try {
       if (facture) await ouvrirFacture(facture, style.donnee ?? {});
       else {
-        await factures.facturer(paiementId);
+        if (seance) await factures.facturerMois(seance.clientId, seance.mois);
+        else await factures.facturer(paiementId);
         onCree();
       }
     } catch (e) {
@@ -101,10 +121,16 @@ export function BoutonFacture({ facture, facturable, paiementId, onCree }: { fac
   };
   return (
     <View style={{ gap: 2 }}>
-      <Bouton variante="discret" libelle={facture ? `Facture ${facture.numero}` : 'Créer la facture'} onPress={agir} chargement={occupe} />
+      <Bouton variante="discret" libelle={facture ? `Facture ${facture.numero}${facture.payeLe || facture.total === 0 ? '' : ' · à régler'}` : seance ? 'Facturer le mois' : 'Créer la facture'} onPress={agir} chargement={occupe} />
       {erreur && <Texte style={{ fontSize: 12, color: couleurs.rouge }}>{erreur}</Texte>}
     </View>
   );
+}
+
+/** « seance:<rdv>:<client> » du 2026-11-05 → le client et le mois 2026-11. */
+function seanceDuMois(reference?: string, date?: string) {
+  const m = reference?.match(/^seance:[^:]+:([0-9a-f-]{36})$/);
+  return m && date ? { clientId: m[1], mois: date.slice(0, 7) } : undefined;
 }
 
 // ---------- Client : « Mes factures » ----------
@@ -133,11 +159,12 @@ export function FacturesClient({ clientId, prenom, nom }: { clientId: string; pr
   const [enCours, setEnCours] = useState<string>();
   const [erreur, setErreur] = useState<string>();
 
-  async function facturer(id: string) {
-    setEnCours(id);
+  async function facturer(p: PaiementAFacturer) {
+    setEnCours(p.id);
     setErreur(undefined);
     try {
-      await factures.facturer(id);
+      if (p.mois) await factures.facturerMois(clientId, p.mois);
+      else await factures.facturer(p.id);
       liste.recharger();
       num.recharger();
       aFacturer.recharger();
@@ -152,7 +179,8 @@ export function FacturesClient({ clientId, prenom, nom }: { clientId: string; pr
     <Carte>
       <SousTitre>Factures</SousTitre>
       <Texte doux style={{ fontSize: 13 }}>
-        Chaque mois réglé (même offert) et chaque pack payé reçoit sa facture tout seul, à tes couleurs. {prenom} la retrouve dans son compte.
+        Chaque abonnement réglé (même offert), chaque pack payé et les séances de chaque mois reçoivent leur facture toute seule, à tes couleurs.
+        Une facture pas encore payée part « à régler » : envoie-la comme demande de paiement. {prenom} la retrouve dans son compte.
       </Texte>
       {num.donnee && (
         <Numeroter
@@ -171,14 +199,15 @@ export function FacturesClient({ clientId, prenom, nom }: { clientId: string; pr
       {!!liste.donnee?.length && <AideWeb />}
       {!!aFacturer.donnee?.length && (
         <View style={{ gap: espace(2), marginTop: espace(2) }}>
-          <Texte style={{ fontWeight: '600' }}>Paiements encaissés sans facture</Texte>
+          <Texte style={{ fontWeight: '600' }}>Sans facture pour le moment</Texte>
           {aFacturer.donnee.map((p) => (
             <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: espace(3), flexWrap: 'wrap' }}>
               <Texte style={{ flex: 1, minWidth: 160 }}>
                 {p.titre} · {euros(p.montant)}
                 {p.date ? ` · ${dateFr(p.date)}` : ''}
+                {p.enAttente ? ' · en attente' : ''}
               </Texte>
-              <Bouton variante="discret" libelle="Créer la facture" chargement={enCours === p.id} onPress={() => facturer(p.id)} />
+              <Bouton variante="discret" libelle="Créer la facture" chargement={enCours === p.id} onPress={() => facturer(p)} />
             </View>
           ))}
         </View>

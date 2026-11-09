@@ -162,3 +162,69 @@ describe('factures', () => {
     await expect(en(ids.userClientB, `update public.clients set facture_prochain = 5 where id = $1`, [ids.clientB])).resolves.toMatchObject({ affectedRows: 0 });
   });
 });
+
+describe('factures à régler', () => {
+  const ligne = (titre: string, statut: string, montant: number, reference: string, notes: string | null = null, date = '2026-10-31') =>
+    db.query<{ id: string }>(
+      `insert into public.paiements (coach_id, titre, date, montant, statut, notes, reference) values ($1, $2, $3, $4, $5, $6, $7) returning id`,
+      [ids.coach1, titre, date, montant, statut, notes, reference],
+    );
+  const factureDe = async (paiementId: string) =>
+    (await db.query<Record<string, any>>(`select * from public.factures where paiement_id = $1`, [paiementId])).rows[0];
+
+  it('le coach facture une ligne en attente : « à régler », puis payée quand elle est réglée', async () => {
+    const p = await ligne('Coaching · Bruno', 'En attente', 80, `divers:${ids.clientB}`);
+    await en(ids.userCoach1, `select public.facturer_paiement($1)`, [p.rows[0].id]);
+    let f = await factureDe(p.rows[0].id);
+    expect(f).toMatchObject({ paye_le: null, moyen: null });
+    expect(Number(f.total)).toBe(80);
+    await db.query(`update public.paiements set statut = 'Payé', moyen = 'Virement', date = '2026-11-12' where id = $1`, [p.rows[0].id]);
+    f = await factureDe(p.rows[0].id);
+    expect(f.moyen).toBe('Virement');
+    expect(f.paye_le).toEqual(new Date('2026-11-12'));
+  });
+
+  it('les séances du mois en attente reçoivent leur facture d’office, détaillée, et suivent les corrections', async () => {
+    const p = await ligne(
+      'Séances d’octobre 2026 · Bruno (8 séances)',
+      'En attente',
+      260,
+      `mois:2026-10:${ids.clientB}`,
+      'Seul (40 €) : 02/10, 09/10, 16/10, 29/10, 30/10 · Avec Romain (20 €) : 06/10, 15/10, 20/10',
+    );
+    let f = await factureDe(p.rows[0].id);
+    expect(f.objet).toBe('Séances d’octobre 2026');
+    expect(f.paye_le).toBeNull();
+    expect(f.lignes).toEqual([
+      { libelle: 'Séances seul : 02/10, 09/10, 16/10, 29/10, 30/10', quantite: 5, prix_unitaire: 40, montant: 200 },
+      { libelle: 'Séances avec Romain : 06/10, 15/10, 20/10', quantite: 3, prix_unitaire: 20, montant: 60 },
+    ]);
+    const numero = f.numero;
+    await db.query(`update public.paiements set montant = 150, notes = '09/10, 22/10, 26/10 · 50 € la séance' where id = $1`, [p.rows[0].id]);
+    f = await factureDe(p.rows[0].id);
+    expect(f.numero).toBe(numero);
+    expect(Number(f.total)).toBe(150);
+    expect(f.lignes).toEqual([{ libelle: 'Séances du 09/10, 22/10, 26/10', quantite: 3, prix_unitaire: 50, montant: 150 }]);
+  });
+
+  it('une facture par mois regroupe les séances une par une, payée quand toutes le sont', async () => {
+    const a = await ligne('Séance du 03/12 · Bruno', 'En attente', 40, `seance:aaaaaaaa-0000-4000-8000-000000000001:${ids.clientB}`, null, '2026-12-03');
+    const b = await ligne('Séance du 10/12 · Bruno (à 2)', 'En attente', 20, `seance:aaaaaaaa-0000-4000-8000-000000000002:${ids.clientB}`, null, '2026-12-10');
+    await ligne('Séance du 05/01 · Bruno', 'En attente', 40, `seance:aaaaaaaa-0000-4000-8000-000000000003:${ids.clientB}`, null, '2027-01-05');
+    expect(await factureDe(a.rows[0].id)).toBeUndefined();
+    await expect(en(ids.userCoach2, `select public.facturer_mois($1, '2026-12')`, [ids.clientB])).rejects.toThrow();
+    const r = await en(ids.userCoach1, `select public.facturer_mois($1, '2026-12') as id`, [ids.clientB]);
+    const f = (await db.query<Record<string, any>>(`select * from public.factures where id = $1`, [r.rows[0].id])).rows[0];
+    expect(f.objet).toBe('Séances de décembre 2026');
+    expect(Number(f.total)).toBe(60);
+    expect(f.lignes.map((l: any) => l.libelle)).toEqual(['Séance du 03/12', 'Séance du 10/12']);
+    expect((await en(ids.userCoach1, `select public.facturer_mois($1, '2026-12') as id`, [ids.clientB])).rows[0].id).toBeNull();
+    const liees = await en(ids.userCoach1, `select paiement_id from public.factures_paiements where facture_id = $1`, [f.id]);
+    expect(liees.rows).toHaveLength(2);
+
+    await db.query(`update public.paiements set statut = 'Payé', moyen = 'Espèces' where id = $1`, [a.rows[0].id]);
+    expect((await db.query<Record<string, any>>(`select paye_le from public.factures where id = $1`, [f.id])).rows[0].paye_le).toBeNull();
+    await db.query(`update public.paiements set statut = 'Payé', moyen = 'Espèces' where id = $1`, [b.rows[0].id]);
+    expect((await db.query<Record<string, any>>(`select paye_le, moyen from public.factures where id = $1`, [f.id])).rows[0]).toMatchObject({ moyen: 'Espèces' });
+  });
+});

@@ -78,6 +78,7 @@ const texte = (s?: string) => (s ? echapper(s).replace(/\n/g, '<br>') : '');
 /** Mention de règlement en bas de facture. */
 export function mentionReglement(f: Pick<Facture, 'total' | 'moyen' | 'payeLe'>) {
   if (f.total === 0) return 'Offert : rien à régler.';
+  if (!f.payeLe) return `À régler : ${euros(f.total)}. Merci !`;
   const quand = f.payeLe ? ` le ${dateFr(f.payeLe)}` : '';
   if (f.moyen === 'Stripe') return `Payée par prélèvement automatique${quand}.`;
   return `Payée${f.moyen ? ` par ${f.moyen.toLowerCase()}` : ''}${quand}.`;
