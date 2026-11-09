@@ -134,3 +134,29 @@ describe('paiements par mois et par client', () => {
     expect(g[1]!.lignes[0]!.date).toBe('2026-10-20');
   });
 });
+
+describe('détail des séances d’une ligne du mois', () => {
+  it('lit, modifie et réécrit les notes au format de la facture', async () => {
+    const { lireSeances, ecrireSeances, totalSeances, nombreSeances, titreSeances, estJourMois, jourMois } = await import('@/domain/gestion');
+    const g = lireSeances('Seul (40 €) : 02/10, 09/10, 16/10 · Avec Romain (20 €) : 06/10')!;
+    expect(g).toEqual([
+      { libelle: 'Seul', prix: 40, dates: ['02/10', '09/10', '16/10'] },
+      { libelle: 'Avec Romain', prix: 20, dates: ['06/10'] },
+    ]);
+    expect(totalSeances(g)).toBe(140);
+    g[0]!.dates = ['16/10', '01/10'];
+    g[1]!.dates = [];
+    expect(ecrireSeances(g)).toBe('Seul (40 €) : 01/10, 16/10');
+    const s = lireSeances('15/10, 19/10 · 50 € la séance')!;
+    expect(s).toEqual([{ libelle: '', prix: 50, dates: ['15/10', '19/10'] }]);
+    s[0]!.dates.push('29/10');
+    expect(ecrireSeances(s)).toBe('15/10, 19/10, 29/10 · 50 € la séance');
+    expect(nombreSeances(s)).toBe(3);
+    expect(ecrireSeances([{ libelle: '', prix: 47.5, dates: ['01/10'] }])).toBe('01/10 · 47,50 € la séance');
+    expect(lireSeances('payé en liquide')).toBeUndefined();
+    expect(titreSeances('Séances d’octobre 2026 · Maria (3 séances)', 1)).toBe('Séances d’octobre 2026 · Maria (1 séance)');
+    expect(estJourMois('3/10')).toBe(true);
+    expect(estJourMois('32/10')).toBe(false);
+    expect(jourMois('3/9')).toBe('03/09');
+  });
+});

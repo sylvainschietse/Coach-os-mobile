@@ -4,13 +4,22 @@ import { useFocusEffect } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { abonnements } from '@/data/abonnements';
 import { crm, ecouterCrm } from '@/data/crm';
 import { factures } from '@/data/factures';
 import { ecrireJour, jourLocal, lireJour, MODELES, rediger, type Carnet, type Contact, type Relance } from '@/domain/crm';
 import {
   FORMULES,
+  ecrireSeances,
+  estJourMois,
+  jourMois,
+  lireSeances,
   moisDe,
   moisLisible,
+  nombreSeances,
+  titreSeances,
+  totalSeances,
+  type GroupeSeances,
   montantLisible,
   MOYENS_PAIEMENT,
   parClient,
@@ -83,6 +92,11 @@ export function Gestion({
   const blocNom = useBlocNomCarte();
   const charge = useCharger(() => crm.carnet(), `gestion-${module}`);
   const lesFactures = useCharger(() => (module === 'Paiements' ? factures.parPaiement() : Promise.resolve(new Map<string, Facture>())), `factures-paiements-${module}`);
+  const lesPacks = useCharger(
+    () => (module === 'Paiements' ? abonnements.soldePacks() : Promise.resolve(new Map<string, { total: number; faites: number }>())),
+    `packs-paiements-${module}`,
+  );
+  useRechargerSur(lesPacks.recharger, ecouterCrm);
   const { donnee: lienQuestionnaire } = useCharger(() => crm.lienQuestionnaire(), 'lien-questionnaire');
   useFocusEffect(charge.recharger);
   useRechargerSur(charge.recharger, ecouterCrm);
@@ -124,6 +138,7 @@ export function Gestion({
 
   const carte = (l: Ligne) => {
           const contact = l.contactId ? contacts.get(l.contactId) : undefined;
+          const pack = l.reference?.startsWith('pack:') ? lesPacks.donnee?.get(l.reference.slice(5)) : undefined;
           return (
             <View key={l.id} style={carteDossier}>
               <View style={styles.entete}>
@@ -133,6 +148,11 @@ export function Gestion({
                     {nomContact(l.contactId)}
                     {module !== 'Coachings' ? ` · ${jourCourt(l.date)}` : ''}
                   </Text>
+                  {module === 'Paiements' && pack && (
+                    <Text style={[styles.sous, { color: couleurs.texte }]}>
+                      {pack.total - pack.faites} séance{pack.total - pack.faites > 1 ? 's' : ''} restante{pack.total - pack.faites > 1 ? 's' : ''} sur {pack.total}
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.ligne}>
                   {contact?.statut === 'archive' && <Badge variante="secondaire" libelle="Archivé" />}
@@ -589,6 +609,12 @@ function Formulaire({
           </Cellule>
         </Grille>
       )}
+      {module === 'Paiements' && lireSeances(initial.notes) && (
+        <DetailSeances
+          notes={initial.notes}
+          onChange={(notes, total, n) => maj({ notes, montant: String(total).replace('.', ','), titre: titreSeances(b.titre, n) })}
+        />
+      )}
       {module === 'Paiements' && (
         <Grille>
           <Cellule>
@@ -619,7 +645,81 @@ function Formulaire({
   );
 }
 
+/**
+ * Détail d'une ligne de séances du mois : chaque groupe (seul, avec un autre client) avec son prix
+ * et ses dates. Retirer ou ajouter une date recalcule le montant, le titre et les notes lues par la facture.
+ */
+function DetailSeances({ notes, onChange }: { notes: string; onChange: (notes: string, total: number, n: number) => void }) {
+  const [groupes, setGroupes] = useState<GroupeSeances[]>(() => lireSeances(notes) ?? []);
+  const [saisies, setSaisies] = useState<string[]>(() => groupes.map(() => ''));
+  const [prix, setPrix] = useState<string[]>(() => groupes.map((g) => String(g.prix).replace('.', ',')));
+  const changer = (g: GroupeSeances[]) => {
+    setGroupes(g);
+    onChange(ecrireSeances(g), totalSeances(g), nombreSeances(g));
+  };
+  const ajouter = (i: number) => {
+    const t = saisies[i] ?? '';
+    if (!estJourMois(t)) return;
+    changer(groupes.map((g, k) => (k === i ? { ...g, dates: [...new Set([...g.dates, jourMois(t)])] } : g)));
+    setSaisies((s) => s.map((x, k) => (k === i ? '' : x)));
+  };
+  return (
+    <View style={[carteDossier, { gap: espace(3), marginBottom: espace(4) }]}>
+      <Text style={styles.titre}>
+        Détail : {nombreSeances(groupes)} séance{nombreSeances(groupes) > 1 ? 's' : ''} · {montantLisible(totalSeances(groupes))}
+      </Text>
+      {groupes.map((g, i) => (
+        <View key={i} style={{ gap: espace(2) }}>
+          <View style={styles.ligne}>
+            <Text style={[styles.montant, { flexShrink: 1 }]}>{g.libelle || 'Séances'}</Text>
+            <View style={{ width: 150 }}>
+              <Saisie
+                libelle="Prix par séance (€)"
+                type="nombre"
+                valeur={prix[i] ?? ''}
+                onChange={(v) => {
+                  setPrix((p) => p.map((x, k) => (k === i ? v : x)));
+                  const n = Number(v.replace(',', '.'));
+                  if (v.trim() && Number.isFinite(n) && n >= 0) changer(groupes.map((x, k) => (k === i ? { ...x, prix: n } : x)));
+                }}
+              />
+            </View>
+          </View>
+          <View style={styles.ligne}>
+            {g.dates.map((d) => (
+              <Pressable
+                key={d}
+                accessibilityRole="button"
+                accessibilityLabel={`Retirer la séance du ${d}`}
+                onPress={() => changer(groupes.map((x, k) => (k === i ? { ...x, dates: x.dates.filter((y) => y !== d) } : x)))}
+                style={styles.puce}
+              >
+                <Text style={styles.puceTexte}>{d} ✕</Text>
+              </Pressable>
+            ))}
+            {!g.dates.length && <Text style={styles.aide}>Aucune séance.</Text>}
+          </View>
+          <View style={[styles.ligne, { alignItems: 'flex-end' }]}>
+            <View style={{ width: 170 }}>
+              <Saisie
+                libelle="Ajouter une date (JJ/MM)"
+                valeur={saisies[i] ?? ''}
+                onChange={(v) => setSaisies((s) => s.map((x, k) => (k === i ? v : x)))}
+                erreur={saisies[i]?.trim() && !estJourMois(saisies[i]!) ? 'Par exemple 22/10' : undefined}
+              />
+            </View>
+            <BoutonContour libelle="Ajouter" desactive={!estJourMois(saisies[i] ?? '')} onPress={() => ajouter(i)} />
+          </View>
+        </View>
+      ))}
+      <Text style={styles.aide}>Touche une date pour la retirer. Pour changer une date, retire-la puis ajoute la bonne. Le montant se recalcule tout seul, et la facture suit si elle n’est pas encore réglée.</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  puce: { borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 999, paddingHorizontal: 12, minHeight: 36, justifyContent: 'center' },
+  puceTexte: { fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.texte },
   outils: { flexDirection: 'row', flexWrap: 'wrap', gap: espace(3), alignItems: 'flex-start' },
   filtre: { fontFamily: polices.texte, fontSize: 14, color: couleurs.texte },
   entete: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: espace(3) },

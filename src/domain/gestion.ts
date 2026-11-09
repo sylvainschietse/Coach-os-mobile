@@ -480,3 +480,61 @@ export function parClient<T extends { contactId?: string; date?: string; montant
   for (const g of groupes.values()) g.lignes.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
   return [...groupes.values()].sort((a, b) => (a.cle === '' ? 1 : b.cle === '' ? -1 : a.nom.localeCompare(b.nom, 'fr')));
 }
+
+/** Un groupe de séances d'une ligne de paiement du mois : « Seul (40 €) : 02/10, 09/10 ». */
+export interface GroupeSeances {
+  /** « Seul », « Avec Romain »… ; vide quand toutes les séances sont au même prix. */
+  libelle: string;
+  prix: number;
+  /** JJ/MM */
+  dates: string[];
+}
+
+const PRIX = '([0-9]+(?:[.,][0-9]+)?)';
+const lirePrix = (t: string) => Number(t.replace(',', '.'));
+const ecrirePrix = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2).replace('.', ','));
+const lireDates = (t: string) => t.split(/\s*,\s*/).map((d) => d.trim()).filter(Boolean);
+
+/** Détail des séances écrit dans les notes d'une ligne du mois, ou undefined si les notes ne le suivent pas. */
+export function lireSeances(notes?: string): GroupeSeances[] | undefined {
+  const n = (notes ?? '').trim();
+  if (!n) return undefined;
+  const simple = n.match(new RegExp(`^([0-9/, ]+) · ${PRIX} € la séance$`));
+  if (simple) return [{ libelle: '', prix: lirePrix(simple[2]!), dates: lireDates(simple[1]!) }];
+  const groupes: GroupeSeances[] = [];
+  for (const seg of n.split(/\s+·\s+/)) {
+    const m = seg.trim().match(new RegExp(`^(.+?) \\(${PRIX} €\\) : ([0-9/, ]+)$`));
+    if (!m) return undefined;
+    groupes.push({ libelle: m[1]!, prix: lirePrix(m[2]!), dates: lireDates(m[3]!) });
+  }
+  return groupes;
+}
+
+const cleDate = (d: string) => d.split('/').reverse().join('');
+
+/** Les notes à partir du détail (dates triées, groupes vides retirés), dans le format que lit la facture. */
+export function ecrireSeances(groupes: GroupeSeances[]): string {
+  const g = groupes
+    .map((x) => ({ ...x, dates: [...new Set(x.dates)].sort((a, b) => cleDate(a).localeCompare(cleDate(b))) }))
+    .filter((x) => x.dates.length);
+  if (g.length === 1 && !g[0]!.libelle.trim()) return `${g[0]!.dates.join(', ')} · ${ecrirePrix(g[0]!.prix)} € la séance`;
+  return g.map((x) => `${x.libelle.trim() || 'Séances'} (${ecrirePrix(x.prix)} €) : ${x.dates.join(', ')}`).join(' · ');
+}
+
+export const totalSeances = (groupes: GroupeSeances[]) =>
+  Math.round(groupes.reduce((t, g) => t + g.prix * new Set(g.dates).size, 0) * 100) / 100;
+export const nombreSeances = (groupes: GroupeSeances[]) => groupes.reduce((t, g) => t + new Set(g.dates).size, 0);
+
+/** « JJ/MM » valide. */
+export const estJourMois = (t: string) => {
+  const m = t.trim().match(/^(\d{1,2})\/(\d{1,2})$/);
+  return !!m && Number(m[1]) >= 1 && Number(m[1]) <= 31 && Number(m[2]) >= 1 && Number(m[2]) <= 12;
+};
+export const jourMois = (t: string) => {
+  const [j, m] = t.trim().split('/');
+  return `${j!.padStart(2, '0')}/${m!.padStart(2, '0')}`;
+};
+
+/** Titre recalé sur le nombre de séances : « … · Bruno (8 séances) » → « … · Bruno (7 séances) ». */
+export const titreSeances = (titre: string, n: number) =>
+  /\(\d+ séances?\)$/.test(titre) ? titre.replace(/\(\d+ séances?\)$/, `(${n} séance${n > 1 ? 's' : ''})`) : titre;
