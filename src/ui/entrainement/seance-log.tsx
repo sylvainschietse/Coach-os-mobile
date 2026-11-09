@@ -14,6 +14,7 @@ import { heureParis } from '@/domain/activites';
 import { aujourdhuiParis, dureeCourte, formatDeLigne, lireObjectif, prescriptionClient, suggestionPourcentage, titreClient, typeDeLigne, type Reference } from '@/domain/entrainement';
 import type { RealisationLue } from '@/domain/entrainement-etat';
 import { circuitAlterne, resumeAlternance, resumeMinuteur } from '@/domain/minuteur';
+import type { Remplacement } from '@/domain/seance-blocs';
 import type { LignePrescription, Mesure, Seance, SerieRealisee, Valeurs } from '@/domain/types';
 import { videosDeLExercice, type ContexteVideo, type VideoMouvement } from '@/domain/videos-mouvement';
 import { demanderSortie, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
@@ -25,10 +26,20 @@ import { Action, Ligne, TexteLong, ts } from './commun';
 import { VideosExercice } from './videos-mouvement';
 import { VignetteVideo } from './vignette-video';
 
-type Champ = { m: Mesure; titre: string; unite: string; decimal: boolean; max: number };
-export type Brouillon = { vals: Record<string, Partial<Record<Mesure, string>>>; note: number | null; com: string; envoiId: string; debut: string };
+export type Champ = { m: Mesure; titre: string; unite: string; decimal: boolean; max: number };
+export type Brouillon = {
+  vals: Record<string, Partial<Record<Mesure, string>>>;
+  note: number | null;
+  com: string;
+  envoiId: string;
+  debut: string;
+  /** Séance par bloc : exercices remplacés par le client (par ligne), bloc affiché et blocs validés. */
+  remplacements?: Record<string, Remplacement>;
+  bloc?: number;
+  valides?: string[];
+};
 
-const CHARGE: Champ = { m: 'charge', titre: 'Charge (kg)', unite: 'kg', decimal: true, max: 1000 };
+export const CHARGE: Champ = { m: 'charge', titre: 'Charge (kg)', unite: 'kg', decimal: true, max: 1000 };
 const REPS: Champ = { m: 'repetitions', titre: 'Répétitions', unite: 'reps', decimal: false, max: 500 };
 const DUREE: Champ = { m: 'duree', titre: 'Durée (s)', unite: 's', decimal: false, max: 86400 };
 const DISTANCE: Champ = { m: 'distance', titre: 'Distance (m)', unite: 'm', decimal: true, max: 1000000 };
@@ -44,14 +55,15 @@ export function champsSaisie(l: LignePrescription): Champ[] {
   return [DUREE, DISTANCE, ...(objectif === 'calories' ? [CALORIES] : objectif === 'watts' ? [WATTS] : [])];
 }
 
-const nombre = (v: string) => Number(v.trim().replace(',', '.'));
-const invalide = (c: Champ, v?: string) => {
+export const nombre = (v: string) => Number(v.trim().replace(',', '.'));
+export const invalide = (c: Champ, v?: string) => {
   if (!v?.trim()) return false;
   const n = nombre(v);
   return !Number.isFinite(n) || n < 0 || n > c.max || (!c.decimal && !Number.isInteger(n));
 };
-const vide = (): Brouillon => ({ vals: {}, note: null, com: '', envoiId: nouvelId(), debut: new Date().toISOString() });
-const sale = (d: Brouillon) => Object.values(d.vals).some((v) => Object.values(v).some((x) => x?.trim())) || d.note !== null || !!d.com.trim();
+export const vide = (): Brouillon => ({ vals: {}, note: null, com: '', envoiId: nouvelId(), debut: new Date().toISOString() });
+export const sale = (d: Brouillon) =>
+  Object.values(d.vals).some((v) => Object.values(v).some((x) => x?.trim())) || d.note !== null || !!d.com.trim() || !!Object.keys(d.remplacements ?? {}).length;
 /**
  * Valeur proposée dans une case : ce que le coach a prescrit (durée, distance, répétitions : le bas de la fourchette) ou, pour la charge,
  * la charge précédente, sinon la charge indicative. Elle s'affiche en gris et ne compte qu'une fois validée.
@@ -80,7 +92,23 @@ export function validerSeries(d: Brouillon, l: LignePrescription, precedentes: R
   return { ...d, vals };
 }
 
-const DIFFICULTES = ['Trop difficile', 'Matériel indisponible', 'Besoin d’explication'];
+export const DIFFICULTES = ['Trop difficile', 'Matériel indisponible', 'Besoin d’explication'];
+
+/** Les séries saisies, prêtes à envoyer ; un exercice remplacé par le client part avec son propre identifiant. */
+export function seriesDuBrouillon(lignes: LignePrescription[], d: Brouillon): SerieRealisee[] {
+  const series: SerieRealisee[] = [];
+  for (const l of lignes) {
+    const champs = champsSaisie(l);
+    const exerciceId = d.remplacements?.[l.id]?.exercice.id ?? l.exercice.id;
+    for (let n = 1; n <= Math.max(1, l.series); n++) {
+      const v = d.vals[`${l.id}:${n}`] ?? {};
+      const valeurs: Valeurs = {};
+      champs.forEach((c) => v[c.m]?.trim() && (valeurs[c.m] = nombre(v[c.m]!)));
+      if (Object.keys(valeurs).length) series.push({ id: nouvelId(), ligneId: l.id, exerciceId, index: n - 1, valeurs, suggestion: {} });
+    }
+  }
+  return series;
+}
 
 export type Enregistrement = { resultat: 'enregistree' | 'doublon' };
 
@@ -197,16 +225,7 @@ export function SeanceLog({
     setEtat('envoi');
     setErreur('');
     try {
-      const series: SerieRealisee[] = [];
-      for (const l of lignes) {
-        const champs = champsSaisie(l);
-        for (let n = 1; n <= Math.max(1, l.series); n++) {
-          const v = d.vals[`${l.id}:${n}`] ?? {};
-          const valeurs: Valeurs = {};
-          champs.forEach((c) => v[c.m]?.trim() && (valeurs[c.m] = nombre(v[c.m]!)));
-          if (Object.keys(valeurs).length) series.push({ id: nouvelId(), ligneId: l.id, exerciceId: l.exercice.id, index: n - 1, valeurs, suggestion: {} });
-        }
-      }
+      const series = seriesDuBrouillon(lignes, d);
       const resultat = await entrainement.enregistrerRealisation({
         id: d.envoiId,
         clientId,
