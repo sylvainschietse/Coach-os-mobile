@@ -1,5 +1,5 @@
 // Factures : en-tête du coach, numérotation de chaque client, factures émises (lecture seule) et émission d'un bouton.
-// Les prélèvements Stripe sont facturés d'office par la base ; ici, le coach facture un paiement encaissé autrement.
+// Les prélèvements, mois et séances du mois sont facturés d'office par la base ; ici, le coach facture une ligne d'un bouton.
 import { COULEUR_FACTURE, erreursEntete, MENTIONS_FACTURE, nettoyerPrefixe, type EnteteFacture, type Facture, type LigneFacture } from '@/domain/factures';
 
 import { supabase } from './supabase';
@@ -17,6 +17,11 @@ export interface PaiementAFacturer {
   date?: string;
   montant: number;
   moyen?: string;
+  /** Pas encore réglé : la facture partira « à régler ». */
+  enAttente?: boolean;
+  /** Séances une par une de ce mois (AAAA-MM), facturées ensemble. */
+  mois?: string;
+  seances?: number;
 }
 
 type LigneBase = Record<string, unknown>;
@@ -139,9 +144,12 @@ export const factures = {
   /** Coach : toutes ses factures, rangées par paiement (rubrique Paiements). */
   async parPaiement(): Promise<Map<string, Facture>> {
     if (!supabase) return new Map(facturesDemo.filter((f) => f.paiementId).map((f) => [f.paiementId!, f]));
-    const { data, error } = await supabase.from('factures').select('*').not('paiement_id', 'is', null);
+    // Une facture du mois couvre plusieurs séances : chaque ligne de paiement pointe vers sa facture.
+    const { data, error } = await supabase.from('factures_paiements').select('paiement_id, factures(*)');
     if (error) throw new Error('Impossible de charger les factures pour le moment.');
-    return new Map((data ?? []).map((l) => [l.paiement_id as string, versFacture(l)]));
+    return new Map(
+      (data ?? []).filter((l) => l.factures).map((l) => [l.paiement_id as string, versFacture(l.factures as unknown as LigneBase)]),
+    );
   },
 
   async numerotation(clientId: string): Promise<Numerotation> {
@@ -165,25 +173,64 @@ export const factures = {
     if (error) throw new Error('Numérotation non enregistrée, réessaie dans un instant.');
   },
 
-  /** Paiements « Payé » de ce client qui n'ont pas encore de facture. */
+  /**
+   * Lignes de ce client sans facture : paiements payés ou en attente, et séances une par une regroupées par mois
+   * (elles se facturent ensemble, d'une seule facture du mois).
+   */
   async aFacturer(clientId: string): Promise<PaiementAFacturer[]> {
     if (!supabase) return [];
     const { data: contacts } = await supabase.from('contacts').select('id').eq('client_id', clientId);
     const ids = (contacts ?? []).map((c) => c.id as string);
-    let requete = supabase.from('paiements').select('id, titre, date, montant, moyen').eq('statut', 'Payé').not('montant', 'is', null);
+    let requete = supabase.from('paiements').select('id, titre, date, montant, moyen, statut, reference').in('statut', ['Payé', 'En attente']).not('montant', 'is', null);
     requete = ids.length ? requete.or(`contact_id.in.(${ids.join(',')}),reference.like.*:${clientId}`) : requete.like('reference', `%:${clientId}`);
-    const [{ data: paiements, error }, { data: deja }] = await Promise.all([
-      requete.order('date', { ascending: false }).limit(50),
-      supabase.from('factures').select('paiement_id').eq('client_id', clientId),
-    ]);
+    const { data: paiements, error } = await requete.order('date', { ascending: false }).limit(200);
     if (error) throw new Error('Impossible de charger les paiements.');
+    const tous = paiements ?? [];
+    const { data: deja } = tous.length
+      ? await supabase.from('factures_paiements').select('paiement_id').in('paiement_id', tous.map((p) => p.id as string))
+      : { data: [] };
     const factures = new Set((deja ?? []).map((f) => f.paiement_id as string));
-    return (paiements ?? [])
-      .filter((p) => !factures.has(p.id as string))
-      .map((p) => ({ id: p.id as string, titre: p.titre as string, date: (p.date as string | null) ?? undefined, montant: Number(p.montant), moyen: (p.moyen as string | null) ?? undefined }));
+    const libres = tous.filter((p) => !factures.has(p.id as string));
+    const lignes: PaiementAFacturer[] = [];
+    const mois = new Map<string, PaiementAFacturer>();
+    for (const p of libres) {
+      const date = (p.date as string | null) ?? undefined;
+      if (String(p.reference ?? '').startsWith('seance:') && date) {
+        const m = date.slice(0, 7);
+        const g = mois.get(m) ?? { id: `mois-${m}`, titre: '', montant: 0, mois: m, seances: 0, enAttente: false };
+        g.montant += Number(p.montant);
+        g.seances = (g.seances ?? 0) + 1;
+        g.enAttente = g.enAttente || p.statut !== 'Payé';
+        mois.set(m, g);
+        continue;
+      }
+      lignes.push({
+        id: p.id as string,
+        titre: p.titre as string,
+        date,
+        montant: Number(p.montant),
+        moyen: (p.moyen as string | null) ?? undefined,
+        enAttente: p.statut !== 'Payé',
+      });
+    }
+    for (const g of mois.values()) {
+      const [a, n] = g.mois!.split('-').map(Number);
+      const nom = new Date(a, n - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+      g.titre = `Séances de ${nom} (${g.seances})`;
+      lignes.push(g);
+    }
+    return lignes;
   },
 
-  /** Coach : émet la facture d'un paiement encaissé (prend le prochain numéro du client). */
+  /** Coach : facture du mois (AAAA-MM) qui regroupe les séances du client pas encore facturées. */
+  async facturerMois(clientId: string, mois: string): Promise<void> {
+    if (!supabase) return;
+    const { data, error } = await supabase.rpc('facturer_mois', { p_client: clientId, p_mois: mois });
+    if (error) throw new Error(error.message || 'Facture non créée, réessaie dans un instant.');
+    if (!data) throw new Error('Toutes les séances de ce mois sont déjà facturées.');
+  },
+
+  /** Coach : émet la facture d'un paiement payé ou en attente (prend le prochain numéro du client). */
   async facturer(paiementId: string): Promise<void> {
     if (!supabase) return;
     const { error } = await supabase.rpc('facturer_paiement', { p_paiement: paiementId });

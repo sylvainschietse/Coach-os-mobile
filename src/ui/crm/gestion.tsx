@@ -46,13 +46,13 @@ const jourCourt = (j?: string) =>
   j ? new Date(j + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' }) : '—';
 
 /** Une ligne de liste, quelle que soit la rubrique. */
-type Ligne = { id: string; titre: string; contactId?: string; date?: string; statut?: string; montant?: number; ouverte?: boolean; recherche: string };
+type Ligne = { id: string; titre: string; contactId?: string; date?: string; statut?: string; montant?: number; reference?: string; ouverte?: boolean; recherche: string };
 
 function lignes(c: Carnet, module: ModuleGestion): Ligne[] {
   if (module === 'Coachings')
     return c.coachings.map((x) => ({ id: x.id, titre: x.nom, contactId: x.contactId, statut: x.statut, recherche: `${x.nom} ${x.objectif ?? ''}` }));
   if (module === 'Paiements')
-    return c.paiements.map((x) => ({ id: x.id, titre: x.titre, contactId: x.contactId, date: x.date, statut: x.statut, montant: x.montant, recherche: x.titre }));
+    return c.paiements.map((x) => ({ id: x.id, titre: x.titre, contactId: x.contactId, date: x.date, statut: x.statut, montant: x.montant, reference: x.reference, recherche: x.titre }));
   return c.relances.map((r) => {
     const titre = r.titre || r.note || MODELES[r.modele].libelle;
     return { id: r.id, titre, contactId: r.contactId, date: r.echeance, statut: statutTache(r), ouverte: tacheOuverte(r), recherche: `${titre} ${r.note ?? ''}` };
@@ -165,8 +165,10 @@ export function Gestion({
                   {module === 'Paiements' && (
                     <BoutonFacture
                       facture={lesFactures.donnee?.get(l.id)}
-                      facturable={l.statut === 'Payé' && l.montant !== undefined && l.montant !== null && !!contact?.clientId}
+                      facturable={(l.statut === 'Payé' || l.statut === 'En attente') && l.montant !== undefined && l.montant !== null && !!contact?.clientId}
                       paiementId={l.id}
+                      reference={l.reference}
+                      date={l.date}
                       onCree={lesFactures.recharger}
                     />
                   )}

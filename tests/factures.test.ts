@@ -29,6 +29,7 @@ describe('factures', () => {
     expect(mentionReglement(f)).toBe('Offert : rien à régler.');
     expect(mentionReglement({ ...f, total: 59 })).toBe('Payée par prélèvement automatique le 03/11/2026.');
     expect(mentionReglement({ total: 120, moyen: 'Virement', payeLe: '2026-11-20' })).toBe('Payée par virement le 20/11/2026.');
+    expect(mentionReglement({ total: 260 })).toBe('À régler : 260 €. Merci !');
   });
 
   it('la facture porte la couleur du coach, son SIRET, la remise et les mentions, sans HTML injecté', () => {
