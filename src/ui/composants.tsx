@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DefilementClavier } from './clavier';
 import { arrondi, couleurs, espace, espacementTitre, polices } from './theme';
+import { useUnivers } from './univers';
 
 export function Ecran({ children, largeurMax = 640 }: { children: ReactNode; largeurMax?: number }) {
   return (
@@ -57,7 +58,8 @@ export function Bouton({
   desactive?: boolean;
   chargement?: boolean;
 }) {
-  const fond = variante === 'primaire' ? couleurs.rouge : variante === 'secondaire' ? couleurs.secondaire : variante === 'discret' ? couleurs.carte : 'transparent';
+  const u = useUnivers();
+  const fond = variante === 'primaire' ? (u.cle === 'rouge' ? couleurs.rouge : u.uni) : variante === 'secondaire' ? couleurs.secondaire : variante === 'discret' ? couleurs.carte : 'transparent';
   const texte = variante === 'discret' ? couleurs.texte : '#FFFFFF';
   const bordure = variante === 'contour' ? '#FFFFFF' : couleurs.bordure;
   return (
@@ -68,6 +70,7 @@ export function Bouton({
       style={({ pressed }) => [
         styles.bouton,
         { backgroundColor: fond, opacity: desactive ? 0.4 : pressed ? 0.85 : 1 },
+        variante === 'primaire' && { backgroundImage: u.degrade },
         (variante === 'discret' || variante === 'contour') && { borderWidth: 1, borderColor: bordure },
       ]}
     >
@@ -173,12 +176,18 @@ export function ChampTexte({
 
 /** Choix parmi quelques options (statut, objectif, date rapide). */
 export function Puce({ libelle, actif, onPress }: { libelle: string; actif?: boolean; onPress: () => void }) {
+  const u = useUnivers();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: !!actif }}
       onPress={onPress}
-      style={({ pressed }) => [styles.puce, actif && styles.puceActive, pressed && { opacity: 0.8 }]}
+      style={({ pressed }) => [
+        styles.puce,
+        actif && styles.puceActive,
+        actif && u.cle !== 'rouge' && { backgroundColor: u.uni, borderColor: 'transparent', backgroundImage: u.degrade },
+        pressed && { opacity: 0.8 },
+      ]}
     >
       <Text style={[styles.puceTexte, actif && { color: '#FFFFFF' }]}>{libelle}</Text>
     </Pressable>

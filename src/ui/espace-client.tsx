@@ -1,7 +1,7 @@
 // Espace client : barre du bas Accueil / Programme / Suivi / Nutrition / Moi, sous-rubriques Suivi et Nutrition. Sert aussi à l'aperçu « Vue client » du coach.
 import { useFocusEffect } from 'expo-router';
 import { Dumbbell, Home, TrendingUp, User, Utensils } from 'lucide-react-native';
-import { useCallback, useRef, useState, type ComponentRef } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { depot } from '@/data';
@@ -18,7 +18,7 @@ import { useMinuteurs } from './entrainement/minuteurs';
 import { CarteMessages } from './messagerie/conversation';
 import { MonCompte } from './mon-compte';
 import { NutritionProfil } from './nutrition/nutrition';
-import { BandeauDemo, BarreClient, Selecteur, SousNav, type OngletDef } from './coque';
+import { BandeauDemo, BarreClient, Hero, Selecteur, SousNav, type OngletDef } from './coque';
 import { Carte, Puce, Puces, Texte } from './composants';
 import { BilanSemaine } from './suivi/bilan-semaine';
 import { Mensurations } from './suivi/mensurations';
@@ -29,7 +29,8 @@ import { Quotidien } from './suivi/quotidien';
 import { Records } from './suivi/records';
 import { Sport } from './suivi/sport';
 import { AjoutActiviteLibre } from './suivi/activite-libre';
-import { couleurs, espace, LARGEUR_CLIENT, polices } from './theme';
+import { couleurs, espace, LARGEUR_CLIENT, polices, univers, type CleUnivers } from './theme';
+import { UniversPage } from './univers';
 
 export type OngletClient = 'accueil' | 'programme' | 'suivi' | 'nutrition' | 'moi';
 type RubriqueSuivi = 'seances' | 'hebdo' | 'mesures' | 'pr' | 'activite';
@@ -41,6 +42,16 @@ const ONGLETS: OngletDef<OngletClient>[] = [
   { cle: 'nutrition', libelle: 'Nutrition', icone: Utensils },
   { cle: 'moi', libelle: 'Moi', icone: User },
 ];
+/** La couleur de chaque onglet : rouge pour l'entraînement, bleu pour le suivi, vert pour la nutrition, rouge et doré pour soi. */
+export const UNIVERS_CLIENT: Record<OngletClient, CleUnivers> = {
+  accueil: 'rouge',
+  programme: 'rouge',
+  suivi: 'bleu',
+  nutrition: 'vert',
+  moi: 'rougeDore',
+};
+const universDe = (o: OngletClient) => univers[UNIVERS_CLIENT[o]];
+
 const SUIVI: OngletDef<RubriqueSuivi>[] = [
   { cle: 'seances', libelle: 'Mes séances' },
   { cle: 'hebdo', libelle: 'Bilan semaine' },
@@ -59,12 +70,15 @@ export function EspaceClient({
   prenom,
   apercu,
   ongletInitial = 'accueil',
+  onOnglet,
 }: {
   clientId: string;
   prenom: string;
   /** Aperçu coach : sélecteur de dossier explicite, ouverture des séances réservée au client. */
   apercu?: Apercu;
   ongletInitial?: OngletClient;
+  /** L'en-tête de l'écran prend la couleur de l'onglet ouvert. */
+  onOnglet?: (o: OngletClient) => void;
 }) {
   const [onglet, setOnglet] = useState<OngletClient>(ongletInitial);
   // Une notification touchée (« repas à noter », « bilan ») ouvre l'onglet qu'elle annonce.
@@ -83,9 +97,11 @@ export function EspaceClient({
     setOnglet(o);
     enHaut();
   };
+  useEffect(() => onOnglet?.(onglet), [onglet, onOnglet]);
 
   return (
-    <View style={{ flex: 1 }}>
+    <UniversPage cle={UNIVERS_CLIENT[onglet]}>
+    <View style={{ flex: 1, backgroundImage: `linear-gradient(180deg, ${universDe(onglet).clair} 0%, ${couleurs.fond} 420px)` }}>
       <DefilementClavier ref={defilement} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: espace(4), paddingTop: espace(5), paddingBottom: minuteurs?.actif ? 240 : 128 }}>
         <View style={{ width: '100%', maxWidth: LARGEUR_CLIENT, alignSelf: 'center', gap: espace(5) }}>
           {depot.mode === 'demo' && <BandeauDemo />}
@@ -122,6 +138,7 @@ export function EspaceClient({
           )}
           {onglet === 'suivi' && (
             <>
+              <Hero kicker="Ma progression" titre="Mon suivi" sousTitre="Tes séances, tes mesures et tes records, semaine après semaine." />
               <SousNav nom="Rubriques du suivi" grille="suivi" onglets={SUIVI} valeur={suivi} onChange={(r) => demanderSortie(() => setSuivi(r))} />
               {/* Le tableau semaine par semaine et « Ajouter une séance » : tout ce que le client a fait, au même endroit. */}
               {suivi === 'seances' && <MesSeances key={clientId} clientId={clientId} apercu={!!apercu} />}
@@ -141,8 +158,9 @@ export function EspaceClient({
           {onglet === 'moi' && <MonCompte key={clientId} clientId={clientId} prenom={prenom} apercu={!!apercu} />}
         </View>
       </DefilementClavier>
-      <BarreClient onglets={ONGLETS} valeur={onglet} onChange={(o) => demanderSortie(() => aller(o))} />
+      <BarreClient onglets={ONGLETS} valeur={onglet} universDe={universDe} onChange={(o) => demanderSortie(() => aller(o))} />
     </View>
+    </UniversPage>
   );
 }
 

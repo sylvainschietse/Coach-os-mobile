@@ -7,14 +7,17 @@ import { Image, Modal, Pressable, type PressableStateCallbackType, ScrollView, S
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useHauteurClavier } from './clavier';
-import { arrondi, couleurs, espace, espacementTitre, polices } from './theme';
+import { arrondi, couleurs, espace, espacementTitre, polices, type Univers } from './theme';
+import { useUnivers } from './univers';
 
 /** Survol souris (web) : absent des types natifs de Pressable. */
 const survol = (e: PressableStateCallbackType) => !!(e as { hovered?: boolean }).hovered;
 
 /** Monogramme C·O (C blanc, O rouge), lisible sur l'en-tête sombre. */
-export function Logo() {
-  return <Image source={require('../../assets/images/logo.png')} accessibilityLabel="Logo CoachGo" style={styles.logo} />;
+export function Logo({ blanc }: { blanc?: boolean }) {
+  // Sur un en-tête rouge, le O rouge disparaîtrait : le monogramme passe tout en blanc.
+  const source = blanc ? require('../../assets/images/logo-blanc.png') : require('../../assets/images/logo.png');
+  return <Image source={source} accessibilityLabel="Logo CoachGo" style={styles.logo} />;
 }
 
 export function EnTete({
@@ -23,21 +26,25 @@ export function EnTete({
   badge,
   email,
   droite,
+  univers,
 }: {
   largeur: number;
   sousTitre?: string;
   badge?: string;
   email?: string;
   droite?: ReactNode;
+  /** Couleur de la page : l'en-tête prend le dégradé de son univers, que la scène de la page prolonge. */
+  univers?: Univers;
 }) {
   const { top } = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const petit = width <= 640;
+  const blanc = univers?.cle === 'rouge' || univers?.cle === 'rougeDore';
   return (
-    <View style={[styles.entete, { paddingTop: top }]}>
+    <View style={[styles.entete, { paddingTop: top }, univers && { backgroundColor: univers.uni, backgroundImage: univers.scene, borderBottomWidth: 0 }]}>
       <View style={[styles.enteteLigne, { maxWidth: largeur }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: espace(sousTitre ? 3 : 2) }}>
-          <Logo />
+          <Logo blanc={blanc} />
           <View>
             <Text style={[styles.marque, { fontSize: petit ? 22 : sousTitre ? 24 : 20 }]}>CoachGo</Text>
             {sousTitre && <Text style={styles.marqueSous}>{sousTitre}</Text>}
@@ -50,7 +57,7 @@ export function EnTete({
         )}
         <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: espace(1) }}>{droite}</View>
       </View>
-      {email !== undefined && <Text style={[styles.email, { maxWidth: largeur }]}>{email}</Text>}
+      {email !== undefined && <Text style={[styles.email, { maxWidth: largeur }, univers && { color: 'rgba(255,255,255,0.75)' }]}>{email}</Text>}
     </View>
   );
 }
@@ -95,7 +102,18 @@ export function CommutateurApercu({ valeur, onChange }: { valeur: 'coach' | 'cli
 export type OngletDef<T extends string> = { cle: T; libelle: string; icone?: LucideIcon };
 
 /** `wellness-tabs` : onglets coach, l'actif en rouge plein, déroulement horizontal sur téléphone. */
-export function OngletsCoach<T extends string>({ onglets, valeur, onChange }: { onglets: OngletDef<T>[]; valeur: T; onChange: (v: T) => void }) {
+export function OngletsCoach<T extends string>({
+  onglets,
+  valeur,
+  onChange,
+  universDe,
+}: {
+  onglets: OngletDef<T>[];
+  valeur: T;
+  onChange: (v: T) => void;
+  /** Couleur de chaque onglet : l'actif prend le dégradé de son univers. */
+  universDe?: (cle: T) => Univers;
+}) {
   const petit = useWindowDimensions().width <= 640;
   return (
     <View accessibilityRole="tablist" aria-label="Espaces de travail coach" style={styles.onglets}>
@@ -110,7 +128,11 @@ export function OngletsCoach<T extends string>({ onglets, valeur, onChange }: { 
               aria-selected={actif}
               aria-current={actif ? 'page' : undefined}
               onPress={() => onChange(o.cle)}
-              style={[styles.onglet, { paddingHorizontal: petit ? 13 : 18 }, actif && { backgroundColor: couleurs.rouge }]}
+              style={[
+                styles.onglet,
+                { paddingHorizontal: petit ? 13 : 18 },
+                actif && { backgroundColor: universDe?.(o.cle).uni ?? couleurs.rouge, backgroundImage: universDe?.(o.cle).degrade },
+              ]}
             >
               <Text style={[styles.ongletTexte, { fontSize: petit ? 13 : 14 }, actif && { color: '#FFFFFF' }]}>{o.libelle}</Text>
             </Pressable>
@@ -139,6 +161,7 @@ export function SousNav<T extends string>({
   grille?: 'suivi' | 'nutrition';
 }) {
   const petit = useWindowDimensions().width <= 640;
+  const u = useUnivers();
   const colonnes = grille === 'suivi' ? (petit ? 2 : Math.min(onglets.length, 5)) : 5;
   const bouton = (o: OngletDef<T>, i: number) => {
     // Nombre impair sur deux colonnes : le dernier prend toute la largeur au lieu de rester seul à gauche.
@@ -158,12 +181,12 @@ export function SousNav<T extends string>({
         ]}
       >
         <View style={[styles.sousOngletInterne, grille === 'nutrition' && { paddingHorizontal: 2 }, actif && styles.sousOngletActif]}>
-          {o.icone && <o.icone size={11} color={actif ? couleurs.rouge : couleurs.texteDoux} style={{ marginBottom: 2 }} />}
+          {o.icone && <o.icone size={11} color={actif ? u.accent : couleurs.texteDoux} style={{ marginBottom: 2 }} />}
           <Text
             style={[
               styles.sousOngletTexte,
               { fontSize: grille === 'nutrition' ? 11.5 : petit ? 12 : 12.8 },
-              actif && { color: couleurs.rouge },
+              actif && { color: u.fonce },
             ]}
           >
             {o.libelle}
@@ -199,6 +222,8 @@ export function MenuRubriques<T extends string>({
   onChange: (v: T) => void;
   large: boolean;
 }) {
+  const u = useUnivers();
+  const active = { backgroundColor: u.uni, backgroundImage: u.degrade };
   // Sur téléphone : une rangée de puces qui défile, plutôt qu'une liste déroulante qui cache les rubriques.
   if (!large)
     return (
@@ -212,7 +237,7 @@ export function MenuRubriques<T extends string>({
               accessibilityRole="button"
               aria-current={actif ? 'page' : undefined}
               onPress={() => onChange(r.cle)}
-              style={[styles.puceRubrique, actif && styles.rubriqueActive]}
+              style={[styles.puceRubrique, actif && styles.rubriqueActive, actif && active]}
             >
               {Icone && <Icone size={15} color={actif ? '#FFFFFF' : couleurs.texteDoux} />}
               <Text style={[styles.rubriqueTexte, actif && { color: '#FFFFFF' }]}>{r.libelle}</Text>
@@ -235,7 +260,7 @@ export function MenuRubriques<T extends string>({
             onPress={() => onChange(r.cle)}
             style={(e) => [
               styles.rubrique,
-              actif ? styles.rubriqueActive : survol(e) && { backgroundColor: couleurs.discret },
+              actif ? [styles.rubriqueActive, active] : survol(e) && { backgroundColor: couleurs.discret },
             ]}
           >
             {Icone && <Icone size={16} color={actif ? '#FFFFFF' : couleurs.texteDoux} />}
@@ -380,7 +405,18 @@ export function BoutonContour({
 }
 
 /** `client-bottom-nav` : cinq entrées toujours visibles, au moins 60px, trait rouge de 18 × 3px sur l'actif. */
-export function BarreClient<T extends string>({ onglets, valeur, onChange }: { onglets: OngletDef<T>[]; valeur: T; onChange: (v: T) => void }) {
+export function BarreClient<T extends string>({
+  onglets,
+  valeur,
+  onChange,
+  universDe,
+}: {
+  onglets: OngletDef<T>[];
+  valeur: T;
+  onChange: (v: T) => void;
+  /** L'onglet actif prend la couleur de son univers (fond pâle, trait, icône). */
+  universDe?: (cle: T) => Univers;
+}) {
   const { bottom } = useSafeAreaInsets();
   const petit = useWindowDimensions().width < 640;
   return (
@@ -389,6 +425,8 @@ export function BarreClient<T extends string>({ onglets, valeur, onChange }: { o
         {onglets.map((o) => {
           const actif = o.cle === valeur;
           const Icone = o.icone;
+          const u = universDe?.(o.cle);
+          const teinte = u?.accent ?? couleurs.rouge;
           return (
             <Pressable
               key={o.cle}
@@ -397,11 +435,11 @@ export function BarreClient<T extends string>({ onglets, valeur, onChange }: { o
               aria-selected={actif}
               aria-current={actif ? 'page' : undefined}
               onPress={() => !actif && onChange(o.cle)}
-              style={[styles.barreBouton, actif && { backgroundColor: 'rgba(195, 24, 30, 0.065)' }]}
+              style={[styles.barreBouton, actif && { backgroundColor: u?.clair ?? 'rgba(195, 24, 30, 0.065)' }]}
             >
-              {actif && <View style={styles.barreTrait} />}
-              {Icone && <Icone size={20} color={actif ? couleurs.rouge : couleurs.texteDoux} />}
-              <Text numberOfLines={1} style={[styles.barreTexte, { fontSize: petit ? 11 : 12 }, actif && { color: couleurs.rouge }]}>
+              {actif && <View style={[styles.barreTrait, { backgroundColor: teinte, backgroundImage: u?.degrade }]} />}
+              {Icone && <Icone size={20} color={actif ? teinte : couleurs.texteDoux} />}
+              <Text numberOfLines={1} style={[styles.barreTexte, { fontSize: petit ? 11 : 12 }, actif && { color: u?.fonce ?? couleurs.rouge, fontFamily: polices.texteGras }]}>
                 {o.libelle}
               </Text>
             </Pressable>
@@ -412,16 +450,21 @@ export function BarreClient<T extends string>({ onglets, valeur, onChange }: { o
   );
 }
 
-/** `premium-hero` : carte blanche à liseré rouge de 4px, kicker, titre display. */
+/**
+ * `premium-hero` devenu la « scène » de la page : dégradé de la couleur de l'univers (le même que l'en-tête), lueur
+ * douce en haut à gauche, kicker et titre display en blanc. Les actions à droite restent des boutons clairs.
+ */
 export function Hero({ kicker, titre, sousTitre, droite, children }: { kicker: string; titre: string; sousTitre?: string; droite?: ReactNode; children?: ReactNode }) {
   const petit = useWindowDimensions().width <= 640;
+  const u = useUnivers();
+  const t = petit ? 36 : 42;
   return (
-    <View style={[styles.hero, { padding: petit ? 17.6 : 22.4 }]}>
-      <View style={styles.heroLiseré} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: espace(3) }}>
+    <View style={[styles.hero, { padding: petit ? 20 : 26, backgroundColor: u.uni, backgroundImage: u.scene }]}>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.heroLueur]} />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: espace(3) }}>
         <View style={{ flexShrink: 1, minWidth: 0 }}>
-          <Kicker>{kicker}</Kicker>
-          <TitreDisplay taille={30} style={{ marginTop: 6 }}>{titre}</TitreDisplay>
+          <Text style={[styles.heroKicker, { color: u.kickerScene }]}>{kicker}</Text>
+          <TitreDisplay taille={t} style={{ marginTop: 6, color: '#FFFFFF' } as never}>{titre}</TitreDisplay>
           {sousTitre && <Text style={styles.heroSous}>{sousTitre}</Text>}
         </View>
         {droite}
@@ -432,7 +475,8 @@ export function Hero({ kicker, titre, sousTitre, droite, children }: { kicker: s
 }
 
 export function Kicker({ children }: { children: ReactNode }) {
-  return <Text style={styles.kicker}>{children}</Text>;
+  const u = useUnivers();
+  return <Text style={[styles.kicker, { color: u.cle === 'rouge' ? couleurs.rouge : u.fonce }]}>{children}</Text>;
 }
 
 /** H1 `font-display` : clamp(2.3rem, 4vw, 3rem), interligne 1.05. */
@@ -446,16 +490,11 @@ export function TitreDisplay({ children, style, taille }: { children: ReactNode;
   );
 }
 
-/** En-tête de rubrique CRM : « Gestion du coaching », titre, dernière actualisation, Actualiser. */
+/** En-tête de rubrique CRM : la même scène colorée que les pages client (kicker, titre, sous-titre, action à droite). */
 export function EnTeteRubrique({ kicker, titre, sousTitre, action }: { kicker: string; titre: string; sousTitre?: string; action?: ReactNode }) {
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: espace(3), marginBottom: espace(6) }}>
-      <View style={{ flexShrink: 1 }}>
-        <Text style={[styles.kicker, { fontSize: 12, letterSpacing: 1.2, fontFamily: polices.texte }]}>{kicker}</Text>
-        <TitreDisplay taille={30} style={{ marginTop: 4 }}>{titre}</TitreDisplay>
-        {sousTitre && <Text style={{ marginTop: 4, fontSize: 12, fontFamily: polices.texte, color: couleurs.texteDoux }}>{sousTitre}</Text>}
-      </View>
-      {action}
+    <View style={{ marginBottom: espace(6) }}>
+      <Hero kicker={kicker} titre={titre} sousTitre={sousTitre} droite={action} />
     </View>
   );
 }
@@ -660,14 +699,13 @@ const styles = StyleSheet.create({
   hero: {
     position: 'relative',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: couleurs.bordure,
-    borderRadius: arrondi.hero,
-    backgroundColor: couleurs.carte,
+    borderRadius: arrondi.hero + 6,
     gap: espace(4),
-  },
-  heroLiseré: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, backgroundColor: couleurs.rouge },
-  heroSous: { marginTop: 8, fontSize: 14, fontFamily: polices.texte, color: couleurs.texteDoux },
+    boxShadow: '0 14px 30px -18px rgba(17, 18, 22, 0.55)',
+  } as ViewStyle,
+  heroLueur: { backgroundImage: 'radial-gradient(circle at 0% 0%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 60%)' } as ViewStyle,
+  heroKicker: { fontSize: 11.5, fontFamily: polices.texteGras, letterSpacing: 2, textTransform: 'uppercase' },
+  heroSous: { marginTop: 8, fontSize: 14, lineHeight: 20, fontFamily: polices.texte, color: 'rgba(255,255,255,0.84)' },
   kicker: { fontSize: 10.9, fontFamily: polices.texteGras, letterSpacing: 1.75, textTransform: 'uppercase', color: couleurs.rouge },
   stat: {
     flexGrow: 1,

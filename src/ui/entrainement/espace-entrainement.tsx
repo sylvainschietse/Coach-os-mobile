@@ -8,7 +8,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { CalendarRange, ChevronLeft, ChevronRight, Lock, PlayCircle, RefreshCw } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Platform, Pressable, Text, View } from 'react-native';
+import { BackHandler, Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { depot } from '@/data';
 import { entrainement } from '@/data/entrainement';
@@ -372,17 +372,19 @@ function ProchaineSeance({
   const ouvert = c.statut === 'Actif' && c.etat !== 'depasse';
   const nbExercices = p.seance.blocs.reduce((n, b) => n + b.lignes.length, 0);
   return (
-    <View style={[ts.carte, { borderRadius: 16, borderColor: 'rgba(195,24,30,0.35)', gap: 10 }]}>
-      <Text style={ts.kicker}>{p.creneau ? `Prévue aujourd’hui${p.creneau.heure ? ` à ${p.creneau.heure}` : ''}` : 'Ma prochaine séance'}</Text>
-      <Text style={{ fontFamily: polices.titre, fontSize: 26, letterSpacing: 0.5, color: couleurs.texte }}>{titreClient(p.seance.titre)}</Text>
-      <Text style={ts.doux}>{nbExercices ? `${nbExercices} exercice${nbExercices > 1 ? 's' : ''}` : 'Activité · à valider une fois faite'}</Text>
+    // Carte forte de l'accueil : dégradé rouge, un avant-goût de la séance plein écran.
+    <View style={[ts.carte, styles.prochaine]}>
+      <Text style={[ts.kicker, { color: '#FFD3D4' }]}>{p.creneau ? `Prévue aujourd’hui${p.creneau.heure ? ` à ${p.creneau.heure}` : ''}` : 'Ma prochaine séance'}</Text>
+      <Text style={{ fontFamily: polices.titre, fontSize: 30, letterSpacing: 0.6, color: '#FFFFFF' }}>{titreClient(p.seance.titre)}</Text>
+      <Text style={[ts.doux, { color: 'rgba(255,255,255,0.85)' }]}>{nbExercices ? `${nbExercices} exercice${nbExercices > 1 ? 's' : ''}` : 'Activité · à valider une fois faite'}</Text>
       <Action
         libelle={apercu ? 'Seul le client peut démarrer' : !ouvert ? 'Cycle terminé' : nbExercices ? 'Démarrer la séance' : 'Valider la séance'}
         icone={PlayCircle}
+        variante="contour"
         desactive={apercu || !ouvert}
         onPress={() => onDemarrer(p.seance.id, p.creneau?.id)}
       />
-      <Text accessibilityRole="button" onPress={onProgramme} style={{ alignSelf: 'center', paddingVertical: 6, fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux, textDecorationLine: 'underline' }}>
+      <Text accessibilityRole="button" onPress={onProgramme} style={{ alignSelf: 'center', paddingVertical: 6, fontFamily: polices.texte, fontSize: 13, color: 'rgba(255,255,255,0.9)', textDecorationLine: 'underline' }}>
         Choisir une autre séance
       </Text>
     </View>
@@ -470,3 +472,15 @@ function CarteCycle({ espace }: { espace: EspaceEntrainement }) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  prochaine: {
+    borderRadius: 22,
+    borderWidth: 0,
+    gap: 10,
+    backgroundColor: '#C81E25',
+    backgroundImage:
+      'radial-gradient(circle at 100% 100%, rgba(255,150,110,0.45) 0%, rgba(255,150,110,0) 60%), linear-gradient(150deg, #E0262C 0%, #B3161C 100%)',
+    boxShadow: '0 16px 30px -16px rgba(195, 24, 30, 0.75)',
+  } as ViewStyle,
+});
