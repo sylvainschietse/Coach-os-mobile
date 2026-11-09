@@ -29,7 +29,8 @@ describe('factures', () => {
     expect(mentionReglement(f)).toBe('Offert : rien à régler.');
     expect(mentionReglement({ ...f, total: 59 })).toBe('Payée par prélèvement automatique le 03/11/2026.');
     expect(mentionReglement({ total: 120, moyen: 'Virement', payeLe: '2026-11-20' })).toBe('Payée par virement le 20/11/2026.');
-    expect(mentionReglement({ total: 260 })).toBe('À régler : 260 €. Merci !');
+    expect(mentionReglement({ total: 260 })).toBe('');
+    expect(factureHtml({ ...f, total: 260, payeLe: undefined })).not.toContain('À régler');
   });
 
   it('la facture porte la couleur du coach, son SIRET, la remise et les mentions, sans HTML injecté', () => {
@@ -39,6 +40,8 @@ describe('factures', () => {
     expect(html).toContain('SIRET 518 966 502 00016');
     expect(html).toContain('Remise · Merci d’être testeur');
     expect(html).toContain('TVA non applicable');
+    expect(html).toContain('Total HT');
+    expect(html).toContain('Prix unitaire HT');
     expect(html).toContain('Romain &lt;Tisseront&gt;');
     expect(html).not.toContain('<Tisseront>');
   });

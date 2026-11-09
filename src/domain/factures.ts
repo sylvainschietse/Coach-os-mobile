@@ -111,7 +111,7 @@ const texte = (s?: string) => (s ? echapper(s).replace(/\n/g, '<br>') : '');
 /** Mention de règlement en bas de facture. */
 export function mentionReglement(f: Pick<Facture, 'total' | 'moyen' | 'payeLe'>) {
   if (f.total === 0) return 'Offert : rien à régler.';
-  if (!f.payeLe) return `À régler : ${euros(f.total)}. Merci !`;
+  if (!f.payeLe) return '';
   const quand = f.payeLe ? ` le ${dateFr(f.payeLe)}` : '';
   if (f.moyen === 'Stripe') return `Payée par prélèvement automatique${quand}.`;
   return `Payée${f.moyen ? ` par ${f.moyen.toLowerCase()}` : ''}${quand}.`;
@@ -139,8 +139,10 @@ export function factureHtml(f: Facture, style: { couleur?: string; logo?: string
     })
     .join('');
   const entetes = avecRemise
-    ? '<th class="n">Prix unitaire</th><th class="n">Remise</th><th class="n">Prix remisé</th>'
-    : '<th class="n">Prix unitaire</th>';
+    ? '<th class="n">Prix unitaire HT</th><th class="n">Remise</th><th class="n">Prix remisé HT</th>'
+    : '<th class="n">Prix unitaire HT</th>';
+  // Franchise en base de TVA : le prix HT est le prix à payer, la TVA est à 0 €.
+  const sansTva = /293\s*B/i.test(e.mentions ?? '');
   return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Facture ${echapper(f.numero)}</title><style>
 ${fontFace}
 @page { size: A4; margin: 0; }
@@ -193,12 +195,14 @@ tr.remise td { color: ${couleur}; }
   <div class="client"><div class="etiquette">Facturé à</div><div class="nom">${echapper(f.destinataire.nom)}</div>${f.destinataire.adresse ? `<div>${texte(f.destinataire.adresse)}</div>` : ''}</div>
 </div>
 <div class="objet"><b>Objet :</b> ${echapper(f.objet)}</div>
-<table><thead><tr><th>Détail</th><th class="n">Qté</th>${entetes}<th class="n">Montant</th></tr></thead><tbody>${lignes}</tbody></table>
+<table><thead><tr><th>Détail</th><th class="n">Qté</th>${entetes}<th class="n">Montant HT</th></tr></thead><tbody>${lignes}</tbody></table>
 <div class="totaux"><table>
   ${remise > 0 ? `<tr><td>Sous-total</td><td class="n">${euros(f.total + remise)}</td></tr><tr><td>Remise</td><td class="n">−${euros(remise)}</td></tr>` : ''}
+  <tr><td>Total HT</td><td class="n">${euros(f.total)}</td></tr>
+  ${sansTva ? `<tr><td>TVA non applicable</td><td class="n">${euros(0)}</td></tr>` : ''}
   <tr class="final"><td>Total à payer</td><td class="n">${euros(f.total)}</td></tr>
 </table></div>
-<div class="reglement">${echapper(mentionReglement(f))}</div>
+${mentionReglement(f) ? `<div class="reglement">${echapper(mentionReglement(f))}</div>` : ''}
 ${style.iban ? `<div class="banque"><span class="etiquette">Coordonnées bancaires</span><br><b>IBAN</b> ${echapper(ibanLisible(style.iban))}${style.bic ? ` · <b>BIC</b> ${echapper(nettoyerIban(style.bic))}` : ''} · <b>Titulaire</b> ${echapper(e.nom)}</div>` : ''}
 ${e.mentions ? `<div class="mentions">${texte(e.mentions)}</div>` : ''}
 </div></body></html>`;
