@@ -8,8 +8,11 @@ import { ajouterJours, jourLocal, MODELES, rediger, statutBooster, type BoosterD
 import { decalerMois, moisDe, nomMois } from '@/domain/bilan-mois';
 import { montantLisible } from '@/domain/gestion';
 
-import { AgendaDuJour } from '../agenda/agenda-coach';
-import { BoutonContour, Stat } from '../coque';
+import { useSession } from '@/data/session';
+
+import { AgendaCoach } from '../agenda/agenda-coach';
+import { CeQuiSestPasse } from '../accueil/ce-qui-s-est-passe';
+import { BoutonContour } from '../coque';
 import { Carte } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { adresseQuestionnaire, CarteRelance, dateCourte, EnvoiMessage, jourLisible, nomComplet, useCoachNom } from './commun';
@@ -47,6 +50,8 @@ export function VueEnsemble({
   onAgenda: () => void;
 }) {
   const { width } = useWindowDimensions();
+  const { profil } = useSession();
+  const coachId = profil?.role === 'coach' ? profil.coachId : '';
   const [tout, setTout] = useState(false);
   const [erreur, setErreur] = useState<string>();
   const agir = (action: Promise<void>) => {
@@ -67,13 +72,13 @@ export function VueEnsemble({
   const prochains = donnees.boosters
     .filter((b) => b.statut === 'prevu' && b.contact.statut !== 'archive')
     .sort((a, b) => a.date.localeCompare(b.date));
-  // Grille d'origine : 1 colonne, 2 dès sm (640px), 4 dès xl (1280px) ; on raisonne sur la largeur de l'écran.
-  const colonnes = width >= 1280 ? 4 : width >= 640 ? 2 : 1;
-  const base = `${100 / colonnes - 2}%` as const;
 
   return (
-    <View style={{ gap: espace(6) }}>
-      <AgendaDuJour onOuvrirAgenda={onAgenda} />
+    <View style={{ gap: espace(4) }}>
+      {/* L'agenda tel qu'il est dans l'onglet Agenda (jour, semaine, mois, flèches), ouvert sur aujourd'hui. */}
+      <Carte style={{ padding: 12 }}>
+        <AgendaCoach coachId={coachId} accueil />
+      </Carte>
       {/* Première semaine du mois : le bilan du mois qui vient de se terminer est prêt. */}
       {new Date().getDate() <= 7 && (
         <Pressable accessibilityRole="button" onPress={() => onRubrique('Bilan')}>
@@ -120,15 +125,24 @@ export function VueEnsemble({
           ))}
         </Carte>
       )}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-        <Stat style={{ flexBasis: base }} libelle="Prospects" valeur={String(actifs.length)} onPress={() => onRubrique('Contacts')} />
-        <Stat style={{ flexBasis: base }} libelle="Boosters à réaliser" valeur={String(prochains.length)} onPress={() => onRubrique('Boosters')} />
-        <Stat style={{ flexBasis: base }} libelle="À faire en retard" valeur={String(enRetard)} />
-        {/* Paiements « Payé » datés du mois en cours. */}
-        <Stat style={{ flexBasis: base }} libelle="Encaissé ce mois" valeur={montantLisible(donnees.encaissements)} onPress={() => onRubrique('Paiements')} />
-        {/* Paiements « En attente » : abonnements du mois et packs vendus, à passer en « Payé » une fois reçus. */}
-        <Stat style={{ flexBasis: base }} libelle="À encaisser" valeur={montantLisible(donnees.aEncaisser)} onPress={() => onRubrique('Paiements')} />
-      </View>
+      {/* Les cinq chiffres dans une seule carte : deux rangées de petites cases, chacune ouvre sa rubrique. */}
+      <Carte style={{ padding: 16 }}>
+        <Text style={[titreCarte, { marginBottom: 12 }]}>En bref</Text>
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Chiffre libelle="Prospects" valeur={String(actifs.length)} onPress={() => onRubrique('Contacts')} />
+            <Chiffre libelle="Boosters" valeur={String(prochains.length)} onPress={() => onRubrique('Boosters')} />
+            <Chiffre libelle="En retard" valeur={String(enRetard)} alerte={enRetard > 0} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {/* Paiements « Payé » datés du mois en cours. */}
+            <Chiffre libelle="Encaissé ce mois" valeur={montantLisible(donnees.encaissements)} onPress={() => onRubrique('Paiements')} />
+            {/* Paiements « En attente » : abonnements du mois et packs vendus, à passer en « Payé » une fois reçus. */}
+            <Chiffre libelle="À encaisser" valeur={montantLisible(donnees.aEncaisser)} alerte={donnees.aEncaisser > 0} onPress={() => onRubrique('Paiements')} />
+          </View>
+        </View>
+      </Carte>
+      <CeQuiSestPasse onOuvrirContact={onOuvrirContact} onAgenda={onAgenda} onPaiements={() => onRubrique('Paiements')} />
       <View style={{ flexDirection: width >= 1280 ? 'row' : 'column', gap: 20 }}>
         <Carte style={{ flex: 1, padding: 20 }}>
           <Text style={titreCarte}>Prochains Boosters</Text>
@@ -193,6 +207,24 @@ export function VueEnsemble({
         </Carte>
       </View>
     </View>
+  );
+}
+
+/** Une case de la carte « En bref » : libellé discret, chiffre en gras ; rouge quand il demande une action. */
+function Chiffre({ libelle, valeur, onPress, alerte }: { libelle: string; valeur: string; onPress?: () => void; alerte?: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={`${libelle} : ${valeur}`}
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => ({ flex: 1, minWidth: 0, borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8, opacity: pressed ? 0.7 : 1 })}
+    >
+      <Text numberOfLines={1} style={{ fontSize: 12, fontFamily: polices.texte, color: couleurs.texteDoux }}>{libelle}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 20, fontFamily: polices.texteGras, color: alerte ? couleurs.rouge : couleurs.texte, marginTop: 2 }}>
+        {valeur}
+      </Text>
+    </Pressable>
   );
 }
 
