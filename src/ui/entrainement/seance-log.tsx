@@ -26,7 +26,7 @@ import { VideosExercice } from './videos-mouvement';
 import { VignetteVideo } from './vignette-video';
 
 type Champ = { m: Mesure; titre: string; unite: string; decimal: boolean; max: number };
-type Brouillon = { vals: Record<string, Partial<Record<Mesure, string>>>; note: number | null; com: string; envoiId: string; debut: string };
+export type Brouillon = { vals: Record<string, Partial<Record<Mesure, string>>>; note: number | null; com: string; envoiId: string; debut: string };
 
 const CHARGE: Champ = { m: 'charge', titre: 'Charge (kg)', unite: 'kg', decimal: true, max: 1000 };
 const REPS: Champ = { m: 'repetitions', titre: 'Répétitions', unite: 'reps', decimal: false, max: 500 };
@@ -52,6 +52,34 @@ const invalide = (c: Champ, v?: string) => {
 };
 const vide = (): Brouillon => ({ vals: {}, note: null, com: '', envoiId: nouvelId(), debut: new Date().toISOString() });
 const sale = (d: Brouillon) => Object.values(d.vals).some((v) => Object.values(v).some((x) => x?.trim())) || d.note !== null || !!d.com.trim();
+/**
+ * Valeur proposée dans une case : ce que le coach a prescrit (durée, distance, répétitions : le bas de la fourchette) ou, pour la charge,
+ * la charge précédente, sinon la charge indicative. Elle s'affiche en gris et ne compte qu'une fois validée.
+ */
+export function proposition(l: LignePrescription, m: Mesure, avant?: number): number | undefined {
+  const cible =
+    m === 'duree' ? l.dureeS : m === 'distance' ? l.distanceM : m === 'charge' ? l.chargeIndicative : m === 'repetitions' ? l.repetitionsMin : undefined;
+  return m === 'charge' ? (avant ?? cible) : (cible ?? avant);
+}
+const ecrit = (x: number) => String(x).replace('.', ',');
+
+/** Remplit les cases vides des séries avec les valeurs proposées : une série (n) ou toutes. */
+export function validerSeries(d: Brouillon, l: LignePrescription, precedentes: Record<number, Valeurs>, n?: number): Brouillon {
+  const vals = { ...d.vals };
+  const champs = champsSaisie(l);
+  for (let i = 1; i <= Math.max(1, l.series); i++) {
+    if (n !== undefined && i !== n) continue;
+    const k = `${l.id}:${i}`;
+    const ligne = { ...vals[k] };
+    for (const c of champs) {
+      const p = proposition(l, c.m, precedentes[i]?.[c.m]);
+      if (!ligne[c.m]?.trim() && p !== undefined) ligne[c.m] = ecrit(p);
+    }
+    vals[k] = ligne;
+  }
+  return { ...d, vals };
+}
+
 const DIFFICULTES = ['Trop difficile', 'Matériel indisponible', 'Besoin d’explication'];
 
 export type Enregistrement = { resultat: 'enregistree' | 'doublon' };
@@ -246,6 +274,16 @@ export function SeanceLog({
                           router.push({ pathname: '/client/minuteur', params: { config: JSON.stringify(alterne.config), titre: b.titre, noms: JSON.stringify(alterne.noms) } })
                         }
                       />
+                      <Action
+                        petit
+                        icone={CheckCircle2}
+                        libelle="Circuit fait : tout valider"
+                        desactive={apercu || etat === 'envoi'}
+                        onPress={() => {
+                          setEtat('repos');
+                          setD((c) => b.lignes.reduce((x, l) => validerSeries(x, l, precedentes(l.id)), c));
+                        }}
+                      />
                     </Ligne>
                   </View>
                 )}
@@ -271,6 +309,10 @@ export function SeanceLog({
               occupe={etat === 'envoi'}
               onChanger={changer}
               onRepos={onRepos}
+              onValider={(n) => {
+                setEtat('repos');
+                setD((c) => validerSeries(c, l, precedentes(l.id), n));
+              }}
               onRemplir={(charge) => {
                 setEtat('repos');
                 setD((c) => {
@@ -388,6 +430,7 @@ function LigneSaisie({
   occupe,
   onChanger,
   onRemplir,
+  onValider,
   onRepos,
 }: {
   l: LignePrescription;
@@ -401,6 +444,8 @@ function LigneSaisie({
   occupe: boolean;
   onChanger: (k: string, m: Mesure, v: string) => void;
   onRemplir: (charge: number) => void;
+  /** Remplit avec les valeurs proposées la série n, ou toutes les séries. */
+  onValider: (n?: number) => void;
   onRepos: (secondes: number, libelle: string) => void;
 }) {
   const champs = champsSaisie(l);
@@ -409,6 +454,11 @@ function LigneSaisie({
   const repos = l.recuperationS && l.recuperationS > 0 ? Math.min(3600, Math.round(l.recuperationS)) : 60;
   const fourchette = (a: number | null, b: number | null) => `${a}${b !== a ? `–${b}` : ''}`;
   const aPrecedent = Object.values(precedentes).some((v) => v[premier.m] !== undefined);
+  const numeros = Array.from({ length: Math.max(1, l.series) }, (_, i) => i + 1);
+  const aProposition = numeros.some((n) => champs.some((c) => proposition(l, c.m, precedentes[n]?.[c.m]) !== undefined));
+  const toutRempli = numeros.every((n) =>
+    champs.every((c) => proposition(l, c.m, precedentes[n]?.[c.m]) === undefined || !!d.vals[`${l.id}:${n}`]?.[c.m]?.trim()),
+  );
   const colonnes = { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 };
 
   return (
@@ -436,6 +486,15 @@ function LigneSaisie({
             icone={Timer}
             libelle={`Chrono · ${resumeMinuteur(l.minuteur)}`}
             onPress={() => router.push({ pathname: '/client/minuteur', params: { config: JSON.stringify(l.minuteur), titre: l.exercice.nom } })}
+          />
+        )}
+        {aProposition && (
+          <Action
+            petit
+            icone={CheckCircle2}
+            libelle={toutRempli ? 'Exercice validé' : l.series > 1 ? 'Fait : valider les séries' : 'Fait : valider'}
+            desactive={occupe || apercu || toutRempli}
+            onPress={() => onValider()}
           />
         )}
       </Ligne>
@@ -471,9 +530,9 @@ function LigneSaisie({
           )}
         </View>
       )}
-      {aPrecedent && (
+      {aProposition && (
         <Text style={[ts.doux, { marginTop: 6 }]}>
-          En gris : {premier === CHARGE ? 'charge précédente' : 'valeur précédente'}. Validez avec ✓ ou saisissez votre {premier === CHARGE ? 'charge' : 'valeur'}.
+          En gris : {aPrecedent && premier === CHARGE ? 'votre charge précédente' : 'ce que votre coach a prévu'}. Validez avec ✓, ou saisissez ce que vous avez fait.
         </Text>
       )}
 
@@ -485,15 +544,15 @@ function LigneSaisie({
           </Text>
         ))}
       </View>
-      {Array.from({ length: Math.max(1, l.series) }, (_, i) => i + 1).map((n) => {
+      {numeros.map((n) => {
         const k = `${l.id}:${n}`;
         const v = d.vals[k] ?? {};
         return (
           <View key={n} style={[colonnes, { marginTop: 6 }]}>
             <Text style={[ts.doux, { width: 36, fontFamily: polices.texteGras }]}>S{n}</Text>
             {champs.map((c, i) => {
-              const avant = precedentes[n]?.[c.m];
-              const valider = i === 0 && !v[c.m] && avant !== undefined;
+              const avant = proposition(l, c.m, precedentes[n]?.[c.m]);
+              const valider = i === 0 && champs.some((x) => !v[x.m] && proposition(l, x.m, precedentes[n]?.[x.m]) !== undefined);
               return (
                 <View key={c.m} style={{ flex: 1, minWidth: 0 }}>
                   <TextInput
@@ -511,9 +570,9 @@ function LigneSaisie({
                   {valider && (
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel={`Valider ${String(avant).replace('.', ',')} ${c.unite} pour ${l.exercice.nom}, série ${n}`}
+                      accessibilityLabel={`Valider la série ${n} de ${l.exercice.nom}`}
                       disabled={occupe || apercu}
-                      onPress={() => onChanger(k, c.m, String(avant).replace('.', ','))}
+                      onPress={() => onValider(n)}
                       style={styles.valider}
                     >
                       <CheckCircle2 size={16} color={couleurs.texteDoux} />
