@@ -1,4 +1,5 @@
-// Notifications du client : ses rappels sont recalculés à chaque ouverture de l'appli (séances prévues, rendez-vous,
+// Notifications du client : les alertes envoyées par le serveur (messages, programme, séances…) se règlent dans
+// AlertesTelephone ; ses rappels sont recalculés à chaque ouverture de l'appli (séances prévues, rendez-vous,
 // repas notés, bilan rempli) et il les règle depuis « Moi › Mes notifications ».
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Bell } from 'lucide-react-native';
@@ -8,6 +9,7 @@ import * as Notifications from 'expo-notifications';
 
 import { depot } from '@/data';
 import { agenda } from '@/data/agenda';
+import { reglerAlerte } from '@/data/alertes';
 import { alimentation } from '@/data/alimentation';
 import { suiviHebdo } from '@/data/suivi-hebdo';
 import { aujourdhuiParis } from '@/domain/entrainement';
@@ -18,6 +20,7 @@ import { useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, SousTitre, Texte } from '../composants';
 import { CaseACocher, Saisie } from '../crm/dossier';
+import { AlertesTelephone } from './alertes';
 import { couleurs, espace } from '../theme';
 
 const CLE_DEMANDE = 'coachgo.notifications.demandees';
@@ -53,8 +56,15 @@ export function useRappelsClient(clientId: string, prenom: string) {
       const demandees = await AsyncStorage.getItem(CLE_DEMANDE).catch(() => null);
       if (!demandees) await AsyncStorage.setItem(CLE_DEMANDE, '1').catch(() => undefined);
       await replanifier(clientId, prenom, !demandees).catch(() => undefined);
+      // Ce téléphone reçoit les alertes du serveur ; chacune se coupe dans « Alertes de mon coach ».
+      await inscrireMessages(true).catch(() => undefined);
+      // Ancien réglage « Messages de mon coach » coupé sur le téléphone : il passe côté serveur, une fois.
       const prefs = await lirePreferences(clientId);
-      await inscrireMessages(prefs.messages).catch(() => undefined);
+      if (!prefs.messages) {
+        await reglerAlerte('message', false)
+          .then(() => enregistrerPreferences(clientId, { ...prefs, messages: true }))
+          .catch(() => undefined);
+      }
     };
     void lancer();
     const s = AppState.addEventListener('change', (e) => e === 'active' && void replanifier(clientId, prenom).catch(() => undefined));
@@ -63,7 +73,6 @@ export function useRappelsClient(clientId: string, prenom: string) {
 }
 
 const TYPES: { cle: keyof PreferencesRappels; titre: string; detail: string }[] = [
-  { cle: 'messages', titre: 'Messages de mon coach', detail: 'Dès que ton coach t’écrit.' },
   { cle: 'seances', titre: 'Mes séances', detail: 'Le matin d’une séance prévue, et 2 h avant un rendez-vous avec ton coach.' },
   { cle: 'repas', titre: 'Noter mes repas', detail: 'Le midi et le soir, seulement si le repas n’est pas encore noté.' },
   { cle: 'motivation', titre: 'Motivation', detail: 'Un petit mot d’encouragement le mardi et le vendredi matin.' },
@@ -104,7 +113,7 @@ export function ReglagesNotifications({ clientId, prenom }: { clientId: string; 
     try {
       await enregistrerPreferences(clientId, valeur);
       setNb(await replanifier(clientId, prenom, true));
-      await inscrireMessages(valeur.messages);
+      await inscrireMessages(true);
       permission.recharger();
       setEtat('ok');
     } catch {
@@ -124,7 +133,7 @@ export function ReglagesNotifications({ clientId, prenom }: { clientId: string; 
       <Carte>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: espace(2) }}>
           <Bell size={18} color={couleurs.texte} />
-          <SousTitre>Je veux être prévenu·e pour</SousTitre>
+          <SousTitre>Mes rappels</SousTitre>
         </View>
         {TYPES.map((t) => (
           <View key={t.cle} style={{ gap: 2 }}>
@@ -152,6 +161,7 @@ export function ReglagesNotifications({ clientId, prenom }: { clientId: string; 
           </Texte>
         )}
       </Carte>
+      <AlertesTelephone role="client" titre="Alertes de mon coach" />
     </View>
   );
 }

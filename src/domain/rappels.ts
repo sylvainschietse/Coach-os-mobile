@@ -12,7 +12,7 @@ export interface PreferencesRappels {
   motivation: boolean;
   /** Le dimanche soir, si le bilan de la semaine n'est pas rempli. */
   bilan: boolean;
-  /** Nouveaux messages du coach (notification envoyée par le serveur). */
+  /** Ancien réglage des messages du coach : désormais côté serveur (alertes coupées), gardé pour la reprise. */
   messages: boolean;
   /** « HH:MM » */
   heureDejeuner: string;

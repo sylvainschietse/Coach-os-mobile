@@ -8,15 +8,17 @@ import { BoutonContour, EnTeteRubrique, SousNav, type OngletDef } from './coque'
 import { Automatisations } from './crm/automatisations';
 import { EnteteFactures } from './factures';
 import { MesOffres } from './offres/mes-offres';
+import { AlertesTelephone } from './notifications/alertes';
 import { MonProfilCoach } from './profil-coach';
 import { espace } from './theme';
 
-export type SectionProfil = 'infos' | 'facturation' | 'offres' | 'agenda' | 'relances';
+export type SectionProfil = 'infos' | 'facturation' | 'offres' | 'agenda' | 'notifications' | 'relances';
 export const SECTIONS_PROFIL: OngletDef<SectionProfil>[] = [
   { cle: 'infos', libelle: 'Mes infos' },
   { cle: 'facturation', libelle: 'Paiement et factures' },
   { cle: 'offres', libelle: 'Mes offres' },
   { cle: 'agenda', libelle: 'Agenda' },
+  { cle: 'notifications', libelle: 'Notifications' },
   { cle: 'relances', libelle: 'Relances automatiques' },
 ];
 
@@ -33,6 +35,7 @@ export function EspaceProfil({ section, onSection, onDeconnecter }: { section: S
       {section === 'facturation' && <EnteteFactures />}
       {section === 'offres' && <MesOffres />}
       {section === 'agenda' && <ReglagesAgendaCoach />}
+      {section === 'notifications' && <AlertesTelephone role="coach" />}
       {section === 'relances' && <Automatisations />}
     </View>
   );

@@ -38,7 +38,7 @@ export async function preparerCanaux() {
     importance: Notifications.AndroidImportance.DEFAULT,
   });
   await Notifications.setNotificationChannelAsync(CANAL_MESSAGES, {
-    name: 'Messages du coach',
+    name: 'Messages et alertes',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 200, 120, 200],
   });
