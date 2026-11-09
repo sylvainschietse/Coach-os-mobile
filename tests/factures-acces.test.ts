@@ -195,11 +195,10 @@ describe('factures à régler', () => {
     let f = await factureDe(p.rows[0].id);
     expect(f.objet).toBe('Séances d’octobre 2026');
     expect(f.paye_le).toBeNull();
-    // Tarif de base 60 € : chaque séance y est facturée, l'écart apparaît en remise.
+    // Tarif de base 60 € : chaque ligne montre le tarif de base, le % de remise et le prix remisé.
     expect(f.lignes).toEqual([
-      { libelle: 'Séances seul : 02/10, 09/10, 16/10, 29/10, 30/10', quantite: 5, prix_unitaire: 60, montant: 300 },
-      { libelle: 'Séances avec Romain : 06/10, 15/10, 20/10', quantite: 3, prix_unitaire: 60, montant: 180 },
-      { libelle: 'Remise tarif préférentiel', quantite: 1, prix_unitaire: -220, montant: -220 },
+      { libelle: 'Séances seul : 02/10, 09/10, 16/10, 29/10, 30/10', quantite: 5, prix_unitaire: 40, montant: 200, prix_base: 60, remise_pct: 33.3 },
+      { libelle: 'Séances avec Romain : 06/10, 15/10, 20/10', quantite: 3, prix_unitaire: 20, montant: 60, prix_base: 60, remise_pct: 66.7 },
     ]);
     const numero = f.numero;
     await db.query(`update public.paiements set montant = 150, notes = '09/10, 22/10, 26/10 · 50 € la séance' where id = $1`, [p.rows[0].id]);
@@ -207,8 +206,7 @@ describe('factures à régler', () => {
     expect(f.numero).toBe(numero);
     expect(Number(f.total)).toBe(150);
     expect(f.lignes).toEqual([
-      { libelle: 'Séances du 09/10, 22/10, 26/10', quantite: 3, prix_unitaire: 60, montant: 180 },
-      { libelle: 'Remise tarif préférentiel', quantite: 1, prix_unitaire: -30, montant: -30 },
+      { libelle: 'Séances du 09/10, 22/10, 26/10', quantite: 3, prix_unitaire: 50, montant: 150, prix_base: 60, remise_pct: 16.7 },
     ]);
   });
 
@@ -222,10 +220,9 @@ describe('factures à régler', () => {
     const f = (await db.query<Record<string, any>>(`select * from public.factures where id = $1`, [r.rows[0].id])).rows[0];
     expect(f.objet).toBe('Séances de décembre 2026');
     expect(Number(f.total)).toBe(60);
-    expect(f.lignes.map((l: any) => [l.libelle, l.montant])).toEqual([
-      ['Séance du 03/12', 60],
-      ['Séance du 10/12', 60],
-      ['Remise tarif préférentiel', -60],
+    expect(f.lignes.map((l: any) => [l.libelle, l.prix_base, l.remise_pct, l.montant])).toEqual([
+      ['Séance du 03/12', 60, 33.3, 40],
+      ['Séance du 10/12', 60, 66.7, 20],
     ]);
     expect((await en(ids.userCoach1, `select public.facturer_mois($1, '2026-12') as id`, [ids.clientB])).rows[0].id).toBeNull();
     const liees = await en(ids.userCoach1, `select paiement_id from public.factures_paiements where facture_id = $1`, [f.id]);
@@ -237,7 +234,7 @@ describe('factures à régler', () => {
     expect((await db.query<Record<string, any>>(`select paye_le, moyen from public.factures where id = $1`, [f.id])).rows[0]).toMatchObject({ moyen: 'Espèces' });
   });
 
-  it('un pack montre le tarif de base, la séance offerte et la remise pack', async () => {
+  it('un pack montre le prix remisé des séances et la séance offerte à 100 %', async () => {
     const pk = await db.query<{ id: string }>(
       `insert into public.packs_seances (coach_id, client_id, seances_total, prix, achete_le) values ($1, $2, 11, 500, '2026-11-06') returning id`,
       [ids.coach1, ids.clientA],
@@ -249,9 +246,8 @@ describe('factures à régler', () => {
     );
     const f = await factureDe(p.rows[0].id);
     expect(f.lignes).toEqual([
-      { libelle: 'Séances de coaching au tarif de base', quantite: 11, prix_unitaire: 60, montant: 660 },
-      { libelle: 'Séance offerte', quantite: 1, prix_unitaire: -60, montant: -60 },
-      { libelle: 'Remise pack', quantite: 1, prix_unitaire: -100, montant: -100 },
+      { libelle: 'Séances de coaching', quantite: 10, prix_unitaire: 50, montant: 500, prix_base: 60, remise_pct: 16.7 },
+      { libelle: 'Séance offerte', quantite: 1, prix_unitaire: 0, montant: 0, prix_base: 60, remise_pct: 100 },
     ]);
     expect(Number(f.total)).toBe(500);
   });

@@ -61,4 +61,16 @@ describe('factures', () => {
     expect(html).toContain('AGRIFRPP');
     expect(factureHtml(f)).not.toContain('IBAN');
   });
+
+  it('remise sur le prix de la séance : tarif de base, pourcentage et prix remisé', () => {
+    const html = factureHtml({
+      ...f,
+      lignes: [{ libelle: 'Séances du 01/10, 08/10', quantite: 8, prixUnitaire: 50, montant: 400, prixBase: 60, remisePct: 16.7 }],
+      total: 400,
+    });
+    expect(html).toContain('Prix remisé');
+    expect(html).toContain('−16,7 %');
+    expect(html).not.toContain('Sous-total');
+    expect(factureHtml(f)).not.toContain('Prix remisé');
+  });
 });

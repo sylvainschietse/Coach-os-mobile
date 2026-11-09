@@ -4,9 +4,16 @@
 export interface LigneFacture {
   libelle: string;
   quantite: number;
+  /** Prix réellement facturé (prix remisé s'il y a une remise). */
   prixUnitaire: number;
   montant: number;
+  /** Tarif de base de la séance, quand la ligne est remisée. */
+  prixBase?: number;
+  /** Pourcentage de remise sur le tarif de base (16.7 pour 50 € au lieu de 60 €). */
+  remisePct?: number;
 }
+
+const pourcent = (n: number) => `${n.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`;
 
 export interface Facture {
   id: string;
@@ -119,12 +126,21 @@ export function factureHtml(f: Facture, style: { couleur?: string; logo?: string
   const fontFace = style.police ? `@font-face { font-family: 'Titre'; src: url(data:font/ttf;base64,${style.police}) format('truetype'); }` : '';
   const e = f.emetteur;
   const remise = f.lignes.filter((l) => l.montant < 0).reduce((s, l) => s - l.montant, 0);
+  // Remise sur le prix de la séance : tarif de base, % de remise, prix remisé.
+  const avecRemise = f.lignes.some((l) => l.prixBase != null);
   const lignes = f.lignes
-    .map(
-      (l) =>
-        `<tr class="${l.montant < 0 ? 'remise' : ''}"><td>${echapper(l.libelle)}</td><td class="n">${l.quantite}</td><td class="n">${euros(l.prixUnitaire)}</td><td class="n">${euros(l.montant)}</td></tr>`,
-    )
+    .map((l) => {
+      const prix = avecRemise
+        ? l.prixBase != null
+          ? `<td class="n">${euros(l.prixBase)}</td><td class="n">−${pourcent(l.remisePct ?? 0)}</td><td class="n">${euros(l.prixUnitaire)}</td>`
+          : `<td class="n">${euros(l.prixUnitaire)}</td><td class="n"></td><td class="n">${euros(l.prixUnitaire)}</td>`
+        : `<td class="n">${euros(l.prixUnitaire)}</td>`;
+      return `<tr class="${l.montant < 0 ? 'remise' : ''}"><td>${echapper(l.libelle)}</td><td class="n">${l.quantite}</td>${prix}<td class="n">${euros(l.montant)}</td></tr>`;
+    })
     .join('');
+  const entetes = avecRemise
+    ? '<th class="n">Prix unitaire</th><th class="n">Remise</th><th class="n">Prix remisé</th>'
+    : '<th class="n">Prix unitaire</th>';
   return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Facture ${echapper(f.numero)}</title><style>
 ${fontFace}
 @page { size: A4; margin: 0; }
@@ -177,7 +193,7 @@ tr.remise td { color: ${couleur}; }
   <div class="client"><div class="etiquette">Facturé à</div><div class="nom">${echapper(f.destinataire.nom)}</div>${f.destinataire.adresse ? `<div>${texte(f.destinataire.adresse)}</div>` : ''}</div>
 </div>
 <div class="objet"><b>Objet :</b> ${echapper(f.objet)}</div>
-<table><thead><tr><th>Détail</th><th class="n">Qté</th><th class="n">Prix unitaire</th><th class="n">Montant</th></tr></thead><tbody>${lignes}</tbody></table>
+<table><thead><tr><th>Détail</th><th class="n">Qté</th>${entetes}<th class="n">Montant</th></tr></thead><tbody>${lignes}</tbody></table>
 <div class="totaux"><table>
   ${remise > 0 ? `<tr><td>Sous-total</td><td class="n">${euros(f.total + remise)}</td></tr><tr><td>Remise</td><td class="n">−${euros(remise)}</td></tr>` : ''}
   <tr class="final"><td>Total à payer</td><td class="n">${euros(f.total)}</td></tr>

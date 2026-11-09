@@ -36,7 +36,13 @@ const versFacture = (l: LigneBase): Facture => ({
   emetteur: l.emetteur as Facture['emetteur'],
   destinataire: l.destinataire as Facture['destinataire'],
   lignes: ((l.lignes as Record<string, number | string>[]) ?? []).map(
-    (x): LigneFacture => ({ libelle: String(x.libelle), quantite: Number(x.quantite), prixUnitaire: Number(x.prix_unitaire), montant: Number(x.montant) }),
+    (x): LigneFacture => ({
+      libelle: String(x.libelle),
+      quantite: Number(x.quantite),
+      prixUnitaire: Number(x.prix_unitaire),
+      montant: Number(x.montant),
+      ...(x.prix_base != null ? { prixBase: Number(x.prix_base), remisePct: Number(x.remise_pct) } : {}),
+    }),
   ),
   total: Number(l.total),
   moyen: (l.moyen as string | null) ?? undefined,
