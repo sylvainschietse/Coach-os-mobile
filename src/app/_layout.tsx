@@ -44,6 +44,7 @@ function Navigation() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="client/index" options={{ headerShown: false, title: 'Mon espace coaching' }} />
         <Stack.Screen name="client/seance/[id]" options={{ title: 'Séance' }} />
+        <Stack.Screen name="client/seance-bloc" options={{ headerShown: false, title: 'Séance' }} />
         <Stack.Screen name="client/minuteur" options={{ title: 'Minuteur' }} />
         <Stack.Screen name="client/suivi" options={{ title: 'Mon suivi' }} />
         <Stack.Screen name="client/nutrition" options={{ title: 'Nutrition' }} />

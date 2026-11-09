@@ -2,10 +2,12 @@
 // - accueil : bonjour, « Ma prochaine séance » avec Démarrer, la photo du programme (un appui ouvre le programme)
 //   et le calendrier de la semaine ;
 // - programme : cycle et avancement, « Mes séances au programme », consignes, « Mon accompagnement » ;
-// - séance : la seule séance démarrée, à noter sur place.
+// - séance : une activité (yoga, cours…) à valider sur place. Une séance d'exercices s'ouvre en plein écran, un bloc
+//   par page (app/client/seance-bloc).
 // La vue « historique » montre les séances enregistrées (U06). Repos entre les séries : bandeau en bas de l'écran.
+import { router, useFocusEffect } from 'expo-router';
 import { CalendarRange, ChevronLeft, ChevronRight, Lock, PlayCircle, RefreshCw } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Platform, Pressable, Text, View } from 'react-native';
 
 import { depot } from '@/data';
@@ -142,7 +144,26 @@ export function EntrainementClient({
       onHaut?.();
     });
   const accueil = () => aller({ nom: 'accueil' });
-  const demarrer = (seanceId: string, planificationId?: string) => aller({ nom: 'seance', seanceId, planificationId, jeton: Date.now() });
+  // Une séance avec des exercices s'ouvre en plein écran, un bloc par page ; une activité (yoga, cours…) se valide ici.
+  const demarrer = (seanceId: string, planificationId?: string) => {
+    const s = espace?.seances.find((x) => x.id === seanceId);
+    if (s && !apercu && s.blocs.some((b) => b.lignes.length))
+      router.push({ pathname: '/client/seance-bloc', params: { seance: seanceId, plan: planificationId ?? '' } });
+    else aller({ nom: 'seance', seanceId, planificationId, jeton: Date.now() });
+  };
+  // Retour de la séance plein écran : la séance faite et le créneau réalisé apparaissent tout de suite.
+  const premierAffichage = useRef(true);
+  const rechargerCalendrier = calendrier.recharger;
+  useFocusEffect(
+    useCallback(() => {
+      if (premierAffichage.current) {
+        premierAffichage.current = false;
+        return;
+      }
+      recharger();
+      rechargerCalendrier();
+    }, [recharger, rechargerCalendrier]),
+  );
 
   // Retour d'Android : d'une page du programme ou d'une séance, on revient à l'accueil au lieu de quitter l'app.
   const surAccueil = page.nom === 'accueil';

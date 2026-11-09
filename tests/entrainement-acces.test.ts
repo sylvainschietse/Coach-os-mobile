@@ -294,6 +294,39 @@ describe('calendrier et réalisation', () => {
       ]),
     ).rejects.toThrow(/hors de votre dossier/);
   });
+
+  it('garde l’exercice remplacé par le client, seulement s’il vient du catalogue de son coach', async () => {
+    const trx = '40000000-0000-4000-8000-000000000002';
+    const autre = '40000000-0000-4000-8000-000000000003';
+    await db.exec(`
+      insert into public.exercices (id, coach_id, nom, mesures) values
+        ('${trx}', '${ids.coach1}', 'Tirage horizontal TRX', '{charge,repetitions}'),
+        ('${autre}', '${ids.coach2}', 'Exercice d’un autre coach', '{charge,repetitions}');
+    `);
+    const serie = (id: string, exerciceId: string, index: number) => ({ id, ligneId: ids.ligneCopie, exerciceId, index, valeurs: { repetitions: 12 } });
+    const r = {
+      id: 'a0000000-0000-4000-8000-000000000005',
+      seanceId: ids.seanceCopie,
+      clientId: ids.lea,
+      cycleId: ids.cycle1,
+      series: [
+        serie('a1000000-0000-4000-8000-000000000005', trx, 0),
+        serie('a1000000-0000-4000-8000-000000000006', autre, 1),
+        serie('a1000000-0000-4000-8000-000000000007', ids.exo, 2),
+      ],
+    };
+    expect((await en(ids.userLea, 'select public.enregistrer_realisation($1::jsonb) as r', [JSON.stringify(r)])).rows[0].r).toBe('enregistree');
+    const lues = await en(
+      ids.userCoach1,
+      'select exercice_id, exercice_nom, exercice_prevu_id from public.series_realisees where realisation_id = $1 order by index',
+      [r.id],
+    );
+    expect(lues.rows).toEqual([
+      { exercice_id: trx, exercice_nom: 'Tirage horizontal TRX', exercice_prevu_id: ids.exo },
+      { exercice_id: ids.exo, exercice_nom: 'Rowing buste penché — barre', exercice_prevu_id: null },
+      { exercice_id: ids.exo, exercice_nom: 'Rowing buste penché — barre', exercice_prevu_id: null },
+    ]);
+  });
 });
 
 describe('corbeille', () => {
