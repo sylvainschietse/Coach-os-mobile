@@ -109,3 +109,28 @@ describe('suppression d’un coaching', () => {
     expect(apres.contacts).toHaveLength(2);
   });
 });
+
+describe('paiements par mois et par client', () => {
+  it('regroupe par client, totalise et garde le reste à encaisser', async () => {
+    const { parClient, moisDe, moisLisible } = await import('@/domain/gestion');
+    expect(moisLisible('2026-10')).toBe('Octobre 2026');
+    expect(moisDe('2026-10-15')).toBe('2026-10');
+    expect(moisDe(undefined)).toBe('sans-date');
+    const noms: Record<string, string> = { a: 'Romain', b: 'Benjamin' };
+    const g = parClient(
+      [
+        { contactId: 'a', date: '2026-10-02', montant: 40, statut: 'Payé' },
+        { contactId: 'b', date: '2026-10-06', montant: 20, statut: 'En attente' },
+        { contactId: 'a', date: '2026-10-20', montant: 20, statut: 'En attente' },
+        { date: '2026-10-21', montant: 10, statut: 'Payé' },
+      ],
+      (id) => (id ? noms[id]! : 'Contact non lié'),
+    );
+    expect(g.map((x) => [x.nom, x.total, x.enAttente, x.lignes.length])).toEqual([
+      ['Benjamin', 20, 20, 1],
+      ['Romain', 60, 20, 2],
+      ['Contact non lié', 10, 0, 1],
+    ]);
+    expect(g[1]!.lignes[0]!.date).toBe('2026-10-20');
+  });
+});

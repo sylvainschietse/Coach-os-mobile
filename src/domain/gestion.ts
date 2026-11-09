@@ -439,3 +439,44 @@ ${sectionsBilan(b)
   .join('\n')}
 <footer>Bilan de coaching sportif. Les observations reflètent les éléments recueillis à cette date.</footer></main></body></html>`;
 }
+
+const MOIS_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+/** « 2026-10 » → « Octobre 2026 ». */
+export function moisLisible(m: string) {
+  const [a, n] = m.split('-').map(Number);
+  const nom = MOIS_FR[(n ?? 1) - 1] ?? '';
+  return `${nom.charAt(0).toUpperCase()}${nom.slice(1)} ${a}`;
+}
+
+/** Mois d'une ligne (AAAA-MM), « sans-date » si elle n'en a pas. */
+export const moisDe = (date?: string) => (date && /^\d{4}-\d{2}/.test(date) ? date.slice(0, 7) : 'sans-date');
+
+export interface GroupeClient<T> {
+  cle: string;
+  nom: string;
+  lignes: T[];
+  total: number;
+  enAttente: number;
+}
+
+/**
+ * Paiements d'un mois regroupés par client, clients par ordre alphabétique,
+ * lignes du plus récent au plus ancien, avec le total du mois et ce qui reste à encaisser.
+ */
+export function parClient<T extends { contactId?: string; date?: string; montant?: number; statut?: string }>(
+  lignes: T[],
+  nomDe: (contactId?: string) => string,
+): GroupeClient<T>[] {
+  const groupes = new Map<string, GroupeClient<T>>();
+  for (const l of lignes) {
+    const cle = l.contactId ?? '';
+    const g = groupes.get(cle) ?? { cle, nom: nomDe(l.contactId), lignes: [], total: 0, enAttente: 0 };
+    g.lignes.push(l);
+    g.total += l.montant ?? 0;
+    if (l.statut === 'En attente') g.enAttente += l.montant ?? 0;
+    groupes.set(cle, g);
+  }
+  for (const g of groupes.values()) g.lignes.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
+  return [...groupes.values()].sort((a, b) => (a.cle === '' ? 1 : b.cle === '' ? -1 : a.nom.localeCompare(b.nom, 'fr')));
+}
