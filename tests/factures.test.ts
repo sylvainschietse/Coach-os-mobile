@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { erreursEntete, factureHtml, mentionReglement, nettoyerPrefixe, prochainNumero, type Facture } from '@/domain/factures';
+import { erreursEntete, factureHtml, ibanValide, mentionReglement, nettoyerIban, nettoyerPrefixe, prochainNumero, type Facture } from '@/domain/factures';
 
 const f: Facture = {
   id: 'f1',
@@ -45,8 +45,20 @@ describe('factures', () => {
 
   it('une couleur illisible retombe sur le rouge CoachGo ; le SIRET compte 14 chiffres', () => {
     expect(factureHtml(f, { couleur: 'red;}' })).toContain('#D71920');
-    const e = { nom: '', adresse: '', telephone: '', siret: '123', mentions: '', couleur: 'rouge' };
+    const e = { nom: '', adresse: '', telephone: '', siret: '123', mentions: '', couleur: 'rouge', tarifBase: '60', iban: '', bic: '' };
     expect(erreursEntete(e)).toHaveLength(2);
     expect(erreursEntete({ ...e, siret: '518 966 502 00016', couleur: '#000000' })).toEqual([]);
+  });
+
+  it('IBAN : contrôlé, imprimé lisible avec le BIC et le titulaire', () => {
+    const e = { nom: '', adresse: '', telephone: '', siret: '', mentions: '', couleur: '#000000', tarifBase: '60', iban: 'FR76 3000 6000 0112 3456 7890 189', bic: 'agrifrpp' };
+    expect(ibanValide(nettoyerIban(e.iban))).toBe(true);
+    expect(erreursEntete(e)).toEqual([]);
+    expect(erreursEntete({ ...e, iban: 'FR76 3000 6000 0112 3456 7890 188' })).toHaveLength(1);
+    expect(erreursEntete({ ...e, tarifBase: 'soixante' })).toHaveLength(1);
+    const html = factureHtml(f, { iban: nettoyerIban(e.iban), bic: e.bic });
+    expect(html).toContain('FR76 3000 6000 0112 3456 7890 189');
+    expect(html).toContain('AGRIFRPP');
+    expect(factureHtml(f)).not.toContain('IBAN');
   });
 });

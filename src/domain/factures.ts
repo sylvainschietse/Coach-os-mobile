@@ -35,6 +35,11 @@ export interface EnteteFacture {
   couleur: string;
   /** Image en data URL. */
   logo?: string;
+  /** Tarif de base d'une séance (€, en texte) : un prix plus bas apparaît en remise sur la facture. */
+  tarifBase: string;
+  /** Coordonnées bancaires imprimées sur chaque facture. */
+  iban: string;
+  bic: string;
 }
 
 export const COULEUR_FACTURE = '#D71920';
@@ -51,8 +56,29 @@ export function erreursEntete(e: EnteteFacture): string[] {
   const siret = e.siret.replace(/\s/g, '');
   if (siret && !/^\d{14}$/.test(siret)) erreurs.push('Le SIRET compte 14 chiffres.');
   if (!estCouleur(e.couleur)) erreurs.push('Couleur illisible : écris-la comme #D71920.');
+  const tarif = Number(e.tarifBase.replace(',', '.'));
+  if (!Number.isFinite(tarif) || tarif < 0 || tarif > 10000) erreurs.push('Tarif de base illisible : écris un montant, par exemple 60.');
+  const iban = nettoyerIban(e.iban);
+  if (iban && !ibanValide(iban)) erreurs.push('IBAN illisible : vérifie-le, il commence par FR76 en France.');
+  const bic = nettoyerIban(e.bic);
+  if (bic && !/^[A-Z0-9]{8}([A-Z0-9]{3})?$/.test(bic)) erreurs.push('Le BIC compte 8 ou 11 lettres et chiffres.');
   return erreurs;
 }
+
+/** IBAN ou BIC sans espaces, en majuscules. */
+export const nettoyerIban = (s: string) => s.replace(/\s/g, '').toUpperCase();
+
+/** Contrôle de l'IBAN (clé modulo 97). */
+export function ibanValide(iban: string) {
+  if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/.test(iban)) return false;
+  const chiffres = (iban.slice(4) + iban.slice(0, 4)).replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55));
+  let reste = 0;
+  for (const c of chiffres) reste = (reste * 10 + Number(c)) % 97;
+  return reste === 1;
+}
+
+/** « FR7630001007941234567890185 » → « FR76 3000 1007 9412 3456 7890 185 ». */
+export const ibanLisible = (iban: string) => nettoyerIban(iban).replace(/(.{4})(?=.)/g, '$1 ');
 
 /** Préfixe de numérotation : lettres et chiffres en majuscules, 10 au plus. */
 export const nettoyerPrefixe = (p: string) =>
@@ -88,7 +114,7 @@ export function mentionReglement(f: Pick<Facture, 'total' | 'moyen' | 'payeLe'>)
  * La facture en HTML, une page A4 à imprimer ou à transformer en PDF.
  * `options.police` : Bebas Neue en base64 pour le titre, comme les autres documents de l'appli.
  */
-export function factureHtml(f: Facture, style: { couleur?: string; logo?: string; police?: string } = {}): string {
+export function factureHtml(f: Facture, style: { couleur?: string; logo?: string; police?: string; iban?: string; bic?: string } = {}): string {
   const couleur = style.couleur && estCouleur(style.couleur) ? style.couleur : COULEUR_FACTURE;
   const fontFace = style.police ? `@font-face { font-family: 'Titre'; src: url(data:font/ttf;base64,${style.police}) format('truetype'); }` : '';
   const e = f.emetteur;
@@ -127,6 +153,8 @@ tr.remise td { color: ${couleur}; }
 .totaux td { border: 0; padding: 1.2mm 3mm; }
 .totaux .final td { font-weight: 700; font-size: 13pt; border-top: 0.6mm solid ${couleur}; padding-top: 2.5mm; }
 .reglement { margin: 8mm 16mm 0; padding: 4mm 5mm; border-left: 1.6mm solid ${couleur}; background: #F6F6F7; border-radius: 0 2mm 2mm 0; }
+.banque { margin: 4mm 16mm 0; font-size: 9.5pt; color: #3A3A40; }
+.banque b { color: #17171A; }
 .mentions { position: absolute; left: 16mm; right: 16mm; bottom: 12mm; font-size: 8.5pt; color: #6B6B73; border-top: 0.3mm solid #E4E4E7; padding-top: 3mm; }
 </style></head><body><div class="page">
 <div class="bandeau"></div>
@@ -155,6 +183,7 @@ tr.remise td { color: ${couleur}; }
   <tr class="final"><td>Total à payer</td><td class="n">${euros(f.total)}</td></tr>
 </table></div>
 <div class="reglement">${echapper(mentionReglement(f))}</div>
+${style.iban ? `<div class="banque"><span class="etiquette">Coordonnées bancaires</span><br><b>IBAN</b> ${echapper(ibanLisible(style.iban))}${style.bic ? ` · <b>BIC</b> ${echapper(nettoyerIban(style.bic))}` : ''} · <b>Titulaire</b> ${echapper(e.nom)}</div>` : ''}
 ${e.mentions ? `<div class="mentions">${texte(e.mentions)}</div>` : ''}
 </div></body></html>`;
 }

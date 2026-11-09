@@ -27,7 +27,7 @@ const euros = (n: number) => `${n.toLocaleString('fr-FR', { maximumFractionDigit
 const dateFr = (j?: string) => (j ? j.split('-').reverse().join('/') : '');
 
 /** Web : fenêtre d'impression (« Enregistrer au format PDF ») ; téléphone : PDF partagé (mail, WhatsApp, Fichiers). */
-export async function ouvrirFacture(f: Facture, style: { couleur?: string; logo?: string }) {
+export async function ouvrirFacture(f: Facture, style: { couleur?: string; logo?: string; iban?: string; bic?: string }) {
   const html = factureHtml(f, { ...style, police: BEBAS_NEUE_BASE64 });
   if (Platform.OS === 'web') {
     const cadre = document.createElement('iframe');
@@ -418,12 +418,22 @@ function FormulaireEntete({ initial }: { initial: EnteteFacture }) {
         <ChampTexte libelle="Adresse" valeur={e.adresse} onChange={(adresse) => modifier({ adresse })} multiligne placeholder={'N° et rue\nCode postal et ville'} />
         <ChampTexte libelle="Téléphone" valeur={e.telephone} onChange={(telephone) => modifier({ telephone })} />
         <ChampTexte libelle="SIRET" valeur={e.siret} onChange={(siret) => modifier({ siret })} type="nombre" />
+        <ChampTexte
+          libelle="Tarif de base d'une séance (€)"
+          valeur={e.tarifBase}
+          onChange={(tarifBase) => modifier({ tarifBase })}
+          type="nombre"
+          placeholder="60"
+        />
+        <Texte doux style={{ fontSize: 13 }}>Une séance moins chère apparaît au tarif de base, avec la remise en ligne séparée.</Texte>
+        <ChampTexte libelle="IBAN (imprimé sur chaque facture)" valeur={e.iban} onChange={(iban) => modifier({ iban })} placeholder="FR76 3000 1007 9412 3456 7890 185" />
+        <ChampTexte libelle="BIC (facultatif)" valeur={e.bic} onChange={(bic) => modifier({ bic })} placeholder="BNPAFRPP" />
         <ChampTexte libelle="Mentions en bas de facture" valeur={e.mentions} onChange={(mentions) => modifier({ mentions })} multiligne />
         {erreurs.length > 0 && <Erreur message={erreurs.join('\n')} />}
         <Bouton
           variante="discret"
           libelle="Voir un exemple"
-          onPress={() => ouvrirFacture(exemple, { couleur: e.couleur, logo: e.logo }).catch((x) => setErreurs([x instanceof Error ? x.message : 'Aperçu impossible']))}
+          onPress={() => ouvrirFacture(exemple, { couleur: e.couleur, logo: e.logo, iban: e.iban, bic: e.bic }).catch((x) => setErreurs([x instanceof Error ? x.message : 'Aperçu impossible']))}
         />
         <Bouton libelle="Enregistrer" onPress={enregistrer} chargement={enCours} />
         {enregistre && <Texte style={{ fontSize: 14, color: couleurs.vert }}>Réglages enregistrés.</Texte>}
