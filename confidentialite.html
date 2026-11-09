@@ -29,9 +29,9 @@
 <main>
 <p class="marque">CoachGo</p>
 <h1>Politique de confidentialité</h1>
-<p class="maj">Version du 30 octobre 2026</p>
+<p class="maj">Version du 9 novembre 2026</p>
 
-<p>CoachGo est l'application de suivi utilisée par ton coach sportif : séances, mesures, nutrition, bilans. Cette page explique quelles données sont collectées, pourquoi, qui peut les voir, combien de temps elles sont gardées et comment exercer tes droits. Elle s'applique à l'application (Android, iPhone, version web) et au questionnaire d'accueil.</p>
+<p>CoachGo est l'application de suivi utilisée par ton coach sportif : séances, mesures, nutrition, bilans, messages et abonnement. Cette page explique quelles données sont collectées, pourquoi, qui peut les voir, combien de temps elles sont gardées et comment exercer tes droits. Elle s'applique à l'application (Android, iPhone, version web) et au questionnaire d'accueil.</p>
 
 <h2>1. Qui est responsable de tes données</h2>
 <p>Le responsable du traitement est ton coach : Sylvain Schietse, entreprise individuelle, 1763 rue Édouard Herriot, 01480 Jassans-Riottier, SIRET 518 966 502 00016.<br>
@@ -49,6 +49,10 @@ Pour toute question ou demande sur tes données : <a href="mailto:sylvain.schiet
 <tr><td>Apple Santé (iPhone)</td><td>entraînements (durée, distance, calories, fréquence cardiaque)</td><td>ton iPhone, seulement si tu l'autorises</td></tr>
 <tr><td>Health Connect (Android)</td><td>séances de sport, distance, dénivelé, fréquence cardiaque, calories, pas, sommeil</td><td>ton téléphone, seulement si tu l'autorises</td></tr>
 <tr><td>Photos de repas</td><td>photo de ton assiette</td><td>toi, seulement si tu utilises l'analyse par photo</td></tr>
+<tr><td>Messages</td><td>messages écrits, messages vocaux et vidéos de tes mouvements échangés avec ton coach</td><td>toi et ton coach</td></tr>
+<tr><td>Abonnement et paiements</td><td>offre choisie, prix, remise, échéances, statut du paiement, factures. Tes données de carte bancaire sont saisies chez Stripe : l'application ne les voit jamais</td><td>toi, ton coach et Stripe</td></tr>
+<tr><td>Rendez-vous</td><td>date, heure et lieu de tes séances avec ton coach</td><td>ton coach</td></tr>
+<tr><td>Notifications</td><td>identifiant technique de ton téléphone pour recevoir les notifications</td><td>ton téléphone, seulement si tu les autorises</td></tr>
 </table>
 </div>
 <p>Une partie de ces données concerne ta santé. Elles ne sont collectées qu'avec ton accord explicite, que l'application te demande à ton premier accès (et sur le questionnaire d'accueil), avec la date.</p>
@@ -57,10 +61,12 @@ Pour toute question ou demande sur tes données : <a href="mailto:sylvain.schiet
 <ul>
 <li><strong>Ton coaching</strong> : préparer tes séances et ton plan alimentaire, suivre ta progression, t'envoyer tes comptes rendus. Base légale : le contrat de coaching, et ton consentement explicite pour les données de santé.</li>
 <li><strong>Le suivi commercial de ton coach</strong> (prospects, relances, rendez-vous) : base légale, l'intérêt légitime de ton coach à gérer son activité.</li>
-<li><strong>La facturation et la comptabilité</strong> : base légale, les obligations légales de ton coach.</li>
+<li><strong>La messagerie et les notifications</strong> (nouveau message, séance à venir, rappel) : base légale, le contrat de coaching. Tu peux couper les notifications à tout moment dans les réglages de ton téléphone.</li>
+<li><strong>Ton abonnement, la facturation et la comptabilité</strong> : base légale, le contrat de coaching et les obligations légales de ton coach.</li>
+<li><strong>Les outils d'aide à la rédaction de ton coach</strong> (mise en forme de l'entretien de départ qu'il dicte, rédaction de ton compte rendu, proposition de séances) : base légale, le contrat de coaching et ton consentement pour les données de santé. Ton coach relit et corrige toujours le résultat.</li>
 <li><strong>L'analyse des photos de repas et des recettes dictées par une IA</strong> (facultatif) : base légale, ton consentement, que tu peux retirer à tout moment dans « Mes données ».</li>
 </ul>
-<p>Tes données ne sont ni vendues, ni louées, ni utilisées pour de la publicité. Aucune décision automatique n'est prise sur toi : les estimations de l'application (besoins caloriques, aliments sur une photo, recette dictée) sont des propositions que toi ou ton coach validez.</p>
+<p>Tes données ne sont ni vendues, ni louées, ni utilisées pour de la publicité. Aucune décision automatique n'est prise sur toi : les estimations de l'application (besoins caloriques, aliments sur une photo, recette dictée, textes proposés à ton coach) sont des propositions que toi ou ton coach validez.</p>
 
 <h2>4. Health Connect</h2>
 <p>Sur Android, CoachGo peut lire dans Health Connect, avec ton autorisation, tes séances de sport, distances, dénivelés, fréquence cardiaque, calories, pas et sommeil. Ces données servent uniquement à afficher ton activité dans ton espace et à ton coach pour adapter ton programme. Elles ne sont pas transmises à d'autres services, ni utilisées pour de la publicité ou pour évaluer ta solvabilité. CoachGo n'écrit rien dans Health Connect. Tu peux retirer l'autorisation à tout moment dans les réglages Health Connect de ton téléphone.</p>
@@ -76,10 +82,13 @@ Pour toute question ou demande sur tes données : <a href="mailto:sylvain.schiet
 <table>
 <tr><th>Prestataire</th><th>Rôle</th><th>Lieu</th></tr>
 <tr><td>Supabase</td><td>hébergement de la base de données, des fichiers et des comptes</td><td>Irlande (Union européenne)</td></tr>
-<tr><td>Anthropic (Claude)</td><td>analyse des photos de repas et des recettes dictées, si tu l'acceptes ; ni la photo ni le texte ne sont conservés par l'application</td><td>États-Unis</td></tr>
+<tr><td>Anthropic (Claude)</td><td>analyse des photos de repas et des recettes dictées, si tu l'acceptes ; aide à la rédaction pour ton coach (entretien de départ, compte rendu, séances). Ni la photo ni le texte ne sont conservés par ce prestataire pour l'application</td><td>États-Unis</td></tr>
+<tr><td>Stripe</td><td>paiement en ligne de ton abonnement ou de tes packs de séances, si ton coach l'utilise</td><td>Irlande (Union européenne) / États-Unis</td></tr>
+<tr><td>Expo (650 Industries)</td><td>acheminement des notifications vers ton téléphone (titre et texte court de la notification)</td><td>États-Unis</td></tr>
+<tr><td>Apple et Google (Firebase)</td><td>remise des notifications sur iPhone et Android ; reconnaissance vocale de ton téléphone quand tu dictes un texte</td><td>Union européenne / États-Unis</td></tr>
 <tr><td>Brevo</td><td>envoi des e-mails (comptes rendus, documents)</td><td>France</td></tr>
 <tr><td>Tally</td><td>formulaire du questionnaire d'accueil, quand ton coach utilise ce lien</td><td>Belgique</td></tr>
-<tr><td>Google</td><td>connexion avec ton compte Google, si tu la choisis</td><td>Union européenne / États-Unis</td></tr>
+<tr><td>Google</td><td>agenda de ton coach (vos rendez-vous s'y affichent avec ton prénom), et connexion avec ton compte Google si elle est proposée et que tu la choisis</td><td>Union européenne / États-Unis</td></tr>
 <tr><td>GitHub (Microsoft)</td><td>hébergement de la version web de l'application (pas de données de santé)</td><td>États-Unis</td></tr>
 </table>
 </div>
@@ -91,6 +100,8 @@ Pour toute question ou demande sur tes données : <a href="mailto:sylvain.schiet
 <li>Données de coaching (santé, entraînement, alimentation) : pendant ton suivi, puis 3 ans après ton dernier contact avec ton coach, avant effacement.</li>
 <li>Prospect qui n'est pas devenu client : 3 ans après le dernier contact.</li>
 <li>Factures : 10 ans (obligation comptable).</li>
+<li>Messages, vocaux et vidéos échangés avec ton coach : pendant ton suivi, puis effacés avec ton compte.</li>
+<li>Identifiant de notification : tant que l'application est installée et connectée sur ton téléphone.</li>
 <li>Photos de repas envoyées à l'analyse : non conservées par l'application.</li>
 <li>Historique de tes accords : aussi longtemps que les données qu'ils couvrent, pour pouvoir prouver ton consentement.</li>
 </ul>
