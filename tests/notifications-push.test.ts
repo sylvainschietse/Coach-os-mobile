@@ -201,3 +201,37 @@ describe('cloche', () => {
     ]);
   });
 });
+
+describe('rappel du coach avant une séance', () => {
+  it('une heure avant, une seule fois, et à nouveau si la séance est déplacée', async () => {
+    const [proche, loin, annule] = ['50000000-0000-4000-8000-000000000011', '50000000-0000-4000-8000-000000000012', '50000000-0000-4000-8000-000000000013'];
+    await db.exec(`
+      delete from public.rendez_vous;
+      insert into public.rendez_vous (id, coach_id, debut, fin, statut, lieu) values
+        ('${proche}', '${ids.coach}', date_trunc('minute', now()) + interval '40 minutes', now() + interval '100 minutes', 'confirme', 'Salle Fit'),
+        ('${loin}', '${ids.coach}', now() + interval '3 hours', now() + interval '4 hours', 'confirme', ''),
+        ('${annule}', '${ids.coach}', now() + interval '30 minutes', now() + interval '90 minutes', 'annule', '');
+      insert into public.rendez_vous_participants (rendez_vous_id, client_id) values ('${proche}', '${ids.clientA}'), ('${loin}', '${ids.clientB}');
+      delete from public.notifications;
+    `);
+    await db.query('select public._rappeler_coachs()');
+    await db.query('select public._rappeler_coachs()');
+    const heure = (await db.query<{ h: string }>(`select to_char(debut at time zone 'Europe/Paris', 'HH24"h"MI') h from public.rendez_vous where id = $1`, [proche])).rows[0].h;
+    expect(await recues(ids.userCoach)).toEqual([{ genre: 'rdv_rappel', titre: `Séance à ${heure} avec Inès`, corps: 'Salle Fit', url: '/coach?onglet=agenda' }]);
+    expect(await recues(ids.userClientA)).toEqual([]);
+
+    await db.exec(`update public.rendez_vous set debut = debut + interval '10 minutes', fin = fin + interval '10 minutes' where id = '${proche}'; delete from public.notifications where user_id <> '${ids.userCoach}';`);
+    await db.query('select public._rappeler_coachs()');
+    expect((await recues(ids.userCoach)).filter((n) => n.genre === 'rdv_rappel')).toHaveLength(2);
+  });
+
+  it('le coach peut couper ce rappel', async () => {
+    const rdv = '50000000-0000-4000-8000-000000000014';
+    await db.exec(`
+      insert into public.notifications_coupees (user_id, genre) values ('${ids.userCoach}', 'rdv_rappel');
+      insert into public.rendez_vous (id, coach_id, debut, fin, statut) values ('${rdv}', '${ids.coach}', now() + interval '20 minutes', now() + interval '80 minutes', 'propose');
+    `);
+    await db.query('select public._rappeler_coachs()');
+    expect(await recues(ids.userCoach)).toEqual([]);
+  });
+});

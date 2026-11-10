@@ -16,7 +16,7 @@ import { BoutonIcone, EnTete } from '@/ui/coque';
 import { LanceurMinuteurs, Minuteurs } from '@/ui/entrainement/minuteurs';
 import { EspaceClient, UNIVERS_CLIENT, type OngletClient } from '@/ui/espace-client';
 import { BoutonMessagesClient } from '@/ui/messagerie/conversation';
-import { useRappelsClient } from '@/ui/notifications/rappels';
+import { ClocheClient, useRappelsClient } from '@/ui/notifications/rappels';
 import { couleurs, espace, LARGEUR_CLIENT, univers } from '@/ui/theme';
 
 const ONGLETS: OngletClient[] = ['accueil', 'programme', 'suivi', 'nutrition', 'moi'];
@@ -78,6 +78,7 @@ export default function AccueilClient() {
           onLogo={() => setVersAccueil((n) => n + 1)}
           droite={
             <>
+              <ClocheClient clientId={profil.clientId} prenom={profil.prenom} />
               <BoutonMessagesClient clientId={profil.clientId} />
               <LanceurMinuteurs />
               <BoutonIcone icone={LogOut} nom="Se déconnecter" onPress={() => demanderSortie(deconnecter)} />

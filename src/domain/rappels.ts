@@ -105,6 +105,25 @@ export const MOTIVATIONS: { titre: string; corps: (prenom: string) => string }[]
 
 /** Tous les rappels des deux prochaines semaines, dans l'ordre, déjà passés exclus. */
 export function planifierRappels(prefs: PreferencesRappels, c: ContexteRappels): Rappel[] {
+  return tousLesRappels(prefs, c)
+    .filter((r) => r.quand.getTime() > c.maintenant.getTime() + 60_000)
+    .sort((a, b) => a.quand.getTime() - b.quand.getTime())
+    .slice(0, MAX_RAPPELS);
+}
+
+/**
+ * Pour la cloche du client : les rappels d'aujourd'hui dont l'heure est passée et qui restent à faire (séance prévue
+ * pas encore faite, repas pas noté, bilan pas rempli). Ils disparaissent d'eux-mêmes une fois la chose faite.
+ */
+export function rappelsAFaire(prefs: PreferencesRappels, c: ContexteRappels): Rappel[] {
+  const aujourdhui = aujourdhuiParis(c.maintenant);
+  return tousLesRappels(prefs, c)
+    .filter((r) => (r.genre === 'seance' || r.genre === 'repas' || r.genre === 'bilan') && r.quand.getTime() <= c.maintenant.getTime())
+    .filter((r) => aujourdhuiParis(r.quand) === aujourdhui)
+    .sort((a, b) => b.quand.getTime() - a.quand.getTime());
+}
+
+function tousLesRappels(prefs: PreferencesRappels, c: ContexteRappels): Rappel[] {
   const rappels: Rappel[] = [];
   const aujourdhui = aujourdhuiParis(c.maintenant);
   const jours = Array.from({ length: HORIZON_JOURS }, (_, i) => ajouterJours(aujourdhui, i));
@@ -178,8 +197,5 @@ export function planifierRappels(prefs: PreferencesRappels, c: ContexteRappels):
     }
   }
 
-  return rappels
-    .filter((r) => r.quand.getTime() > c.maintenant.getTime() + 60_000)
-    .sort((a, b) => a.quand.getTime() - b.quand.getTime())
-    .slice(0, MAX_RAPPELS);
+  return rappels;
 }
