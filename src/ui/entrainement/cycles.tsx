@@ -5,7 +5,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { ecouterCrm } from '@/data/crm';
-import { entrainement, lierProgramme } from '@/data/entrainement';
+import { attribuerAuClient, entrainement, lierProgramme } from '@/data/entrainement';
 import { ecrireJour, lireJour } from '@/domain/crm';
 import { ajouterJours, aujourdhuiParis, correspondRecherche, dansDates, LIBELLES_CYCLES, titreClient, type StatutCycle } from '@/domain/entrainement';
 import type { CycleClient, ModeLien, ModeleResume, SuiviClient } from '@/domain/entrainement-etat';
@@ -30,61 +30,113 @@ function PastilleStatut({ statut }: { statut: StatutCycle }) {
 }
 
 /**
- * Le suivi n'a plus de durée : il commence au premier programme (ou ici) et dure jusqu'à ce que le coach l'arrête.
- * L'abonnement, lui, gère le paiement chaque mois.
+ * Le mot « suivi » ne parle pas : le coach ajoute un programme, le suivi (conteneur des cycles) se crée tout seul.
+ * « Retirer ses programmes » efface les cycles prévus ; les séances déjà faites restent dans l'historique.
  */
-function SuiviForm({ coachId, p, onEnregistre }: { coachId: string; p: SuiviClient; onEnregistre: () => void }) {
-  const [occupe, setOccupe] = useState(false);
-  const [arreter, setArreter] = useState(false);
+function SuiviForm({ coachId, p, modeles, onEnregistre }: { coachId: string; p: SuiviClient; modeles: ModeleResume[] | null; onEnregistre: () => void }) {
+  const [ajout, setAjout] = useState(false);
+  const [retirer, setRetirer] = useState(false);
   const [etat, setEtat] = useState<{ message?: string; erreur?: string }>({});
-  const agir = async (fn: () => Promise<void>, ok: string) => {
+  const vide = !p.suivi || p.cycles.length === 0;
+  return (
+    <View style={{ borderRadius: 10, backgroundColor: 'rgba(237,239,242,0.6)', padding: 12, gap: 10 }}>
+      <Text style={[ts.texte, { fontFamily: polices.texteGras }]}>
+        {vide ? 'Aucun programme pour l’instant' : `Programmes depuis le ${jourCourt(p.suivi!.debut)}`}
+      </Text>
+      {vide && <Text style={ts.doux}>Choisis un programme de ta bibliothèque : {p.nom} le voit tout de suite dans son appli.</Text>}
+      <Etat {...etat} />
+      <Ligne>
+        <Action libelle="Ajouter un programme" icone={Plus} onPress={() => setAjout(true)} />
+        {!vide && <Action petit variante="contour" libelle="Retirer ses programmes" onPress={() => setRetirer(true)} />}
+      </Ligne>
+      {ajout && (
+        <DialogueAjoutProgramme
+          coachId={coachId}
+          p={p}
+          modeles={modeles}
+          onFermer={() => setAjout(false)}
+          onEnregistre={(m) => {
+            setEtat({ message: m });
+            onEnregistre();
+          }}
+        />
+      )}
+      {retirer && (
+        <Confirmation
+          titre={`Retirer les programmes de ${p.nom} ?`}
+          texte={`Ses ${p.cycles.length} cycle${p.cycles.length > 1 ? 's' : ''} et leurs séances prévues seront retirés. Ses séances déjà faites restent dans son historique, et ${p.nom} reste dans tes clients actifs.`}
+          action="Retirer"
+          danger
+          onConfirmer={async () => {
+            await entrainement.arreterSuivi(p.clientId);
+            setEtat({ message: 'Programmes retirés' });
+            onEnregistre();
+          }}
+          onFermer={() => setRetirer(false)}
+        />
+      )}
+    </View>
+  );
+}
+
+/** Un programme de la bibliothèque, copié au nom du client dans un nouveau cycle, visible tout de suite. */
+function DialogueAjoutProgramme({
+  coachId,
+  p,
+  modeles,
+  onFermer,
+  onEnregistre,
+}: {
+  coachId: string;
+  p: SuiviClient;
+  modeles: ModeleResume[] | null;
+  onFermer: () => void;
+  onEnregistre: (message: string) => void;
+}) {
+  const [q, setQ] = useState('');
+  const [modeleId, setModeleId] = useState('');
+  const [occupe, setOccupe] = useState(false);
+  const [erreur, setErreur] = useState('');
+  const ajouter = async () => {
     setOccupe(true);
-    setEtat({});
+    setErreur('');
     try {
-      await fn();
-      setEtat({ message: ok });
-      onEnregistre();
+      const r = await attribuerAuClient(coachId, { programmeId: modeleId }, p, { nouveau: true, activer: true }, p.suivi ? undefined : { debut: aujourdhuiParis() });
+      onEnregistre(r.active ? `Programme ajouté dans « ${r.cycle} », visible dans son appli.` : `Programme ajouté dans « ${r.cycle} » ; il démarrera après le cycle en cours.`);
+      onFermer();
     } catch (e) {
-      setEtat({ erreur: e instanceof Error ? e.message : 'Échec' });
+      setErreur(e instanceof Error ? e.message : 'Ajout impossible');
     } finally {
       setOccupe(false);
     }
   };
   return (
-    <View style={{ borderRadius: 10, backgroundColor: 'rgba(237,239,242,0.6)', padding: 12, gap: 10 }}>
-      <Text style={[ts.texte, { fontFamily: polices.texteGras }]}>{p.suivi ? `Suivi depuis le ${jourCourt(p.suivi.debut)}` : 'Pas encore de suivi'}</Text>
-      <Text style={ts.doux}>
-        {p.suivi
-          ? 'Il dure tant que tu ne l’arrêtes pas. Arrêter le suivi retire ses cycles prévus ; ses séances déjà faites restent dans son historique.'
-          : 'Il démarre tout seul quand tu attribues un premier programme, ou dès maintenant pour préparer ses cycles.'}
-      </Text>
-      <Etat {...etat} />
-      <Ligne>
-        {!p.suivi && (
-          <Action
-            libelle="Démarrer le suivi"
-            chargement={occupe}
-            onPress={() => agir(() => entrainement.enregistrerSuivi(coachId, { id: nouvelId(), clientId: p.clientId, debut: aujourdhuiParis() }), 'Suivi démarré')}
-          />
-        )}
-        {p.suivi && <Action petit variante="contour" libelle="Arrêter le suivi" desactive={occupe} onPress={() => setArreter(true)} />}
-      </Ligne>
-      {arreter && (
-        <Confirmation
-          titre={`Arrêter le suivi de ${p.nom} ?`}
-          texte={`${p.cycles.length ? `Ses ${p.cycles.length} cycle${p.cycles.length > 1 ? 's' : ''} et leurs séances prévues seront retirés. ` : ''}Ses séances déjà faites restent dans son historique. Il reste dans tes clients actifs.`}
-          action="Arrêter le suivi"
-          danger
-          onConfirmer={async () => {
-            await entrainement.arreterSuivi(p.clientId);
-            setArreter(false);
-            setEtat({ message: 'Suivi arrêté' });
-            onEnregistre();
-          }}
-          onFermer={() => setArreter(false)}
-        />
-      )}
-    </View>
+    <Modale
+      titre={`Ajouter un programme · ${p.nom}`}
+      largeur={560}
+      onFermer={() => !occupe && onFermer()}
+      pied={
+        <Ligne style={{ justifyContent: 'flex-end' }}>
+          <Action libelle="Annuler" variante="contour" desactive={occupe} onPress={onFermer} />
+          <Action libelle="Ajouter" chargement={occupe} desactive={!modeleId} onPress={ajouter} />
+        </Ligne>
+      }
+    >
+      <Text style={ts.doux}>{p.nom} reçoit une copie à son nom : tu peux l’adapter sans toucher au modèle.</Text>
+      <View style={{ flexDirection: 'row' }}>
+        <Recherche valeur={q} onChange={setQ} libelle="Rechercher un programme" placeholder="Rechercher un programme…" />
+      </View>
+      <ListeChoix
+        elements={modeles ? modeles.filter((m) => !m.seanceSeule && correspondRecherche(m.titre, q)) : null}
+        cle={(m) => m.id}
+        libelle={(m) => titreClient(m.titre)}
+        detail={(m) => [m.niveau, m.objectif].filter(Boolean).join(' · ') || undefined}
+        choisi={modeleId}
+        onChoisir={(m) => setModeleId(m.id)}
+        vide="Aucun programme ne correspond."
+      />
+      {erreur ? <Text style={ts.erreur}>{erreur}</Text> : null}
+    </Modale>
   );
 }
 
@@ -387,7 +439,7 @@ function ProfilSuivi({
   const [ouvert, setOuvert] = useState(false);
   const actif = p.cycles.find((c) => c.statut === 'Actif');
   const dernier = p.cycles[p.cycles.length - 1];
-  const resume = !p.suivi ? 'Pas encore de suivi' : actif ? `${actif.nom} en cours` : `Suivi depuis le ${jourCourt(p.suivi.debut)}`;
+  const resume = actif ? `${actif.nom} en cours` : p.cycles.length ? 'Aucun cycle en cours' : 'Aucun programme';
   const Chevron = ouvert ? ChevronDown : ChevronRight;
   return (
     <View style={[ts.carte, { padding: 0, gap: 0, minWidth: 0 }]}>
@@ -414,7 +466,7 @@ function ProfilSuivi({
           <Ligne style={{ marginBottom: 12 }}>
             <Action petit variante="contour" icone={ExternalLink} libelle="Voir la fiche" onPress={onFiche} />
           </Ligne>
-          <SuiviForm coachId={coachId} p={p} onEnregistre={recharger} />
+          <SuiviForm coachId={coachId} p={p} modeles={modeles} onEnregistre={recharger} />
       {p.suivi && (
         <>
           <View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -516,8 +568,8 @@ export function CyclesClients({
   const recharger = useCallback(() => profils.recharger(), [profils]);
   return (
     <View>
-      <TitreDisplay taille={30}>Suivis</TitreDisplay>
-      <Text style={[ts.doux, { fontSize: 14, marginTop: 4 }]}>Le suivi de chaque client, découpé en cycles. Les cycles sont préparés et activés par le coach.</Text>
+      <TitreDisplay taille={30}>Programmes des clients</TitreDisplay>
+      <Text style={[ts.doux, { fontSize: 14, marginTop: 4 }]}>Les programmes de chaque client, découpés en cycles. Tu prépares et actives les cycles.</Text>
       {profils.erreur && (
         <Text accessibilityRole="alert" style={[ts.erreur, { marginTop: 16 }]}>
           Chargement impossible : {profils.erreur}
