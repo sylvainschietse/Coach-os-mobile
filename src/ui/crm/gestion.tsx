@@ -41,7 +41,7 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Selecteur, Vide } from '../coque';
 import { Chargement, Erreur } from '../composants';
-import { BoutonFacture } from '../factures';
+import { BoutonFacture, BoutonToutesFactures } from '../factures';
 import { couleurs, espace, polices } from '../theme';
 import { adresseQuestionnaire, EnvoiMessage, nomComplet, useCoachNom } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
@@ -232,6 +232,8 @@ export function Gestion({
       <View style={{ gap: espace(3) }}>
         {module === 'Paiements' ? (
           <>
+            {/* Un PDF par client, toutes ses factures dedans (archives, comptable). */}
+            {!contactId && <BoutonToutesFactures />}
             {moisListe.length > 0 && (
               <View style={styles.mois}>
                 <BoutonContour libelle="‹" desactive={iMois >= moisListe.length - 1} onPress={() => setMoisChoisi(moisListe[iMois + 1])} />

@@ -82,3 +82,8 @@ export function emailFacture(f: Facture, prenomClient: string, s: Signature): { 
     ].join('\n'),
   };
 }
+
+/** « Factures - Angelo Callegaro.pdf » : toutes les factures d'un client dans un seul fichier. */
+export function nomFichierFacturesClient(nom: string): string {
+  return `${['Factures', propre(nom)].filter(Boolean).join(' - ').slice(0, 120)}.pdf`;
+}
