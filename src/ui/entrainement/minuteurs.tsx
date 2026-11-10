@@ -32,7 +32,7 @@ import {
   type Sonnerie,
 } from '@/domain/formats-minuteur';
 import { nouvelId } from '@/lib/identifiant';
-import { annulerSonneries, ecouter, jouer, preparerSons, programmerAlertes, useSignauxMinuteur } from '@/lib/sons-minuteur';
+import { annulerSonneries, ecouter, jouer, preparerSons, programmerAlertes, useSignauxMinuteur, useSortieEveillee } from '@/lib/sons-minuteur';
 import { maintenantMs } from '@/lib/temps';
 
 import { BoutonIcone } from '../coque';
@@ -178,6 +178,7 @@ export function Minuteurs({ utilisateurId, children }: { utilisateurId: string; 
   const fini = !!marche && (marche.statut === 'done' || etat?.statut === 'termine');
   // Terminé compte aussi : la sonnerie finale part quand le minuteur passe à « Terminé ».
   useSignauxMinuteur(phases, marche?.son ?? SON_DEFAUT, marche && marche.statut !== 'paused' ? temps : null);
+  useSortieEveillee(enCours);
 
 
   /** plein : passe en plein écran ; le repos lancé depuis une séance reste en mini-barre. */
@@ -250,6 +251,7 @@ export function Minuteurs({ utilisateurId, children }: { utilisateurId: string; 
     setReglage(r);
     if (edition) setSon(edition.son);
     setMessage('');
+    preparerSons();
     setVue({ ecran: 'reglage', edition });
   };
 
