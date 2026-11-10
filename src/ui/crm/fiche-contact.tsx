@@ -36,6 +36,7 @@ import { ProgrammeClient, SuiviClient } from '../fiche-client';
 import { Bilans } from './bilans';
 import { Documents } from './documents';
 import { Chargement, Erreur } from '../composants';
+import { Confirmation } from '../entrainement/commun';
 import { Conversation } from '../messagerie/conversation';
 import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
@@ -316,6 +317,7 @@ function Editeur({
           coordonneeManquante={coordonneeManquante && (!!contact || modifie)}
         />
       )}
+      {volet === 'fiche' && contact?.statut === 'client' && <PasserEnVeille contactId={contact.id} prenom={contact.prenom} />}
       {/* Abonnement, packs et factures ont leur rubrique : « Coordonnées » reste court. */}
       {volet === 'paiements' && contact?.clientId && (
         <View>
@@ -381,6 +383,30 @@ function ClientAConfirmer({ contactId, prenom }: { contactId: string; prenom: st
       </Text>
       <BoutonContour libelle={occupe ? 'Ajout…' : 'Ajouter à mes clients actifs'} onPress={confirmer} desactive={occupe} />
       {erreur && <Text style={styles.erreur}>{erreur}</Text>}
+    </View>
+  );
+}
+
+/** Client qui n'a finalement rien pris : il quitte les clients actifs et va dans Prospects › En veille. */
+function PasserEnVeille({ contactId, prenom }: { contactId: string; prenom: string }) {
+  const [confirmer, setConfirmer] = useState(false);
+  const nom = prenom || 'Ce client';
+  return (
+    <View style={[styles.veille, { marginTop: espace(4) }]}>
+      <Text style={styles.veilleTitre}>{nom} n’a finalement rien pris ?</Text>
+      <Text style={styles.alerteTexte}>
+        En veille, la fiche quitte tes clients actifs et va dans Prospects › En veille. Pour seulement retirer ses programmes, utilise « Arrêter le suivi » dans Clients actifs.
+      </Text>
+      <BoutonContour libelle="Passer en veille" onPress={() => setConfirmer(true)} />
+      {confirmer && (
+        <Confirmation
+          titre={`Passer ${nom} en veille ?`}
+          texte={`${nom} n’aura plus accès à l’appli et sortira de tes clients actifs. L’historique reste sur la fiche. Tu pourras revenir à « Client actif » depuis le statut.`}
+          action="Passer en veille"
+          onConfirmer={() => crm.passerEnVeille(contactId)}
+          onFermer={() => setConfirmer(false)}
+        />
+      )}
     </View>
   );
 }
@@ -701,4 +727,6 @@ const styles = StyleSheet.create({
     color: couleurs.texte,
   },
   erreur: { fontFamily: polices.texte, fontSize: 14, color: couleurs.rouge },
+  veille: { borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 10, padding: espace(3), gap: espace(2), backgroundColor: couleurs.carte },
+  veilleTitre: { fontFamily: polices.texteGras, fontSize: 15, color: couleurs.texte },
 });

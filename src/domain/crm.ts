@@ -241,10 +241,11 @@ export const STATUTS_CONTACT = [
   'Coaching terminé',
   'A relancer',
   'Perdu',
+  'En veille',
 ] as const;
 export type StatutContact = (typeof STATUTS_CONTACT)[number];
 /** Les statuts proposés dans la fiche : les autres restent lisibles sur les contacts qui les ont déjà. */
-export const STATUTS_CONTACT_PROPOSES: readonly StatutContact[] = ['Nouveau Prospect', 'Booster planifié', 'Client actif', 'A relancer', 'Coaching terminé'];
+export const STATUTS_CONTACT_PROPOSES: readonly StatutContact[] = ['Nouveau Prospect', 'Booster planifié', 'Client actif', 'En veille', 'A relancer', 'Coaching terminé'];
 export const OBJECTIFS = ['Perte de poids', 'Prise de masse', 'Remise en forme', 'Santé', 'Préparation physique', 'Performance', 'Autre', 'Prendre du muscle', 'Perdre du poids', 'Retrouver la forme'];
 // Lien de paiement, questionnaire et programme ont leurs propres boutons : seules restent les actions que le coach note pour lui.
 export const PROCHAINES_ACTIONS = ['Appeler', 'Relancer', 'Planifier booster', 'Aucune'];
@@ -260,7 +261,45 @@ export const OFFRES_RECOMMANDEES = [
   'Pack 10 séances + 1 offerte – 600 €',
   'Aucune',
 ];
-export const RESULTATS_COMMERCIAUX = ['Vendu', 'En réflexion', 'À relancer', 'Refus'];
+export const RESULTATS_COMMERCIAUX = ['Vendu', 'En veille', 'En réflexion', 'À relancer', 'Refus'];
+
+/**
+ * Après le Booster, le coach range la personne : « client » (elle a pris une formule) ou « veille »
+ * (rien pour l'instant : elle quitte les Boosters et va dans Prospects › En veille).
+ */
+export type IssueBooster = 'client' | 'veille';
+const RESULTAT_DE_L_ISSUE: Record<IssueBooster, string> = { client: 'Vendu', veille: 'En veille' };
+
+/** Booster fait dont la suite n'est pas encore décidée : il reste dans l'onglet Boosters, « À conclure ». */
+export function boosterAConclure(b: Pick<BoosterDossier, 'statut' | 'resultatCommercial' | 'contact'>): boolean {
+  if (b.statut !== 'fait') return false;
+  if (b.resultatCommercial && ['Vendu', 'En veille', 'Refus'].includes(b.resultatCommercial)) return false;
+  const k = b.contact;
+  return k.statut !== 'client' && k.statut !== 'archive' && !['Client actif', 'En veille', 'Perdu'].includes(k.statutCrm ?? '');
+}
+
+/** L'onglet Boosters ne montre que ce qui reste à faire ; le reste est derrière « Voir les Boosters passés ». */
+export function rangerBoosters<B extends BoosterDossier>(boosters: B[]): { aConclure: B[]; aVenir: B[]; passes: B[] } {
+  const aConclure = boosters.filter(boosterAConclure);
+  const aVenir = boosters.filter((b) => b.statut === 'prevu').sort((a, b) => a.date.localeCompare(b.date));
+  const passes = boosters.filter((b) => b.statut !== 'prevu' && !aConclure.includes(b));
+  return { aConclure, aVenir, passes };
+}
+
+/** Met le contact en veille : il sort des clients actifs s'il y était (la fiche client reste liée, pour revenir). */
+export function passerEnVeille(c: Carnet, contactId: string): Carnet {
+  const contact = c.contacts.find((x) => x.id === contactId);
+  if (!contact) return c;
+  return majContact(c, contactId, { statutCrm: 'En veille', statut: contact.statut === 'client' ? 'booster_fait' : contact.statut });
+}
+
+/** Réponse à « Et après le Booster ? ». Le passage en client (fiche ouverte) est fait ensuite par le dépôt. */
+export function conclureBooster(c: Carnet, boosterId: string, issue: IssueBooster): Carnet {
+  const booster = c.boosters.find((b) => b.id === boosterId);
+  if (!booster) return c;
+  const carnet = { ...c, boosters: c.boosters.map((b) => (b.id === boosterId ? { ...b, resultatCommercial: RESULTAT_DE_L_ISSUE[issue] } : b)) };
+  return issue === 'veille' ? passerEnVeille(carnet, booster.contactId) : majContact(carnet, booster.contactId, { statutCrm: 'Client actif' });
+}
 
 const STATUT_DE_L_ETAPE: Record<Exclude<Statut, 'archive'>, StatutContact> = {
   prospect: 'Nouveau Prospect',
@@ -708,7 +747,7 @@ export type EtapeSuivante =
 export function etapeSuivante(x: ContactResume): EtapeSuivante {
   if (x.statut === 'archive') return { action: 'reactiver' };
   if (x.prochainBoosterId) return { action: 'preparer', boosterId: x.prochainBoosterId };
-  if (x.clientId) return { action: 'aucune' };
+  if (x.clientId || x.statutCrm === 'En veille') return { action: 'aucune' };
   if (x.statut === 'booster_fait' && x.dernierBoosterFaitId) return { action: 'acces' };
   if (!x.questionnaireRecu && !x.dernierBoosterFaitId) return { action: 'questionnaire' };
   return { action: 'planifier' };

@@ -31,6 +31,10 @@ export interface DepotCrm {
   /** Enregistre la saisie en cours de séance (évaluation, entretien, priorités) sans clore le Booster. */
   enregistrerBooster(boosterId: string, saisie: regles.SaisieBooster): Promise<void>;
   terminerBooster(boosterId: string, compteRendu: CompteRendu): Promise<void>;
+  /** « Et après le Booster ? » : client actif (fiche client ouverte ou rouverte) ou en veille. */
+  conclureBooster(boosterId: string, issue: regles.IssueBooster): Promise<void>;
+  /** Range le contact « En veille » : il quitte les clients actifs (son accès à l'appli est coupé). */
+  passerEnVeille(contactId: string): Promise<void>;
   annulerBooster(boosterId: string): Promise<void>;
   ajouterRelance(contactId: string, echeance: string, modele: ModeleMessage, note?: string): Promise<void>;
   terminerRelance(id: string): Promise<void>;
@@ -88,6 +92,8 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
   lienQuestionnaire: DepotCrm['lienQuestionnaire'];
   ouvrirEspaceClient: (contact: Contact) => Promise<string>;
   actualiserEspaceClient: (contact: Contact) => Promise<void>;
+  /** Sort la fiche client des clients actifs (false) ou l'y remet (true). */
+  activerEspaceClient: (clientId: string, actif: boolean) => Promise<void>;
 }): DepotCrm {
   async function ecrire(avant: Carnet, apres: Carnet) {
     await ecrireBrut(avant, apres);
@@ -114,8 +120,17 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
     const avant = await lire();
     const contact = avant.contacts.find((x) => x.id === contactId);
     if (!contact || contact.statut === 'client' || contact.statutCrm !== 'Client actif') return;
+    // Revenu de veille : sa fiche client existe déjà, on la remet dans les clients actifs.
+    if (contact.clientId) await extra.activerEspaceClient(contact.clientId, true);
     const clientId = contact.clientId ?? (await extra.ouvrirEspaceClient(contact));
     await ecrire(avant, regles.devenirClient(avant, contactId, clientId, contexte()));
+  }
+
+  async function mettreEnVeille(avant: Carnet, apres: Carnet, contactId: string) {
+    const contact = avant.contacts.find((x) => x.id === contactId);
+    // L'espace client d'abord : s'il refuse (abonnement en cours), rien n'a bougé.
+    if (contact?.clientId && contact.statut === 'client') await extra.activerEspaceClient(contact.clientId, false);
+    await ecrire(avant, apres);
   }
 
   return {
@@ -144,6 +159,12 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
       return { contact: r.contact };
     },
     async modifierContact(id, patch) {
+      if (patch.statutCrm === 'En veille') {
+        const { statutCrm: _veille, ...reste } = patch;
+        const avant = await lire();
+        await mettreEnVeille(avant, regles.passerEnVeille(regles.modifierContact(avant, id, reste), id), id);
+        return;
+      }
       await appliquer((c) => regles.modifierContact(c, id, patch));
       if (patch.statutCrm === 'Client actif') await confirmerClient(id);
       // Les coordonnées vont aussi sur la fiche client, que le client voit dans « Mon compte » (et ses factures).
@@ -163,6 +184,19 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
     enregistrerBooster: (id, saisie) => appliquer((c) => regles.enregistrerBooster(c, id, saisie)),
     terminerBooster: (id, cr) => appliquer((c, ctx) => regles.terminerBooster(c, id, cr, ctx)),
     annulerBooster: (id) => appliquer((c, ctx) => regles.annulerBooster(c, id, ctx)),
+    async conclureBooster(id, issue) {
+      const avant = await lire();
+      const booster = avant.boosters.find((b) => b.id === id);
+      if (!booster) throw new Error('Ce Booster n’existe plus.');
+      const apres = regles.conclureBooster(avant, id, issue);
+      if (issue === 'veille') return mettreEnVeille(avant, apres, booster.contactId);
+      await ecrire(avant, apres);
+      await confirmerClient(booster.contactId);
+    },
+    async passerEnVeille(contactId) {
+      const avant = await lire();
+      await mettreEnVeille(avant, regles.passerEnVeille(avant, contactId), contactId);
+    },
     ajouterRelance: (contactId, echeance, modele, note) =>
       appliquer((c, ctx) => regles.ajouterRelance(c, contactId, echeance, modele, note, ctx)),
     terminerRelance: (id) => appliquer((c, ctx) => regles.terminerRelance(c, id, ctx)),
@@ -269,6 +303,15 @@ export const crmDemo = creerDepot(lireDemo, ecrireDemo, {
     }
     const maj = ajoutes.map((a) => (a.id === contact.clientId ? { ...a, prenom: contact.prenom, nom: contact.nom } : a));
     await AsyncStorage.setItem(CLE_CLIENTS_DEMO, JSON.stringify(maj));
+  },
+  async activerEspaceClient(clientId, actif) {
+    let ajoutes: { id: string; prenom: string; nom: string; actif?: boolean }[] = [];
+    try {
+      ajoutes = JSON.parse((await AsyncStorage.getItem(CLE_CLIENTS_DEMO)) ?? '[]');
+    } catch {
+      ajoutes = [];
+    }
+    await AsyncStorage.setItem(CLE_CLIENTS_DEMO, JSON.stringify(ajoutes.map((a) => (a.id === clientId ? { ...a, actif } : a))));
   },
 });
 
@@ -421,6 +464,17 @@ export function creerCrmSupabase(db: SupabaseClient): DepotCrm {
         .update({ prenom: contact.prenom, nom: contact.nom, email: n(contact.email), telephone: n(contact.telephone), adresse: n(contact.adresse) })
         .eq('id', contact.clientId!)
         .select('id');
+      if (error) throw new Error(error.message);
+      if (!data?.length) throw new Error('Fiche client introuvable ou non modifiable.');
+    },
+    async activerEspaceClient(clientId, actif) {
+      if (!actif) {
+        // Un abonnement Stripe qui tourne encore serait prélevé sans accès à l'appli : on l'arrête d'abord.
+        const { data } = await db.from('clients').select('prenom, statut_stripe').eq('id', clientId).maybeSingle();
+        if (data && ['active', 'trialing', 'past_due', 'unpaid'].includes(data.statut_stripe as string))
+          throw new Error(`${data.prenom || 'Ce client'} a un abonnement en cours : arrête-le d’abord dans « Abonnement et paiements ».`);
+      }
+      const { data, error } = await db.from('clients').update({ actif }).eq('id', clientId).select('id');
       if (error) throw new Error(error.message);
       if (!data?.length) throw new Error('Fiche client introuvable ou non modifiable.');
     },

@@ -126,7 +126,7 @@ describe('côté client', () => {
     expect(v.planning.map((c) => c.statut)).toEqual(['Terminé', 'Actif']);
     expect(v.cycle).toMatchObject({ id: 'c2', etat: 'en_cours', semaine: 2, nbSemaines: 5 });
     expect(v.seances).toHaveLength(4);
-    expect(v.suivi?.fin).toBe('2026-12-31');
+    expect(v.suivi?.debut).toBe('2026-10-01');
     expect(espaceClient(etat([{ statut: 'Prêt', programmeId: MODELE }]), 'lea', JOUR).seances).toEqual([]);
   });
 

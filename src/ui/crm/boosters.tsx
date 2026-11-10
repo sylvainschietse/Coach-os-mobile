@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { crm, ecouterCrm } from '@/data/crm';
-import { filtrerBoosters, statutBooster, STATUTS_BOOSTER, type BoosterDossier, type StatutBooster } from '@/domain/crm';
+import { boosterAConclure, filtrerBoosters, rangerBoosters, statutBooster, STATUTS_BOOSTER, type BoosterDossier, type StatutBooster } from '@/domain/crm';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Vide } from '../coque';
@@ -13,6 +13,7 @@ import { Chargement, Erreur } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { BoutonEtape } from './acces';
 import { EnvoiMessage, nomComplet, useMessageQuestionnaire } from './commun';
+import { ConclusionBooster } from './conclusion-booster';
 import { BoutonPrincipal, carteDossier } from './contacts';
 import { Badge, CaseACocher, Choix, Recherche, useBlocNomCarte } from './dossier';
 
@@ -53,6 +54,8 @@ export function Boosters({
   const [recherche, setRecherche] = useState('');
   const [statut, setStatut] = useState<StatutBooster>();
   const [archives, setArchives] = useState(false);
+  const [passes, setPasses] = useState(false);
+  const [conclure, setConclure] = useState<BoosterDossier>();
 
   if (charge.erreur && !charge.donnee)
     return (
@@ -95,8 +98,8 @@ export function Boosters({
         </Text>
       )}
       <CaseACocher petite libelle="Inclure les dossiers archivés" valeur={archives} onChange={setArchives} />
-      <View style={{ gap: espace(3) }}>
-        {visibles.map((b) => (
+      {(() => {
+        const carte = (b: BoosterDossier) => (
           <CarteBooster
             key={b.id}
             booster={b}
@@ -105,10 +108,35 @@ export function Boosters({
             onOuvrir={() => onOuvrir(b)}
             onSupprimer={() => onSupprimer(b)}
             onOuvrirContact={() => onOuvrirContact(b.contactId)}
+            onConclure={() => setConclure(b)}
           />
-        ))}
-        {!visibles.length && <Vide titre="Aucun dossier pour ces filtres." />}
-      </View>
+        );
+        // Une recherche ou un filtre montre tout ce qui correspond ; sinon, seulement ce qui reste à faire.
+        if (recherche.trim() || statut || contactId)
+          return (
+            <View style={{ gap: espace(3) }}>
+              {visibles.map(carte)}
+              {!visibles.length && <Vide titre="Aucun dossier pour ces filtres." />}
+            </View>
+          );
+        const r = rangerBoosters(visibles);
+        return (
+          <View style={{ gap: espace(3) }}>
+            {r.aConclure.length > 0 && <Text style={styles.section}>À conclure</Text>}
+            {r.aConclure.map(carte)}
+            {r.aVenir.length > 0 && <Text style={styles.section}>À venir</Text>}
+            {r.aVenir.map(carte)}
+            {!r.aConclure.length && !r.aVenir.length && <Vide titre="Aucun Booster à venir ni à conclure." />}
+            {r.passes.length > 0 && (
+              <Text accessibilityRole="button" onPress={() => setPasses(!passes)} style={styles.lienPasses}>
+                {passes ? 'Masquer les Boosters passés' : `Voir les Boosters passés (${r.passes.length})`}
+              </Text>
+            )}
+            {passes && r.passes.map(carte)}
+          </View>
+        );
+      })()}
+      {conclure && <ConclusionBooster boosterId={conclure.id} contact={conclure.contact} onFermer={() => setConclure(undefined)} />}
     </View>
   );
 }
@@ -120,6 +148,7 @@ function CarteBooster({
   onOuvrir,
   onSupprimer,
   onOuvrirContact,
+  onConclure,
 }: {
   booster: BoosterDossier;
   lienQuestionnaire: string | null;
@@ -127,7 +156,9 @@ function CarteBooster({
   onOuvrir: () => void;
   onSupprimer: () => void;
   onOuvrirContact: () => void;
+  onConclure: () => void;
 }) {
+  const aConclure = boosterAConclure(b);
   const blocNom = useBlocNomCarte();
   const [briefing, setBriefing] = useState(false);
   const [envoi, setEnvoi] = useState(false);
@@ -148,7 +179,7 @@ function CarteBooster({
         </View>
         <View style={styles.ligne}>
           {b.contact.statut === 'archive' && <Badge variante="secondaire" libelle="Archivé" />}
-          <Badge libelle={statutBooster(b)} />
+          <Badge libelle={aConclure ? 'À conclure' : statutBooster(b)} />
           {b.resultatCommercial && <Badge variante="secondaire" libelle={b.resultatCommercial} />}
         </View>
       </View>
@@ -168,7 +199,8 @@ function CarteBooster({
       {/* Le bouton de l'étape (préparer avant, compte rendu après), puis ce qui reste utile. */}
       <View style={styles.ligne}>
         {prevu ? <BoutonEtape libelle="Préparer le Booster" onPress={onOuvrir} /> : <BoutonContour libelle="Ouvrir" onPress={onOuvrir} />}
-        {b.statut === 'fait' && <BoutonEtape libelle="Compte rendu" onPress={compteRendu} />}
+        {aConclure && <BoutonEtape libelle="Client actif ou en veille ?" onPress={onConclure} />}
+        {b.statut === 'fait' && (aConclure ? <BoutonContour libelle="Compte rendu" onPress={compteRendu} /> : <BoutonEtape libelle="Compte rendu" onPress={compteRendu} />)}
         {prevu && !questionnaireRecu && !envoi && message && <BoutonContour libelle="Envoyer le questionnaire" onPress={() => setEnvoi(true)} />}
         <Text accessibilityRole="button" onPress={onSupprimer} style={styles.supprimer}>
           Supprimer
@@ -186,6 +218,8 @@ const styles = StyleSheet.create({
     gap: espace(3),
     alignItems: 'flex-start',
   },
+  section: { marginTop: espace(2), fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', color: couleurs.texteDoux },
+  lienPasses: { fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.texte, textDecorationLine: 'underline', paddingVertical: 8 },
   filtre: { fontFamily: polices.texte, fontSize: 14, color: couleurs.texte },
   entete: {
     flexDirection: 'row',

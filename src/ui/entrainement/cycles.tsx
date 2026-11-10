@@ -2,12 +2,12 @@
 // client, découpé en cycles préparés puis activés par le coach. Un seul cycle actif ; activer termine le précédent.
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ExternalLink, Library, Pencil, Play, Plus } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
-import { Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { ecouterCrm } from '@/data/crm';
 import { entrainement, lierProgramme } from '@/data/entrainement';
 import { ecrireJour, lireJour } from '@/domain/crm';
-import { ajouterJours, aujourdhuiParis, correspondRecherche, dansDates, finSuivi, LIBELLES_CYCLES, titreClient, type StatutCycle } from '@/domain/entrainement';
+import { ajouterJours, aujourdhuiParis, correspondRecherche, dansDates, LIBELLES_CYCLES, titreClient, type StatutCycle } from '@/domain/entrainement';
 import type { CycleClient, ModeLien, ModeleResume, SuiviClient } from '@/domain/entrainement-etat';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
@@ -29,21 +29,20 @@ function PastilleStatut({ statut }: { statut: StatutCycle }) {
   );
 }
 
+/**
+ * Le suivi n'a plus de durée : il commence au premier programme (ou ici) et dure jusqu'à ce que le coach l'arrête.
+ * L'abonnement, lui, gère le paiement chaque mois.
+ */
 function SuiviForm({ coachId, p, onEnregistre }: { coachId: string; p: SuiviClient; onEnregistre: () => void }) {
-  const { width } = useWindowDimensions();
-  const [debut, setDebut] = useState(ecrireJour(p.suivi?.debut ?? aujourdhuiParis()));
-  const [mois, setMois] = useState(String(p.suivi?.dureeMois ?? 3));
   const [occupe, setOccupe] = useState(false);
+  const [arreter, setArreter] = useState(false);
   const [etat, setEtat] = useState<{ message?: string; erreur?: string }>({});
-  const n = Number(mois);
-  const jour = lireJour(debut);
-  const ok = Number.isInteger(n) && n >= 1 && n <= 24 && !!jour;
-  const enregistrer = async () => {
+  const agir = async (fn: () => Promise<void>, ok: string) => {
     setOccupe(true);
     setEtat({});
     try {
-      await entrainement.enregistrerSuivi(coachId, { id: p.suivi?.id ?? nouvelId(), clientId: p.clientId, debut: jour!, dureeMois: n });
-      setEtat({ message: 'Suivi enregistré' });
+      await fn();
+      setEtat({ message: ok });
       onEnregistre();
     } catch (e) {
       setEtat({ erreur: e instanceof Error ? e.message : 'Échec' });
@@ -51,42 +50,40 @@ function SuiviForm({ coachId, p, onEnregistre }: { coachId: string; p: SuiviClie
       setOccupe(false);
     }
   };
-  const large = width >= 640;
   return (
-    <View style={{ borderRadius: 10, backgroundColor: 'rgba(237,239,242,0.6)', padding: 12, gap: 12, flexDirection: large ? 'row' : 'column', alignItems: large ? 'flex-end' : 'stretch' }}>
-      <View style={{ flex: large ? 1 : undefined, gap: 12 }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-          <View style={{ flexBasis: 160, flexGrow: 1, minWidth: 0 }}>
-            <Saisie libelle="Début du suivi" valeur={debut} placeholder="jj/mm/aaaa" erreur={debut && !jour ? 'Écrivez la date comme 24/10/2026' : undefined} onChange={setDebut} />
-          </View>
-          <View style={{ flexBasis: 200, flexGrow: 1, gap: 8 }}>
-            <Text style={ts.titreChamp}>Durée (mois)</Text>
-            <Ligne style={{ gap: 6, flexWrap: 'nowrap' }}>
-              {['3', '6'].map((v) => (
-                <Action key={v} petit libelle={v} variante={mois === v ? 'plein' : 'contour'} onPress={() => setMois(v)} />
-              ))}
-              {/* Case « Autre » : vide tant que 3 ou 6 est choisi ; sans marge verticale, le chiffre n'est plus coupé sur Android. */}
-              <TextInput
-                accessibilityLabel="Autre durée en mois"
-                inputMode="numeric"
-                value={mois === '3' || mois === '6' ? '' : mois}
-                placeholder="Autre"
-                placeholderTextColor={couleurs.texteDoux}
-                onChangeText={(v) => setMois(v.replace(/\D/g, ''))}
-                style={{ width: 80, height: 36, paddingVertical: 0, textAlignVertical: 'center', borderWidth: 1, borderColor: couleurs.saisie, borderRadius: 9, paddingHorizontal: 10, fontFamily: polices.texte, fontSize: 15, color: couleurs.texte, backgroundColor: couleurs.carte }}
-              />
-            </Ligne>
-            {!(Number.isInteger(n) && n >= 1 && n <= 24) && <Text style={[ts.erreur, { fontSize: 12 }]}>Entier de 1 à 24</Text>}
-          </View>
-        </View>
-        <Text style={ts.texte}>
-          Fin calculée : <Text style={{ fontFamily: polices.texteGras }}>{ok ? jourCourt(finSuivi(jour!, n)) : '—'}</Text>
-        </Text>
-        <Etat {...etat} />
-      </View>
-      <View style={{ alignSelf: large ? 'flex-end' : 'flex-start' }}>
-        <Action libelle={p.suivi ? 'Replanifier' : 'Créer le suivi'} desactive={!ok} chargement={occupe} onPress={enregistrer} />
-      </View>
+    <View style={{ borderRadius: 10, backgroundColor: 'rgba(237,239,242,0.6)', padding: 12, gap: 10 }}>
+      <Text style={[ts.texte, { fontFamily: polices.texteGras }]}>{p.suivi ? `Suivi depuis le ${jourCourt(p.suivi.debut)}` : 'Pas encore de suivi'}</Text>
+      <Text style={ts.doux}>
+        {p.suivi
+          ? 'Il dure tant que tu ne l’arrêtes pas. Arrêter le suivi retire ses cycles prévus ; ses séances déjà faites restent dans son historique.'
+          : 'Il démarre tout seul quand tu attribues un premier programme, ou dès maintenant pour préparer ses cycles.'}
+      </Text>
+      <Etat {...etat} />
+      <Ligne>
+        {!p.suivi && (
+          <Action
+            libelle="Démarrer le suivi"
+            chargement={occupe}
+            onPress={() => agir(() => entrainement.enregistrerSuivi(coachId, { id: nouvelId(), clientId: p.clientId, debut: aujourdhuiParis() }), 'Suivi démarré')}
+          />
+        )}
+        {p.suivi && <Action petit variante="contour" libelle="Arrêter le suivi" desactive={occupe} onPress={() => setArreter(true)} />}
+      </Ligne>
+      {arreter && (
+        <Confirmation
+          titre={`Arrêter le suivi de ${p.nom} ?`}
+          texte={`${p.cycles.length ? `Ses ${p.cycles.length} cycle${p.cycles.length > 1 ? 's' : ''} et leurs séances prévues seront retirés. ` : ''}Ses séances déjà faites restent dans son historique. Il reste dans tes clients actifs.`}
+          action="Arrêter le suivi"
+          danger
+          onConfirmer={async () => {
+            await entrainement.arreterSuivi(p.clientId);
+            setArreter(false);
+            setEtat({ message: 'Suivi arrêté' });
+            onEnregistre();
+          }}
+          onFermer={() => setArreter(false)}
+        />
+      )}
     </View>
   );
 }
@@ -390,7 +387,7 @@ function ProfilSuivi({
   const [ouvert, setOuvert] = useState(false);
   const actif = p.cycles.find((c) => c.statut === 'Actif');
   const dernier = p.cycles[p.cycles.length - 1];
-  const resume = !p.suivi ? 'Pas encore de suivi' : actif ? `${actif.nom} en cours` : `Suivi jusqu’au ${jourCourt(finSuivi(p.suivi.debut, p.suivi.dureeMois))}`;
+  const resume = !p.suivi ? 'Pas encore de suivi' : actif ? `${actif.nom} en cours` : `Suivi depuis le ${jourCourt(p.suivi.debut)}`;
   const Chevron = ouvert ? ChevronDown : ChevronRight;
   return (
     <View style={[ts.carte, { padding: 0, gap: 0, minWidth: 0 }]}>
@@ -520,7 +517,7 @@ export function CyclesClients({
   return (
     <View>
       <TitreDisplay taille={30}>Suivis</TitreDisplay>
-      <Text style={[ts.doux, { fontSize: 14, marginTop: 4 }]}>Accompagnements sur plusieurs mois, découpés en cycles. Les cycles sont préparés et activés par le coach.</Text>
+      <Text style={[ts.doux, { fontSize: 14, marginTop: 4 }]}>Le suivi de chaque client, découpé en cycles. Les cycles sont préparés et activés par le coach.</Text>
       {profils.erreur && (
         <Text accessibilityRole="alert" style={[ts.erreur, { marginTop: 16 }]}>
           Chargement impossible : {profils.erreur}

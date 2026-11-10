@@ -4,12 +4,11 @@ import { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { attribuerAuClient, entrainement, type CibleAttribution } from '@/data/entrainement';
-import { ecrireJour, lireJour } from '@/domain/crm';
-import { aujourdhuiParis, correspondRecherche, finSuivi } from '@/domain/entrainement';
+import { aujourdhuiParis, correspondRecherche } from '@/domain/entrainement';
 import type { SuiviClient } from '@/domain/entrainement-etat';
 import { useCharger } from '@/lib/useCharger';
 
-import { Modale, Recherche, Saisie } from '../crm/dossier';
+import { Modale, Recherche } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
 import { Action, CaseSelection, Etat, jourCourt, Ligne, ListeChoix, ts } from './commun';
 
@@ -34,8 +33,6 @@ export function AttributionClient({
   const [clientId, setClientId] = useState(clientFixe ?? '');
   const [cycleId, setCycleId] = useState(NOUVEAU);
   const [activer, setActiver] = useState(true);
-  const [debut, setDebut] = useState(ecrireJour(aujourdhuiParis()));
-  const [mois, setMois] = useState('3');
   const [occupe, setOccupe] = useState(false);
   const [etat, setEtat] = useState<{ message?: string; erreur?: string }>({});
 
@@ -43,9 +40,6 @@ export function AttributionClient({
   const client = donnee?.find((c) => c.clientId === clientId);
   const vides = client?.cycles.filter((c) => !c.programmeId && c.statut !== 'Terminé') ?? [];
   const actif = client?.cycles.find((c) => c.statut === 'Actif');
-  const jour = lireJour(debut);
-  const n = Number(mois);
-  const suiviValide = !!client?.suivi || (!!jour && Number.isInteger(n) && n >= 1 && n <= 24);
   const fait = !!etat.message;
 
   const choisirClient = (c: SuiviClient) => {
@@ -60,7 +54,7 @@ export function AttributionClient({
     setEtat({});
     try {
       const cible: CibleAttribution = cycleId === NOUVEAU ? { nouveau: true, activer } : { cycleId };
-      const r = await attribuerAuClient(coachId, source, client, cible, client.suivi ? undefined : { debut: jour!, dureeMois: n });
+      const r = await attribuerAuClient(coachId, source, client, cible, client.suivi ? undefined : { debut: aujourdhuiParis() });
       setEtat({
         message: r.active
           ? `Attribué à ${client.nom} dans « ${r.cycle} », visible dès maintenant dans son espace.`
@@ -81,7 +75,7 @@ export function AttributionClient({
       pied={
         <Ligne style={{ justifyContent: 'flex-end' }}>
           <Action libelle={fait ? 'Fermer' : 'Annuler'} variante="contour" desactive={occupe} onPress={onFermer} />
-          {!fait && <Action libelle="Attribuer" chargement={occupe} desactive={!client || !suiviValide} onPress={valider} />}
+          {!fait && <Action libelle="Attribuer" chargement={occupe} desactive={!client} onPress={valider} />}
         </Ligne>
       }
     >
@@ -101,26 +95,14 @@ export function AttributionClient({
           elements={clients}
           cle={(c) => c.clientId}
           libelle={(c) => c.nom}
-          detail={(c) => (c.suivi ? `Suivi jusqu’au ${jourCourt(finSuivi(c.suivi.debut, c.suivi.dureeMois))}` : 'Pas encore de suivi')}
+          detail={(c) => (c.suivi ? `Suivi depuis le ${jourCourt(c.suivi.debut)}` : 'Pas encore de suivi')}
           choisi={clientId}
           onChoisir={choisirClient}
           vide="Aucun client actif ne correspond."
         />
       )}
 
-      {client && !client.suivi && (
-        <View style={{ gap: 8 }}>
-          <Text style={ts.texte}>{client.nom} n’a pas encore de suivi : il sera créé avec ces dates.</Text>
-          <Ligne style={{ alignItems: 'flex-start' }}>
-            <View style={{ flexBasis: 160, flexGrow: 1, minWidth: 0 }}>
-              <Saisie libelle="Début du suivi" valeur={debut} placeholder="jj/mm/aaaa" erreur={debut && !jour ? 'Écrivez la date comme 24/10/2026' : undefined} onChange={setDebut} />
-            </View>
-            <View style={{ flexBasis: 120, flexGrow: 1, minWidth: 0 }}>
-              <Saisie libelle="Durée (mois)" valeur={mois} erreur={Number.isInteger(n) && n >= 1 && n <= 24 ? undefined : 'Entier de 1 à 24'} onChange={setMois} />
-            </View>
-          </Ligne>
-        </View>
-      )}
+      {client && !client.suivi && <Text style={ts.texte}>{client.nom} n’a pas encore de suivi : il démarrera aujourd’hui avec ce programme.</Text>}
 
       {client && (
         <View style={{ gap: 8 }}>
