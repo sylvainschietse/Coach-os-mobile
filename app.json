@@ -53,7 +53,19 @@
       [
         "expo-notifications",
         {
-          "color": "#D71920"
+          "color": "#D71920",
+          "sounds": [
+            "./assets/sons/gong.wav",
+            "./assets/sons/gong_bips.wav",
+            "./assets/sons/sifflet.wav",
+            "./assets/sons/sifflet_bips.wav",
+            "./assets/sons/cloche.wav",
+            "./assets/sons/cloche_bips.wav",
+            "./assets/sons/boxe.wav",
+            "./assets/sons/boxe_bips.wav",
+            "./assets/sons/digital.wav",
+            "./assets/sons/digital_bips.wav"
+          ]
         }
       ],
       "expo-sharing",

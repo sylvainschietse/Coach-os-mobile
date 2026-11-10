@@ -1,12 +1,13 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { dureeTotale, ecoule, etatA, lireMinuteur, planifier, resumeMinuteur, TABATA, type ConfigMinuteur } from '@/domain/minuteur';
-import { annulerAlertes, autoriserNotifications, programmerAlerte } from '@/lib/notifications';
+import { garderSonPrefere, lireSonPrefere } from '@/data/formats-minuteur';
+import { compiler, depuisSeance, dureeTotale, etatA, NOMS_SONNERIES, SON_DEFAUT, type Son, type Sonnerie } from '@/domain/formats-minuteur';
+import { ecoule, lireMinuteur, resumeMinuteur, TABATA, type ConfigMinuteur } from '@/domain/minuteur';
+import { annulerSonneries, ecouter, jouer, preparerSons, programmerAlertes, useSignauxMinuteur } from '@/lib/sons-minuteur';
 import { maintenantMs } from '@/lib/temps';
-import { vibrer } from '@/lib/vibrer';
 import { Bouton, Carte, Ecran, Texte } from '@/ui/composants';
 import { couleurs, espace, polices } from '@/ui/theme';
 
@@ -31,10 +32,14 @@ export default function Minuteur() {
   const [config, setConfig] = useState<ConfigMinuteur>(prevu ?? TABATA);
   const [marche, setMarche] = useState<Marche | null>(null);
   const [maintenant, setMaintenant] = useState(maintenantMs);
-  const phases = useMemo(() => planifier(config), [config]);
+  // Le son réglé dans « Mes minuteurs » : sonnerie, décompte de départ, bips 3, 2, 1.
+  const [son, setSon] = useState<Son>(SON_DEFAUT);
+  useEffect(() => {
+    lireSonPrefere().then(setSon);
+  }, []);
+  const phases = useMemo(() => compiler(depuisSeance(config), son), [config, son]);
   /** Nom de l'exercice n quand le coach a prévu un circuit en alternance (même nombre d'exercices qu'au réglage). */
   const nomDe = (n: number) => (noms.length === config.exercices ? noms[n - 1] : undefined);
-  const derniereIndex = useRef(-1);
 
   useEffect(() => {
     if (!marche || marche.pauseDepuisMs) return;
@@ -42,40 +47,21 @@ export default function Minuteur() {
     return () => clearInterval(t);
   }, [marche]);
 
-  const etat = marche ? etatA(phases, ecoule(marche.debutMs, maintenant, marche.pausesMs, marche.pauseDepuisMs)) : null;
+  const ecouleS = marche ? ecoule(marche.debutMs, maintenant, marche.pausesMs, marche.pauseDepuisMs) : null;
+  const etat = ecouleS !== null ? etatA(phases, ecouleS) : null;
+  useSignauxMinuteur(phases, son, marche && !marche.pauseDepuisMs ? ecouleS : null);
 
-  // Vibration à chaque changement de phase quand l'app est à l'écran.
-  useEffect(() => {
-    const index = etat?.statut === 'en_cours' ? etat.indexPhase : etat?.statut === 'termine' ? phases.length : -1;
-    if (index > 0 && index !== derniereIndex.current) vibrer();
-    derniereIndex.current = index;
-  }, [etat, phases.length]);
-
-  /** Une alerte par fin de phase : le minuteur sonne même téléphone verrouillé. */
-  async function programmer(depuisS: number) {
-    await autoriserNotifications();
-    const alertes = await Promise.all(
-      phases
-        .filter((p) => p.debutS + p.dureeS > depuisS)
-        .slice(0, 60)
-        .map((p, i, liste) => {
-          const fin = p.debutS + p.dureeS - depuisS;
-          const suivante = phases[phases.indexOf(p) + 1];
-          const corps = suivante
-            ? suivante.type === 'travail'
-              ? `Go ! ${nomDe(suivante.exercice) ?? `Exercice ${suivante.exercice}`} · tour ${suivante.tour}`
-              : 'Repos'
-            : 'Séance terminée, bravo !';
-          return i === liste.length - 1 || fin > 0 ? programmerAlerte(fin, p.type === 'travail' ? 'Stop' : 'C’est reparti', corps) : null;
-        }),
-    );
-    return alertes;
-  }
+  /** Une alerte par fin de phase : la sonnerie passe écran verrouillé ou sur une autre appli. */
+  const programmer = (depuisS: number) => programmerAlertes(phases, son, depuisS, nomDe);
 
   async function demarrer() {
+    preparerSons();
+    if (!phases.some((p) => p.type === 'preparation')) jouer(son.sonnerie);
     const t0 = maintenantMs();
     setMaintenant(t0);
-    setMarche({ debutMs: t0, pausesMs: 0, alertes: await programmer(0) });
+    setMarche({ debutMs: t0, pausesMs: 0, alertes: [] });
+    const alertes = await programmer(0);
+    setMarche((m) => (m && m.debutMs === t0 ? { ...m, alertes } : m));
   }
 
   async function basculerPause() {
@@ -86,14 +72,14 @@ export default function Minuteur() {
       const depuis = ecoule(marche.debutMs, t, pausesMs);
       setMarche({ debutMs: marche.debutMs, pausesMs, alertes: await programmer(depuis) });
     } else {
-      await annulerAlertes(marche.alertes);
+      await annulerSonneries(marche.alertes);
       setMarche({ ...marche, pauseDepuisMs: t, alertes: [] });
     }
     setMaintenant(t);
   }
 
   async function arreter() {
-    if (marche) await annulerAlertes(marche.alertes);
+    if (marche) await annulerSonneries(marche.alertes);
     setMarche(null);
   }
 
@@ -119,6 +105,31 @@ export default function Minuteur() {
             </View>
           ))}
         </Carte>
+        <Carte>
+          <Texte>Sonnerie</Texte>
+          <View style={styles.sons}>
+            {(Object.keys(NOMS_SONNERIES) as Sonnerie[]).map((x) => (
+              <Pressable
+                key={x}
+                accessibilityRole="button"
+                accessibilityState={{ selected: son.sonnerie === x }}
+                onPress={() => {
+                  const s = { ...son, sonnerie: x };
+                  setSon(s);
+                  garderSonPrefere(s);
+                  ecouter(x);
+                }}
+                style={[styles.son, son.sonnerie === x && styles.sonChoisi]}
+              >
+                <Text style={[styles.texteSon, son.sonnerie === x && { color: '#FFFFFF' }]}>{NOMS_SONNERIES[x]}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Texte doux>
+            {son.preparationS ? `Décompte de ${son.preparationS} s avant le départ` : 'Départ immédiat'}
+            {son.bipsTravail || son.bipsRepos ? ', bips 3, 2, 1 avant la fin des phases.' : '.'} Réglable dans Minuteurs.
+          </Texte>
+        </Carte>
         <Texte doux style={{ textAlign: 'center' }}>Durée totale {mmss(dureeTotale(phases))}</Texte>
         <Bouton libelle="Démarrer" onPress={demarrer} />
         {prevu ? (
@@ -131,6 +142,7 @@ export default function Minuteur() {
   }
 
   const travail = etat.statut === 'en_cours' && etat.phase.type === 'travail';
+  const preparation = etat.statut === 'en_cours' && etat.phase.type === 'preparation';
   const fond = etat.statut === 'termine' ? couleurs.noir : travail ? couleurs.rouge : '#2A2A30';
 
   return (
@@ -139,10 +151,10 @@ export default function Minuteur() {
         <Text style={styles.phase}>Terminé</Text>
       ) : (
         <>
-          <Text style={styles.phase}>{travail ? 'Travail' : 'Repos'}</Text>
+          <Text style={styles.phase}>{travail ? 'Travail' : preparation ? 'Prêt ?' : 'Repos'}</Text>
           <Text style={styles.compte}>{mmss(etat.restantS)}</Text>
           {nomDe(etat.phase.exercice) && (
-            <Text style={styles.detail}>{travail ? nomDe(etat.phase.exercice) : `Ensuite : ${nomDe(suivant(phases, etat.indexPhase)) ?? ''}`}</Text>
+            <Text style={styles.detail}>{travail ? nomDe(etat.phase.exercice) : `Ensuite : ${nomDe(suivant(phases, etat.index)) ?? ''}`}</Text>
           )}
           <Text style={styles.detail}>
             Exercice {etat.phase.exercice}/{config.exercices} · Tour {etat.phase.tour}/{config.tours}
@@ -192,5 +204,9 @@ const styles = StyleSheet.create({
   phase: { fontFamily: polices.titre, fontSize: 48, color: '#FFFFFF', letterSpacing: 2 },
   compte: { fontFamily: polices.chiffres, fontSize: 112, lineHeight: 130, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
   detail: { fontFamily: polices.texteMoyen, fontSize: 18, color: '#FFFFFFCC' },
+  sons: { flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) },
+  son: { borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 999, paddingHorizontal: espace(3), paddingVertical: espace(2) },
+  sonChoisi: { backgroundColor: couleurs.rouge, borderColor: couleurs.rouge },
+  texteSon: { fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.texte },
   actions: { width: '100%', maxWidth: 360, gap: espace(3), marginTop: espace(10) },
 });
