@@ -1,6 +1,6 @@
 // C03 — Fiche Contact reprise de RecordEditor (table Contacts) et ContactBoosters.tsx :
 // modale `max-w-3xl`, initiales + coordonnées + statut, grille deux colonnes, pied collant (état du dossier, Fermer, Enregistrer).
-// Fiche unique de la personne : Coordonnées, Boosters, puis, une fois cliente, Programme, Suivi et Nutrition ; Documents
+// Fiche unique de la personne : Coordonnées, Abonnement et paiements (une fois cliente), Boosters, puis, une fois cliente, Programme, Suivi et Nutrition ; Documents
 // (bilans complets compris) pour tous.
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -43,10 +43,11 @@ import { ParcoursContact } from './parcours';
 import { ReponsesQuestionnaire } from './reponses-questionnaire';
 import { Cellule, Choix, Grille, Initiales, Modale, PiedEditeur, Repliable, Saisie, Valeur } from './dossier';
 
-export type VoletFiche = 'fiche' | 'messages' | 'boosters' | 'programme' | 'suivi' | 'nutrition' | 'documents';
-export const VOLETS_FICHE: VoletFiche[] = ['fiche', 'messages', 'boosters', 'programme', 'suivi', 'nutrition', 'documents'];
+export type VoletFiche = 'fiche' | 'paiements' | 'messages' | 'boosters' | 'programme' | 'suivi' | 'nutrition' | 'documents';
+export const VOLETS_FICHE: VoletFiche[] = ['fiche', 'paiements', 'messages', 'boosters', 'programme', 'suivi', 'nutrition', 'documents'];
 const VOLETS: OngletDef<VoletFiche>[] = [
   { cle: 'fiche', libelle: 'Coordonnées' },
+  { cle: 'paiements', libelle: 'Abonnement et paiements' },
   { cle: 'messages', libelle: 'Messages' },
   { cle: 'boosters', libelle: 'Boosters' },
   { cle: 'programme', libelle: 'Programme' },
@@ -55,7 +56,7 @@ const VOLETS: OngletDef<VoletFiche>[] = [
   { cle: 'documents', libelle: 'Documents' },
 ];
 /** Un prospect n'a pas encore d'espace client : ni programme, ni suivi, ni nutrition. */
-const VOLETS_CLIENT: VoletFiche[] = ['messages', 'programme', 'suivi', 'nutrition'];
+const VOLETS_CLIENT: VoletFiche[] = ['paiements', 'messages', 'programme', 'suivi', 'nutrition'];
 
 type Brouillon = Record<keyof Required<SaisieContactFiche>, string>;
 const CLES: (keyof Brouillon)[] = [
@@ -315,11 +316,17 @@ function Editeur({
           coordonneeManquante={coordonneeManquante && (!!contact || modifie)}
         />
       )}
-      {volet === 'fiche' && contact?.clientId && (
-        <View style={{ marginTop: espace(4) }}>
+      {/* Abonnement, packs et factures ont leur rubrique : « Coordonnées » reste court. */}
+      {volet === 'paiements' && contact?.clientId && (
+        <View>
           <AbonnementClient clientId={contact.clientId} prenom={contact.prenom} onChange={() => setVersionAbo((v) => v + 1)} />
           <View style={{ marginTop: espace(4) }}>
-            <FacturesClient clientId={contact.clientId} prenom={contact.prenom} nom={contact.nom} />
+            <FacturesClient
+              clientId={contact.clientId}
+              prenom={contact.prenom}
+              nom={contact.nom}
+              envoi={{ contactId: contact.id, prenom: contact.prenom, telephone: contact.telephone, email: contact.email }}
+            />
           </View>
         </View>
       )}

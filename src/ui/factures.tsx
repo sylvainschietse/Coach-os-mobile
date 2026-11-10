@@ -1,12 +1,18 @@
 // Factures : réglages d'en-tête du coach (Mon profil), numérotation et factures d'un client (fiche), « Mes factures » du client.
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { Directory, File, Paths } from 'expo-file-system';
+import * as MailComposer from 'expo-mail-composer';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
 import { Image, Platform, Pressable, Text, View } from 'react-native';
 
+import { documents } from '@/data/documents';
 import { factures, type Numerotation, type PaiementAFacturer } from '@/data/factures';
+import { useSession } from '@/data/session';
+import { lienEnvoi, normaliserEmail } from '@/domain/crm';
+import { emailFacture, messageWhatsAppFacture, nomFichierFacture, prenomEmetteur } from '@/domain/factures-envoi';
 import {
   COULEURS_FACTURE,
   erreursEntete,
@@ -17,6 +23,7 @@ import {
   type EnteteFacture,
   type Facture,
 } from '@/domain/factures';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { useCharger } from '@/lib/useCharger';
 
@@ -26,30 +33,166 @@ import { couleurs, espace, polices } from './theme';
 const euros = (n: number) => `${n.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`;
 const dateFr = (j?: string) => (j ? j.split('-').reverse().join('/') : '');
 
-/** Web : fenêtre d'impression (« Enregistrer au format PDF ») ; téléphone : PDF partagé (mail, WhatsApp, Fichiers). */
-export async function ouvrirFacture(f: Facture, style: { couleur?: string; logo?: string; iban?: string; bic?: string }) {
-  const html = factureHtml(f, { ...style, police: BEBAS_NEUE_BASE64 });
-  if (Platform.OS === 'web') {
-    const cadre = document.createElement('iframe');
-    Object.assign(cadre.style, { position: 'fixed', width: '0', height: '0', border: '0' });
-    cadre.srcdoc = html;
-    cadre.onload = () => {
-      cadre.contentWindow?.print();
-      setTimeout(() => cadre.remove(), 60000);
-    };
-    document.body.appendChild(cadre);
-    return;
-  }
-  // A4 en points (72 par pouce).
-  const { uri } = await Print.printToFileAsync({ html, width: 595, height: 842 });
-  await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Facture ${f.numero}`, UTI: 'com.adobe.pdf' });
+type StyleFacture = {
+  couleur?: string;
+  logo?: string;
+  iban?: string;
+  bic?: string;
+};
+
+/** Web : la fenêtre d'impression du navigateur (« Enregistrer au format PDF »). */
+function imprimerFacture(f: Facture, style: StyleFacture) {
+  const cadre = document.createElement('iframe');
+  Object.assign(cadre.style, {
+    position: 'fixed',
+    width: '0',
+    height: '0',
+    border: '0',
+  });
+  cadre.srcdoc = factureHtml(f, { ...style, police: BEBAS_NEUE_BASE64 });
+  cadre.onload = () => {
+    cadre.contentWindow?.print();
+    setTimeout(() => cadre.remove(), 60000);
+  };
+  document.body.appendChild(cadre);
 }
 
-function LigneFactureListe({ f, style }: { f: Facture; style: { couleur?: string; logo?: string } }) {
+/** Téléphone : le PDF de la facture dans le cache, sous un nom lisible (« Facture YC253 - Angelo Callegaro - … .pdf »). */
+async function pdfFacture(f: Facture, style: StyleFacture): Promise<File> {
+  // A4 en points (72 par pouce).
+  const { uri } = await Print.printToFileAsync({
+    html: factureHtml(f, { ...style, police: BEBAS_NEUE_BASE64 }),
+    width: 595,
+    height: 842,
+  });
+  const cible = new File(Paths.cache, nomFichierFacture(f));
+  if (cible.exists) cible.delete();
+  await new File(uri).move(cible);
+  return cible;
+}
+
+/** Web : fenêtre d'impression ; téléphone : PDF partagé (mail, WhatsApp, Fichiers). */
+export async function ouvrirFacture(f: Facture, style: StyleFacture) {
+  if (Platform.OS === 'web') return imprimerFacture(f, style);
+  const pdf = await pdfFacture(f, style);
+  await Sharing.shareAsync(pdf.uri, {
+    mimeType: 'application/pdf',
+    dialogTitle: `Facture ${f.numero}`,
+    UTI: 'com.adobe.pdf',
+  });
+}
+
+/** Enregistre le PDF sur l'appareil : Android demande le dossier, l'iPhone passe par « Enregistrer dans Fichiers ». */
+async function telechargerSurAppareil(f: Facture, style: StyleFacture): Promise<string | undefined> {
+  if (Platform.OS === 'web') {
+    imprimerFacture(f, style);
+    return undefined;
+  }
+  const pdf = await pdfFacture(f, style);
+  if (Platform.OS !== 'android') {
+    await Sharing.shareAsync(pdf.uri, {
+      mimeType: 'application/pdf',
+      dialogTitle: `Facture ${f.numero}`,
+      UTI: 'com.adobe.pdf',
+    });
+    return undefined;
+  }
+  let dossier: Directory;
+  try {
+    dossier = await Directory.pickDirectoryAsync();
+  } catch {
+    return undefined; // Fenêtre fermée sans choisir de dossier.
+  }
+  const fichier = dossier.createFile(nomFichierFacture(f).replace(/\.pdf$/, ''), 'application/pdf');
+  await fichier.write(await pdf.bytes());
+  return `Facture enregistrée dans le dossier choisi.`;
+}
+
+/** Contact du client à qui la facture est envoyée (fiche client). */
+export interface DestinataireFacture {
+  contactId: string;
+  prenom: string;
+  telephone?: string;
+  email?: string;
+}
+
+function LigneFactureListe({ f, style, envoi }: { f: Facture; style: StyleFacture; envoi?: DestinataireFacture }) {
+  const { email } = useSession();
   const [erreur, setErreur] = useState<string>();
+  const [retour, setRetour] = useState<string>();
+  const [choix, setChoix] = useState(false);
+  const [occupe, setOccupe] = useState<'documents' | 'appareil' | 'email' | 'pdf'>();
+  const agir = async (quoi: NonNullable<typeof occupe>, fn: () => Promise<string | undefined | void>) => {
+    setErreur(undefined);
+    setRetour(undefined);
+    setOccupe(quoi);
+    try {
+      const r = await fn();
+      if (r) setRetour(r);
+      setChoix(false);
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'PDF non créé');
+    } finally {
+      setOccupe(undefined);
+    }
+  };
+  const signature = {
+    prenom: prenomEmetteur(f.emetteur.nom),
+    telephone: f.emetteur.telephone,
+    email,
+  };
+  const lienWhatsApp = envoi ? lienEnvoi('whatsapp', envoi, messageWhatsAppFacture(f, envoi.prenom, signature)) : null;
+  const mail = envoi ? emailFacture(f, envoi.prenom, signature) : undefined;
+  const adresse = normaliserEmail(envoi?.email);
+
+  /** Téléphone : l'e-mail part avec la facture jointe ; sur ordinateur, la messagerie s'ouvre et le PDF se joint à la main. */
+  const envoyerEmail = async () => {
+    if (!mail || !adresse) return;
+    if (Platform.OS !== 'web' && (await MailComposer.isAvailableAsync())) {
+      const pdf = await pdfFacture(f, style);
+      await MailComposer.composeAsync({
+        recipients: [adresse],
+        subject: mail.sujet,
+        body: mail.corps,
+        attachments: [pdf.uri],
+      });
+      return;
+    }
+    await ouvrirLien(lienEnvoi('email', { email: adresse }, mail.corps, mail.sujet)!);
+    return Platform.OS === 'web' ? 'Joins le PDF au message : « Sur cet appareil » l’enregistre d’abord.' : undefined;
+  };
+
+  const versDocuments = async () => {
+    if (!envoi) return;
+    const pdf = await pdfFacture(f, style);
+    const donnees = await pdf.bytes();
+    await documents.creer(
+      {
+        nom: nomFichierFacture(f).replace(/\.pdf$/, ''),
+        contactId: envoi.contactId,
+        type: 'Facture',
+        date: f.date,
+      },
+      {
+        nom: nomFichierFacture(f),
+        type: 'application/pdf',
+        taille: donnees.byteLength,
+        donnees: donnees.slice().buffer,
+      },
+    );
+    return `Facture ajoutée aux documents de ${envoi.prenom || 'ce client'}.`;
+  };
+
   return (
     <View style={{ gap: espace(1) }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: espace(3), flexWrap: 'wrap' }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: espace(3),
+          flexWrap: 'wrap',
+        }}
+      >
         <View style={{ flex: 1, minWidth: 160 }}>
           <Texte style={{ fontWeight: '600' }}>
             {f.numero} · {f.objet}
@@ -59,12 +202,39 @@ function LigneFactureListe({ f, style }: { f: Facture; style: { couleur?: string
             {f.total > 0 && !f.payeLe ? ' · à régler' : ''}
           </Texte>
         </View>
-        <Bouton
-          variante="discret"
-          libelle="Télécharger le PDF"
-          onPress={() => ouvrirFacture(f, style).catch((e) => setErreur(e instanceof Error ? e.message : 'PDF non créé'))}
-        />
+        {!envoi && (
+          <Bouton variante="discret" libelle="Télécharger le PDF" chargement={occupe === 'pdf'} onPress={() => agir('pdf', () => ouvrirFacture(f, style))} />
+        )}
       </View>
+      {envoi && (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>
+          <Bouton variante="discret" libelle={choix ? 'Télécharger ▴' : 'Télécharger ▾'} onPress={() => setChoix((c) => !c)} />
+          {lienWhatsApp && <Bouton variante="discret" libelle="WhatsApp" onPress={() => agir('pdf', () => ouvrirLien(lienWhatsApp))} />}
+          {adresse && <Bouton variante="discret" libelle="E-mail" chargement={occupe === 'email'} onPress={() => agir('email', envoyerEmail)} />}
+        </View>
+      )}
+      {envoi && choix && (
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: espace(2),
+            paddingLeft: espace(2),
+          }}
+        >
+          {/* Sur ordinateur, le PDF naît dans la fenêtre d'impression : il ne peut pas partir tout seul dans les documents. */}
+          {Platform.OS !== 'web' && (
+            <Bouton variante="secondaire" libelle="Dans ses documents" chargement={occupe === 'documents'} onPress={() => agir('documents', versDocuments)} />
+          )}
+          <Bouton
+            variante="secondaire"
+            libelle="Sur cet appareil"
+            chargement={occupe === 'appareil'}
+            onPress={() => agir('appareil', () => telechargerSurAppareil(f, style))}
+          />
+        </View>
+      )}
+      {retour && <Texte style={{ fontSize: 13, color: couleurs.vert }}>{retour}</Texte>}
       {erreur && <Texte style={{ fontSize: 13, color: couleurs.rouge }}>{erreur}</Texte>}
     </View>
   );
@@ -151,7 +321,7 @@ export function MesFactures({ clientId }: { clientId: string }) {
 
 // ---------- Coach : factures d'un client ----------
 
-export function FacturesClient({ clientId, prenom, nom }: { clientId: string; prenom: string; nom: string }) {
+export function FacturesClient({ clientId, prenom, nom, envoi }: { clientId: string; prenom: string; nom: string; envoi?: DestinataireFacture }) {
   const liste = useCharger(() => factures.liste(clientId), `factures-${clientId}`);
   const num = useCharger(() => factures.numerotation(clientId), `factures-num-${clientId}`);
   const aFacturer = useCharger(() => factures.aFacturer(clientId), `factures-a-${clientId}`);
@@ -195,7 +365,12 @@ export function FacturesClient({ clientId, prenom, nom }: { clientId: string; pr
       {(liste.erreur || aFacturer.erreur) && <Erreur message={(liste.erreur || aFacturer.erreur)!} onReessayer={liste.recharger} />}
       {!liste.donnee && !liste.erreur && <Chargement />}
       {liste.donnee?.length === 0 && <Texte doux>Aucune facture pour le moment.</Texte>}
-      {liste.donnee?.map((f) => <LigneFactureListe key={f.id} f={f} style={style.donnee ?? {}} />)}
+      {liste.donnee?.map((f) => <LigneFactureListe key={f.id} f={f} style={style.donnee ?? {}} envoi={envoi} />)}
+      {!!liste.donnee?.length && envoi?.telephone && (
+        <Texte doux style={{ fontSize: 12 }}>
+          WhatsApp ouvre la conversation avec le message prêt, sans pièce jointe : {prenom || 'le client'} retrouve la facture dans son espace CoachGo.
+        </Texte>
+      )}
       {!!liste.donnee?.length && <AideWeb />}
       {!!aFacturer.donnee?.length && (
         <View style={{ gap: espace(2), marginTop: espace(2) }}>

@@ -1,6 +1,8 @@
 // Cloche de notifications : l'historique des alertes de la personne connectée (table notifications, lecture seule
 // sous RLS) et ce qu'elle a déjà lu. Les messages ont leur propre bouton : ils ne s'affichent pas ici.
 // En démo (sans base), la cloche reste vide.
+import { corpsLisible } from '@/domain/libelles';
+
 import { supabase } from './supabase';
 
 export interface NotificationAppli {
@@ -34,7 +36,7 @@ export async function notificationsRecentes(limite = 50): Promise<NotificationAp
     id: l.id as string,
     genre: l.genre as string,
     titre: l.titre as string,
-    corps: (l.corps as string) ?? '',
+    corps: corpsLisible((l.corps as string) ?? ''),
     url: (l.url as string | null) ?? null,
     creeLe: l.cree_le as string,
     lue: !!l.lue_le,

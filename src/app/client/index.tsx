@@ -27,6 +27,8 @@ export default function AccueilClient() {
   const clientId = profil?.role === 'client' ? profil.clientId : '';
   const accord = useAccord(clientId);
   const [ouvert, setOuvert] = useState<OngletClient>('accueil');
+  // Chaque toucher du logo demande l'accueil, même si on y était déjà passé.
+  const [versAccueil, setVersAccueil] = useState(0);
   // Rappels et notifications : seulement une fois l'accord RGPD donné, et l'accès ouvert.
   const pretPourRappels = profil?.role === 'client' && !profil.suspendu && !!accord.donnee && !accordAttendu(accord.donnee);
   useRappelsClient(pretPourRappels ? clientId : '', profil?.role === 'client' ? profil.prenom : '');
@@ -73,6 +75,7 @@ export default function AccueilClient() {
           largeur={LARGEUR_CLIENT}
           sousTitre="Mon espace coaching"
           univers={univers[UNIVERS_CLIENT[ouvert]]}
+          onLogo={() => setVersAccueil((n) => n + 1)}
           droite={
             <>
               <BoutonMessagesClient clientId={profil.clientId} />
@@ -81,7 +84,7 @@ export default function AccueilClient() {
             </>
           }
         />
-        <EspaceClient clientId={profil.clientId} prenom={profil.prenom} ongletInitial={initial} onOnglet={setOuvert} />
+        <EspaceClient clientId={profil.clientId} prenom={profil.prenom} ongletInitial={initial} versAccueil={versAccueil} onOnglet={setOuvert} />
       </View>
     </Minuteurs>
   );
