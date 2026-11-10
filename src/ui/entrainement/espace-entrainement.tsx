@@ -59,7 +59,7 @@ function Planning({ espace }: { espace: EspaceEntrainement }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}>
           <CalendarRange size={16} color={couleurs.rouge} />
           <Text style={[ts.texte, { fontFamily: polices.texteGras, flexShrink: 1 }]}>
-            Mon accompagnement{espace.suivi ? ` · ${espace.suivi.dureeMois} mois (${jourCourt(espace.suivi.debut)} → ${jourCourt(espace.suivi.fin)})` : ''}
+            Mon accompagnement{espace.suivi ? ` · depuis le ${jourCourt(espace.suivi.debut)}` : ''}
           </Text>
         </View>
       }

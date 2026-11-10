@@ -45,6 +45,8 @@ export interface Entrainement {
 
   suivis(coachId: string): Promise<SuiviClient[]>;
   enregistrerSuivi(coachId: string, s: Suivi): Promise<void>;
+  /** Arrête le suivi : ses cycles et leurs dates partent, les séances déjà faites restent dans l'historique. */
+  arreterSuivi(clientId: string): Promise<void>;
   enregistrerCycle(coachId: string, c: CycleStocke): Promise<void>;
   activerCycle(id: string): Promise<void>;
   deplacerCycle(id: string, sens: 1 | -1): Promise<void>;
@@ -176,7 +178,7 @@ export async function attribuerAuClient(
   source: { programmeId: string } | { seanceId: string },
   client: SuiviClient,
   cible: CibleAttribution,
-  nouveauSuivi?: { debut: string; dureeMois: number },
+  nouveauSuivi?: { debut: string },
 ): Promise<{ cycle: string; active: boolean }> {
   let suivi = client.suivi;
   if (!suivi) {

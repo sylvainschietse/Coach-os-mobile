@@ -32,6 +32,7 @@ import { ChampDate, ChampHeure } from '../date-heure';
 import { BoutonDictee } from '../dictee';
 import { couleurs, espace, polices } from '../theme';
 import { BoutonPied, CaseACocher, Cellule, Choix, ChoixMultiple, Grille, Libelle, Modale, PiedEditeur, Saisie } from './dossier';
+import { ConclusionBooster } from './conclusion-booster';
 import { BoutonEtape } from './acces';
 import { EnvoiMessage, nomComplet, useMessageQuestionnaire } from './commun';
 
@@ -183,6 +184,7 @@ function Editeur({
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string>();
   const [sortie, setSortie] = useState<(() => void) | null>(null);
+  const [conclure, setConclure] = useState(false);
   const saisie = saisieDe(b, initial, booster);
   const modifie = Object.keys(saisie).length > 0 || (!booster && !!b.contactId);
   const demanderSortie = (suite: () => void) => (modifie ? setSortie(() => suite) : suite());
@@ -215,6 +217,8 @@ function Editeur({
       const priorites = JSON.stringify(b.priorites) !== JSON.stringify(troisPriorites(booster.priorites)) ? { priorites: b.priorites } : {};
       await crm.modifierBooster(booster.id, { ...saisie, ...priorites });
       setInitial(b);
+      // Booster passé à « Terminée » : on demande tout de suite où ranger la personne.
+      if (saisie.statutCrm === 'Terminée' && contact && contact.statut !== 'client' && contact.statut !== 'archive') setConclure(true);
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Enregistrement non confirmé');
     } finally {
@@ -394,6 +398,7 @@ function Editeur({
       )}
 
       {booster && contact && <ResumeLecture booster={booster} />}
+      {conclure && booster && contact && <ConclusionBooster boosterId={booster.id} contact={contact} onFermer={() => setConclure(false)} />}
     </Modale>
   );
 }

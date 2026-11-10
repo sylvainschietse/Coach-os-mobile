@@ -434,13 +434,13 @@ export function creerEntrainementSupabase(db: SupabaseClient): Entrainement {
       );
       const nb = new Map<string, number>();
       resultats.forEach((r) => nb.set(r.cycle_id, (nb.get(r.cycle_id) ?? 0) + 1));
-      const ss = verifier(suivis) as { id: string; client_id: string; debut: string; duree_mois: number }[];
+      const ss = verifier(suivis) as { id: string; client_id: string; debut: string; duree_mois: number | null }[];
       return (verifier(clients) as { id: string; prenom: string; nom: string }[]).map((c) => {
         const s = ss.find((x) => x.client_id === c.id);
         return {
           clientId: c.id,
           nom: `${c.prenom} ${c.nom}`.trim(),
-          suivi: s && { id: s.id, clientId: c.id, debut: s.debut, dureeMois: s.duree_mois },
+          suivi: s && { id: s.id, clientId: c.id, debut: s.debut, dureeMois: s.duree_mois ?? undefined },
           cycles: cs
             .filter((x) => x.clientId === c.id)
             .map((x) => ({ ...x, programmeNom: x.programmeId ? noms.get(x.programmeId) : undefined, nbResultats: nb.get(x.id) ?? 0 })),
@@ -452,8 +452,12 @@ export function creerEntrainementSupabase(db: SupabaseClient): Entrainement {
       echec(
         await db
           .from('suivis')
-          .upsert({ id: s.id, coach_id: coachId, client_id: s.clientId, debut: s.debut, duree_mois: s.dureeMois }, { onConflict: 'client_id' }),
+          .upsert({ id: s.id, coach_id: coachId, client_id: s.clientId, debut: s.debut, duree_mois: s.dureeMois ?? null }, { onConflict: 'client_id' }),
       );
+    },
+
+    async arreterSuivi(clientId) {
+      echec(await db.from('suivis').delete().eq('client_id', clientId));
     },
 
     async enregistrerCycle(coachId, c) {
@@ -524,12 +528,12 @@ export function creerEntrainementSupabase(db: SupabaseClient): Entrainement {
         programmes.push(p);
         seances.push(...ss);
       }
-      const s = suivi.data as { id: string; client_id: string; debut: string; duree_mois: number } | null;
+      const s = suivi.data as { id: string; client_id: string; debut: string; duree_mois: number | null } | null;
       // Les mêmes règles d'assemblage que la démo : un seul endroit décide de ce que voit le client.
       const etat: Etat = {
         programmes,
         seances,
-        suivis: s ? [{ id: s.id, clientId, debut: s.debut, dureeMois: s.duree_mois }] : [],
+        suivis: s ? [{ id: s.id, clientId, debut: s.debut, dureeMois: s.duree_mois ?? undefined }] : [],
         cycles: cs,
         planifications: [],
         realisations: realisations.map(versRealisation),

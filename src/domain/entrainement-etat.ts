@@ -1,7 +1,7 @@
 // Entraînement du lot 3 : ce que les écrans lisent et les règles d'origine, sans base de données.
 // Le mode démo applique ici les mêmes contrôles que les fonctions SQL (activer_cycle, planifier_seance,
 // enregistrer_realisation, mettre_a_la_corbeille) pour qu'un essai sur l'appareil se comporte comme la vraie app.
-import { appliquerCycle, aujourdhuiParis, avancementCycle, finSuivi, jourParis, type StatutCycle } from './entrainement';
+import { appliquerCycle, aujourdhuiParis, avancementCycle, jourParis, type StatutCycle } from './entrainement';
 import type { LignePrescription, Programme, Seance, SerieRealisee, Valeurs } from './types';
 
 export type ModeLien = 'Modèle' | 'Copie personnalisée';
@@ -76,7 +76,8 @@ export interface Suivi {
   id: string;
   clientId: string;
   debut: string;
-  dureeMois: number;
+  /** Ancienne durée prévue (1 à 24 mois). Plus demandée : un suivi dure jusqu'à ce que le coach l'arrête. */
+  dureeMois?: number;
 }
 
 export interface SuiviClient {
@@ -135,7 +136,7 @@ export interface RealisationLue extends RealisationCycle {
 }
 
 export interface EspaceEntrainement {
-  suivi?: Suivi & { fin: string };
+  suivi?: Suivi;
   /** Cycles visibles du client : Actif et Terminé seulement. */
   planning: CycleClient[];
   cycle?: CycleClient & { etat: 'a_venir' | 'en_cours' | 'depasse'; semaine: number | null; nbSemaines: number };
@@ -337,7 +338,7 @@ export function espaceClient(e: Etat, clientId: string, jour = aujourdhuiParis()
   const actif = planning.find((c) => c.statut === 'Actif');
   const p = actif?.programmeId ? e.programmes.find((x) => x.id === actif.programmeId) : undefined;
   return {
-    suivi: suivi && { ...suivi, fin: finSuivi(suivi.debut, suivi.dureeMois) },
+    suivi,
     planning,
     cycle: actif && { ...actif, ...avancementCycle(actif, jour) },
     programme: p && sansStockage(p),

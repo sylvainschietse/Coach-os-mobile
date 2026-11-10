@@ -129,7 +129,7 @@ function historiqueDemo(clientId: string, cycleId: string, cycleNom: string, deb
 function depart(): Stocke {
   const jour = aujourdhuiParis();
   const debut = ajouterJours(jour, -24);
-  const suivi = { id: 'suivi-lea', clientId: CLIENTS_DEMO[0].id, debut, dureeMois: 3 };
+  const suivi = { id: 'suivi-lea', clientId: CLIENTS_DEMO[0].id, debut };
   const cycle = (ordre: number, nom: string, d: string, statut: CycleStocke['statut'], programmeId?: string): CycleStocke => ({
     id: `cycle-lea-${ordre}`,
     suiviId: suivi.id,
@@ -235,10 +235,10 @@ export const entrainementDemo: Entrainement = {
 
   async suivis() {
     const e = await etat();
-    const ajoutes: { id: string; prenom: string; nom: string }[] = await AsyncStorage.getItem('coachos.demo.clients-ajoutes')
+    const ajoutes: { id: string; prenom: string; nom: string; actif?: boolean }[] = await AsyncStorage.getItem('coachos.demo.clients-ajoutes')
       .then((b) => JSON.parse(b ?? '[]'))
       .catch(() => []);
-    return [...CLIENTS_DEMO, ...ajoutes].map((c) => ({
+    return [...CLIENTS_DEMO, ...ajoutes.filter((c) => c.actif !== false)].map((c) => ({
       clientId: c.id,
       nom: `${c.prenom} ${c.nom}`.trim(),
       suivi: e.suivis.find((s) => s.clientId === c.id),
@@ -248,9 +248,22 @@ export const entrainementDemo: Entrainement = {
 
   async enregistrerSuivi(_coachId, s) {
     const e = await etat();
-    if (!Number.isInteger(s.dureeMois) || s.dureeMois < 1 || s.dureeMois > 24) throw new Error('Durée : un entier de 1 à 24 mois');
     const avant = e.suivis.find((x) => x.clientId === s.clientId);
     await sauver({ ...e.stocke, suivis: remplacer(e.suivis, { ...s, id: avant?.id ?? s.id }) });
+  },
+
+  async arreterSuivi(clientId) {
+    const e = await etat();
+    const suivi = e.suivis.find((x) => x.clientId === clientId);
+    if (!suivi) return;
+    const cycles = new Set(e.cycles.filter((x) => x.suiviId === suivi.id).map((x) => x.id));
+    await sauver({
+      ...e.stocke,
+      suivis: e.suivis.filter((x) => x.id !== suivi.id),
+      cycles: e.cycles.filter((x) => !cycles.has(x.id)),
+      planifications: e.stocke.planifications?.filter((p) => !cycles.has(p.cycleId)),
+      realisations: e.stocke.realisations?.map((r) => (r.cycleId && cycles.has(r.cycleId) ? { ...r, cycleId: undefined } : r)),
+    });
   },
 
   async enregistrerCycle(_coachId, c) {
