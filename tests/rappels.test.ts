@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { aParis, MAX_RAPPELS, planifierRappels, PREFERENCES_PAR_DEFAUT, type ContexteRappels } from '@/domain/rappels';
+import { aParis, MAX_RAPPELS, planifierRappels, PREFERENCES_PAR_DEFAUT, rappelsAFaire, type ContexteRappels } from '@/domain/rappels';
 
 // Mardi 3 novembre 2026, 7 h à Paris (6 h UTC).
 const maintenant = new Date('2026-11-03T06:00:00Z');
@@ -76,5 +76,30 @@ describe('rappels du client', () => {
     expect(r.length).toBeLessThanOrEqual(MAX_RAPPELS);
     expect(r.map((x) => x.quand.getTime())).toEqual([...r.map((x) => x.quand.getTime())].sort((a, b) => a - b));
     expect(planifierRappels(rien, base)).toEqual([]);
+  });
+});
+
+describe('cloche du client : à faire aujourd’hui', () => {
+  it('garde les rappels du jour déjà passés et pas encore faits', () => {
+    // Dimanche 8 novembre 2026, 21 h 30 à Paris.
+    const soir = new Date('2026-11-08T20:30:00Z');
+    const ctx: ContexteRappels = {
+      ...base,
+      maintenant: soir,
+      seances: [
+        { id: 's1', titre: 'Haut du corps', datePrevue: '2026-11-08' },
+        { id: 's2', titre: 'Jambes', datePrevue: '2026-11-08', derniereRealisation: '2026-11-08T10:00:00Z' },
+        { id: 's3', titre: 'Cardio', datePrevue: '2026-11-07' },
+      ],
+      repasDuJour: ['dejeuner'],
+      rendezVous: [{ id: 'r1', debut: '2026-11-08T19:00:00Z', statut: 'confirme' }],
+    };
+    expect(rappelsAFaire(PREFERENCES_PAR_DEFAUT, ctx).map((r) => r.id)).toEqual(['repas-diner-2026-11-08', 'bilan-2026-11-08', 'seance-s1-2026-11-08']);
+    // Bilan rempli, dîner noté, réglage des séances coupé : plus rien.
+    expect(rappelsAFaire({ ...PREFERENCES_PAR_DEFAUT, seances: false }, { ...ctx, bilanFait: true, repasDuJour: ['dejeuner', 'diner'] })).toEqual([]);
+  });
+
+  it('ne montre rien avant l’heure', () => {
+    expect(rappelsAFaire(PREFERENCES_PAR_DEFAUT, { ...base, seances: [{ id: 's1', titre: 'Haut du corps', datePrevue: '2026-11-03' }] })).toEqual([]);
   });
 });

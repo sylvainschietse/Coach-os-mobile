@@ -3,7 +3,7 @@
 // repas notés, bilan rempli) et il les règle depuis « Moi › Mes notifications ».
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Bell } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppState, Linking, Platform, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
@@ -13,7 +13,7 @@ import { reglerAlerte } from '@/data/alertes';
 import { alimentation } from '@/data/alimentation';
 import { suiviHebdo } from '@/data/suivi-hebdo';
 import { aujourdhuiParis } from '@/domain/entrainement';
-import { heureValide, planifierRappels, type PreferencesRappels } from '@/domain/rappels';
+import { heureValide, planifierRappels, rappelsAFaire, type ContexteRappels, type PreferencesRappels, type Rappel } from '@/domain/rappels';
 import { lundiCourant } from '@/domain/suivi-hebdo';
 import { enregistrerPreferences, inscrireMessages, lirePreferences, programmerRappels } from '@/lib/rappels';
 import { useCharger } from '@/lib/useCharger';
@@ -21,13 +21,13 @@ import { useCharger } from '@/lib/useCharger';
 import { Bouton, Carte, Chargement, SousTitre, Texte } from '../composants';
 import { CaseACocher, Saisie } from '../crm/dossier';
 import { AlertesTelephone } from './alertes';
+import { BoutonCloche } from './cloche';
 import { couleurs, espace } from '../theme';
 
 const CLE_DEMANDE = 'coachgo.notifications.demandees';
 
-/** Calcule et programme les rappels du client. Les sources indisponibles (hors ligne) sont simplement ignorées. */
-export async function replanifier(clientId: string, prenom: string, demander = false) {
-  if (Platform.OS === 'web') return 0;
+/** Ce qu'il faut savoir pour les rappels du client. Les sources indisponibles (hors ligne) sont simplement ignorées. */
+async function contexte(clientId: string, prenom: string) {
   const prefs = await lirePreferences(clientId);
   const aujourdhui = aujourdhuiParis();
   const [seances, rdv, repas, bilans] = await Promise.all([
@@ -36,7 +36,7 @@ export async function replanifier(clientId: string, prenom: string, demander = f
     alimentation.repas(clientId, aujourdhui).catch(() => []),
     suiviHebdo.bilansClient(clientId).catch(() => []),
   ]);
-  const rappels = planifierRappels(prefs, {
+  const ctx: ContexteRappels = {
     maintenant: new Date(),
     prenom,
     seances,
@@ -44,8 +44,33 @@ export async function replanifier(clientId: string, prenom: string, demander = f
     repasDuJour: repas.filter((r) => r.date === aujourdhui).map((r) => r.moment),
     bilanFait: bilans.some((b) => b.semaine === lundiCourant()),
     journalRepas: true,
-  });
-  return programmerRappels(rappels, demander);
+  };
+  return { prefs, ctx };
+}
+
+/** Calcule et programme les rappels du client. */
+export async function replanifier(clientId: string, prenom: string, demander = false) {
+  if (Platform.OS === 'web') return 0;
+  const { prefs, ctx } = await contexte(clientId, prenom);
+  return programmerRappels(planifierRappels(prefs, ctx), demander);
+}
+
+/** Pour la cloche : les rappels d'aujourd'hui déjà passés et toujours à faire. */
+export async function rappelsDuJour(clientId: string, prenom: string): Promise<Rappel[]> {
+  const { prefs, ctx } = await contexte(clientId, prenom);
+  return rappelsAFaire(prefs, ctx);
+}
+
+/** Cloche du client : ses alertes, et en tête ce qu'il lui reste à faire aujourd'hui. */
+export function ClocheClient({ clientId, prenom }: { clientId: string; prenom: string }) {
+  const aFaire = useCallback(() => rappelsDuJour(clientId, prenom), [clientId, prenom]);
+  return (
+    <BoutonCloche
+      aFaire={aFaire}
+      cle={clientId}
+      texteVide="Rien de neuf pour l’instant. Tu verras ici ton nouveau programme, les séances proposées par ton coach, ses retours, tes rappels du jour…"
+    />
+  );
 }
 
 /** Client connecté : la première fois, demande l'autorisation ; ensuite, reprogramme à chaque retour sur l'appli. */

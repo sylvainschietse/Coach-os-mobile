@@ -15,6 +15,7 @@ export const ALERTES: Record<Role, Alerte[]> = {
     { cle: 'message', titre: 'Messages', detail: 'Dès qu’un client t’écrit.' },
     { cle: 'rdv_accepte', titre: 'Séance acceptée', detail: 'Quand un client confirme une séance proposée.' },
     { cle: 'rdv_refuse', titre: 'Séance refusée ou annulée', detail: 'Quand un client refuse ou annule une séance.' },
+    { cle: 'rdv_rappel', titre: 'Rappel de séance', detail: 'Une heure avant chaque séance de ton agenda.' },
     { cle: 'seance_faite', titre: 'Entraînement fait', detail: 'Quand un client termine une séance de son programme.' },
     { cle: 'paiement', titre: 'Paiement reçu', detail: 'Paiement en ligne ou changement d’offre.' },
     { cle: 'questionnaire', titre: 'Nouveau prospect', detail: 'Quand quelqu’un remplit ton questionnaire.' },
