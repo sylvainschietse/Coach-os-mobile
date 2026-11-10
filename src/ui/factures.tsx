@@ -1,6 +1,7 @@
 // Factures : réglages d'en-tête du coach (Mon profil), numérotation et factures d'un client (fiche), « Mes factures » du client.
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import * as Clipboard from 'expo-clipboard';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as MailComposer from 'expo-mail-composer';
 import * as Print from 'expo-print';
@@ -121,7 +122,7 @@ function LigneFactureListe({ f, style, envoi }: { f: Facture; style: StyleFactur
   const [erreur, setErreur] = useState<string>();
   const [retour, setRetour] = useState<string>();
   const [choix, setChoix] = useState(false);
-  const [occupe, setOccupe] = useState<'documents' | 'appareil' | 'email' | 'pdf'>();
+  const [occupe, setOccupe] = useState<'documents' | 'appareil' | 'email' | 'whatsapp' | 'pdf'>();
   const agir = async (quoi: NonNullable<typeof occupe>, fn: () => Promise<string | undefined | void>) => {
     setErreur(undefined);
     setRetour(undefined);
@@ -141,7 +142,24 @@ function LigneFactureListe({ f, style, envoi }: { f: Facture; style: StyleFactur
     telephone: f.emetteur.telephone,
     email,
   };
-  const lienWhatsApp = envoi ? lienEnvoi('whatsapp', envoi, messageWhatsAppFacture(f, envoi.prenom, signature)) : null;
+  const messageWhatsApp = envoi ? messageWhatsAppFacture(f, envoi.prenom, signature) : '';
+  const lienWhatsApp = envoi ? lienEnvoi('whatsapp', envoi, messageWhatsApp) : null;
+
+  /**
+   * Téléphone : comme le compte rendu, le PDF part par le partage du téléphone (WhatsApp, puis le contact).
+   * Android ne transmet pas de texte avec un fichier : le message est copié, à coller en légende.
+   * Sur ordinateur, WhatsApp Web s'ouvre sur la conversation avec le message, sans pièce jointe.
+   */
+  const envoyerWhatsApp = async () => {
+    if (Platform.OS === 'web') {
+      if (lienWhatsApp) await ouvrirLien(lienWhatsApp);
+      return;
+    }
+    const pdf = await pdfFacture(f, style);
+    await Clipboard.setStringAsync(messageWhatsApp);
+    await Sharing.shareAsync(pdf.uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: `Facture ${f.numero}` });
+    return 'Message copié : dans WhatsApp, appuie longuement sur la légende puis « Coller ».';
+  };
   const mail = envoi ? emailFacture(f, envoi.prenom, signature) : undefined;
   const adresse = normaliserEmail(envoi?.email);
 
@@ -209,7 +227,9 @@ function LigneFactureListe({ f, style, envoi }: { f: Facture; style: StyleFactur
       {envoi && (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>
           <Bouton variante="discret" libelle={choix ? 'Télécharger ▴' : 'Télécharger ▾'} onPress={() => setChoix((c) => !c)} />
-          {lienWhatsApp && <Bouton variante="discret" libelle="WhatsApp" onPress={() => agir('pdf', () => ouvrirLien(lienWhatsApp))} />}
+          {(Platform.OS !== 'web' || lienWhatsApp) && (
+            <Bouton variante="discret" libelle="WhatsApp" chargement={occupe === 'whatsapp'} onPress={() => agir('whatsapp', envoyerWhatsApp)} />
+          )}
           {adresse && <Bouton variante="discret" libelle="E-mail" chargement={occupe === 'email'} onPress={() => agir('email', envoyerEmail)} />}
         </View>
       )}
@@ -366,9 +386,9 @@ export function FacturesClient({ clientId, prenom, nom, envoi }: { clientId: str
       {!liste.donnee && !liste.erreur && <Chargement />}
       {liste.donnee?.length === 0 && <Texte doux>Aucune facture pour le moment.</Texte>}
       {liste.donnee?.map((f) => <LigneFactureListe key={f.id} f={f} style={style.donnee ?? {}} envoi={envoi} />)}
-      {!!liste.donnee?.length && envoi?.telephone && (
+      {!!liste.donnee?.length && Platform.OS !== 'web' && (
         <Texte doux style={{ fontSize: 12 }}>
-          WhatsApp ouvre la conversation avec le message prêt, sans pièce jointe : {prenom || 'le client'} retrouve la facture dans son espace CoachGo.
+          WhatsApp : la facture est jointe, tu choisis {prenom || 'le client'} dans la liste et tu colles le message déjà copié en légende.
         </Texte>
       )}
       {!!liste.donnee?.length && <AideWeb />}
