@@ -10,6 +10,9 @@ import { useHauteurClavier } from './clavier';
 import { arrondi, couleurs, espace, espacementTitre, polices, type Univers } from './theme';
 import { useUnivers } from './univers';
 
+/** Fond sombre sous la lueur de l'en-tête et des scènes. */
+const FOND_SCENE = '#15161B';
+
 /** Survol souris (web) : absent des types natifs de Pressable. */
 const survol = (e: PressableStateCallbackType) => !!(e as { hovered?: boolean }).hovered;
 
@@ -42,9 +45,8 @@ export function EnTete({
   const { top } = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const petit = width <= 640;
-  const blanc = univers?.cle === 'rouge' || univers?.cle === 'rougeDore';
   return (
-    <View style={[styles.entete, { paddingTop: top }, univers && { backgroundColor: univers.uni, backgroundImage: univers.scene, borderBottomWidth: 0 }]}>
+    <View style={[styles.entete, { paddingTop: top }, univers && { backgroundColor: FOND_SCENE, backgroundImage: univers.scene, borderBottomWidth: 0 }]}>
       <View style={[styles.enteteLigne, { maxWidth: largeur }]}>
         <Pressable
           accessibilityRole={onLogo ? 'button' : undefined}
@@ -54,7 +56,7 @@ export function EnTete({
           hitSlop={8}
           style={{ flexDirection: 'row', alignItems: 'center', gap: espace(sousTitre ? 3 : 2) }}
         >
-          <Logo blanc={blanc} />
+          <Logo />
           <View>
             <Text style={[styles.marque, { fontSize: petit ? 22 : sousTitre ? 24 : 20 }]}>CoachGo</Text>
             {sousTitre && <Text style={styles.marqueSous}>{sousTitre}</Text>}
@@ -469,7 +471,7 @@ export function Hero({ kicker, titre, sousTitre, droite, children }: { kicker: s
   const u = useUnivers();
   const t = petit ? 36 : 42;
   return (
-    <View style={[styles.hero, { padding: petit ? 20 : 26, backgroundColor: u.uni, backgroundImage: u.scene }]}>
+    <View style={[styles.hero, { padding: petit ? 20 : 26, backgroundColor: FOND_SCENE, backgroundImage: u.scene }]}>
       <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.heroLueur]} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: espace(3) }}>
         <View style={{ flexShrink: 1, minWidth: 0 }}>
