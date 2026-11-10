@@ -166,6 +166,7 @@ export function Gestion({
                       reference={l.reference}
                       date={l.date}
                       onCree={lesFactures.recharger}
+                      envoi={contact ? { contactId: contact.id, prenom: contact.prenom, telephone: contact.telephone, email: contact.email } : undefined}
                     />
                   )}
                   <BoutonContour libelle="Ouvrir" onPress={() => onOuvrir(l.id)} />

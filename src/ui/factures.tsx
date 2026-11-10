@@ -117,7 +117,8 @@ export interface DestinataireFacture {
   email?: string;
 }
 
-function LigneFactureListe({ f, style, envoi }: { f: Facture; style: StyleFacture; envoi?: DestinataireFacture }) {
+/** sansEntete : sous le bouton « Facture … » de Paiements, qui dit déjà le numéro. */
+function LigneFactureListe({ f, style, envoi, sansEntete }: { f: Facture; style: StyleFacture; envoi?: DestinataireFacture; sansEntete?: boolean }) {
   const { email } = useSession();
   const [erreur, setErreur] = useState<string>();
   const [retour, setRetour] = useState<string>();
@@ -203,6 +204,7 @@ function LigneFactureListe({ f, style, envoi }: { f: Facture; style: StyleFactur
 
   return (
     <View style={{ gap: espace(1) }}>
+      {!sansEntete && (
       <View
         style={{
           flexDirection: 'row',
@@ -224,6 +226,7 @@ function LigneFactureListe({ f, style, envoi }: { f: Facture; style: StyleFactur
           <Bouton variante="discret" libelle="Télécharger le PDF" chargement={occupe === 'pdf'} onPress={() => agir('pdf', () => ouvrirFacture(f, style))} />
         )}
       </View>
+      )}
       {envoi && (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>
           <Bouton variante="discret" libelle={choix ? 'Télécharger ▴' : 'Télécharger ▾'} onPress={() => setChoix((c) => !c)} />
@@ -280,7 +283,10 @@ export function BoutonFacture({
   reference,
   date,
   onCree,
+  envoi,
 }: {
+  /** Client de la ligne : Télécharger, WhatsApp et E-mail, comme dans la fiche client. */
+  envoi?: DestinataireFacture;
   facture?: Facture;
   facturable: boolean;
   paiementId: string;
@@ -313,6 +319,7 @@ export function BoutonFacture({
     <View style={{ gap: 2 }}>
       <Bouton variante="discret" libelle={facture ? `Facture ${facture.numero}${facture.payeLe || facture.total === 0 ? '' : ' · à régler'}` : seance ? 'Facturer le mois' : 'Créer la facture'} onPress={agir} chargement={occupe} />
       {erreur && <Texte style={{ fontSize: 12, color: couleurs.rouge }}>{erreur}</Texte>}
+      {facture && envoi && <LigneFactureListe f={facture} style={style.donnee ?? {}} envoi={envoi} sansEntete />}
     </View>
   );
 }
