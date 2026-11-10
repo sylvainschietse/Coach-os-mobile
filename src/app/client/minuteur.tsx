@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { garderSonPrefere, lireSonPrefere } from '@/data/formats-minuteur';
 import { compiler, depuisSeance, dureeTotale, etatA, NOMS_SONNERIES, SON_DEFAUT, type Son, type Sonnerie } from '@/domain/formats-minuteur';
 import { ecoule, lireMinuteur, resumeMinuteur, TABATA, type ConfigMinuteur } from '@/domain/minuteur';
-import { annulerSonneries, ecouter, jouer, preparerSons, programmerAlertes, useSignauxMinuteur } from '@/lib/sons-minuteur';
+import { annulerSonneries, ecouter, jouer, preparerSons, programmerAlertes, useSignauxMinuteur, useSortieEveillee } from '@/lib/sons-minuteur';
 import { maintenantMs } from '@/lib/temps';
 import { Bouton, Carte, Ecran, Texte } from '@/ui/composants';
 import { couleurs, espace, polices } from '@/ui/theme';
@@ -50,6 +50,7 @@ export default function Minuteur() {
   const ecouleS = marche ? ecoule(marche.debutMs, maintenant, marche.pausesMs, marche.pauseDepuisMs) : null;
   const etat = ecouleS !== null ? etatA(phases, ecouleS) : null;
   useSignauxMinuteur(phases, son, marche && !marche.pauseDepuisMs ? ecouleS : null);
+  useSortieEveillee(!!marche && !marche.pauseDepuisMs && etat?.statut === 'en_cours');
 
   /** Une alerte par fin de phase : la sonnerie passe écran verrouillé ou sur une autre appli. */
   const programmer = (depuisS: number) => programmerAlertes(phases, son, depuisS, nomDe);

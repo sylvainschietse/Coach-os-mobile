@@ -11,38 +11,72 @@ import { annulerAlertes, autoriserNotifications, programmerSonnerie } from './no
 import { vibrer } from './vibrer';
 
 type CleSon = Exclude<Sonnerie, 'vibreur'> | 'bip';
-const SOURCES: Record<CleSon, number> = {
+const SOURCES: Record<CleSon | 'silence', number> = {
   bip: require('../../assets/sons/bip.wav'),
   gong: require('../../assets/sons/gong.wav'),
   sifflet: require('../../assets/sons/sifflet.wav'),
   cloche: require('../../assets/sons/cloche.wav'),
   boxe: require('../../assets/sons/boxe.wav'),
   digital: require('../../assets/sons/digital.wav'),
+  silence: require('../../assets/sons/silence.wav'),
 };
-const lecteurs: Partial<Record<CleSon, AudioPlayer>> = {};
-let modeRegle = false;
+const lecteurs: Partial<Record<CleSon | 'silence', AudioPlayer>> = {};
+const lecteur = (cle: CleSon | 'silence') => (lecteurs[cle] ??= createAudioPlayer(SOURCES[cle]));
 
-/** À appeler sur l'appui « Démarrer » : le son passe même en mode silencieux et se mêle à la musique du client. */
+/**
+ * À appeler sur l'appui « Démarrer » ou en ouvrant les réglages : le son passe même en mode silencieux, se mêle à la
+ * musique du client sans la couper, et tous les sons sont chargés d'avance (un son chargé au moment de le jouer
+ * arrivait trop tard ou pas du tout).
+ */
 export function preparerSons() {
-  if (modeRegle) return;
-  modeRegle = true;
-  setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'duckOthers' }).catch(() => {});
+  setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'mixWithOthers' }).catch(() => {});
+  try {
+    (Object.keys(SOURCES) as (CleSon | 'silence')[]).forEach(lecteur);
+  } catch {
+    // Pas de son sur cet appareil : le minuteur continue sans.
+  }
 }
 
 export function jouer(cle: CleSon | 'vibreur') {
   if (cle === 'vibreur') return;
   try {
-    const l = (lecteurs[cle] ??= createAudioPlayer(SOURCES[cle]));
-    l.seekTo(0).catch(() => {});
-    l.play();
+    const l = lecteur(cle);
+    // Un son déjà joué reste en fin de lecture : on le ramène au début, puis on le lance.
+    if (l.currentTime > 0) l.seekTo(0).then(() => l.play(), () => l.play());
+    else l.play();
   } catch {
     // Le son est un confort : le minuteur continue sans lui.
   }
 }
 
+/**
+ * Pendant le minuteur, un silence tourne en boucle : le haut-parleur et la liaison Bluetooth (voiture, enceinte,
+ * écouteurs) restent éveillés, sinon ils coupent le début de chaque bip.
+ */
+export function useSortieEveillee(actif: boolean) {
+  useEffect(() => {
+    if (!actif || Platform.OS === 'web') return;
+    let l: AudioPlayer | null = null;
+    try {
+      l = lecteur('silence');
+      l.loop = true;
+      l.play();
+    } catch {
+      l = null;
+    }
+    return () => {
+      try {
+        l?.pause();
+      } catch {
+        // Lecteur déjà libéré.
+      }
+    };
+  }, [actif]);
+}
+
 /** Fait entendre une sonnerie dans les réglages. */
 export function ecouter(s: Sonnerie) {
-  preparerSons();
+  if (!lecteurs.bip) preparerSons();
   if (s === 'vibreur') vibrer();
   else jouer(s);
 }
