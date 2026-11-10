@@ -70,6 +70,7 @@ export function EspaceClient({
   prenom,
   apercu,
   ongletInitial = 'accueil',
+  versAccueil = 0,
   onOnglet,
 }: {
   clientId: string;
@@ -77,6 +78,8 @@ export function EspaceClient({
   /** Aperçu coach : sélecteur de dossier explicite, ouverture des séances réservée au client. */
   apercu?: Apercu;
   ongletInitial?: OngletClient;
+  /** Change à chaque toucher du logo : l'espace revient à l'accueil. */
+  versAccueil?: number;
   /** L'en-tête de l'écran prend la couleur de l'onglet ouvert. */
   onOnglet?: (o: OngletClient) => void;
 }) {
@@ -87,12 +90,20 @@ export function EspaceClient({
     setInitialVu(ongletInitial);
     setOnglet(ongletInitial);
   }
+  const [accueilVu, setAccueilVu] = useState(versAccueil);
+  if (versAccueil !== accueilVu) {
+    setAccueilVu(versAccueil);
+    setOnglet('accueil');
+  }
   const [suivi, setSuivi] = useState<RubriqueSuivi>('seances');
   const minuteurs = useMinuteurs();
   const defilement = useRef<ComponentRef<typeof ScrollView>>(null);
   const abo = useCharger(() => abonnements.lire(clientId), `abo-${clientId}`);
 
   const enHaut = useCallback(() => defilement.current?.scrollTo({ y: 0, animated: false }), []);
+  useEffect(() => {
+    if (accueilVu) enHaut();
+  }, [accueilVu, enHaut]);
   const aller = (o: OngletClient) => {
     setOnglet(o);
     enHaut();

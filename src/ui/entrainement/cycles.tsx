@@ -1,6 +1,6 @@
 // Suivis.tsx, CycleDialog.tsx et CycleProgrammeDialog.tsx d'origine (C13, C14) : un suivi de plusieurs mois par
 // client, découpé en cycles préparés puis activés par le coach. Un seul cycle actif ; activer termine le précédent.
-import { Activity, ArrowDown, ArrowUp, ExternalLink, Library, Pencil, Play, Plus } from 'lucide-react-native';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ExternalLink, Library, Pencil, Play, Plus } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';
 
@@ -65,12 +65,15 @@ function SuiviForm({ coachId, p, onEnregistre }: { coachId: string; p: SuiviClie
               {['3', '6'].map((v) => (
                 <Action key={v} petit libelle={v} variante={mois === v ? 'plein' : 'contour'} onPress={() => setMois(v)} />
               ))}
+              {/* Case « Autre » : vide tant que 3 ou 6 est choisi ; sans marge verticale, le chiffre n'est plus coupé sur Android. */}
               <TextInput
                 accessibilityLabel="Autre durée en mois"
                 inputMode="numeric"
-                value={mois}
-                onChangeText={setMois}
-                style={{ width: 80, height: 36, borderWidth: 1, borderColor: couleurs.saisie, borderRadius: 9, paddingHorizontal: 10, fontFamily: polices.texte, fontSize: 15, color: couleurs.texte, backgroundColor: couleurs.carte }}
+                value={mois === '3' || mois === '6' ? '' : mois}
+                placeholder="Autre"
+                placeholderTextColor={couleurs.texteDoux}
+                onChangeText={(v) => setMois(v.replace(/\D/g, ''))}
+                style={{ width: 80, height: 36, paddingVertical: 0, textAlignVertical: 'center', borderWidth: 1, borderColor: couleurs.saisie, borderRadius: 9, paddingHorizontal: 10, fontFamily: polices.texte, fontSize: 15, color: couleurs.texte, backgroundColor: couleurs.carte }}
               />
             </Ligne>
             {!(Number.isInteger(n) && n >= 1 && n <= 24) && <Text style={[ts.erreur, { fontSize: 12 }]}>Entier de 1 à 24</Text>}
@@ -131,7 +134,6 @@ function LigneCycle({ c, i, n, occupe, agir }: { c: CycleClient; i: number; n: n
         </View>
       </View>
       <Ligne style={{ gap: 6 }}>
-        {suivable && <Action petit icone={Activity} libelle="Entraînement" onPress={() => agir('suivi')} />}
         <Action petit variante="contour" icone={Pencil} libelle="Modifier" onPress={() => agir('edit')} />
         {c.statut !== 'Terminé' && <Action petit variante="contour" icone={Library} libelle={c.programmeId ? 'Changer de programme' : 'Lier un programme'} onPress={() => agir('prog')} />}
         {c.programmeId && <Action petit variante="fantome" icone={ExternalLink} libelle="Éditer le programme" onPress={() => agir('open')} />}
@@ -385,18 +387,37 @@ function ProfilSuivi({
       setOccupe(false);
     }
   };
+  const [ouvert, setOuvert] = useState(false);
   const actif = p.cycles.find((c) => c.statut === 'Actif');
   const dernier = p.cycles[p.cycles.length - 1];
+  const resume = !p.suivi ? 'Pas encore de suivi' : actif ? `${actif.nom} en cours` : `Suivi jusqu’au ${jourCourt(finSuivi(p.suivi.debut, p.suivi.dureeMois))}`;
+  const Chevron = ouvert ? ChevronDown : ChevronRight;
   return (
-    <View style={[ts.carte, { padding: width >= 640 ? 20 : 16, gap: 0, flexBasis: width >= 1024 ? '48%' : '100%', flexGrow: 1, minWidth: 0 }]}>
-      <Ligne style={{ marginBottom: 12 }}>
-        <Text style={{ fontFamily: polices.titre, fontSize: 22, letterSpacing: 0.8, color: couleurs.texte }}>{p.nom}</Text>
-        <Action petit variante="contour" icone={ExternalLink} libelle="Voir la fiche" onPress={onFiche} />
-        {p.cycles.some((c) => c.programmeId && (c.statut === 'Actif' || c.statut === 'Terminé')) && (
-          <Action petit variante="contour" icone={Activity} libelle="Entraînement" onPress={onEntrainement} />
-        )}
-      </Ligne>
-      <SuiviForm coachId={coachId} p={p} onEnregistre={recharger} />
+    <View style={[ts.carte, { padding: 0, gap: 0, minWidth: 0 }]}>
+      {/* Une ligne par client (nom + flèche) : la liste reste courte, le détail s'ouvre au toucher. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: ouvert }}
+        accessibilityLabel={`${p.nom} · ${resume}`}
+        onPress={() => setOuvert((o) => !o)}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 }}
+      >
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} style={{ fontFamily: polices.texteGras, fontSize: 16, color: couleurs.texte }}>
+            {p.nom}
+          </Text>
+          <Text numberOfLines={1} style={ts.doux}>
+            {resume}
+          </Text>
+        </View>
+        <Chevron size={20} color={couleurs.texteDoux} />
+      </Pressable>
+      {ouvert && (
+        <View style={{ paddingHorizontal: width >= 640 ? 20 : 16, paddingBottom: width >= 640 ? 20 : 16 }}>
+          <Ligne style={{ marginBottom: 12 }}>
+            <Action petit variante="contour" icone={ExternalLink} libelle="Voir la fiche" onPress={onFiche} />
+          </Ligne>
+          <SuiviForm coachId={coachId} p={p} onEnregistre={recharger} />
       {p.suivi && (
         <>
           <View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -432,6 +453,8 @@ function ProfilSuivi({
             </View>
           )}
         </>
+      )}
+        </View>
       )}
       {dialogue?.type === 'cycle' && p.suivi && (
         <DialogueCycle
@@ -508,8 +531,8 @@ export function CyclesClients({
           Modèles indisponibles : {modeles.erreur}
         </Text>
       )}
-      <View style={{ marginTop: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
-        {!profils.donnee && !profils.erreur && [0, 1].map((i) => <View key={i} style={{ height: 320, borderRadius: 12, backgroundColor: couleurs.discret, flexBasis: '48%', flexGrow: 1 }} />)}
+      <View style={{ marginTop: 20, gap: 8 }}>
+        {!profils.donnee && !profils.erreur && [0, 1, 2].map((i) => <View key={i} style={{ height: 64, borderRadius: 12, backgroundColor: couleurs.discret }} />)}
         {profils.donnee?.length === 0 && <Text style={[ts.doux, { fontSize: 14 }]}>Aucun client actif. Un contact devient client depuis sa fiche.</Text>}
         {profils.donnee?.map((p) => (
           <ProfilSuivi key={p.clientId} coachId={coachId} p={p} modeles={modeles.donnee ?? null} recharger={recharger} onOuvrir={onOuvrirProgramme} onFiche={() => onOuvrirFiche(p.clientId)}

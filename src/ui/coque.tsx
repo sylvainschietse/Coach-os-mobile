@@ -30,6 +30,7 @@ export function EnTete({
   email,
   droite,
   univers,
+  onLogo,
 }: {
   largeur: number;
   sousTitre?: string;
@@ -38,20 +39,29 @@ export function EnTete({
   droite?: ReactNode;
   /** Couleur de la page : l'en-tête prend le dégradé de son univers, que la scène de la page prolonge. */
   univers?: Univers;
+  /** Toucher le logo ou le nom CoachGo ramène à l'accueil. */
+  onLogo?: () => void;
 }) {
   const { top } = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const petit = width <= 640;
-    return (
+  return (
     <View style={[styles.entete, { paddingTop: top }, univers && { backgroundColor: FOND_SCENE, backgroundImage: univers.scene, borderBottomWidth: 0 }]}>
       <View style={[styles.enteteLigne, { maxWidth: largeur }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: espace(sousTitre ? 3 : 2) }}>
+        <Pressable
+          accessibilityRole={onLogo ? 'button' : undefined}
+          accessibilityLabel={onLogo ? 'CoachGo, revenir à l’accueil' : undefined}
+          disabled={!onLogo}
+          onPress={onLogo}
+          hitSlop={8}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: espace(sousTitre ? 3 : 2) }}
+        >
           <Logo />
           <View>
             <Text style={[styles.marque, { fontSize: petit ? 22 : sousTitre ? 24 : 20 }]}>CoachGo</Text>
             {sousTitre && <Text style={styles.marqueSous}>{sousTitre}</Text>}
           </View>
-        </View>
+        </Pressable>
         {badge && !petit && (
           <View style={styles.badge}>
             <Text style={styles.badgeTexte}>{badge}</Text>

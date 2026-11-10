@@ -195,6 +195,7 @@ export default function EspaceCoach() {
       largeur={LARGEUR_COACH}
       univers={params.apercu ? undefined : univers[cleUnivers]}
       badge="Espace coach"
+      onLogo={params.apercu ? undefined : () => naviguer('crm', 'Accueil')}
       email={email ?? (depot.mode === 'demo' ? 'Démonstration, sans compte' : '')}
       droite={
         <>

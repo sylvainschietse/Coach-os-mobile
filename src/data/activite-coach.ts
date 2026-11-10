@@ -4,6 +4,7 @@
 import { CLIENTS_DEMO } from '@/data/demo';
 import { filtrerActivite, phraseSport, type EvenementActivite } from '@/domain/activite-coach';
 import { montantLisible } from '@/domain/gestion';
+import { sansCode } from '@/domain/libelles';
 
 import { supabase } from './supabase';
 
@@ -42,7 +43,7 @@ export async function activiteRecente(du: Date, au: Date): Promise<EvenementActi
 
   const evenements: EvenementActivite[] = [];
   for (const s of verifier(seances) as unknown as { id: string; fin: string; seance_titre: string | null; seances: { titre: string } | null; clients: Client }[]) {
-    const titre = s.seance_titre?.trim() || s.seances?.titre?.trim();
+    const titre = sansCode(s.seance_titre?.trim() || s.seances?.titre?.trim() || '');
     evenements.push({ id: `seance:${s.id}`, genre: 'seance', quand: s.fin, qui: prenomDe(s.clients), quoi: titre ? `a fait ${titre}` : 'a fait sa séance', contactId: contactDe(s.clients) });
   }
   for (const s of verifier(sports) as unknown as { id: string; debut: string; sport: string; titre: string; distance_m: number | null; duree_s: number; clients: Client }[]) {
