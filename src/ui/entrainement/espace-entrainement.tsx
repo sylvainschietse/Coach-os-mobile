@@ -372,9 +372,9 @@ function ProchaineSeance({
   const ouvert = c.statut === 'Actif' && c.etat !== 'depasse';
   const nbExercices = p.seance.blocs.reduce((n, b) => n + b.lignes.length, 0);
   return (
-    // Carte forte de l'accueil : dégradé rouge, un avant-goût de la séance plein écran.
+    // Carte forte de l'accueil : sombre avec une lueur rouge, un avant-goût de la séance plein écran.
     <View style={[ts.carte, styles.prochaine]}>
-      <Text style={[ts.kicker, { color: '#FFD3D4' }]}>{p.creneau ? `Prévue aujourd’hui${p.creneau.heure ? ` à ${p.creneau.heure}` : ''}` : 'Ma prochaine séance'}</Text>
+      <Text style={[ts.kicker, { color: '#FF7A7E' }]}>{p.creneau ? `Prévue aujourd’hui${p.creneau.heure ? ` à ${p.creneau.heure}` : ''}` : 'Ma prochaine séance'}</Text>
       <Text style={{ fontFamily: polices.titre, fontSize: 30, letterSpacing: 0.6, color: '#FFFFFF' }}>{titreClient(p.seance.titre)}</Text>
       <Text style={[ts.doux, { color: 'rgba(255,255,255,0.85)' }]}>{nbExercices ? `${nbExercices} exercice${nbExercices > 1 ? 's' : ''}` : 'Activité · à valider une fois faite'}</Text>
       <Action
@@ -478,9 +478,9 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 0,
     gap: 10,
-    backgroundColor: '#C81E25',
+    backgroundColor: '#15161B',
     backgroundImage:
-      'radial-gradient(circle at 100% 100%, rgba(255,150,110,0.45) 0%, rgba(255,150,110,0) 60%), linear-gradient(150deg, #E0262C 0%, #B3161C 100%)',
-    boxShadow: '0 16px 30px -16px rgba(195, 24, 30, 0.75)',
+      'radial-gradient(circle at 100% 100%, rgba(224,38,44,0.55) 0%, rgba(224,38,44,0) 65%), radial-gradient(circle at 0% 0%, rgba(224,38,44,0.3) 0%, rgba(224,38,44,0) 55%), linear-gradient(180deg, #15161B 0%, #1B1C22 100%)',
+    boxShadow: '0 16px 30px -16px rgba(17, 18, 22, 0.7)',
   } as ViewStyle,
 });

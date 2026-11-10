@@ -72,11 +72,16 @@ export interface Univers {
   degrade: string;
   /** Fond de l'en-tête et de la scène : dégradé horizontal, continu entre les deux. */
   scene: string;
-  /** Couleur unie de secours (Android sans dégradé, ombre). */
+  /** Couleur unie des boutons et onglets actifs, sous leur dégradé. */
   uni: string;
 }
 
-const scene = (gauche: string, milieu: string, droite: string) => `linear-gradient(90deg, ${gauche} 0%, ${milieu} 55%, ${droite} 100%)`;
+/**
+ * Fond sombre avec une lueur de la couleur qui part du coin haut gauche (et une seconde, plus discrète, à droite),
+ * comme la séance plein écran. `rgb` : la couleur de la lueur, `rgb2` : celle du coin droit.
+ */
+const scene = (rgb: string, rgb2 = rgb) =>
+  `radial-gradient(circle at 0% 0%, rgba(${rgb}, 0.62) 0%, rgba(${rgb}, 0) 70%), radial-gradient(circle at 100% 0%, rgba(${rgb2}, 0.3) 0%, rgba(${rgb2}, 0) 60%), linear-gradient(180deg, #121318 0%, #18191E 100%)`;
 
 export const univers: Record<CleUnivers, Univers> = {
   rouge: {
@@ -84,29 +89,29 @@ export const univers: Record<CleUnivers, Univers> = {
     accent: '#D9252B',
     fonce: '#B3161C',
     clair: '#FEF1F1',
-    kickerScene: '#FFD3D4',
+    kickerScene: '#FF7A7E',
     degrade: 'linear-gradient(135deg, #E0262C 0%, #B3161C 100%)',
-    scene: scene('#C21C22', '#D9343A', '#EE6A5E'),
+    scene: scene('224, 38, 44'),
     uni: '#B81B21',
   },
   bleu: {
     cle: 'bleu',
-    accent: '#2A86F0',
-    fonce: '#1F6FD1',
-    clair: '#EDF6FF',
-    kickerScene: '#D6EBFF',
-    degrade: 'linear-gradient(135deg, #3D9BFF 0%, #2A7FE6 100%)',
-    scene: scene('#2A7FE6', '#3D9BFF', '#7CC0FF'),
+    accent: '#3B6CF6',
+    fonce: '#2553D8',
+    clair: '#EEF3FF',
+    kickerScene: '#8FAEFF',
+    degrade: 'linear-gradient(135deg, #3B6CF6 0%, #2553D8 100%)',
+    scene: scene('59, 108, 246'),
     uni: '#2F86EA',
   },
   vert: {
     cle: 'vert',
-    accent: '#2FAE4E',
-    fonce: '#238A3D',
-    clair: '#EEFAEC',
-    kickerScene: '#D9F7D9',
-    degrade: 'linear-gradient(135deg, #4CC764 0%, #2FAE4E 100%)',
-    scene: scene('#2FAE4E', '#4CC764', '#8EDC7A'),
+    accent: '#1FA35C',
+    fonce: '#16864A',
+    clair: '#E8F6EE',
+    kickerScene: '#7FDCA6',
+    degrade: 'linear-gradient(135deg, #1FA35C 0%, #16864A 100%)',
+    scene: scene('31, 163, 92'),
     uni: '#3BAE55',
   },
   rougeDore: {
@@ -114,9 +119,9 @@ export const univers: Record<CleUnivers, Univers> = {
     accent: '#B8862A',
     fonce: '#9C7621',
     clair: '#FBF5E6',
-    kickerScene: '#FFE6B0',
+    kickerScene: '#E9C877',
     degrade: 'linear-gradient(135deg, #E0262C 0%, #B8862A 100%)',
-    scene: scene('#C21C22', '#C9602A', '#D9A441'),
+    scene: scene('224, 38, 44', '201, 151, 43'),
     uni: '#B81B21',
   },
   ambre: {
@@ -124,9 +129,9 @@ export const univers: Record<CleUnivers, Univers> = {
     accent: '#D9850A',
     fonce: '#B36C06',
     clair: '#FFF5E5',
-    kickerScene: '#FFF1D6',
+    kickerScene: '#FFC36B',
     degrade: 'linear-gradient(135deg, #F2A72E 0%, #D9850A 100%)',
-    scene: scene('#D9850A', '#EBA02A', '#F5C25A'),
+    scene: scene('232, 147, 12'),
     uni: '#D08A12',
   },
 };
