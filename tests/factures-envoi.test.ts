@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { emailFacture, messageWhatsAppFacture, nomFichierFacture, prenomEmetteur } from '@/domain/factures-envoi';
-import type { Facture } from '@/domain/factures';
+import { facturesHtml, facturesParClient, type Facture } from '@/domain/factures';
+import { emailFacture, messageWhatsAppFacture, nomFichierFacture, nomFichierFacturesClient, prenomEmetteur } from '@/domain/factures-envoi';
 
 const f: Facture = {
   id: 'f1',
@@ -50,5 +50,27 @@ describe('envoi des factures', () => {
     expect(m.startsWith('Bonjour Angelo,')).toBe(true);
     expect(m).toContain('ta facture YC253 (pack 10 séances)');
     expect(m.endsWith('Merci et à bientôt,\nSylvain')).toBe(true);
+  });
+});
+
+describe('factures réunies', () => {
+  const g = { ...f, id: 'f2', numero: 'YC252', date: '2026-10-01' };
+  const autre = { ...f, id: 'f3', numero: 'BT1', clientId: 'c2', destinataire: { nom: 'Benjamin Tisseront' } };
+
+  it('met toutes les factures dans un seul document, de la plus ancienne à la plus récente', () => {
+    const html = facturesHtml([f, g]);
+    expect(html.match(/<div class="page">/g)).toHaveLength(2);
+    expect(html.indexOf('YC252')).toBeLessThan(html.indexOf('YC253'));
+    expect(html.match(/<style>/g)).toHaveLength(1);
+    expect(facturesHtml([])).toBe('');
+  });
+
+  it('range les factures par client et nomme le fichier', () => {
+    const groupes = facturesParClient([{ ...f, clientId: 'c1' }, autre, { ...g, clientId: 'c1' }]);
+    expect(groupes.map((x) => [x.nom, x.factures.length])).toEqual([
+      ['Angelo Callegaro', 2],
+      ['Benjamin Tisseront', 1],
+    ]);
+    expect(nomFichierFacturesClient('Angelo Callegaro')).toBe('Factures - Angelo Callegaro.pdf');
   });
 });

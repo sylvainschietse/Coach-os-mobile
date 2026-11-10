@@ -161,6 +161,14 @@ export const factures = {
     return (data ?? []).map(versFacture);
   },
 
+  /** Coach : toutes ses factures, tous clients confondus, des plus anciennes aux plus récentes. */
+  async toutes(): Promise<Facture[]> {
+    if (!supabase) return facturesDemo;
+    const { data, error } = await supabase.from('factures').select('*').order('date', { ascending: true }).order('cree_le', { ascending: true });
+    if (error) throw new Error('Impossible de charger les factures pour le moment.');
+    return (data ?? []).map(versFacture);
+  },
+
   /** Coach : toutes ses factures, rangées par paiement (rubrique Paiements). */
   async parPaiement(): Promise<Map<string, Facture>> {
     if (!supabase) return new Map(facturesDemo.filter((f) => f.paiementId).map((f) => [f.paiementId!, f]));

@@ -13,12 +13,14 @@ import { documents } from '@/data/documents';
 import { factures, type Numerotation, type PaiementAFacturer } from '@/data/factures';
 import { useSession } from '@/data/session';
 import { lienEnvoi, normaliserEmail } from '@/domain/crm';
-import { emailFacture, messageWhatsAppFacture, nomFichierFacture, prenomEmetteur } from '@/domain/factures-envoi';
+import { emailFacture, messageWhatsAppFacture, nomFichierFacture, nomFichierFacturesClient, prenomEmetteur } from '@/domain/factures-envoi';
 import {
   COULEURS_FACTURE,
   erreursEntete,
   estCouleur,
   factureHtml,
+  facturesHtml,
+  facturesParClient,
   nettoyerPrefixe,
   prochainNumero,
   type EnteteFacture,
@@ -107,6 +109,90 @@ async function telechargerSurAppareil(f: Facture, style: StyleFacture): Promise<
   const fichier = dossier.createFile(nomFichierFacture(f).replace(/\.pdf$/, ''), 'application/pdf');
   await fichier.write(await pdf.bytes());
   return `Facture enregistrée dans le dossier choisi.`;
+}
+
+/** Web : fenêtre d'impression d'un document HTML déjà prêt. */
+function imprimerHtml(html: string) {
+  const cadre = document.createElement('iframe');
+  Object.assign(cadre.style, { position: 'fixed', width: '0', height: '0', border: '0' });
+  cadre.srcdoc = html;
+  cadre.onload = () => {
+    cadre.contentWindow?.print();
+    setTimeout(() => cadre.remove(), 60000);
+  };
+  document.body.appendChild(cadre);
+}
+
+/**
+ * Enregistre un ou plusieurs PDF sur l'appareil. Android : un seul choix de dossier pour tous les fichiers ;
+ * iPhone : le partage, fichier par fichier ; web : une seule fenêtre d'impression qui les réunit.
+ */
+async function enregistrerPdfs(fichiers: { nom: string; html: string }[]): Promise<string | undefined> {
+  if (!fichiers.length) return 'Aucune facture pour le moment.';
+  if (Platform.OS === 'web') {
+    const corps = fichiers.map((x) => x.html.slice(x.html.indexOf('<body>') + 6, x.html.lastIndexOf('</body>'))).join('\n');
+    const h = fichiers[0].html;
+    imprimerHtml(h.slice(0, h.indexOf('<body>') + 6) + corps + '</body></html>');
+    return undefined;
+  }
+  let dossier: Directory | undefined;
+  if (Platform.OS === 'android') {
+    try {
+      dossier = await Directory.pickDirectoryAsync();
+    } catch {
+      return undefined; // Fenêtre fermée sans choisir de dossier.
+    }
+  }
+  for (const x of fichiers) {
+    const { uri } = await Print.printToFileAsync({ html: x.html, width: 595, height: 842 });
+    const pdf = new File(Paths.cache, x.nom);
+    if (pdf.exists) pdf.delete();
+    await new File(uri).move(pdf);
+    if (dossier) await dossier.createFile(x.nom.replace(/\.pdf$/, ''), 'application/pdf').write(await pdf.bytes());
+    else await Sharing.shareAsync(pdf.uri, { mimeType: 'application/pdf', dialogTitle: x.nom, UTI: 'com.adobe.pdf' });
+  }
+  return fichiers.length > 1 ? `${fichiers.length} fichiers enregistrés dans le dossier choisi.` : dossier ? 'Fichier enregistré dans le dossier choisi.' : undefined;
+}
+
+/**
+ * Sans client : « Récupérer toutes mes factures », un PDF par client. Avec un client : toutes ses factures,
+ * de la première à la dernière, dans un seul PDF.
+ */
+export function BoutonToutesFactures({ clientId, nom }: { clientId?: string; nom?: string }) {
+  const [occupe, setOccupe] = useState(false);
+  const [retour, setRetour] = useState<string>();
+  const [erreur, setErreur] = useState<string>();
+  const agir = async () => {
+    setOccupe(true);
+    setErreur(undefined);
+    setRetour(undefined);
+    try {
+      const style = { ...(await factures.style()), police: BEBAS_NEUE_BASE64 };
+      const liste = clientId ? await factures.liste(clientId) : await factures.toutes();
+      const groupes = clientId ? [{ nom: nom || liste[0]?.destinataire.nom || 'Client', factures: liste }] : facturesParClient(liste);
+      const fichiers = groupes
+        .filter((g) => g.factures.length)
+        .map((g) => ({ nom: nomFichierFacturesClient(g.nom), html: facturesHtml(g.factures, style, `Factures ${g.nom}`) }));
+      const r = await enregistrerPdfs(fichiers);
+      if (r) setRetour(r);
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'PDF non créé');
+    } finally {
+      setOccupe(false);
+    }
+  };
+  return (
+    <View style={{ gap: 2, alignItems: 'flex-start' }}>
+      <Bouton variante="secondaire" libelle={clientId ? 'Toutes ses factures (un seul PDF)' : 'Récupérer toutes mes factures'} chargement={occupe} onPress={agir} />
+      {!clientId && (
+        <Texte doux style={{ fontSize: 12 }}>
+          Un PDF par client, avec toutes ses factures.
+        </Texte>
+      )}
+      {retour && <Texte style={{ fontSize: 13, color: couleurs.vert }}>{retour}</Texte>}
+      {erreur && <Texte style={{ fontSize: 13, color: couleurs.rouge }}>{erreur}</Texte>}
+    </View>
+  );
 }
 
 /** Contact du client à qui la facture est envoyée (fiche client). */
@@ -399,6 +485,7 @@ export function FacturesClient({ clientId, prenom, nom, envoi }: { clientId: str
         </Texte>
       )}
       {!!liste.donnee?.length && <AideWeb />}
+      {(liste.donnee?.length ?? 0) > 1 && <BoutonToutesFactures clientId={clientId} nom={`${prenom} ${nom}`.trim()} />}
       {!!aFacturer.donnee?.length && (
         <View style={{ gap: espace(2), marginTop: espace(2) }}>
           <Texte style={{ fontWeight: '600' }}>Sans facture pour le moment</Texte>

@@ -207,3 +207,31 @@ ${style.iban ? `<div class="banque"><span class="etiquette">Coordonnées bancair
 ${e.mentions ? `<div class="mentions">${texte(e.mentions)}</div>` : ''}
 </div></body></html>`;
 }
+
+/**
+ * Plusieurs factures dans un seul document : une page A4 chacune, de la plus ancienne à la plus récente.
+ * Chaque facture garde sa mise en page ; seule la feuille de style de la première est gardée (même coach, même couleur).
+ */
+export function facturesHtml(liste: Facture[], style: Parameters<typeof factureHtml>[1] = {}, titre = 'Factures'): string {
+  const triees = [...liste].sort((a, b) => a.date.localeCompare(b.date) || a.numero.localeCompare(b.numero, 'fr', { numeric: true }));
+  if (!triees.length) return '';
+  const docs = triees.map((f) => factureHtml(f, style));
+  const css = docs[0].slice(docs[0].indexOf('<style>') + 7, docs[0].indexOf('</style>'));
+  const pages = docs.map((d) => d.slice(d.indexOf('<body>') + 6, d.lastIndexOf('</body>')));
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${echapper(titre)}</title><style>${css}
+.page { page-break-after: always; break-after: page; overflow: hidden; height: 297mm; }
+.page:last-child { page-break-after: auto; break-after: auto; }
+</style></head><body>${pages.join('\n')}</body></html>`;
+}
+
+/** Les factures rangées par client (nom du destinataire), clients par ordre alphabétique. */
+export function facturesParClient(liste: Facture[]): { cle: string; nom: string; factures: Facture[] }[] {
+  const groupes = new Map<string, { cle: string; nom: string; factures: Facture[] }>();
+  for (const f of liste) {
+    const cle = f.clientId ?? f.destinataire.nom;
+    const g = groupes.get(cle) ?? { cle, nom: f.destinataire.nom, factures: [] };
+    g.factures.push(f);
+    groupes.set(cle, g);
+  }
+  return [...groupes.values()].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+}
