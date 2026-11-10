@@ -21,6 +21,7 @@ import {
   factureHtml,
   facturesHtml,
   facturesParClient,
+  recapAnnuelHtml,
   nettoyerPrefixe,
   prochainNumero,
   type EnteteFacture,
@@ -189,6 +190,46 @@ export function BoutonToutesFactures({ clientId, nom }: { clientId?: string; nom
           Un PDF par client, avec toutes ses factures.
         </Texte>
       )}
+      {retour && <Texte style={{ fontSize: 13, color: couleurs.vert }}>{retour}</Texte>}
+      {erreur && <Texte style={{ fontSize: 13, color: couleurs.rouge }}>{erreur}</Texte>}
+    </View>
+  );
+}
+
+/** Récapitulatif des sommes réglées par le client sur une année civile (l'an dernier et l'année en cours). */
+function BoutonsRecapAnnuel({ liste, nom }: { liste: Facture[]; nom: string }) {
+  const [occupe, setOccupe] = useState<number>();
+  const [retour, setRetour] = useState<string>();
+  const [erreur, setErreur] = useState<string>();
+  const cette = new Date().getFullYear();
+  const annees = [cette - 1, cette].filter((a) => liste.some((f) => f.total > 0 && f.payeLe?.startsWith(`${a}-`)));
+  if (!annees.length) return null;
+  const agir = async (annee: number) => {
+    setOccupe(annee);
+    setErreur(undefined);
+    setRetour(undefined);
+    try {
+      const style = { ...(await factures.style()), police: BEBAS_NEUE_BASE64 };
+      const recent = [...liste].sort((a, b) => b.date.localeCompare(a.date))[0];
+      const html = recapAnnuelHtml(liste, annee, { nom: recent?.destinataire.nom || nom, adresse: recent?.destinataire.adresse }, style);
+      const r = await enregistrerPdfs([{ nom: `Récapitulatif ${annee} - ${nomFichierFacturesClient(nom).replace(/^Factures - /, '')}`, html }]);
+      if (r) setRetour(r);
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'PDF non créé');
+    } finally {
+      setOccupe(undefined);
+    }
+  };
+  return (
+    <View style={{ gap: 2 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>
+        {annees.map((a) => (
+          <Bouton key={a} variante="secondaire" libelle={`Récapitulatif ${a}`} chargement={occupe === a} onPress={() => agir(a)} />
+        ))}
+      </View>
+      <Texte doux style={{ fontSize: 12 }}>
+        Total réglé sur l’année civile, facture par facture. Ce n’est pas une attestation fiscale.
+      </Texte>
       {retour && <Texte style={{ fontSize: 13, color: couleurs.vert }}>{retour}</Texte>}
       {erreur && <Texte style={{ fontSize: 13, color: couleurs.rouge }}>{erreur}</Texte>}
     </View>
@@ -486,6 +527,7 @@ export function FacturesClient({ clientId, prenom, nom, envoi }: { clientId: str
       )}
       {!!liste.donnee?.length && <AideWeb />}
       {(liste.donnee?.length ?? 0) > 1 && <BoutonToutesFactures clientId={clientId} nom={`${prenom} ${nom}`.trim()} />}
+      {!!liste.donnee?.length && <BoutonsRecapAnnuel liste={liste.donnee} nom={`${prenom} ${nom}`.trim()} />}
       {!!aFacturer.donnee?.length && (
         <View style={{ gap: espace(2), marginTop: espace(2) }}>
           <Texte style={{ fontWeight: '600' }}>Sans facture pour le moment</Texte>

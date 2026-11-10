@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { facturesHtml, facturesParClient, type Facture } from '@/domain/factures';
+import { facturesDeLAnnee, facturesHtml, facturesParClient, recapAnnuelHtml, type Facture } from '@/domain/factures';
 import { emailFacture, messageWhatsAppFacture, nomFichierFacture, nomFichierFacturesClient, prenomEmetteur } from '@/domain/factures-envoi';
 
 const f: Facture = {
@@ -72,5 +72,18 @@ describe('factures réunies', () => {
       ['Benjamin Tisseront', 1],
     ]);
     expect(nomFichierFacturesClient('Angelo Callegaro')).toBe('Factures - Angelo Callegaro.pdf');
+  });
+});
+
+describe('récapitulatif annuel', () => {
+  const payee = (id: string, payeLe: string | undefined, total = 400) => ({ ...f, id, numero: id, payeLe, total });
+  it('ne garde que les factures réglées pendant l’année', () => {
+    const liste = [payee('A', '2025-12-30'), payee('B', '2026-01-04'), payee('C', undefined), payee('D', '2026-03-01', 0), payee('E', '2026-02-01', 120)];
+    expect(facturesDeLAnnee(liste, 2026).map((x) => x.numero)).toEqual(['B', 'E']);
+    const html = recapAnnuelHtml(liste, 2026, { nom: 'Angelo Callegaro' }, {}, new Date(2027, 0, 5));
+    expect(html).toContain('Total réglé en 2026');
+    expect(html).toContain('520 €');
+    expect(html).toContain('Fait le 05/01/2027');
+    expect(html).not.toContain('>A<');
   });
 });

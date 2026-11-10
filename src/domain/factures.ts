@@ -235,3 +235,81 @@ export function facturesParClient(liste: Facture[]): { cle: string; nom: string;
   }
   return [...groupes.values()].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
 }
+
+/** Factures réglées pendant l'année civile (date de paiement, ou de facture si elle n'est pas notée), offertes exclues. */
+export function facturesDeLAnnee(liste: Facture[], annee: number): Facture[] {
+  return liste
+    .filter((f) => f.total > 0 && !!f.payeLe && (f.payeLe ?? f.date).startsWith(`${annee}-`))
+    .sort((a, b) => (a.payeLe ?? a.date).localeCompare(b.payeLe ?? b.date));
+}
+
+/**
+ * Récapitulatif annuel des sommes réglées par un client, sur une page A4 aux couleurs du coach.
+ * Ce n'est pas une attestation fiscale : celle-ci n'est valable que pour un organisme déclaré « services à la personne ».
+ */
+export function recapAnnuelHtml(
+  liste: Facture[],
+  annee: number,
+  client: { nom: string; adresse?: string },
+  style: { couleur?: string; logo?: string; police?: string } = {},
+  aujourdhui = new Date(),
+): string {
+  const couleur = style.couleur && estCouleur(style.couleur) ? style.couleur : COULEUR_FACTURE;
+  const fontFace = style.police ? `@font-face { font-family: 'Titre'; src: url(data:font/ttf;base64,${style.police}) format('truetype'); }` : '';
+  const payees = facturesDeLAnnee(liste, annee);
+  const e = payees[0]?.emetteur ?? liste[0]?.emetteur ?? { nom: '' };
+  const total = payees.reduce((s, f) => s + f.total, 0);
+  const jour = `${String(aujourdhui.getDate()).padStart(2, '0')}/${String(aujourdhui.getMonth() + 1).padStart(2, '0')}/${aujourdhui.getFullYear()}`;
+  const lignes = payees
+    .map((f) => `<tr><td>${dateFr(f.payeLe ?? f.date)}</td><td>${echapper(f.numero)}</td><td>${echapper(f.objet)}</td><td class="n">${euros(f.total)}</td></tr>`)
+    .join('');
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Récapitulatif ${annee}</title><style>
+${fontFace}
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #17171A; font-size: 10.5pt; line-height: 1.45; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.page { width: 210mm; min-height: 297mm; padding: 0 0 14mm; position: relative; }
+.bandeau { background: ${couleur}; height: 6mm; }
+.haut { display: flex; justify-content: space-between; align-items: flex-start; padding: 12mm 16mm 0; gap: 10mm; }
+.logo { max-height: 22mm; max-width: 60mm; object-fit: contain; display: block; margin-bottom: 4mm; }
+.nom { font-weight: 700; font-size: 12pt; }
+.titre { font-family: 'Titre', 'Bebas Neue', 'Oswald', Impact, 'Arial Narrow', sans-serif; font-size: 34pt; line-height: .95; color: ${couleur}; text-align: right; }
+.annee { text-align: right; font-size: 12pt; font-weight: 700; margin-top: 2mm; }
+.bloc { padding: 10mm 16mm 0; }
+.etiquette { font-size: 8pt; letter-spacing: .16em; text-transform: uppercase; color: ${couleur}; font-weight: 700; margin-bottom: 1.5mm; }
+p { margin: 0 0 3mm; }
+table { width: calc(100% - 32mm); margin: 5mm 16mm 0; border-collapse: collapse; }
+th { text-align: left; font-size: 8.5pt; letter-spacing: .12em; text-transform: uppercase; color: #fff; background: ${couleur}; padding: 2.5mm 3mm; }
+th.n, td.n { text-align: right; white-space: nowrap; }
+td { padding: 3mm; border-bottom: 0.3mm solid #E4E4E7; }
+tr.total td { font-weight: 700; font-size: 12pt; border-top: 0.6mm solid ${couleur}; border-bottom: 0; }
+.signature { padding: 12mm 16mm 0; }
+.mentions { position: absolute; left: 16mm; right: 16mm; bottom: 12mm; font-size: 8.5pt; color: #6B6B73; border-top: 0.3mm solid #E4E4E7; padding-top: 3mm; }
+</style></head><body><div class="page">
+<div class="bandeau"></div>
+<div class="haut">
+  <div>
+    ${style.logo ? `<img class="logo" src="${echapper(style.logo)}" alt="">` : ''}
+    <div class="nom">${echapper(e.nom)}</div>
+    ${e.adresse ? `<div>${texte(e.adresse)}</div>` : ''}
+    ${e.telephone ? `<div>Tél. ${echapper(e.telephone)}</div>` : ''}
+    ${e.siret ? `<div>SIRET ${echapper(e.siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, '$1 $2 $3 $4'))}</div>` : ''}
+  </div>
+  <div><div class="titre">Récapitulatif annuel</div><div class="annee">Année ${annee}</div></div>
+</div>
+<div class="bloc">
+  <div class="etiquette">Client</div>
+  <div class="nom">${echapper(client.nom)}</div>
+  ${client.adresse ? `<div>${texte(client.adresse)}</div>` : ''}
+</div>
+<div class="bloc">
+  <p>Je soussigné ${echapper(e.nom)} certifie que ${echapper(client.nom)} a réglé, du 1<sup>er</sup> janvier au 31 décembre ${annee}, les prestations de coaching sportif suivantes, pour un total de <b>${euros(total)}</b>.</p>
+</div>
+<table><thead><tr><th>Payée le</th><th>Facture</th><th>Objet</th><th class="n">Montant</th></tr></thead><tbody>
+${lignes || '<tr><td colspan="4">Aucune facture réglée sur cette année.</td></tr>'}
+<tr class="total"><td colspan="3">Total réglé en ${annee}</td><td class="n">${euros(total)}</td></tr>
+</tbody></table>
+<div class="signature">Fait le ${jour}, pour servir et valoir ce que de droit.<br><br><b>${echapper(e.nom)}</b></div>
+${e.mentions ? `<div class="mentions">${texte(e.mentions)}</div>` : ''}
+</div></body></html>`;
+}
