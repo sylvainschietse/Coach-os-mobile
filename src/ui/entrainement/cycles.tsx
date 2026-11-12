@@ -9,10 +9,12 @@ import { entrainement, lierProgramme } from '@/data/entrainement';
 import { ecrireJour, lireJour } from '@/domain/crm';
 import { ajouterJours, aujourdhuiParis, correspondRecherche, dansDates, LIBELLES_CYCLES, titreClient, type StatutCycle } from '@/domain/entrainement';
 import type { CycleClient, ModeLien, ModeleResume, SuiviClient } from '@/domain/entrainement-etat';
+import { FILTRES_SUIVIS, listeSuivis, TRIS_SUIVIS, type FiltreSuivis, type TriSuivis } from '@/domain/liste-suivis';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
-import { TitreDisplay } from '../coque';
+import { Selecteur, TitreDisplay } from '../coque';
+import { Puce, Puces } from '../composants';
 import { Choix, Modale, Recherche, Saisie } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
 import { Action, Confirmation, Etat, jourCourt, Ligne, ListeChoix, TexteLong, ts, PhotoProgramme } from './commun';
@@ -499,6 +501,10 @@ export function CyclesClients({
   useRechargerSur(profils.recharger, ecouterCrm);
   const modeles = useCharger(() => entrainement.bibliotheque(coachId), `modeles-${coachId}`);
   const recharger = useCallback(() => profils.recharger(), [profils]);
+  const [recherche, setRecherche] = useState('');
+  const [filtre, setFiltre] = useState<FiltreSuivis>('tous');
+  const [tri, setTri] = useState<TriSuivis>('nom');
+  const visibles = profils.donnee ? listeSuivis(profils.donnee, { recherche, filtre, tri, jour: aujourdhuiParis() }) : undefined;
   return (
     <View>
       <TitreDisplay taille={30}>Suivis</TitreDisplay>
@@ -513,10 +519,26 @@ export function CyclesClients({
           Modèles indisponibles : {modeles.erreur}
         </Text>
       )}
+      {/* Chercher, filtrer et trier : la liste reste utilisable avec beaucoup de clients. */}
+      {!!profils.donnee?.length && (
+        <View style={{ marginTop: 16, gap: 10 }}>
+          {/* En ligne : la recherche prend la largeur, pas une hauteur de 192 px. */}
+          <View style={{ flexDirection: 'row' }}>
+            <Recherche valeur={recherche} onChange={setRecherche} libelle="Rechercher un client" placeholder="Rechercher un client…" />
+          </View>
+          <Puces>
+            {FILTRES_SUIVIS.map((f) => (
+              <Puce key={f.cle} libelle={f.libelle} actif={filtre === f.cle} onPress={() => setFiltre(f.cle)} />
+            ))}
+          </Puces>
+          <Selecteur libelle="Trier par" options={TRIS_SUIVIS} valeur={tri} onChange={setTri} />
+        </View>
+      )}
       <View style={{ marginTop: 20, gap: 8 }}>
         {!profils.donnee && !profils.erreur && [0, 1, 2].map((i) => <View key={i} style={{ height: 64, borderRadius: 12, backgroundColor: couleurs.discret }} />)}
         {profils.donnee?.length === 0 && <Text style={[ts.doux, { fontSize: 14 }]}>Aucun client actif. Un contact devient client depuis sa fiche.</Text>}
-        {profils.donnee?.map((p) => (
+        {visibles && profils.donnee?.length !== 0 && visibles.length === 0 && <Text style={[ts.doux, { fontSize: 14 }]}>Aucun client pour ces filtres.</Text>}
+        {visibles?.map((p) => (
           <ProfilSuivi key={p.clientId} coachId={coachId} p={p} modeles={modeles.donnee ?? null} recharger={recharger} onOuvrir={onOuvrirProgramme} onFiche={() => onOuvrirFiche(p.clientId)}
             onEntrainement={() => onOuvrirEntrainement(p.clientId)}
           />

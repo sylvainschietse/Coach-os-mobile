@@ -422,17 +422,20 @@ export function BarreClient<T extends string>({
   valeur,
   onChange,
   universDe,
+  nom = 'Navigation de l’espace client',
 }: {
   onglets: OngletDef<T>[];
   valeur: T;
   onChange: (v: T) => void;
   /** L'onglet actif prend la couleur de son univers (fond pâle, trait, icône). */
   universDe?: (cle: T) => Univers;
+  /** Nom lu par les lecteurs d'écran (la même barre sert à l'espace coach). */
+  nom?: string;
 }) {
   const { bottom } = useSafeAreaInsets();
   const petit = useWindowDimensions().width < 640;
   return (
-    <View accessibilityRole="tablist" aria-label="Navigation de l’espace client" style={[styles.barre, { paddingBottom: bottom }]}>
+    <View accessibilityRole="tablist" aria-label={nom} style={[styles.barre, { paddingBottom: bottom }]}>
       <View style={styles.barreLigne}>
         {onglets.map((o) => {
           const actif = o.cle === valeur;
