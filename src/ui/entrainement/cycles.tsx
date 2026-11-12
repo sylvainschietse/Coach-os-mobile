@@ -34,41 +34,22 @@ function PastilleStatut({ statut }: { statut: StatutCycle }) {
  * L'abonnement, lui, gère le paiement chaque mois.
  */
 function SuiviForm({ coachId, p, onEnregistre }: { coachId: string; p: SuiviClient; onEnregistre: () => void }) {
-  const [occupe, setOccupe] = useState(false);
   const [arreter, setArreter] = useState(false);
   const [etat, setEtat] = useState<{ message?: string; erreur?: string }>({});
-  const agir = async (fn: () => Promise<void>, ok: string) => {
-    setOccupe(true);
-    setEtat({});
-    try {
-      await fn();
-      setEtat({ message: ok });
-      onEnregistre();
-    } catch (e) {
-      setEtat({ erreur: e instanceof Error ? e.message : 'Échec' });
-    } finally {
-      setOccupe(false);
-    }
-  };
   return (
     <View style={{ borderRadius: 10, backgroundColor: 'rgba(237,239,242,0.6)', padding: 12, gap: 10 }}>
       <Text style={[ts.texte, { fontFamily: polices.texteGras }]}>{p.suivi ? `Suivi depuis le ${jourCourt(p.suivi.debut)}` : 'Pas encore de suivi'}</Text>
       <Text style={ts.doux}>
         {p.suivi
           ? 'Il dure tant que tu ne l’arrêtes pas. Arrêter le suivi retire ses cycles prévus ; ses séances déjà faites restent dans son historique.'
-          : 'Il démarre tout seul quand tu attribues un premier programme, ou dès maintenant pour préparer ses cycles.'}
+          : 'Il démarre tout seul dès que tu lui ajoutes un cycle ou que tu lui attribues un programme. Rien à activer.'}
       </Text>
       <Etat {...etat} />
-      <Ligne>
-        {!p.suivi && (
-          <Action
-            libelle="Démarrer le suivi"
-            chargement={occupe}
-            onPress={() => agir(() => entrainement.enregistrerSuivi(coachId, { id: nouvelId(), clientId: p.clientId, debut: aujourdhuiParis() }), 'Suivi démarré')}
-          />
-        )}
-        {p.suivi && <Action petit variante="contour" libelle="Arrêter le suivi" desactive={occupe} onPress={() => setArreter(true)} />}
-      </Ligne>
+      {p.suivi && (
+        <Ligne>
+          <Action petit variante="contour" libelle="Arrêter le suivi" onPress={() => setArreter(true)} />
+        </Ligne>
+      )}
       {arreter && (
         <Confirmation
           titre={`Arrêter le suivi de ${p.nom} ?`}
@@ -148,11 +129,14 @@ function DialogueCycle({
   clientId,
   cycle,
   debutParDefaut,
+  creerSuivi,
   onFermer,
   onEnregistre,
 }: {
   coachId: string;
   suiviId: string;
+  /** Sans suivi, le premier cycle enregistré le démarre (à la date d'aujourd'hui). */
+  creerSuivi?: () => Promise<void>;
   clientId: string;
   cycle?: CycleClient;
   debutParDefaut: string;
@@ -184,6 +168,7 @@ function DialogueCycle({
     setOccupe(true);
     setErreur('');
     try {
+      if (creerSuivi) await creerSuivi();
       await entrainement.enregistrerCycle(coachId, {
         id: cycle?.id ?? nouvelId(),
         suiviId,
@@ -385,6 +370,7 @@ function ProfilSuivi({
     }
   };
   const [ouvert, setOuvert] = useState(false);
+  const [nouveauSuiviId] = useState(nouvelId);
   const actif = p.cycles.find((c) => c.statut === 'Actif');
   const dernier = p.cycles[p.cycles.length - 1];
   const resume = !p.suivi ? 'Pas encore de suivi' : actif ? `${actif.nom} en cours` : `Suivi depuis le ${jourCourt(p.suivi.debut)}`;
@@ -415,8 +401,7 @@ function ProfilSuivi({
             <Action petit variante="contour" icone={ExternalLink} libelle="Voir la fiche" onPress={onFiche} />
           </Ligne>
           <SuiviForm coachId={coachId} p={p} onEnregistre={recharger} />
-      {p.suivi && (
-        <>
+      <>
           <View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <Text style={ts.titreSection}>Cycles</Text>
             <Action petit variante="contour" icone={Plus} libelle="Cycle" onPress={() => setDialogue({ type: 'cycle' })} />
@@ -426,7 +411,7 @@ function ProfilSuivi({
           </View>
           {p.cycles.length === 0 ? (
             <Text style={[ts.texte, { marginTop: 8, borderWidth: 1, borderStyle: 'dashed', borderColor: couleurs.bordure, borderRadius: 10, padding: 16, textAlign: 'center', color: couleurs.texteDoux }]}>
-              Aucun cycle. Le contenu sportif reste à votre main.
+              Aucun cycle. Ajoute-en un, ou attribue un programme : son suivi démarrera tout seul.
             </Text>
           ) : (
             <View style={{ marginTop: 8, gap: 8 }}>
@@ -449,17 +434,17 @@ function ProfilSuivi({
               ))}
             </View>
           )}
-        </>
-      )}
+      </>
         </View>
       )}
-      {dialogue?.type === 'cycle' && p.suivi && (
+      {dialogue?.type === 'cycle' && (
         <DialogueCycle
           coachId={coachId}
-          suiviId={p.suivi.id}
+          suiviId={p.suivi?.id ?? nouveauSuiviId}
+          creerSuivi={p.suivi ? undefined : () => entrainement.enregistrerSuivi(coachId, { id: nouveauSuiviId, clientId: p.clientId, debut: aujourdhuiParis() })}
           clientId={p.clientId}
           cycle={dialogue.c}
-          debutParDefaut={dernier?.fin ? ajouterJours(dernier.fin, 1) : p.suivi.debut}
+          debutParDefaut={dernier?.fin ? ajouterJours(dernier.fin, 1) : (p.suivi?.debut ?? aujourdhuiParis())}
           onFermer={() => setDialogue(undefined)}
           onEnregistre={() => {
             setEtat({ message: dialogue.c ? 'Cycle replanifié' : 'Cycle créé' });
