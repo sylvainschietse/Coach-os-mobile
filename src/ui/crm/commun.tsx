@@ -1,8 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ecouterRelancesCoach, relancesCoach } from '@/data/relances-coach';
 import { useSession } from '@/data/session';
 import { formaterTelephone, lienEnvoi, MODELES, normaliserTelephone, rediger, STATUTS, type Canal, type Contact, type Relance, type Statut } from '@/domain/crm';
+import { estAuto, estRelancePerso, REGLAGES_RELANCES, type ReglagesRelances } from '@/domain/relances-coach';
 import { adresseWeb } from '@/lib/adresse-web';
+import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 
 import { Pastille, Texte } from '../composants';
@@ -113,11 +116,19 @@ export function EnvoiMessage({
   );
 }
 
+/** Mes relances du coach (textes réécrits, relances coupées), relues quand il les change. */
+export function useReglagesRelances(): ReglagesRelances {
+  const charge = useCharger(() => relancesCoach.lire().catch(() => REGLAGES_RELANCES), 'reglages-relances');
+  useRechargerSur(charge.recharger, ecouterRelancesCoach);
+  return charge.donnee ?? REGLAGES_RELANCES;
+}
+
 /** Message « questionnaire » prêt à partir, avec le bon lien (Tally ou questionnaire intégré). */
 export function useMessageQuestionnaire(contact: Pick<Contact, 'prenom'>, lien: string | null | undefined): string | undefined {
   const coach = useCoachNom();
   const adresse = adresseQuestionnaire(lien);
-  return adresse ? rediger('questionnaire', contact, { coach, lienQuestionnaire: adresse }) : undefined;
+  const reglages = useReglagesRelances();
+  return adresse ? rediger('questionnaire', contact, { coach, lienQuestionnaire: adresse }, reglages.textes.questionnaire) : undefined;
 }
 
 /** Une relance à faire : le message prêt, l'envoi en un appui, ou « fait » / « demain ». */
@@ -141,7 +152,12 @@ export function CarteRelance({
   onOuvrirContact?: () => void;
 }) {
   const coach = useCoachNom();
-  const message = rediger(relance.modele, contact, { coach, lienQuestionnaire, booster });
+  const reglages = useReglagesRelances();
+  const perso = estRelancePerso(relance);
+  // Relance du coach : le message est déjà rempli dans la note ; sinon le texte en service (réécrit ou d'origine).
+  const message = perso
+    ? (relance.note ?? '')
+    : rediger(relance.modele, contact, { coach, lienQuestionnaire, booster }, estAuto(relance.modele) ? reglages.textes[relance.modele] : undefined);
   const tache = relance.modele === 'tache';
   // Sans adresse de questionnaire, le message partirait sans lien : on ne propose pas l'envoi.
   const sansLien = relance.modele === 'questionnaire' && !lienQuestionnaire;
@@ -154,8 +170,8 @@ export function CarteRelance({
         </View>
         {tache && <Text style={styles.message}>{relance.note}</Text>}
         <Text style={styles.motif}>
-          {MODELES[relance.modele].libelle}
-          {relance.note && !tache ? ` · ${relance.note}` : ''}
+          {perso ? relance.titre : MODELES[relance.modele].libelle}
+          {relance.note && !tache && !perso ? ` · ${relance.note}` : ''}
           {contact.telephone ? ` · ${formaterTelephone(contact.telephone)}` : ''}
         </Text>
       </Pressable>

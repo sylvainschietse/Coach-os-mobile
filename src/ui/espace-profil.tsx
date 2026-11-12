@@ -8,6 +8,7 @@ import { demanderSortie } from '@/lib/brouillon';
 import { ReglagesAgendaCoach } from './agenda/agenda-coach';
 import { BoutonContour, EnTeteRubrique, type OngletDef } from './coque';
 import { Automatisations } from './crm/automatisations';
+import { MesRelances } from './crm/mes-relances';
 import { EnteteFactures } from './factures';
 import { MesOffres } from './offres/mes-offres';
 import { AlertesTelephone } from './notifications/alertes';
@@ -21,7 +22,7 @@ export const SECTIONS_PROFIL: OngletDef<SectionProfil>[] = [
   { cle: 'offres', libelle: 'Mes offres' },
   { cle: 'agenda', libelle: 'Agenda' },
   { cle: 'notifications', libelle: 'Notifications' },
-  { cle: 'relances', libelle: 'Relances automatiques' },
+  { cle: 'relances', libelle: 'Mes relances' },
 ];
 
 type Entree = { cle: SectionProfil; icone: LucideIcon; detail: string; fond: string; teinte: string };
@@ -37,7 +38,7 @@ const GROUPES: { titre: string; entrees: Entree[] }[] = [
     titre: 'Mon organisation',
     entrees: [
       { cle: 'agenda', icone: CalendarDays, detail: 'Horaires, lieux, Google Agenda', fond: '#E2E8FF', teinte: '#1A2D73' },
-      { cle: 'relances', icone: RefreshCw, detail: 'Questionnaire, Booster, prises de nouvelles', fond: '#F1ECFF', teinte: '#4A3699' },
+      { cle: 'relances', icone: RefreshCw, detail: 'Textes, relances coupées, mes propres relances', fond: '#F1ECFF', teinte: '#4A3699' },
       { cle: 'notifications', icone: Bell, detail: 'Ce que mon téléphone m’envoie', fond: '#DDF3E5', teinte: '#0F4D2A' },
     ],
   },
@@ -67,7 +68,14 @@ export function EspaceProfil({
         {section === 'offres' && <MesOffres />}
         {section === 'agenda' && <ReglagesAgendaCoach />}
         {section === 'notifications' && <AlertesTelephone role="coach" />}
-        {section === 'relances' && <Automatisations />}
+        {section === 'relances' && (
+          <>
+            <MesRelances />
+            {/* Ce qui envoie et reçoit en coulisses : questionnaire Tally, comptes rendus par e-mail. */}
+            <Text style={[styles.groupe, { marginTop: espace(4) }]}>Questionnaire et envois</Text>
+            <Automatisations />
+          </>
+        )}
       </View>
     );
   }

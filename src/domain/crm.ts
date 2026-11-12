@@ -812,15 +812,18 @@ export function rediger(
   modele: ModeleMessage,
   contact: Pick<Contact, 'prenom'>,
   infos: { coach: string; lienQuestionnaire?: string; booster?: string },
+  /** Le texte réécrit par le coach (Mes relances), à la place de celui d'origine. */
+  texte?: string,
 ): string {
   const quand = infos.booster
     ? new Date(infos.booster).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
     : 'bientôt';
-  return MODELES[modele].texte
-    .replace('{prenom}', contact.prenom || 'à toi')
-    .replace('{coach}', infos.coach)
-    .replace('{lien}', infos.lienQuestionnaire ?? '')
-    .replace('{quand}', quand)
+  // Toutes les occurrences : un texte réécrit peut citer deux fois le prénom.
+  return (texte ?? MODELES[modele].texte)
+    .split('{prenom}').join(contact.prenom || 'à toi')
+    .split('{coach}').join(infos.coach)
+    .split('{lien}').join(infos.lienQuestionnaire ?? '')
+    .split('{quand}').join(quand)
     .trim();
 }
 
