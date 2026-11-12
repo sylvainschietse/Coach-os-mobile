@@ -24,7 +24,7 @@ export function Historique({ espace }: { espace: EspaceEntrainement }) {
     );
   const parCycle = new Map<string, EspaceEntrainement['realisations']>();
   for (const r of espace.realisations) {
-    const c = r.cycleNom || 'Hors cycle';
+    const c = r.cycleNom || 'Hors programme';
     parCycle.set(c, [...(parCycle.get(c) ?? []), r]);
   }
   return (
@@ -33,7 +33,7 @@ export function Historique({ espace }: { espace: EspaceEntrainement }) {
         <View key={cycle} style={{ gap: 8 }}>
           <Text style={[ts.texte, { fontFamily: polices.texteGras }]}>
             {cycle}
-            {cycle !== espace.cycle?.nom && cycle !== 'Hors cycle' && <Text style={[ts.doux, { fontSize: 12 }]}>{'  '}terminé · lecture seule</Text>}
+            {cycle !== espace.cycle?.nom && cycle !== 'Hors programme' && <Text style={[ts.doux, { fontSize: 12 }]}>{'  '}terminé · lecture seule</Text>}
           </Text>
           {liste.map((r) => {
             const lignes = [...r.series].sort((a, b) => (r.noms[a.ligneId] ?? '').localeCompare(r.noms[b.ligneId] ?? '') || a.index - b.index);

@@ -86,7 +86,7 @@ export function SeancesRealisees({
   const optionsCycles = useMemo(() => {
     const m = new Map<string, string>();
     (profil?.cycles ?? []).forEach((c) => m.set(c.id, c.nom));
-    (donnee ?? []).forEach((s) => !m.has(s.cycleKey) && m.set(s.cycleKey, s.r.cycleNom || 'Cycle ?'));
+    (donnee ?? []).forEach((s) => !m.has(s.cycleKey) && m.set(s.cycleKey, s.r.cycleNom || 'Programme ?'));
     return [...m];
   }, [donnee, profil]);
   const filtrees = useMemo(
@@ -150,9 +150,9 @@ export function SeancesRealisees({
           )}
         {filtre(
           <Choix
-            libelle="Cycle"
+            libelle="Programme"
             sansLibelle
-            vide="Tous les cycles"
+            vide="Tous les programmes"
             choix={optionsCycles.map(([, n]) => n)}
             valeur={optionsCycles.find(([k]) => k === cycle)?.[1]}
             onChange={(n) => setCycle(optionsCycles.find(([, x]) => x === n)?.[0] ?? '')}
@@ -305,7 +305,7 @@ function Comparaison({ seances }: { seances: SeanceBilan[] }) {
       </Text>
       {comparables.length === 0 ? (
         <Text style={[ts.texte, { marginTop: 8, borderRadius: 10, backgroundColor: 'rgba(237,239,242,0.5)', padding: 12, color: couleurs.texteDoux }]}>
-          {tous.length ? 'Aucun exercice n’a encore 2 résultats dans un même cycle : rien à comparer.' : 'Aucun résultat dans cette sélection.'}
+          {tous.length ? 'Aucun exercice n’a encore 2 résultats dans un même programme : rien à comparer.' : 'Aucun résultat dans cette sélection.'}
         </Text>
       ) : (
         <View style={{ marginTop: 8, gap: 12 }}>
@@ -318,7 +318,7 @@ function Comparaison({ seances }: { seances: SeanceBilan[] }) {
               <View key={i} style={{ borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 10, padding: 12, gap: 8 }}>
                 <Ligne style={{ gap: 8 }}>
                   <Text style={[ts.texte, { fontFamily: polices.texteMoyen }]}>{g.nom}</Text>
-                  <Badge libelle={g.cycleNom || 'Cycle ?'} />
+                  <Badge libelle={g.cycleNom || 'Programme ?'} />
                   {b.ex.prescription && (
                     <Text style={ts.doux}>
                       Prescrit actuellement : {b.ex.prescription.series} × {b.ex.prescription.repetitions || '—'}
@@ -364,7 +364,7 @@ function CarteSeance({ s, onOuvrirProgramme }: { s: SeanceBilan; onOuvrirProgram
         <Text style={ts.doux}>{dateParis(r.fin)}</Text>
       </View>
       <Ligne style={{ gap: 8 }}>
-        <Badge libelle={r.cycleNom || 'Cycle ?'} />
+        <Badge libelle={r.cycleNom || 'Programme ?'} />
         {r.programmeId ? (
           <Text accessibilityRole="button" onPress={() => onOuvrirProgramme(r.programmeId!)} style={[ts.doux, { textDecorationLine: 'underline' }]}>
             {r.programmeNom || 'Programme'}

@@ -191,7 +191,7 @@ export async function attribuerAuClient(
   if ('cycleId' in cible && !existant) throw new Error('Ce cycle n’existe plus');
   const dernier = [...client.cycles].sort((a, b) => a.ordre - b.ordre).at(-1);
   const debut = existant?.debut ?? (dernier?.fin && dernier.fin >= aujourdhuiParis() ? ajouterJours(dernier.fin, 1) : aujourdhuiParis());
-  const nomCycle = existant?.nom ?? `Cycle ${client.cycles.length + 1}`;
+  const nomCycle = existant?.nom ?? `Programme ${client.cycles.length + 1}`;
 
   const programmeId = nouvelId();
   if ('programmeId' in source) {
