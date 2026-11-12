@@ -416,6 +416,18 @@ export function BoutonContour({
   );
 }
 
+/** Hauteur de la barre du bas (boutons de 60px, marges, trait du haut), sans la zone système. */
+const HAUTEUR_BARRE = 72;
+
+/**
+ * Marge à laisser sous le contenu d'un écran qui a la barre du bas : la barre flotte par-dessus la page, et sur
+ * Android elle s'allonge de la zone des boutons système. Sans cette marge, le bas de la page reste caché dessous.
+ */
+export function useMargeBarre(enPlus = espace(6)) {
+  const { bottom } = useSafeAreaInsets();
+  return HAUTEUR_BARRE + bottom + enPlus;
+}
+
 /** `client-bottom-nav` : cinq entrées toujours visibles, au moins 60px, trait rouge de 18 × 3px sur l'actif. */
 export function BarreClient<T extends string>({
   onglets,

@@ -20,7 +20,7 @@ import { useMinuteurs } from './entrainement/minuteurs';
 import { CarteMessages } from './messagerie/conversation';
 import { MonCompte } from './mon-compte';
 import { NutritionProfil } from './nutrition/nutrition';
-import { BandeauDemo, BarreClient, Hero, Selecteur, type OngletDef } from './coque';
+import { BandeauDemo, BarreClient, Hero, useMargeBarre, Selecteur, type OngletDef } from './coque';
 import { Carte, Texte } from './composants';
 import { CarteBadges, CarteSerie, FeteBadges, MesBadges } from './motivation/badges';
 import { TuilesDuJour } from './suivi/calories-jour';
@@ -126,6 +126,7 @@ export function EspaceClient({
   }
   const [rubrique, setRubrique] = useState<RubriqueProgres | null>(null);
   const minuteurs = useMinuteurs();
+  const margeBarre = useMargeBarre();
   const defilement = useRef<ComponentRef<typeof ScrollView>>(null);
   const abo = useCharger(() => abonnements.lire(clientId), `abo-${clientId}`);
 
@@ -149,7 +150,7 @@ export function EspaceClient({
   return (
     <UniversPage cle={UNIVERS_CLIENT[onglet]}>
     <View style={{ flex: 1, backgroundImage: `linear-gradient(180deg, ${universDe(onglet).clair} 0%, ${couleurs.fond} 420px)` }}>
-      <DefilementClavier ref={defilement} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: espace(4), paddingTop: espace(5), paddingBottom: minuteurs?.actif ? 240 : 128 }}>
+      <DefilementClavier ref={defilement} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: espace(4), paddingTop: espace(5), paddingBottom: margeBarre + (minuteurs?.actif ? 112 : 0) }}>
         <View style={{ width: '100%', maxWidth: LARGEUR_CLIENT, alignSelf: 'center', gap: espace(5) }}>
           {depot.mode === 'demo' && <BandeauDemo />}
           {apercu && (
