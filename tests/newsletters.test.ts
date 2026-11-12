@@ -123,3 +123,8 @@ describe('articles complets', () => {
     expect(mailNewsletter(articles[1], { coach: 'S', desabonnement: 'https://d' }).html).toContain('À retenir');
   });
 });
+
+it('l’appli s’appelle CoachGo partout dans les articles', async () => {
+  const brut = JSON.stringify((await import('@/domain/articles-newsletters.json')).default);
+  expect(brut).not.toMatch(/coach[eé]o/i);
+});
