@@ -181,7 +181,7 @@ export function Gestion({
               </View>
               {module === 'Coachings' && (
                 <View style={styles.ligne}>
-                  <BoutonContour libelle="Gérer les cycles" onPress={onCycles} />
+                  <BoutonContour libelle="Gérer ses programmes" onPress={onCycles} />
                 </View>
               )}
               {module === 'Taches' && (l.ouverte || contact) && (

@@ -319,7 +319,7 @@ function SeanceDuProgramme({
         </Pressable>
       </View>
       {!ouvert ? (
-        <Text style={ts.doux}>Ton cycle est terminé : demande à ton coach de lancer le suivant.</Text>
+        <Text style={ts.doux}>Ton programme est terminé : demande à ton coach de lancer le suivant.</Text>
       ) : (
         <>
           <View style={{ gap: 8 }}>
@@ -342,7 +342,7 @@ function SeanceDuProgramme({
               <ChampTexte libelle="Date" valeur={autreDate} onChange={setAutreDate} placeholder="26/10" erreur={autreDate && !date ? 'Écris la date comme 26/10' : undefined} />
             )}
             {horsCycle && (
-              <Text style={ts.erreur}>Choisis un jour entre le début de ton cycle ({jourCourt(cycle.debut)}) et aujourd’hui.</Text>
+              <Text style={ts.erreur}>Choisis un jour entre le début de ton programme ({jourCourt(cycle.debut)}) et aujourd’hui.</Text>
             )}
           </View>
           {seance && date && !horsCycle && (

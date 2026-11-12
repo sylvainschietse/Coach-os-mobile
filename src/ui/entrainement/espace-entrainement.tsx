@@ -230,7 +230,7 @@ export function EntrainementClient({
         <Hero
           kicker="Mon entraînement"
           titre="Mon programme"
-          sousTitre="Votre cycle, ses séances et tout ce que vous avez déjà réalisé."
+          sousTitre="Votre programme, ses séances et tout ce que vous avez déjà réalisé."
           droite={<BoutonContour nom="Actualiser" icone={RefreshCw} onPress={() => demanderSortie(recharger)} />}
         />
         {erreur && !espace ? (
@@ -308,7 +308,7 @@ export function EntrainementClient({
           {!espace.cycle ? (
             <View style={[ts.carte, { borderRadius: 16, padding: 24 }]}>
               <Text style={ts.titre}>Votre programme se prépare</Text>
-              <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Votre coach activera votre prochain cycle ici. Vous pourrez alors consulter vos séances.</Text>
+              <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Votre coach activera votre prochain programme ici. Vous pourrez alors consulter vos séances.</Text>
             </View>
           ) : (
             <>
@@ -378,7 +378,7 @@ function ProchaineSeance({
       <Text style={{ fontFamily: polices.titre, fontSize: 30, letterSpacing: 0.6, color: '#FFFFFF' }}>{titreClient(p.seance.titre)}</Text>
       <Text style={[ts.doux, { color: 'rgba(255,255,255,0.85)' }]}>{nbExercices ? `${nbExercices} exercice${nbExercices > 1 ? 's' : ''}` : 'Activité · à valider une fois faite'}</Text>
       <Action
-        libelle={apercu ? 'Seul le client peut démarrer' : !ouvert ? 'Cycle terminé' : nbExercices ? 'Démarrer la séance' : 'Valider la séance'}
+        libelle={apercu ? 'Seul le client peut démarrer' : !ouvert ? 'Programme terminé' : nbExercices ? 'Démarrer la séance' : 'Valider la séance'}
         icone={PlayCircle}
         variante="contour"
         desactive={apercu || !ouvert}
@@ -415,7 +415,7 @@ function CarteProgramme({ espace, onPress }: { espace: EspaceEntrainement; onPre
   );
 }
 
-const etatCycle = (e: 'a_venir' | 'en_cours' | 'depasse') => (e === 'a_venir' ? 'Cycle à venir' : e === 'depasse' ? 'Cycle terminé (dates dépassées)' : 'Cycle en cours');
+const etatCycle = (e: 'a_venir' | 'en_cours' | 'depasse') => (e === 'a_venir' ? 'Programme à venir' : e === 'depasse' ? 'Programme terminé (dates dépassées)' : 'Programme en cours');
 
 /** En tête de la page du programme : photo, cycle, dates, objectif et avancement. */
 function CarteCycle({ espace }: { espace: EspaceEntrainement }) {
@@ -424,7 +424,7 @@ function CarteCycle({ espace }: { espace: EspaceEntrainement }) {
     return (
       <View style={[ts.carte, { borderRadius: 16, padding: 24 }]}>
         <Text style={ts.titre}>Votre programme se prépare</Text>
-        <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Votre coach activera votre prochain cycle ici. Vous pourrez alors consulter vos séances.</Text>
+        <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Votre coach activera votre prochain programme ici. Vous pourrez alors consulter vos séances.</Text>
       </View>
     );
   return (
@@ -452,14 +452,14 @@ function CarteCycle({ espace }: { espace: EspaceEntrainement }) {
       {c.etat === 'en_cours' && !!c.semaine && c.nbSemaines > 0 && (
         <View style={{ marginTop: 12, gap: 8 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text style={ts.doux}>Avancement du cycle</Text>
+            <Text style={ts.doux}>Avancement du programme</Text>
             <Text style={ts.doux}>
               {c.semaine} / {c.nbSemaines} semaines
             </Text>
           </View>
           <View
             accessibilityRole="progressbar"
-            aria-label="Avancement du cycle"
+            aria-label="Avancement du programme"
             aria-valuemin={0}
             aria-valuemax={c.nbSemaines}
             aria-valuenow={Math.min(c.semaine, c.nbSemaines)}

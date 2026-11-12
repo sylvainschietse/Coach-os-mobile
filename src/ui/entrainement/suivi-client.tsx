@@ -120,9 +120,9 @@ export function EntrainementClient({
   if (!cycle)
     return (
       <View style={ts.carte}>
-        <Text style={ts.titre}>Pas encore de cycle en cours</Text>
+        <Text style={ts.titre}>Pas encore de programme en cours</Text>
         <Text style={ts.doux}>
-          Dès qu’un programme est attribué à {profil?.nom ?? 'ce client'} (fiche › Programme › Séances) et son cycle activé, son entraînement s’affiche ici.
+          Dès qu’un programme est attribué à {profil?.nom ?? 'ce client'} (fiche › Programme › Séances) et activé, son entraînement s’affiche ici.
         </Text>
       </View>
     );
@@ -197,7 +197,7 @@ function EnTete({
           valeur={a?.taux !== undefined ? `${a.taux} %` : '—'}
           detail={a ? `${a.faites} faite${a.faites > 1 ? 's' : ''} sur ${a.faites + a.manquees}` : undefined}
         />
-        <Chiffre libelle="À venir" valeur={a ? String(a.aVenir) : '—'} detail="séances du cycle" />
+        <Chiffre libelle="À venir" valeur={a ? String(a.aVenir) : '—'} detail="séances du programme" />
         <Chiffre
           libelle="Dernière séance"
           valeur={derniere ? jourMois(derniere) : '—'}

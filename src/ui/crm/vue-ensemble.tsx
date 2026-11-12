@@ -202,7 +202,7 @@ export function VueEnsemble({
           )}
           {erreur && <Text style={[ligneDoux, { color: couleurs.rouge, marginTop: 8 }]}>{erreur}</Text>}
           <View style={{ marginTop: 16 }}>
-            <BoutonContour libelle="Programmes et cycles clients" onPress={onCycles} />
+            <BoutonContour libelle="Programmes des clients" onPress={onCycles} />
           </View>
         </Carte>
       </View>
