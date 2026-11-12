@@ -21,6 +21,7 @@ import { NutritionProfil } from './nutrition/nutrition';
 import { BandeauDemo, BarreClient, Hero, Selecteur, SousNav, type OngletDef } from './coque';
 import { Carte, Puce, Puces, Texte } from './composants';
 import { BilanSemaine } from './suivi/bilan-semaine';
+import { CaloriesDuJour } from './suivi/calories-jour';
 import { Mensurations } from './suivi/mensurations';
 import { MesSeances } from './suivi/mes-seances';
 import { Objectifs } from './suivi/objectifs';
@@ -33,7 +34,7 @@ import { couleurs, espace, LARGEUR_CLIENT, polices, univers, type CleUnivers } f
 import { UniversPage } from './univers';
 
 export type OngletClient = 'accueil' | 'programme' | 'suivi' | 'nutrition' | 'moi';
-type RubriqueSuivi = 'seances' | 'hebdo' | 'mesures' | 'pr' | 'activite';
+type RubriqueSuivi = 'seances' | 'calories' | 'hebdo' | 'mesures' | 'pr' | 'activite';
 
 const ONGLETS: OngletDef<OngletClient>[] = [
   { cle: 'accueil', libelle: 'Accueil', icone: Home },
@@ -54,6 +55,7 @@ const universDe = (o: OngletClient) => univers[UNIVERS_CLIENT[o]];
 
 const SUIVI: OngletDef<RubriqueSuivi>[] = [
   { cle: 'seances', libelle: 'Mes séances' },
+  { cle: 'calories', libelle: 'Mes calories' },
   { cle: 'hebdo', libelle: 'Bilan semaine' },
   { cle: 'mesures', libelle: 'Mensurations et photos' },
   { cle: 'pr', libelle: 'Performances' },
@@ -153,6 +155,8 @@ export function EspaceClient({
               <SousNav nom="Rubriques du suivi" grille="suivi" onglets={SUIVI} valeur={suivi} onChange={(r) => demanderSortie(() => setSuivi(r))} />
               {/* Le tableau semaine par semaine et « Ajouter une séance » : tout ce que le client a fait, au même endroit. */}
               {suivi === 'seances' && <MesSeances key={clientId} clientId={clientId} apercu={!!apercu} />}
+              {/* Dépense du jour (métabolisme, pas, séances, activités) face à ce qu'il mange et à son objectif. */}
+              {suivi === 'calories' && <CaloriesDuJour key={clientId} clientId={clientId} coach={!!apercu} />}
               {suivi === 'hebdo' && <BilanSemaine key={clientId} clientId={clientId} apercu={!!apercu} />}
               {/* Les photos de progression accompagnent les mesures : une seule rubrique. */}
               {suivi === 'mesures' && (

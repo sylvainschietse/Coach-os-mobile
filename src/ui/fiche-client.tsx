@@ -8,6 +8,7 @@ import { ProfilNutritionCarte } from './alimentation/profil';
 import { DetailClient } from './detail-client';
 import { SeancesRealisees } from './entrainement/bilan';
 import { EntrainementClient } from './entrainement/suivi-client';
+import { CaloriesDuJour } from './suivi/calories-jour';
 import { SeancesClientCoach } from './programmes/seances-client';
 import { Mensurations } from './suivi/mensurations';
 import { Photos } from './suivi/photos';
@@ -68,6 +69,7 @@ const SUIVI = [
   { cle: 'quotidien', libelle: 'Quotidien' },
   { cle: 'records', libelle: 'Performances' },
   { cle: 'sport', libelle: 'Sport' },
+  { cle: 'calories', libelle: 'Calories' },
   { cle: 'photos', libelle: 'Photos' },
 ] as const;
 
@@ -116,6 +118,7 @@ export function SuiviClient({ clientId }: { clientId: string }) {
       {onglet === 'quotidien' && <Quotidien clientId={clientId} cibles parCoach />}
       {onglet === 'records' && <Records clientId={clientId} parCoach />}
       {onglet === 'sport' && <Sport clientId={clientId} proprietaire={false} />}
+      {onglet === 'calories' && <CaloriesDuJour clientId={clientId} coach />}
       {onglet === 'photos' && <Photos clientId={clientId} proprietaire={false} />}
     </View>
   );
