@@ -41,7 +41,7 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Selecteur, Vide } from '../coque';
 import { Chargement, Erreur } from '../composants';
-import { BoutonFacture, BoutonToutesFactures, FactureDeLaFiche } from '../factures';
+import { BoutonFacture, BoutonToutesFactures, EtatReglement, FactureDeLaFiche } from '../factures';
 import { couleurs, espace, polices } from '../theme';
 import { adresseQuestionnaire, EnvoiMessage, nomComplet, useCoachNom } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
@@ -180,6 +180,10 @@ export function Gestion({
                   </Text>
                 </View>
               </View>
+              {/* Virement signalé par le client, « Confirmer le paiement » : sur toute la largeur de la carte. */}
+              {module === 'Paiements' && lesFactures.donnee?.get(l.id) && (
+                <EtatReglement f={lesFactures.donnee.get(l.id)!} role="coach" onChange={lesFactures.recharger} />
+              )}
               {module === 'Coachings' && (
                 <View style={styles.ligne}>
                   <BoutonContour libelle="Gérer ses programmes" onPress={onCycles} />
@@ -617,6 +621,7 @@ function Formulaire({
         <FactureDeLaFiche
           paiementId={id}
           modifie={modifie}
+          onConfirme={onFermer}
           envoi={(() => {
             const c = carnet.contacts.find((x) => x.id === initial.contactId);
             return c ? { contactId: c.id, prenom: c.prenom, telephone: c.telephone, email: c.email } : undefined;

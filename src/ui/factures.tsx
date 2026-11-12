@@ -9,6 +9,7 @@ import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
 import { Image, Platform, Pressable, Text, View } from 'react-native';
 
+import { prevenirCrm } from '@/data/crm';
 import { documents } from '@/data/documents';
 import { factures, type Numerotation, type PaiementAFacturer } from '@/data/factures';
 import { useSession } from '@/data/session';
@@ -244,8 +245,89 @@ export interface DestinataireFacture {
   email?: string;
 }
 
+const jourHeure = (iso: string) =>
+  new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Paris' });
+
+/**
+ * Où en est le règlement d'une facture.
+ * Client : « J'ai payé par virement » prévient le coach ; ensuite « Virement signalé », puis « Paiement confirmé ».
+ * Coach : « Virement signalé par le client » et « Confirmer le paiement » (les lignes passent à « Payé », le client est prévenu).
+ */
+export function EtatReglement({
+  f,
+  role,
+  onChange,
+  bloque,
+}: {
+  f: Facture;
+  role: 'client' | 'coach';
+  onChange: () => void;
+  /** Coach, fiche avec des corrections pas encore enregistrées : confirmer attend l'enregistrement. */
+  bloque?: string;
+}) {
+  const [occupe, setOccupe] = useState(false);
+  const [erreur, setErreur] = useState<string>();
+  if (f.total === 0) return null;
+  if (f.payeLe)
+    return role === 'client' ? (
+      <Texte style={{ fontSize: 13, color: couleurs.vert, fontWeight: '600' }}>✓ Paiement confirmé par ton coach le {dateFr(f.payeLe)}</Texte>
+    ) : null;
+  const agir = async () => {
+    setErreur(undefined);
+    setOccupe(true);
+    try {
+      if (role === 'client') await factures.signalerVirement(f.id);
+      else {
+        await factures.confirmerPaiement(f.id);
+        prevenirCrm();
+      }
+      onChange();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Action non confirmée');
+    } finally {
+      setOccupe(false);
+    }
+  };
+  return (
+    <View style={{ gap: espace(1) }}>
+      {f.virementSignaleLe && (
+        <Texte style={{ fontSize: 13, color: couleurs.orange, fontWeight: '600' }}>
+          {role === 'client'
+            ? `Virement signalé le ${jourHeure(f.virementSignaleLe)} : ton coach le confirme dès qu’il le voit sur son compte.`
+            : `Virement signalé par le client le ${jourHeure(f.virementSignaleLe)} : vérifie ton compte.`}
+        </Texte>
+      )}
+      {role === 'client' && !f.virementSignaleLe && (
+        <View style={{ flexDirection: 'row' }}>
+          <Bouton variante="secondaire" libelle="J’ai payé par virement" chargement={occupe} onPress={agir} />
+        </View>
+      )}
+      {role === 'coach' && (
+        <View style={{ flexDirection: 'row' }}>
+          <Bouton variante={f.virementSignaleLe ? 'primaire' : 'secondaire'} libelle="Confirmer le paiement" chargement={occupe} desactive={!!bloque} onPress={agir} />
+        </View>
+      )}
+      {role === 'coach' && bloque && <Texte doux style={{ fontSize: 12 }}>{bloque}</Texte>}
+      {erreur && <Texte style={{ fontSize: 13, color: couleurs.rouge }}>{erreur}</Texte>}
+    </View>
+  );
+}
+
 /** sansEntete : sous le bouton « Facture … » de Paiements, qui dit déjà le numéro. */
-function LigneFactureListe({ f, style, envoi, sansEntete }: { f: Facture; style: StyleFacture; envoi?: DestinataireFacture; sansEntete?: boolean }) {
+function LigneFactureListe({
+  f,
+  style,
+  envoi,
+  sansEntete,
+  onClientChange,
+}: {
+  f: Facture;
+  style: StyleFacture;
+  envoi?: DestinataireFacture;
+  sansEntete?: boolean;
+  /** Espace client : où en est le règlement, et « J'ai payé par virement ». */
+  onClientChange?: () => void;
+}) {
   const { email } = useSession();
   const [erreur, setErreur] = useState<string>();
   const [retour, setRetour] = useState<string>();
@@ -384,6 +466,7 @@ function LigneFactureListe({ f, style, envoi, sansEntete }: { f: Facture; style:
           />
         </View>
       )}
+      {onClientChange && <EtatReglement f={f} role="client" onChange={onClientChange} />}
       {retour && <Texte style={{ fontSize: 13, color: couleurs.vert }}>{retour}</Texte>}
       {erreur && <Texte style={{ fontSize: 13, color: couleurs.rouge }}>{erreur}</Texte>}
     </View>
@@ -459,7 +542,18 @@ export function BoutonFacture({
  * En tête de la fiche d'une ligne de Paiements : sa facture (numéro, à régler ou réglée), le PDF et l'envoi.
  * Une facture pas encore réglée suit les corrections de la ligne une fois la fiche enregistrée.
  */
-export function FactureDeLaFiche({ paiementId, envoi, modifie }: { paiementId: string; envoi?: DestinataireFacture; modifie: boolean }) {
+export function FactureDeLaFiche({
+  paiementId,
+  envoi,
+  modifie,
+  onConfirme,
+}: {
+  paiementId: string;
+  envoi?: DestinataireFacture;
+  modifie: boolean;
+  /** Paiement confirmé depuis la fiche : la ligne est passée à « Payé », la fiche se ferme. */
+  onConfirme: () => void;
+}) {
   const liste = useCharger(() => factures.parPaiement(), `facture-fiche-${paiementId}`);
   const style = useCharger(() => factures.style(), 'factures-style');
   const [occupe, setOccupe] = useState(false);
@@ -501,6 +595,7 @@ export function FactureDeLaFiche({ paiementId, envoi, modifie }: { paiementId: s
         <Bouton variante="discret" libelle="Voir le PDF" chargement={occupe} onPress={voir} />
       </View>
       {envoi && <LigneFactureListe f={f} style={style.donnee ?? {}} envoi={envoi} sansEntete />}
+      <EtatReglement f={f} role="coach" onChange={onConfirme} bloque={modifie ? 'Enregistre d’abord tes corrections, puis confirme le paiement.' : undefined} />
       <Texte doux style={{ fontSize: 13 }}>
         {aide}
       </Texte>
@@ -525,7 +620,7 @@ export function MesFactures({ clientId }: { clientId: string }) {
     <Carte>
       <SousTitre>Mes factures</SousTitre>
       {liste.erreur && <Erreur message={liste.erreur} onReessayer={liste.recharger} />}
-      {liste.donnee?.map((f) => <LigneFactureListe key={f.id} f={f} style={style.donnee ?? {}} />)}
+      {liste.donnee?.map((f) => <LigneFactureListe key={f.id} f={f} style={style.donnee ?? {}} onClientChange={liste.recharger} />)}
       <AideWeb />
     </Carte>
   );

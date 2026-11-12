@@ -47,6 +47,7 @@ const versFacture = (l: LigneBase): Facture => ({
   total: Number(l.total),
   moyen: (l.moyen as string | null) ?? undefined,
   payeLe: (l.paye_le as string | null) ?? undefined,
+  virementSignaleLe: (l.virement_signale_le as string | null) ?? undefined,
 });
 
 // ---------- Démo : tout reste en mémoire le temps de la visite ----------
@@ -256,6 +257,28 @@ export const factures = {
     const { data, error } = await supabase.rpc('facturer_mois', { p_client: clientId, p_mois: mois });
     if (error) throw new Error(error.message || 'Facture non créée, réessaie dans un instant.');
     if (!data) throw new Error('Toutes les séances de ce mois sont déjà facturées.');
+  },
+
+  /** Client : « J'ai payé par virement » sur une facture à régler ; le coach est prévenu. */
+  async signalerVirement(factureId: string): Promise<void> {
+    if (!supabase) {
+      const f = facturesDemo.find((x) => x.id === factureId);
+      if (f) f.virementSignaleLe = new Date().toISOString();
+      return;
+    }
+    const { error } = await supabase.rpc('signaler_virement', { p_facture: factureId });
+    if (error) throw new Error(error.message || 'Non envoyé, réessaie dans un instant.');
+  },
+
+  /** Coach : confirme le paiement d'une facture (ses lignes passent à « Payé ») ; le client est prévenu. */
+  async confirmerPaiement(factureId: string): Promise<void> {
+    if (!supabase) {
+      const f = facturesDemo.find((x) => x.id === factureId);
+      if (f && !f.payeLe) Object.assign(f, { payeLe: new Date().toISOString().slice(0, 10), moyen: f.moyen ?? (f.virementSignaleLe ? 'Virement' : undefined) });
+      return;
+    }
+    const { error } = await supabase.rpc('confirmer_paiement_facture', { p_facture: factureId });
+    if (error) throw new Error(error.message || 'Paiement non confirmé, réessaie dans un instant.');
   },
 
   /** Coach : émet la facture d'un paiement payé ou en attente (prend le prochain numéro du client). */

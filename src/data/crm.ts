@@ -82,6 +82,8 @@ export function ecouterCrm(fn: () => void) {
   };
 }
 const prevenir = () => abonnes.forEach((fn) => fn());
+/** Une ligne a changé hors du carnet (paiement confirmé depuis une facture) : les écrans se rechargent. */
+export const prevenirCrm = prevenir;
 
 /**
  * Les deux sources partagent la même mécanique : on lit le carnet, on applique

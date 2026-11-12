@@ -29,6 +29,8 @@ export interface Facture {
   total: number;
   moyen?: string;
   payeLe?: string;
+  /** Le client a touché « J'ai payé par virement » (horodatage ISO) : le coach vérifie puis confirme. */
+  virementSignaleLe?: string;
 }
 
 /** En-tête réglé par le coach dans « Mon profil ». */

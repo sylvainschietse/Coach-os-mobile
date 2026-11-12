@@ -18,6 +18,7 @@ export const ALERTES: Record<Role, Alerte[]> = {
     { cle: 'rdv_rappel', titre: 'Rappel de séance', detail: 'Une heure avant chaque séance de ton agenda.' },
     { cle: 'seance_faite', titre: 'Entraînement fait', detail: 'Quand un client termine une séance de son programme.' },
     { cle: 'paiement', titre: 'Paiement reçu', detail: 'Paiement en ligne ou changement d’offre.' },
+    { cle: 'virement_signale', titre: 'Virement signalé', detail: 'Quand un client dit avoir payé une facture par virement.' },
     { cle: 'questionnaire', titre: 'Nouveau prospect', detail: 'Quand quelqu’un remplit ton questionnaire.' },
     { cle: 'bilan_semaine', titre: 'Bilan de la semaine', detail: 'Quand un client remplit son bilan.' },
     { cle: 'video', titre: 'Vidéo à corriger', detail: 'Quand un client t’envoie un mouvement filmé.' },
@@ -33,6 +34,7 @@ export const ALERTES: Record<Role, Alerte[]> = {
     { cle: 'video_corrigee', titre: 'Vidéo corrigée', detail: 'Quand ton coach répond à ta vidéo.' },
     { cle: 'bilan_retour', titre: 'Retour sur mon bilan', detail: 'Quand ton coach répond à ton bilan de la semaine.' },
     { cle: 'facture', titre: 'Facture disponible', detail: 'Quand une nouvelle facture t’attend.' },
+    { cle: 'paiement_confirme', titre: 'Paiement confirmé', detail: 'Quand ton coach confirme avoir reçu ton paiement.' },
     { cle: 'pack_fin', titre: 'Pack bientôt fini', detail: 'Quand il te reste peu de séances.' },
   ],
 };
