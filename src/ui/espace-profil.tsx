@@ -81,7 +81,12 @@ export function EspaceProfil({
   }
   return (
     <View style={{ gap: espace(4), maxWidth: 640 }}>
-      <EnTeteRubrique kicker="Espace coach" titre="Mon profil" />
+      {/* La déconnexion reste aussi en bas de la liste, mais sur téléphone il fallait faire défiler pour la voir. */}
+      <EnTeteRubrique
+        kicker="Espace coach"
+        titre="Mon profil"
+        action={<BoutonContour libelle="Se déconnecter" icone={LogOut} iconeAGauche onPress={() => demanderSortie(onDeconnecter)} />}
+      />
       {GROUPES.map((g) => (
         <View key={g.titre} style={{ gap: espace(2) }}>
           <Text style={styles.groupe}>{g.titre}</Text>
