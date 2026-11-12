@@ -135,7 +135,9 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
  * haut, profil, offres et relances dans Mon profil, Contacts et Boosters dans Clients, les tâches dans « À faire » de
  * l'Accueil, les bilans complets dans le volet Documents de la fiche.
  */
-const MENU_RUBRIQUES = RUBRIQUES.filter((r) => ['Accueil', 'Bilan', 'Paiements', 'Documents'].includes(r.cle));
+const ORDRE_MENU: Rubrique[] = ['Accueil', 'Bilan', 'Paiements', 'Documents'];
+/** L'ordre du menu suit ORDRE_MENU, pas celui de RUBRIQUES. */
+const MENU_RUBRIQUES = ORDRE_MENU.map((cle) => RUBRIQUES.find((r) => r.cle === cle)!);
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 
