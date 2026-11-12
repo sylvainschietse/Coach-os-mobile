@@ -9,7 +9,7 @@ import { factures } from '@/data/factures';
 import { offres, type EtatStripe } from '@/data/offres';
 import { useSession } from '@/data/session';
 import { brochureHtml, offresDeLaBrochure } from '@/domain/brochure';
-import { libellePrix, lireOffre, MODELES, PERIODICITES, type ModeleOffre, type Offre, type Periodicite, type SaisieOffre } from '@/domain/offres';
+import { deplacerOffre, libellePrix, lireOffre, MODELES, PERIODICITES, type ModeleOffre, type Offre, type Periodicite, type SaisieOffre, trierOffres } from '@/domain/offres';
 import { adresseWeb } from '@/lib/adresse-web';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { ouvrirPdf, voirPdf } from '@/lib/pdf';
@@ -203,7 +203,20 @@ function EditeurOffre({ offre, onFini }: { offre?: Offre; onFini: () => void }) 
 }
 
 /** Une offre de la liste : aperçu, lien à partager, modification, retrait. */
-function LigneOffre({ offre, pret, onModifier, onChange }: { offre: Offre; pret: boolean; onModifier: () => void; onChange: () => void }) {
+function LigneOffre({
+  offre,
+  pret,
+  onModifier,
+  onChange,
+  onDeplacer,
+}: {
+  offre: Offre;
+  pret: boolean;
+  onModifier: () => void;
+  onChange: () => void;
+  /** Monter (-1) ou descendre (1) l'offre ; absent quand elle est déjà au bout. */
+  onDeplacer: { monter?: () => Promise<void>; descendre?: () => Promise<void> };
+}) {
   const [confirmer, setConfirmer] = useState(false);
   const [occupe, setOccupe] = useState(false);
   const [info, setInfo] = useState<string>();
@@ -226,6 +239,16 @@ function LigneOffre({ offre, pret, onModifier, onChange }: { offre: Offre; pret:
 
   return (
     <CarteOffre offre={offre} mention={!offre.active ? 'Plus proposée' : offre.conseil ? 'Mon conseil' : undefined}>
+      {offre.active && (onDeplacer.monter || onDeplacer.descendre) && (
+        <View style={{ flexDirection: 'row', gap: espace(2) }}>
+          <View style={{ flex: 1 }}>
+            <Bouton variante="discret" libelle="↑ Monter" onPress={() => onDeplacer.monter && faire(onDeplacer.monter)} desactive={!onDeplacer.monter || occupe} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Bouton variante="discret" libelle="↓ Descendre" onPress={() => onDeplacer.descendre && faire(onDeplacer.descendre)} desactive={!onDeplacer.descendre || occupe} />
+          </View>
+        </View>
+      )}
       {offre.active && (
         <>
           <Text selectable style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux }}>
@@ -370,11 +393,25 @@ export function MesOffres() {
           {liste.donnee && toutes.length === 0 && (
             <Texte doux style={{ fontSize: 14 }}>Pas encore d’offre. Crée la première à partir d’un modèle : elle sera prête à partager en une minute.</Texte>
           )}
-          {[...toutes]
-            .sort((a, b) => Number(b.active) - Number(a.active) || a.ordre - b.ordre)
-            .map((o) => (
-              <LigneOffre key={o.id} offre={o} pret={!!stripe.donnee?.pret} onModifier={() => setEdition(o)} onChange={liste.recharger} />
-            ))}
+          {toutes.filter((o) => o.active).length > 1 && (
+            <Texte doux style={{ fontSize: 13 }}>Tes offres apparaissent dans cet ordre sur ta brochure et pour tes clients. Monte ou descends-les pour le changer.</Texte>
+          )}
+          {trierOffres(toutes).map((o) => {
+            const ranger = (sens: -1 | 1) => {
+              const ids = deplacerOffre(toutes, o.id, sens);
+              return ids ? () => offres.ordonner(ids) : undefined;
+            };
+            return (
+              <LigneOffre
+                key={o.id}
+                offre={o}
+                pret={!!stripe.donnee?.pret}
+                onModifier={() => setEdition(o)}
+                onChange={liste.recharger}
+                onDeplacer={{ monter: ranger(-1), descendre: ranger(1) }}
+              />
+            );
+          })}
         </>
       )}
     </View>
