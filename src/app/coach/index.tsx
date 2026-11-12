@@ -48,6 +48,7 @@ import {
   SousNav,
   Vide,
   type OngletDef,
+  useMargeBarre,
 } from '@/ui/coque';
 import { Carte, Chargement, Erreur, Puce, Puces, Texte } from '@/ui/composants';
 import { Bilans, EditeurBilan } from '@/ui/crm/bilans';
@@ -169,6 +170,8 @@ export default function EspaceCoach() {
   const { profil, email, deconnecter } = useSession();
   const { width } = useWindowDimensions();
   const large = width >= LARGEUR_LG;
+  // Sur téléphone, la barre des onglets flotte en bas : on peut défiler jusqu'à voir le dernier élément au-dessus d'elle.
+  const margeBarre = useMargeBarre();
   const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; section?: string; partie?: string; client?: string; programme?: string; seance?: string; apercu?: string } & ParamsDossier>();
   const ongletDemande = TOUS.find((o) => o === params.onglet) ?? 'crm';
   const rubriqueDemandee = RUBRIQUES.find((r) => r.cle === params.rubrique)?.cle ?? 'Accueil';
@@ -285,7 +288,7 @@ export default function EspaceCoach() {
       {enTete}
       <DefilementClavier
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: espace(4), paddingTop: width <= 640 ? 18.4 : width >= 640 ? 32 : 24, paddingBottom: 48 }}
+        contentContainerStyle={{ paddingHorizontal: espace(4), paddingTop: width <= 640 ? 18.4 : width >= 640 ? 32 : 24, paddingBottom: large ? 48 : margeBarre }}
       >
         <View style={{ width: '100%', maxWidth: LARGEUR_COACH, alignSelf: 'center' }}>
           {depot.mode === 'demo' && (
