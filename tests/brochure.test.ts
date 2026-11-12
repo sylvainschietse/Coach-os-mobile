@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { brochureHtml, lienWhatsApp, offresDeLaBrochure } from '../src/domain/brochure';
+import { brochureHtml, carteDeLOffre, groupesBrochure, lienWhatsApp, lireReglagesBrochure, offresDeLaBrochure, REGLAGES_BROCHURE } from '../src/domain/brochure';
 import { deplacerOffre, MODELES, OFFRES_DEMO } from '../src/domain/offres';
 
 const pack = { ...MODELES.seances.base, id: 'p1', ordre: 0, enLigne: false };
@@ -48,5 +48,44 @@ describe('brochure des prix', () => {
 
   it('garde la couleur par défaut si la couleur est invalide', () => {
     expect(brochureHtml(OFFRES_DEMO, { nom: 'S' }, { couleur: 'red;}' })).not.toContain('red;}');
+  });
+
+  describe('réglages du coach (« Ma brochure »)', () => {
+    const offres = [...OFFRES_DEMO, { ...pack, ordre: 5 }];
+
+    it('range les offres par blocs, dans l’ordre des blocs choisi, et cache un bloc masqué', () => {
+      const r = lireReglagesBrochure({ parBlocs: true, ordreBlocs: ['seances', 'formules'], blocs: { appli: { visible: false } } });
+      expect(r.ordreBlocs).toEqual(['seances', 'formules', 'appli']);
+      const groupes = groupesBrochure(offres, r);
+      expect(groupes.map((g) => g.titre)).toEqual(['Séances', 'Avec ton coach']);
+      expect(groupes[0].offres.map((o) => o.id)).toEqual([pack.id]);
+      expect(groupes[1].offres.map((o) => o.nom)).toEqual(['Hybride léger', 'Hybride complet']);
+    });
+
+    it('change la couleur d’une carte et le bloc d’une offre', () => {
+      const r = lireReglagesBrochure({ parBlocs: true, offres: { [pack.id]: { carte: 'clair', bloc: 'formules' } } });
+      expect(carteDeLOffre(pack, r)).toBe('clair');
+      expect(carteDeLOffre(pack, REGLAGES_BROCHURE)).toBe('couleur');
+      expect(carteDeLOffre(OFFRES_DEMO[3], r)).toBe('sombre');
+      expect(groupesBrochure(offres, r).find((g) => g.bloc === 'formules')?.offres.map((o) => o.id)).toContain(pack.id);
+      expect(brochureHtml(offres, { nom: 'S' }, { reglages: r })).toContain('<div class="h3">Avec ton coach</div>');
+    });
+
+    it('reprend les textes, la couleur et les parties choisies, sans laisser passer de HTML', () => {
+      const r = lireReglagesBrochure({ couleur: '#0e7c66', titre: 'Bouge <i>', intro: 'Mon intro', contact: false, atouts: false, liens: false });
+      const html = brochureHtml(offres, { nom: 'S', telephone: '06 48 64 08 45' }, { reglages: r, lien: (id) => `https://x.fr/${id}` });
+      expect(html).toContain('#0E7C66');
+      expect(html).toContain('Bouge &lt;i&gt;');
+      expect(html).toContain('Mon intro');
+      expect(html).not.toContain('<svg');
+      expect(html).not.toContain('class="atouts"');
+      expect(html).not.toContain('https://x.fr/');
+    });
+
+    it('ignore les réglages illisibles', () => {
+      const r = lireReglagesBrochure({ couleur: 'red;}', parBlocs: 'oui', ordreBlocs: ['x', 'appli', 'appli'], offres: { a: { carte: 'rose' } }, titre: '   ' });
+      expect(r).toEqual({ ...REGLAGES_BROCHURE, couleur: undefined, surtitre: undefined, titre: undefined, titreCouleur: undefined, intro: undefined, titreOffres: undefined });
+      expect(lireReglagesBrochure(null)).toEqual(lireReglagesBrochure({}));
+    });
   });
 });
