@@ -1,15 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
 import { brochureHtml, lienWhatsApp, offresDeLaBrochure } from '../src/domain/brochure';
-import { MODELES, OFFRES_DEMO } from '../src/domain/offres';
+import { deplacerOffre, MODELES, OFFRES_DEMO } from '../src/domain/offres';
 
 const pack = { ...MODELES.seances.base, id: 'p1', ordre: 0, enLigne: false };
 const retiree = { ...OFFRES_DEMO[0], id: 'x', nom: 'Ancienne', active: false };
 
 describe('brochure des prix', () => {
-  it('reprend les offres en vente, abonnements puis packs', () => {
-    const liste = offresDeLaBrochure([pack, retiree, ...OFFRES_DEMO]);
-    expect(liste.map((o) => o.nom)).toEqual([...OFFRES_DEMO.map((o) => o.nom), pack.nom]);
+  it('reprend les offres en vente, dans l’ordre choisi par le coach', () => {
+    const liste = offresDeLaBrochure([{ ...pack, ordre: 2.5 }, retiree, ...OFFRES_DEMO]);
+    expect(liste.map((o) => o.nom)).toEqual([OFFRES_DEMO[0].nom, OFFRES_DEMO[1].nom, pack.nom, OFFRES_DEMO[2].nom, OFFRES_DEMO[3].nom]);
+  });
+
+  it('monte ou descend une offre parmi celles en vente', () => {
+    const liste = [pack, retiree, ...OFFRES_DEMO];
+    expect(deplacerOffre(liste, OFFRES_DEMO[3].id, -1)).toEqual([pack.id, OFFRES_DEMO[0].id, OFFRES_DEMO[1].id, OFFRES_DEMO[3].id, OFFRES_DEMO[2].id]);
+    expect(deplacerOffre(liste, pack.id, -1)).toBeUndefined();
+    expect(deplacerOffre(liste, OFFRES_DEMO[3].id, 1)).toBeUndefined();
+    expect(deplacerOffre(liste, retiree.id, 1)).toBeUndefined();
   });
 
   it('affiche prix, contenu, lien et couleur du coach, sans laisser passer de HTML', () => {

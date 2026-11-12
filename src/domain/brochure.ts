@@ -4,7 +4,7 @@
 // prix en doré, cartes noires pour les offres avec séances, QR code pour écrire au coach.
 import creerQr from 'qrcode-generator';
 
-import { contenuOffre, libellePrix, PERIODICITES, type Offre } from './offres';
+import { contenuOffre, libellePrix, PERIODICITES, trierOffres, type Offre } from './offres';
 
 const ROUGE = '#D9232D';
 const OR = '#C9A45C';
@@ -18,11 +18,9 @@ function echapper(s: string) {
 
 type OffreBrochure = Pick<Offre, 'id' | 'nom' | 'accroche' | 'prix' | 'periodicite' | 'accesAppli' | 'nutrition' | 'messagerie' | 'videosMois' | 'seances' | 'essaiJours' | 'active' | 'ordre'> & { conseil?: boolean };
 
-/** Offres à mettre dans la brochure : celles en vente, abonnements d'abord puis packs, dans l'ordre du coach. */
+/** Offres à mettre dans la brochure : celles en vente, dans l'ordre choisi par le coach dans « Mes offres ». */
 export function offresDeLaBrochure<T extends OffreBrochure>(offres: T[]): T[] {
-  return offres
-    .filter((o) => o.active)
-    .sort((a, b) => Number(a.periodicite === 'unique') - Number(b.periodicite === 'unique') || a.ordre - b.ordre);
+  return trierOffres(offres.filter((o) => o.active));
 }
 
 /** Lien WhatsApp à partir d'un numéro français ou international, ou rien si le numéro est illisible. */
