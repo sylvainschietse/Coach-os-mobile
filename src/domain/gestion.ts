@@ -305,6 +305,21 @@ export function supprimerPaiement(c: Carnet, id: string): Carnet {
   return { ...c, paiements: c.paiements.filter((x) => x.id !== id) };
 }
 
+/**
+ * Plusieurs lignes réglées d'un coup (le client paie deux séances en une fois) : chacune passe « Payé »
+ * avec le moyen choisi, sa date reste celle de la séance. Seules les lignes « En attente » d'un même contact sont acceptées.
+ */
+export function reglerPaiements(c: Carnet, ids: string[], moyen: MoyenPaiement): Carnet {
+  const choisis = new Set(ids);
+  if (!choisis.size) throw new Error('Choisissez au moins une ligne.');
+  if (!MOYENS_PAIEMENT.includes(moyen)) throw new Error('Moyen de paiement inconnu.');
+  const lignes = c.paiements.filter((x) => choisis.has(x.id));
+  if (lignes.length !== choisis.size) throw new Error('Paiement introuvable');
+  if (lignes.some((x) => x.statut !== 'En attente')) throw new Error('Une des lignes n’est plus en attente. Actualisez la liste.');
+  if (new Set(lignes.map((x) => x.contactId ?? '')).size > 1) throw new Error('Les lignes doivent être du même client.');
+  return { ...c, paiements: c.paiements.map((x) => (choisis.has(x.id) ? { ...x, statut: 'Payé', moyen } : x)) };
+}
+
 /** Encaissements ce mois : seuls les paiements « Payé » datés du mois en cours comptent. */
 export function encaissementsDuMois(c: Carnet, maintenant: Date): number {
   const mois = jourLocal(maintenant).slice(0, 7);

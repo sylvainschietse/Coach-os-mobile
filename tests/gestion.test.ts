@@ -12,6 +12,7 @@ import {
   modifierBilan,
   modifierPaiement,
   modifierTache,
+  reglerPaiements,
   sectionsBilan,
   statutTache,
   supprimerCoaching,
@@ -177,5 +178,31 @@ describe('pack partagé', () => {
     );
     expect(d).toEqual({ seuls: [{ clientId: 'b', prenom: 'Benjamin', n: 2 }, { clientId: 'r', prenom: 'Romain', n: 1 }], aDeux: 1, horsAgenda: 1 });
     expect(detailPackLisible(d)).toBe('Benjamin seul : 2 · Romain seul : 1 · à deux : 1 · hors agenda : 1');
+  });
+});
+
+describe('plusieurs séances réglées d’un coup', () => {
+  const carnet: Carnet = {
+    ...base,
+    paiements: [
+      { id: 'p1', titre: 'Séance du 06/11 · Inès', contactId: 'c', date: '2026-11-06', montant: 50, statut: 'En attente', devise: 'EUR', creeLe: '2026-11-06T10:00:00Z' },
+      { id: 'p2', titre: 'Séance du 10/11 · Inès', contactId: 'c', date: '2026-11-10', montant: 50, statut: 'En attente', devise: 'EUR', creeLe: '2026-11-10T10:00:00Z' },
+      { id: 'p3', titre: 'Séance du 11/11 · Inès', contactId: 'c', date: '2026-11-11', montant: 50, statut: 'Payé', moyen: 'Virement', devise: 'EUR', creeLe: '2026-11-11T10:00:00Z' },
+      { id: 'p4', titre: 'Séance Zoé', contactId: 'z', date: '2026-11-10', montant: 40, statut: 'En attente', devise: 'EUR', creeLe: '2026-11-10T10:00:00Z' },
+    ],
+  };
+
+  it('passe les lignes choisies « Payé » avec le moyen choisi, sans toucher leur date ni les autres', () => {
+    const r = reglerPaiements(carnet, ['p1', 'p2'], 'Espèces');
+    expect(r.paiements.find((p) => p.id === 'p1')).toMatchObject({ statut: 'Payé', moyen: 'Espèces', date: '2026-11-06', montant: 50 });
+    expect(r.paiements.find((p) => p.id === 'p2')).toMatchObject({ statut: 'Payé', moyen: 'Espèces', date: '2026-11-10' });
+    expect(r.paiements.find((p) => p.id === 'p4')).toMatchObject({ statut: 'En attente' });
+  });
+
+  it('refuse une ligne déjà réglée, une liste vide ou deux clients mélangés', () => {
+    expect(() => reglerPaiements(carnet, ['p1', 'p3'], 'Espèces')).toThrow(/plus en attente/);
+    expect(() => reglerPaiements(carnet, [], 'Espèces')).toThrow(/au moins une/);
+    expect(() => reglerPaiements(carnet, ['p1', 'p4'], 'Virement')).toThrow(/même client/);
+    expect(() => reglerPaiements(carnet, ['p1', 'inconnu'], 'Virement')).toThrow(/introuvable/);
   });
 });

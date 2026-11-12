@@ -46,6 +46,7 @@ import { couleurs, espace, polices } from '../theme';
 import { adresseQuestionnaire, EnvoiMessage, nomComplet, useCoachNom } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
 import { Badge, BoutonPied, CaseACocher, Cellule, Choix, Grille, Libelle, Modale, PiedEditeur, Recherche, Saisie, useBlocNomCarte } from './dossier';
+import { ReglerPlusieurs } from './regler-groupe';
 
 export type ModuleGestion = 'Coachings' | 'Taches' | 'Paiements';
 export type ASupprimer = { module: ModuleGestion; id: string; nom: string; contact?: string };
@@ -274,6 +275,9 @@ export function Gestion({
                     </View>
                     <Text style={styles.montant}>{montantLisible(g.total)}</Text>
                   </Pressable>
+                  {ouvert && g.cle && (
+                    <ReglerPlusieurs key={`regler-${g.cle}-${mois}`} prenom={contacts.get(g.cle)?.prenom ?? ''} lignes={g.lignes.filter((l) => l.statut === 'En attente')} />
+                  )}
                   {ouvert && <View style={{ gap: espace(2) }}>{g.lignes.map(carte)}</View>}
                 </View>
               );
