@@ -1,7 +1,7 @@
 // Coque reprise de l'app d'origine : en-tête sombre à ligne rouge, onglets coach (`wellness-tabs`),
 // sous-navigation (`premium-subnav`), menu CRM (`wellness-sidebar` / sélecteur « Rubrique »),
 // barre du bas client (`client-bottom-nav`), hero, statistiques et états vides.
-import { ChevronDown, Eye, type LucideIcon } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, Eye, type LucideIcon } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { Image, Modal, Pressable, type PressableStateCallbackType, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -531,12 +531,20 @@ export function EnTeteRubrique({ kicker, titre, sousTitre, action }: { kicker: s
 export function Stat({ libelle, valeur, onPress, style }: { libelle: string; valeur: string; onPress?: () => void; style?: StyleProp<ViewStyle> }) {
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? `${libelle} : ${valeur}` : undefined}
+      disabled={!onPress}
       onPress={onPress}
       style={(e) => [styles.stat, survol(e) && { borderColor: couleurs.rougeMarque }, style]}
     >
-      <Text style={{ fontSize: 12, fontFamily: polices.texte, color: couleurs.texteDoux }}>{libelle}</Text>
-      <Text style={styles.statValeur}>{valeur}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+        <Text style={{ flex: 1, fontSize: 12, fontFamily: polices.texte, color: couleurs.texteDoux }}>{libelle}</Text>
+        {onPress && <ChevronRight size={14} color={couleurs.texteDoux} />}
+      </View>
+      {/* Une seule ligne : un montant comme « 1 540 € » ne se coupe plus en deux, la taille s'adapte à la tuile. */}
+      <Text style={styles.statValeur} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+        {valeur}
+      </Text>
     </Pressable>
   );
 }
