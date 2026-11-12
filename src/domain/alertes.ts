@@ -34,5 +34,6 @@ export const ALERTES: Record<Role, Alerte[]> = {
     { cle: 'bilan_retour', titre: 'Retour sur mon bilan', detail: 'Quand ton coach répond à ton bilan de la semaine.' },
     { cle: 'facture', titre: 'Facture disponible', detail: 'Quand une nouvelle facture t’attend.' },
     { cle: 'pack_fin', titre: 'Pack bientôt fini', detail: 'Quand il te reste peu de séances.' },
+    { cle: 'newsletter', titre: 'Lettre de mon coach', detail: 'Quand ton coach publie une nouvelle lettre.' },
   ],
 };

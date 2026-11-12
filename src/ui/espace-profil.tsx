@@ -1,6 +1,6 @@
 // Mon profil (bouton en haut de l'espace coach) : tout ce qui concerne le coach lui-même et ses réglages. Une seule liste
 // rangée par thème, comme Mon compte côté client ; toucher une ligne ouvre sa rubrique, « Mon profil » ramène à la liste.
-import { ArrowLeft, Bell, CalendarDays, ChevronRight, CreditCard, LogOut, RefreshCw, Tag, UserRound, type LucideIcon } from 'lucide-react-native';
+import { ArrowLeft, Bell, CalendarDays, ChevronRight, CreditCard, LogOut, Newspaper, RefreshCw, Tag, UserRound, type LucideIcon } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { demanderSortie } from '@/lib/brouillon';
@@ -11,11 +11,12 @@ import { Automatisations } from './crm/automatisations';
 import { MesRelances } from './crm/mes-relances';
 import { EnteteFactures } from './factures';
 import { MesOffres } from './offres/mes-offres';
+import { MesNewsletters } from './newsletters/mes-newsletters';
 import { AlertesTelephone } from './notifications/alertes';
 import { MonProfilCoach } from './profil-coach';
 import { couleurs, espace, polices } from './theme';
 
-export type SectionProfil = 'infos' | 'facturation' | 'offres' | 'agenda' | 'notifications' | 'relances';
+export type SectionProfil = 'infos' | 'facturation' | 'offres' | 'agenda' | 'notifications' | 'relances' | 'newsletters';
 export const SECTIONS_PROFIL: OngletDef<SectionProfil>[] = [
   { cle: 'infos', libelle: 'Mes infos' },
   { cle: 'facturation', libelle: 'Paiement et factures' },
@@ -23,6 +24,7 @@ export const SECTIONS_PROFIL: OngletDef<SectionProfil>[] = [
   { cle: 'agenda', libelle: 'Agenda' },
   { cle: 'notifications', libelle: 'Notifications' },
   { cle: 'relances', libelle: 'Mes relances' },
+  { cle: 'newsletters', libelle: 'Mes newsletters' },
 ];
 
 type Entree = { cle: SectionProfil; icone: LucideIcon; detail: string; fond: string; teinte: string };
@@ -32,6 +34,7 @@ const GROUPES: { titre: string; entrees: Entree[] }[] = [
     entrees: [
       { cle: 'offres', icone: Tag, detail: 'Packs, abonnements, prix', fond: '#FDE2E3', teinte: '#8E1015' },
       { cle: 'facturation', icone: CreditCard, detail: 'IBAN, Stripe, mentions des factures', fond: '#FFE7C7', teinte: '#6E3300' },
+      { cle: 'newsletters', icone: Newspaper, detail: 'Lettres illustrées pour mes clients actifs et en veille', fond: '#E0F4F4', teinte: '#0D5C5C' },
     ],
   },
   {
@@ -68,6 +71,7 @@ export function EspaceProfil({
         {section === 'offres' && <MesOffres />}
         {section === 'agenda' && <ReglagesAgendaCoach />}
         {section === 'notifications' && <AlertesTelephone role="coach" />}
+        {section === 'newsletters' && <MesNewsletters />}
         {section === 'relances' && (
           <>
             <MesRelances />
