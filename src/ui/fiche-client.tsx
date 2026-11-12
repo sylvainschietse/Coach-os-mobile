@@ -8,7 +8,6 @@ import { ProfilNutritionCarte } from './alimentation/profil';
 import { DetailClient } from './detail-client';
 import { SeancesRealisees } from './entrainement/bilan';
 import { EntrainementClient } from './entrainement/suivi-client';
-import { CaloriesDuJour } from './suivi/calories-jour';
 import { SeancesClientCoach } from './programmes/seances-client';
 import { Mensurations } from './suivi/mensurations';
 import { Photos } from './suivi/photos';
@@ -63,16 +62,6 @@ const PROGRAMME = [
   { cle: 'seances', libelle: 'Séances' },
   { cle: 'historique', libelle: 'Réalisé' },
 ] as const;
-/** Mêmes mots que l'onglet Suivi du client. */
-const SUIVI = [
-  { cle: 'mesures', libelle: 'Mensurations' },
-  { cle: 'quotidien', libelle: 'Quotidien' },
-  { cle: 'records', libelle: 'Performances' },
-  { cle: 'sport', libelle: 'Sport' },
-  { cle: 'calories', libelle: 'Calories' },
-  { cle: 'photos', libelle: 'Photos' },
-] as const;
-
 /** Volet Programme de la fiche : son entraînement semaine par semaine, ses séances et ce qu'il a réalisé. */
 export function ProgrammeClient({ clientId, coachId }: { clientId: string; coachId: string }) {
   const [onglet, setOnglet] = useState<(typeof PROGRAMME)[number]['cle']>('entrainement');
@@ -100,26 +89,6 @@ export function ProgrammeClient({ clientId, coachId }: { clientId: string; coach
           onOuvrirSuivis={() => router.setParams({ onglet: 'suivis', contact: undefined, volet: undefined })}
         />
       )}
-    </View>
-  );
-}
-
-/** Volet Suivi de la fiche : ce que le client saisit dans son onglet Suivi. */
-export function SuiviClient({ clientId }: { clientId: string }) {
-  const [onglet, setOnglet] = useState<(typeof SUIVI)[number]['cle']>('mesures');
-  return (
-    <View style={{ gap: espace(4), marginTop: espace(4) }}>
-      <Puces>
-        {SUIVI.map((o) => (
-          <Puce key={o.cle} libelle={o.libelle} actif={onglet === o.cle} onPress={() => setOnglet(o.cle)} />
-        ))}
-      </Puces>
-      {onglet === 'mesures' && <Mensurations clientId={clientId} parCoach />}
-      {onglet === 'quotidien' && <Quotidien clientId={clientId} cibles parCoach />}
-      {onglet === 'records' && <Records clientId={clientId} parCoach />}
-      {onglet === 'sport' && <Sport clientId={clientId} proprietaire={false} />}
-      {onglet === 'calories' && <CaloriesDuJour clientId={clientId} coach />}
-      {onglet === 'photos' && <Photos clientId={clientId} proprietaire={false} />}
     </View>
   );
 }

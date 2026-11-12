@@ -1,7 +1,7 @@
 // Suivi du client : mensurations, records et nutrition. Règles pures, sans écran ni base.
 import type { JournalNutrition, Mensuration, PlanNutrition, RealisationDetail, RecordPerso, UniteRecord } from './types';
 
-type ChampMensuration = Exclude<keyof Mensuration, 'id' | 'clientId' | 'date' | 'note'>;
+export type ChampMensuration = Exclude<keyof Mensuration, 'id' | 'clientId' | 'date' | 'note'>;
 
 export const CHAMPS_MENSURATIONS: { cle: ChampMensuration; libelle: string; unite: string; min: number; max: number }[] = [
   { cle: 'poidsKg', libelle: 'Poids', unite: 'kg', min: 20, max: 400 },

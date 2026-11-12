@@ -477,7 +477,7 @@ function Crm({
   const ouvrirContact = (id: string, volet?: VoletFiche) => router.setParams({ ...FERME, contact: id, volet });
   const ouvrirBooster = (b: Pick<Booster, 'id' | 'contactId'>) => router.setParams({ booster: b.id, bc: b.contactId });
   const nouveauBooster = (contactId?: string) => router.setParams({ booster: 'nouveau', bc: contactId });
-  const volet = VOLETS_FICHE.find((v) => v === params.volet) ?? 'fiche';
+  const volet = VOLETS_FICHE.find((v) => v === params.volet);
   const supprimerGestion = (x: ASupprimer) =>
     setASupprimer({
       quoi: QUOI[x.module],
