@@ -1,7 +1,8 @@
 // « Ma brochure » : le coach règle sa brochure des prix en voyant l'aperçu A4 changer en direct.
 // Couleur, textes du haut, offres rangées par blocs titrés, couleur de chaque carte, parties affichées.
 import { useDeferredValue, useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { brochure } from '@/data/brochure';
 import { factures } from '@/data/factures';
@@ -30,6 +31,7 @@ import { Bouton, Carte, Chargement, ChampTexte, SousTitre, Texte } from '../comp
 import { Selecteur } from '../coque';
 import { CaseACocher, Saisie } from '../crm/dossier';
 import { couleurs, espace, polices } from '../theme';
+import { DefilementClavier } from '../clavier';
 import { ApercuHtml } from './apercu-html';
 
 export const VISUELS_BROCHURE: VisuelsBrochure = {
@@ -40,6 +42,9 @@ export const VISUELS_BROCHURE: VisuelsBrochure = {
 
 /** Largeur d'une page A4 en pixels CSS (210 mm à 96 points par pouce). */
 const LARGEUR_A4 = 793.7;
+const hauteurA4 = (largeur: number) => Math.round((largeur * 297) / 210);
+/** À partir de cette largeur d'écran, l'aperçu se met à côté des réglages. */
+const LARGE = 900;
 
 /** Coordonnées du coach telles que la brochure les montre. */
 export function coachDeLaBrochure(profil: ReturnType<typeof useSession>['profil'], entete?: EnteteFacture) {
@@ -84,7 +89,9 @@ export function MaBrochure({ liste, lien, onFini }: { liste: Offre[]; lien: (id:
   const [r, setR] = useState<ReglagesBrochure>();
   const [entete, setEntete] = useState<EnteteFacture>();
   const [saisieCouleur, setSaisieCouleur] = useState('');
-  const [largeur, setLargeur] = useState(0);
+  const { width, height } = useWindowDimensions();
+  const marges = useSafeAreaInsets();
+  const [grand, setGrand] = useState(false);
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string>();
 
@@ -121,10 +128,12 @@ export function MaBrochure({ liste, lien, onFini }: { liste: Offre[]; lien: (id:
     else if (estCouleur(propre)) maj({ couleur: propre });
   };
 
-  const echelle = largeur / LARGEUR_A4;
-  const html = largeur
-    ? brochureHtml(enVente, coachDeLaBrochure(profil, entete), { ...VISUELS_BROCHURE, logo: entete?.logo, lien, reglages: differe, apercu: echelle })
-    : '';
+  const large = width >= LARGE;
+  // Aperçu : colonne fixe à côté des réglages sur grand écran ; vignette dans un coin sur téléphone, en grand au toucher.
+  const largeurApercu = large ? Math.min(420, Math.round(width * 0.36)) : Math.round(Math.min(width * 0.3, 150));
+  const largeurGrand = Math.min(width - 32, ((height - marges.top - marges.bottom - 120) * 210) / 297);
+  const page = (l: number) =>
+    brochureHtml(enVente, coachDeLaBrochure(profil, entete), { ...VISUELS_BROCHURE, logo: entete?.logo, lien, reglages: differe, apercu: l / LARGEUR_A4 });
   const groupes = groupesBrochure(enVente, r);
   const cachees = r.parBlocs ? enVente.filter((o) => !groupes.some((g) => g.offres.includes(o))) : [];
 
@@ -141,15 +150,13 @@ export function MaBrochure({ liste, lien, onFini }: { liste: Offre[]; lien: (id:
     }
   };
 
-  return (
+  const reglages = (
     <View style={{ gap: espace(3) }}>
-      <Carte>
-        <SousTitre>Ma brochure</SousTitre>
-        <Texte doux style={{ fontSize: 13 }}>Règle ta brochure ci-dessous : l’aperçu change en direct. Rien n’est gardé tant que tu n’as pas enregistré.</Texte>
-        <View onLayout={(e) => setLargeur(Math.floor(e.nativeEvent.layout.width))} style={{ width: '100%', alignItems: 'center' }}>
-          {largeur > 0 && <ApercuHtml html={html} largeur={largeur} hauteur={Math.round((largeur * 297) / 210)} />}
-        </View>
-      </Carte>
+      <Texte doux style={{ fontSize: 13 }}>
+        {large
+          ? 'L’aperçu à droite change en direct. Rien n’est gardé tant que tu n’as pas enregistré.'
+          : 'La vignette en bas à droite change en direct : touche-la pour la voir en grand. Rien n’est gardé tant que tu n’as pas enregistré.'}
+      </Texte>
 
       <Section titre="Ma couleur" aide="Titres, puces, badge « Mon conseil » et cartes « À ma couleur ».">
         <View style={{ flexDirection: 'row', gap: espace(3), flexWrap: 'wrap', alignItems: 'center' }}>
@@ -250,5 +257,45 @@ export function MaBrochure({ liste, lien, onFini }: { liste: Offre[]; lien: (id:
         desactive={occupe}
       />
     </View>
+  );
+
+  return (
+    <Modal visible animationType="slide" onRequestClose={onFini}>
+      <View style={{ flex: 1, backgroundColor: couleurs.fond, paddingTop: marges.top }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: espace(4), paddingVertical: espace(3), borderBottomWidth: 1, borderBottomColor: couleurs.bordure, backgroundColor: couleurs.carte }}>
+          <Text style={{ flex: 1, fontFamily: polices.texteGras, fontSize: 18, color: couleurs.texte }}>Ma brochure</Text>
+          <PetitBouton libelle="Fermer" onPress={onFini} desactive={occupe} />
+        </View>
+        <View style={{ flex: 1, flexDirection: large ? 'row' : 'column' }}>
+          <DefilementClavier style={{ flex: 1 }} contentContainerStyle={{ padding: espace(4), paddingBottom: large ? espace(6) : hauteurA4(largeurApercu) + espace(8) + marges.bottom }}>
+            <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center' }}>{reglages}</View>
+          </DefilementClavier>
+          {large ? (
+            <View style={{ width: largeurApercu + espace(8), padding: espace(4), borderLeftWidth: 1, borderLeftColor: couleurs.bordure, alignItems: 'center' }}>
+              <ApercuHtml html={page(largeurApercu)} largeur={largeurApercu} hauteur={hauteurA4(largeurApercu)} />
+            </View>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Voir l’aperçu en grand"
+              onPress={() => setGrand(true)}
+              style={{ position: 'absolute', right: espace(3), bottom: espace(3) + marges.bottom, borderRadius: 8, backgroundColor: couleurs.carte, padding: 3, boxShadow: '0 8px 24px rgba(17,17,17,0.28)' }}
+            >
+              {/* La vignette ne capte pas les gestes : un toucher l'ouvre en grand. */}
+              <View pointerEvents="none">
+                <ApercuHtml html={page(largeurApercu)} largeur={largeurApercu} hauteur={hauteurA4(largeurApercu)} />
+              </View>
+              <Text style={{ textAlign: 'center', fontFamily: polices.texteMoyen, fontSize: 11, color: couleurs.texteDoux, marginTop: 2 }}>Voir en grand</Text>
+            </Pressable>
+          )}
+        </View>
+        {grand && !large && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(17,18,22,0.85)', alignItems: 'center', justifyContent: 'center', gap: espace(3), paddingTop: marges.top, paddingBottom: marges.bottom }}>
+            <ApercuHtml html={page(largeurGrand)} largeur={largeurGrand} hauteur={hauteurA4(largeurGrand)} />
+            <PetitBouton libelle="Revenir aux réglages" onPress={() => setGrand(false)} />
+          </View>
+        )}
+      </View>
+    </Modal>
   );
 }
