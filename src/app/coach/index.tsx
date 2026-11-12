@@ -27,6 +27,7 @@ import { View, useWindowDimensions } from 'react-native';
 import { depot } from '@/data';
 import { abonnements } from '@/data/abonnements';
 import { crm, ecouterCrm } from '@/data/crm';
+import { relancesCoach } from '@/data/relances-coach';
 import { useSession } from '@/data/session';
 import { questionnairesATraiter, type Booster, type Contact } from '@/domain/crm';
 import { aEncaisser, encaissementsDuMois } from '@/domain/gestion';
@@ -52,6 +53,7 @@ import { Carte, Chargement, Erreur, Puce, Puces, Texte } from '@/ui/composants';
 import { Bilans, EditeurBilan } from '@/ui/crm/bilans';
 import { Boosters } from '@/ui/crm/boosters';
 import { BoutonCloche } from '@/ui/notifications/cloche';
+import { estAuto, REGLAGES_RELANCES } from '@/domain/relances-coach';
 import { EspaceProfil, SECTIONS_PROFIL, type SectionProfil } from '@/ui/espace-profil';
 import { BoutonMessages, useNonLus } from '@/ui/messagerie/conversation';
 import { ConversationsCoach } from '@/ui/messagerie/conversations-coach';
@@ -447,20 +449,26 @@ function Crm({
   const [maj, setMaj] = useState(() => new Date());
   const [suppression, setSuppression] = useState<{ booster: Booster; contact: Contact }>();
   const [aSupprimer, setASupprimer] = useState<{ quoi: string; nom: string; contact?: string; action: () => Promise<void> }>();
+  const { profil } = useSession();
+  const nomCoach = profil?.role === 'coach' ? profil.nom : 'ton coach';
   const charger = useCallback(async () => {
-    // Les abonnements du mois deviennent des lignes « En attente » avant de lire les paiements.
+    // Les abonnements du mois deviennent des lignes « En attente » avant de lire les paiements ; les relances du coach
+    // (Mes relances) arrivées aujourd'hui rejoignent « À faire ».
     await abonnements.preparerEcheances().catch(() => undefined);
-    const [contacts, journee, boosters, carnet, lienQuestionnaire] = await Promise.all([
+    await relancesCoach.preparer(nomCoach).catch(() => 0);
+    const [contacts, journee, boosters, carnet, lienQuestionnaire, reglagesRelances] = await Promise.all([
       crm.contacts(),
       crm.journee(),
       crm.boosters(),
       crm.carnet(),
       crm.lienQuestionnaire(),
+      relancesCoach.lire().catch(() => REGLAGES_RELANCES),
     ]);
     setMaj(new Date());
     return {
       contacts,
-      relances: journee.relances,
+      // Une relance prête à l'emploi que le coach a coupée n'arrive plus dans « À faire ».
+      relances: journee.relances.filter((r) => !(estAuto(r.modele) && reglagesRelances.coupees.includes(r.modele))),
       boosters,
       encaissements: encaissementsDuMois(carnet, new Date()),
       aEncaisser: aEncaisser(carnet),
@@ -468,7 +476,7 @@ function Crm({
       lienQuestionnaire,
       questionnaires: questionnairesATraiter(carnet),
     };
-  }, []);
+  }, [nomCoach]);
   const vue = useCharger(charger, 'vue-ensemble');
   useFocusEffect(vue.recharger);
   useRechargerSur(vue.recharger, ecouterCrm);

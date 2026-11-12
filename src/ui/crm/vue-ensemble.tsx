@@ -18,7 +18,7 @@ import { CeQuiSestPasse } from '../accueil/ce-qui-s-est-passe';
 import { BoutonContour } from '../coque';
 import { Carte } from '../composants';
 import { couleurs, espace, polices, univers, type CleUnivers } from '../theme';
-import { adresseQuestionnaire, CarteRelance, dateCourte, EnvoiMessage, jourLisible, nomComplet, useCoachNom } from './commun';
+import { adresseQuestionnaire, CarteRelance, useReglagesRelances, dateCourte, EnvoiMessage, jourLisible, nomComplet, useCoachNom } from './commun';
 
 export type DonneesVueEnsemble = {
   contacts: ContactResume[];
@@ -59,6 +59,7 @@ export function VueEnsemble({
 }) {
   const { width } = useWindowDimensions();
   const { profil } = useSession();
+  const reglagesRelances = useReglagesRelances();
   const coachId = profil?.role === 'coach' ? profil.coachId : '';
   const [tout, setTout] = useState(false);
   const [erreur, setErreur] = useState<string>();
@@ -135,7 +136,7 @@ export function VueEnsemble({
               {proposer === contact.id && relanceBooster(contact.id) && (
                 <EnvoiMessage
                   contact={contact}
-                  message={rediger('booster', contact, { coach })}
+                  message={rediger('booster', contact, { coach }, reglagesRelances.textes.booster)}
                   onEnvoye={() => agir(crm.terminerRelance(relanceBooster(contact.id)!.id))}
                 />
               )}

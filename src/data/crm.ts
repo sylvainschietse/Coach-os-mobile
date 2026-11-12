@@ -39,6 +39,8 @@ export interface DepotCrm {
   ajouterRelance(contactId: string, echeance: string, modele: ModeleMessage, note?: string): Promise<void>;
   terminerRelance(id: string): Promise<void>;
   reporterRelance(id: string, echeance: string): Promise<void>;
+  /** Relances du coach (Mes relances) arrivées aujourd'hui : une tâche « libre » chacune, titre = nom, note = message prêt. */
+  ajouterRelancesPerso(relances: { contactId: string; echeance: string; titre: string; note: string }[]): Promise<void>;
   /** Ouvre l'espace client (programmes, séances) et clôt les relances commerciales. */
   devenirClient(contactId: string): Promise<void>;
   /**
@@ -200,6 +202,8 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
     ajouterRelance: (contactId, echeance, modele, note) =>
       appliquer((c, ctx) => regles.ajouterRelance(c, contactId, echeance, modele, note, ctx)),
     terminerRelance: (id) => appliquer((c, ctx) => regles.terminerRelance(c, id, ctx)),
+    ajouterRelancesPerso: (relances) =>
+      appliquer((c, ctx) => ({ ...c, relances: [...c.relances, ...relances.map((r) => ({ ...r, id: ctx.nouvelId(), modele: 'libre' as const }))] })),
     reporterRelance: (id, echeance) => appliquer((c) => regles.reporterRelance(c, id, echeance)),
     async devenirClient(contactId) {
       const avant = await lire();
