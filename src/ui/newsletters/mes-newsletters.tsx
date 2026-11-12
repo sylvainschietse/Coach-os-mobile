@@ -23,6 +23,7 @@ import {
   type Newsletter,
   type Theme,
 } from '@/domain/newsletters';
+import ARTICLES_BRUTS from '@/domain/articles-newsletters.json';
 import { maintenantMs } from '@/lib/temps';
 import { messageErreur, useCharger, useRechargerSur } from '@/lib/useCharger';
 
@@ -33,6 +34,9 @@ import { ChampDate, ChampHeure } from '../date-heure';
 import { ApercuHtml } from '../offres/apercu-html';
 import { couleurs, espace, polices } from '../theme';
 import { CLES_ILLUSTRATIONS, ILLUSTRATIONS, octetsIllustration } from './illustrations';
+
+/** 20 articles complets et sourcés sur le sport et l'alimentation (environ 3 pages chacun). */
+const ARTICLES = ARTICLES_BRUTS as Theme[];
 
 /** L'illustration à l'écran : un thème livré, une photo choisie (pas encore rangée), ou celle déjà rangée. */
 type Illustration = { quoi: 'theme'; cle: string } | { quoi: 'photo'; base64: string } | { quoi: 'rangee'; chemin: string } | null;
@@ -73,7 +77,7 @@ const vierge = (): Newsletter => ({
   nbNotifs: 0,
   creeLe: '',
 });
-const depuisTheme = (t: Theme): Newsletter => ({ ...vierge(), rubrique: t.rubrique, objet: t.objet, chapeau: t.chapeau, message: t.message, cibles: [t.pour], image: `theme:${t.cle}` });
+const depuisTheme = (t: Theme): Newsletter => ({ ...vierge(), rubrique: t.rubrique, objet: t.objet, chapeau: t.chapeau, message: t.message, cibles: [t.pour], image: `theme:${t.illustration ?? t.cle}` });
 
 function illustrationDe(n: Newsletter): Illustration {
   const cle = cleThemeImage(n.image);
@@ -133,6 +137,34 @@ export function MesNewsletters() {
             </View>
           ),
       )}
+
+      <View style={{ gap: espace(2) }}>
+        <Text style={styles.groupe}>Articles complets · sport et alimentation</Text>
+        <Text style={styles.detail}>20 articles d’environ 3 pages, documentés et sourcés. Touche-en un pour le relire, l’adapter et le programmer.</Text>
+        {CIBLES.map((cible) => (
+          <View key={cible.cle} style={{ gap: espace(2) }}>
+            <Text style={styles.sousGroupe}>{cible.cle === 'clients' ? 'Pour les clients actifs' : 'Pour les clients en veille'}</Text>
+            {ARTICLES.filter((t) => t.pour === cible.cle).map((t) => (
+              <Pressable
+                key={t.cle}
+                accessibilityRole="button"
+                accessibilityLabel={`Article : ${t.rubrique}, ${t.objet}`}
+                onPress={() => setOuverte(depuisTheme(t))}
+                style={({ pressed }) => [styles.ligne, pressed && { backgroundColor: couleurs.discret }]}
+              >
+                <Image source={ILLUSTRATIONS[t.illustration ?? t.cle]} style={styles.vignette} resizeMode="cover" />
+                <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+                  <Text style={styles.rubrique}>{t.rubrique}</Text>
+                  <Text style={styles.titre} numberOfLines={3}>
+                    {t.objet.replace('{prenom}', 'Léa')}
+                  </Text>
+                  <Text style={styles.detail}>{Math.max(1, Math.round(t.message.length / 2600))} pages · sources citées</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        ))}
+      </View>
 
       <View style={{ gap: espace(2) }}>
         <Text style={styles.groupe}>Idées de sujets</Text>

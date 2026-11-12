@@ -104,3 +104,17 @@ describe('newsletters', () => {
     expect(THEMES.filter((t) => t.pour === 'veille').length).toBeGreaterThan(3);
   });
 });
+
+describe('articles complets', () => {
+  it('les 20 articles sont prêts à partir, avec une illustration livrée et des sources', async () => {
+    const articles = (await import('@/domain/articles-newsletters.json')).default as { cle: string; pour: 'clients' | 'veille'; rubrique: string; objet: string; chapeau: string; message: string; illustration: string }[];
+    expect(articles).toHaveLength(20);
+    for (const a of articles) {
+      expect(erreurNewsletter({ ...a, cibles: [a.pour], parEmail: true, parNotif: true })).toBeNull();
+      expect(() => readFileSync(join(__dirname, '../assets/newsletters', `${a.illustration}.jpg`))).not.toThrow();
+      expect(a.message).toMatch(/## Sources\n+- .+https:\/\//);
+    }
+    const m = mailNewsletter(articles[0], { coach: 'S', desabonnement: 'https://d' });
+    expect(m.html).toMatch(/<a href="https:\/\/www\.who\.int\/[^"]+"/);
+  });
+});

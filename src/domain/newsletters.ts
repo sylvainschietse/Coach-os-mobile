@@ -183,6 +183,8 @@ export function mailNewsletter(a: Article, v: { prenom?: string; coach: string; 
   const numero = numeroDe(v.quand);
   const pied = `Tu reçois cette lettre parce que tu es suivi(e) par ${v.coach}.`;
   const t = (x: string) => echapper(x).replace(/\n/g, '<br>');
+  // Les adresses citées (sources) deviennent cliquables ; la ponctuation finale reste hors du lien.
+  const liens = (x: string) => t(x).replace(/https:\/\/[^\s<]+[^\s<.,;:!?)»]/g, (u) => `<a href="${u}" style="color:#9F1418;word-break:break-all">${u}</a>`);
   const corps = blocs
     .map((b, i) => {
       if (b.type === 'intertitre')
@@ -191,12 +193,12 @@ export function mailNewsletter(a: Article, v: { prenom?: string; coach: string; 
         return `<p style="margin:26px 0;padding:4px 0 4px 18px;border-left:4px solid #C3181E;font-family:${SERIF};font-style:italic;font-size:22px;line-height:1.4;color:#9F1418">« ${t(b.texte)} »</p>`;
       if (b.type === 'liste')
         return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 18px">${b.points
-          .map((x) => `<tr><td valign="top" style="padding:3px 12px 3px 0;font-size:17px;line-height:1.6;color:#C3181E">●</td><td style="padding:3px 0;font-family:${SERIF};font-size:17px;line-height:1.6;color:#2A2C33">${t(x)}</td></tr>`)
+          .map((x) => `<tr><td valign="top" style="padding:3px 12px 3px 0;font-size:17px;line-height:1.6;color:#C3181E">●</td><td style="padding:3px 0;font-family:${SERIF};font-size:17px;line-height:1.6;color:#2A2C33">${liens(x)}</td></tr>`)
           .join('')}</table>`;
       // Le premier paragraphe commence par une lettrine.
       if (i === 0 && !chapeau && b.texte.length > 1)
         return `<p style="margin:0 0 18px;font-family:${SERIF};font-size:17px;line-height:1.7;color:#2A2C33"><span style="float:left;font-size:52px;line-height:44px;padding:6px 8px 0 0;color:#C3181E;font-family:${SERIF}">${echapper(b.texte[0])}</span>${t(b.texte.slice(1))}</p>`;
-      return `<p style="margin:0 0 18px;font-family:${SERIF};font-size:17px;line-height:1.7;color:#2A2C33">${t(b.texte)}</p>`;
+      return `<p style="margin:0 0 18px;font-family:${SERIF};font-size:17px;line-height:1.7;color:#2A2C33">${liens(b.texte)}</p>`;
     })
     .join('');
   const html = [
@@ -258,6 +260,8 @@ export function corpsBrevoNewsletter(expediteur: { email: string; nom: string },
 /** Idées de newsletters prêtes à adapter, chacune avec son illustration : un geste pour partir d'un vrai article. */
 export interface Theme {
   cle: string;
+  /** Clé de l'illustration ; absente, celle du thème (cle). */
+  illustration?: string;
   pour: Cible;
   rubrique: string;
   objet: string;
