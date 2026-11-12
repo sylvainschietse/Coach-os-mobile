@@ -1,8 +1,10 @@
-// Espace client : barre du bas Accueil / Programme / Suivi / Nutrition / Moi, sous-rubriques Suivi et Nutrition. Sert aussi à l'aperçu « Vue client » du coach.
+// Espace client : barre du bas Aujourd'hui / Entraînement / Progrès / Nutrition, sans sous-onglets. « Mon compte » s'ouvre
+// depuis l'avatar de l'en-tête. Progrès est une page de cartes : chacune ouvre sa rubrique, avec un retour.
+// Sert aussi à l'aperçu « Vue client » du coach.
 import { useFocusEffect } from 'expo-router';
-import { Dumbbell, Home, TrendingUp, User, Utensils } from 'lucide-react-native';
+import { Award, CalendarCheck, ChevronLeft, ChevronRight, Dumbbell, Home, Moon, Ruler, Target, TrendingUp, Utensils, Watch, type LucideIcon } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { depot } from '@/data';
 import { abonnements } from '@/data/abonnements';
@@ -18,12 +20,13 @@ import { useMinuteurs } from './entrainement/minuteurs';
 import { CarteMessages } from './messagerie/conversation';
 import { MonCompte } from './mon-compte';
 import { NutritionProfil } from './nutrition/nutrition';
-import { BandeauDemo, BarreClient, Hero, Selecteur, SousNav, type OngletDef } from './coque';
-import { Carte, Puce, Puces, Texte } from './composants';
+import { BandeauDemo, BarreClient, Hero, Selecteur, type OngletDef } from './coque';
+import { Carte, Texte } from './composants';
+import { CarteBadges, CarteSerie, FeteBadges, MesBadges } from './motivation/badges';
+import { TuilesDuJour } from './suivi/calories-jour';
+import { MaJournee } from './suivi/ma-journee';
 import { BilanSemaine } from './suivi/bilan-semaine';
-import { CaloriesDuJour } from './suivi/calories-jour';
 import { Mensurations } from './suivi/mensurations';
-import { MesSeances } from './suivi/mes-seances';
 import { Objectifs } from './suivi/objectifs';
 import { Photos } from './suivi/photos';
 import { Quotidien } from './suivi/quotidien';
@@ -33,15 +36,15 @@ import { AjoutActiviteLibre } from './suivi/activite-libre';
 import { couleurs, espace, LARGEUR_CLIENT, polices, univers, type CleUnivers } from './theme';
 import { UniversPage } from './univers';
 
+/** « moi » n'est plus dans la barre : c'est la page Mon compte, ouverte depuis l'avatar (ou un lien qui la demande). */
 export type OngletClient = 'accueil' | 'programme' | 'suivi' | 'nutrition' | 'moi';
-type RubriqueSuivi = 'seances' | 'calories' | 'hebdo' | 'mesures' | 'pr' | 'activite';
+type RubriqueProgres = 'badges' | 'hebdo' | 'mesures' | 'pr' | 'quotidien' | 'objectifs' | 'sport';
 
 const ONGLETS: OngletDef<OngletClient>[] = [
-  { cle: 'accueil', libelle: 'Accueil', icone: Home },
-  { cle: 'programme', libelle: 'Programme', icone: Dumbbell },
-  { cle: 'suivi', libelle: 'Suivi', icone: TrendingUp },
+  { cle: 'accueil', libelle: 'Aujourd’hui', icone: Home },
+  { cle: 'programme', libelle: 'Entraînement', icone: Dumbbell },
+  { cle: 'suivi', libelle: 'Progrès', icone: TrendingUp },
   { cle: 'nutrition', libelle: 'Nutrition', icone: Utensils },
-  { cle: 'moi', libelle: 'Moi', icone: User },
 ];
 /** La couleur de chaque onglet : rouge pour l'entraînement, bleu pour le suivi, vert pour la nutrition, rouge et doré pour soi. */
 export const UNIVERS_CLIENT: Record<OngletClient, CleUnivers> = {
@@ -53,14 +56,24 @@ export const UNIVERS_CLIENT: Record<OngletClient, CleUnivers> = {
 };
 const universDe = (o: OngletClient) => univers[UNIVERS_CLIENT[o]];
 
-const SUIVI: OngletDef<RubriqueSuivi>[] = [
-  { cle: 'seances', libelle: 'Mes séances' },
-  { cle: 'calories', libelle: 'Mes calories' },
-  { cle: 'hebdo', libelle: 'Bilan semaine' },
-  { cle: 'mesures', libelle: 'Mensurations et photos' },
-  { cle: 'pr', libelle: 'Performances' },
-  { cle: 'activite', libelle: 'Activité et objectifs' },
+/** Les cartes de Progrès, chacune dans sa couleur. */
+const RUBRIQUES: { cle: Exclude<RubriqueProgres, 'badges'>; titre: string; detail: string; icone: LucideIcon; fond: string; encre: string; accent: string }[] = [
+  { cle: 'hebdo', titre: 'Ma semaine', detail: 'Le bilan à remplir pour ton coach', icone: CalendarCheck, fond: '#2F4CC0', encre: '#FFFFFF', accent: '#C4D0FA' },
+  { cle: 'mesures', titre: 'Mon corps', detail: 'Mesures, courbes et photos', icone: Ruler, fond: '#E2E8FF', encre: '#1A2D73', accent: '#2F4CC0' },
+  { cle: 'pr', titre: 'Mes records', detail: 'Tes meilleures perfs', icone: Award, fond: '#FFF1CC', encre: '#5C3800', accent: '#8A5A00' },
+  { cle: 'quotidien', titre: 'Ma journée', detail: 'Sommeil, eau, stress, énergie…', icone: Moon, fond: '#EFEAFF', encre: '#33236E', accent: '#6B4BC9' },
+  { cle: 'objectifs', titre: 'Mes objectifs', detail: 'Tes défis perso, avec une date', icone: Target, fond: '#DDF3E5', encre: '#0F4D2A', accent: '#1B7A45' },
+  { cle: 'sport', titre: 'Synchroniser ma montre', detail: 'Pas, sommeil et sorties', icone: Watch, fond: '#1B1D24', encre: '#FFFFFF', accent: '#8FA8FF' },
 ];
+const TITRES: Record<RubriqueProgres, string> = {
+  badges: 'Mes badges',
+  hebdo: 'Ma semaine',
+  mesures: 'Mon corps',
+  pr: 'Mes records',
+  quotidien: 'Ma journée',
+  objectifs: 'Mes objectifs',
+  sport: 'Ma montre et mon sport',
+};
 
 export interface Apercu {
   clients: { id: string; prenom: string }[];
@@ -73,7 +86,9 @@ export function EspaceClient({
   apercu,
   ongletInitial = 'accueil',
   versAccueil = 0,
+  versCompte = 0,
   onOnglet,
+  onDeconnecter,
 }: {
   clientId: string;
   prenom: string;
@@ -82,6 +97,10 @@ export function EspaceClient({
   ongletInitial?: OngletClient;
   /** Change à chaque toucher du logo : l'espace revient à l'accueil. */
   versAccueil?: number;
+  /** Change à chaque toucher de l'avatar : Mon compte s'ouvre. */
+  versCompte?: number;
+  /** « Se déconnecter », en bas de Mon compte. */
+  onDeconnecter?: () => void;
   /** L'en-tête de l'écran prend la couleur de l'onglet ouvert. */
   onOnglet?: (o: OngletClient) => void;
 }) {
@@ -97,7 +116,15 @@ export function EspaceClient({
     setAccueilVu(versAccueil);
     setOnglet('accueil');
   }
-  const [suivi, setSuivi] = useState<RubriqueSuivi>('seances');
+  const [compteVu, setCompteVu] = useState(versCompte);
+  // L'onglet d'où l'on vient : « Retour » de Mon compte y ramène.
+  const [avantCompte, setAvantCompte] = useState<OngletClient>('accueil');
+  if (versCompte !== compteVu) {
+    setCompteVu(versCompte);
+    if (onglet !== 'moi') setAvantCompte(onglet);
+    setOnglet('moi');
+  }
+  const [rubrique, setRubrique] = useState<RubriqueProgres | null>(null);
   const minuteurs = useMinuteurs();
   const defilement = useRef<ComponentRef<typeof ScrollView>>(null);
   const abo = useCharger(() => abonnements.lire(clientId), `abo-${clientId}`);
@@ -108,8 +135,15 @@ export function EspaceClient({
   }, [accueilVu, enHaut]);
   const aller = (o: OngletClient) => {
     setOnglet(o);
+    setRubrique(null);
     enHaut();
   };
+  const ouvrir = (r: RubriqueProgres | null) =>
+    demanderSortie(() => {
+      setOnglet('suivi');
+      setRubrique(r);
+      enHaut();
+    });
   useEffect(() => onOnglet?.(onglet), [onglet, onOnglet]);
 
   return (
@@ -127,13 +161,15 @@ export function EspaceClient({
                 valeur={clientId}
                 onChange={(id) => demanderSortie(() => apercu.onChoisir(id))}
               />
+              <Pressable accessibilityRole="button" onPress={() => demanderSortie(() => (setAvantCompte(onglet === 'moi' ? 'accueil' : onglet), setOnglet('moi'), enHaut()))} style={{ minHeight: 44, justifyContent: 'center' }}>
+                <Text style={{ fontSize: 14, fontFamily: polices.texteMoyen, color: couleurs.rouge }}>Voir son compte (formule, factures, documents) ›</Text>
+              </Pressable>
             </View>
           )}
           {(onglet === 'accueil' || onglet === 'programme') && (
             <>
               <EnAttente clientId={clientId} apercu={!!apercu} />
-              {onglet === 'accueil' && !apercu && <CarteMessages clientId={clientId} />}
-              {onglet === 'accueil' && !apercu && <MesRendezVous clientId={clientId} />}
+              {onglet === 'accueil' && !apercu && <FeteBadges clientId={clientId} />}
               <EntrainementClient
                 key={`${clientId}:${onglet}`}
                 clientId={clientId}
@@ -143,34 +179,65 @@ export function EspaceClient({
                 onRepos={(secondes, libelle) => minuteurs?.repos(secondes, libelle)}
                 onHaut={enHaut}
                 onProgramme={() => aller('programme')}
+                milieu={
+                  onglet === 'accueil' && (
+                    <>
+                      <CarteSerie clientId={clientId} onOuvrir={() => ouvrir('badges')} />
+                      <TuilesDuJour clientId={clientId} onOuvrir={() => demanderSortie(() => aller('nutrition'))} />
+                      <MaJournee clientId={clientId} onNoter={() => ouvrir('quotidien')} />
+                      {!apercu && <CarteMessages clientId={clientId} />}
+                    </>
+                  )
+                }
               />
+              {onglet === 'accueil' && !apercu && <MesRendezVous clientId={clientId} />}
               {/* Un cours de RPM, une séance à lui : le client déclare ce qu'il a fait en dehors du programme. */}
               {onglet === 'accueil' && !apercu && <AjoutActiviteLibre clientId={clientId} />}
               {onglet === 'accueil' && <SeancesRestantes clientId={clientId} />}
             </>
           )}
-          {onglet === 'suivi' && (
+          {onglet === 'suivi' && !rubrique && (
             <>
-              <Hero kicker="Ma progression" titre="Mon suivi" sousTitre="Tes séances, tes mesures et tes records, semaine après semaine." />
-              <SousNav nom="Rubriques du suivi" grille="suivi" onglets={SUIVI} valeur={suivi} onChange={(r) => demanderSortie(() => setSuivi(r))} />
-              {/* Le tableau semaine par semaine et « Ajouter une séance » : tout ce que le client a fait, au même endroit. */}
-              {suivi === 'seances' && <MesSeances key={clientId} clientId={clientId} apercu={!!apercu} />}
-              {/* Dépense du jour (métabolisme, pas, séances, activités) face à ce qu'il mange et à son objectif. */}
-              {suivi === 'calories' && <CaloriesDuJour key={clientId} clientId={clientId} coach={!!apercu} />}
-              {suivi === 'hebdo' && <BilanSemaine key={clientId} clientId={clientId} apercu={!!apercu} />}
+              <Hero kicker="Ma progression" titre="Mes progrès" sousTitre="Tes badges, ton corps, tes records et ton quotidien, semaine après semaine." />
+              <CarteBadges clientId={clientId} onOuvrir={() => ouvrir('badges')} />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 }}>
+                {RUBRIQUES.map((r) => (
+                  <View key={r.cle} style={{ width: r.cle === 'hebdo' || r.cle === 'sport' ? '100%' : '50%', padding: 6 }}>
+                    <CarteRubrique {...r} large={r.cle === 'hebdo' || r.cle === 'sport'} onPress={() => ouvrir(r.cle)} />
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+          {onglet === 'suivi' && rubrique && (
+            <>
+              <Retour libelle="Mes progrès" onPress={() => ouvrir(null)} />
+              <Text accessibilityRole="header" style={{ fontFamily: polices.titre, fontSize: 38, color: couleurs.texte, marginTop: -8 }}>
+                {TITRES[rubrique]}
+              </Text>
+              {rubrique === 'badges' && <MesBadges key={clientId} clientId={clientId} />}
+              {rubrique === 'hebdo' && <BilanSemaine key={clientId} clientId={clientId} apercu={!!apercu} />}
               {/* Les photos de progression accompagnent les mesures : une seule rubrique. */}
-              {suivi === 'mesures' && (
+              {rubrique === 'mesures' && (
                 <View style={{ gap: espace(6) }}>
                   <Mensurations key={clientId} clientId={clientId} />
                   <Photos key={`photos-${clientId}`} clientId={clientId} proprietaire={!apercu} />
                 </View>
               )}
-              {suivi === 'pr' && <Records key={clientId} clientId={clientId} />}
-              {suivi === 'activite' && <ActiviteObjectifs key={clientId} clientId={clientId} apercu={!!apercu} />}
+              {rubrique === 'pr' && <Records key={clientId} clientId={clientId} />}
+              {/* En aperçu, le coach peut aussi noter une journée pour son client (pendant une séance, par exemple). */}
+              {rubrique === 'quotidien' && <Quotidien key={clientId} clientId={clientId} cibles parCoach={!!apercu} />}
+              {rubrique === 'objectifs' && <Objectifs key={clientId} clientId={clientId} apercu={!!apercu} />}
+              {rubrique === 'sport' && <Sport key={clientId} clientId={clientId} proprietaire={!apercu} />}
             </>
           )}
           {onglet === 'nutrition' && abo.donnee && <NutritionProfil key={clientId} clientId={clientId} optionNutrition={abo.donnee.optionNutrition} />}
-          {onglet === 'moi' && <MonCompte key={clientId} clientId={clientId} prenom={prenom} apercu={!!apercu} />}
+          {onglet === 'moi' && (
+            <>
+              <Retour libelle="Retour" onPress={() => aller(avantCompte)} />
+              <MonCompte key={clientId} clientId={clientId} prenom={prenom} apercu={!!apercu} onOuvrirMontre={() => ouvrir('sport')} onOuvrirQuotidien={() => ouvrir('quotidien')} onDeconnecter={onDeconnecter} />
+            </>
+          )}
         </View>
       </DefilementClavier>
       <BarreClient onglets={ONGLETS} valeur={onglet} universDe={universDe} onChange={(o) => demanderSortie(() => aller(o))} />
@@ -179,25 +246,60 @@ export function EspaceClient({
   );
 }
 
-/** Activité et objectifs : le quotidien (pas, eau, sommeil…), le sport synchronisé et les objectifs personnels à échéance. */
-function ActiviteObjectifs({ clientId, apercu }: { clientId: string; apercu: boolean }) {
-  const [vue, setVue] = useState<'quotidien' | 'sport' | 'perso'>('quotidien');
+function CarteRubrique({
+  titre,
+  detail,
+  icone: Icone,
+  fond,
+  encre,
+  accent,
+  large,
+  onPress,
+}: {
+  titre: string;
+  detail: string;
+  icone: LucideIcon;
+  fond: string;
+  encre: string;
+  accent: string;
+  large?: boolean;
+  onPress: () => void;
+}) {
   return (
-    <>
-      <Puces>
-        <Puce libelle="Au quotidien" actif={vue === 'quotidien'} onPress={() => demanderSortie(() => setVue('quotidien'))} />
-        <Puce libelle="Sport" actif={vue === 'sport'} onPress={() => demanderSortie(() => setVue('sport'))} />
-        <Puce libelle="Mes objectifs perso" actif={vue === 'perso'} onPress={() => demanderSortie(() => setVue('perso'))} />
-      </Puces>
-      {vue === 'quotidien' ? (
-        // En aperçu, le coach peut aussi noter une journée pour son client (pendant une séance, par exemple).
-        <Quotidien clientId={clientId} cibles parCoach={apercu} />
-      ) : vue === 'sport' ? (
-        <Sport clientId={clientId} proprietaire={!apercu} />
-      ) : (
-        <Objectifs clientId={clientId} apercu={apercu} />
-      )}
-    </>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${titre} : ${detail}`}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minHeight: large ? 76 : 118,
+        borderRadius: 22,
+        padding: 16,
+        gap: large ? 12 : 10,
+        flexDirection: large ? 'row' : 'column',
+        alignItems: large ? 'center' : 'flex-start',
+        backgroundColor: fond,
+        opacity: pressed ? 0.85 : 1,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
+      })}
+    >
+      <View style={{ width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: encre === '#FFFFFF' ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.75)' }}>
+        <Icone size={22} color={accent} />
+      </View>
+      <View style={{ flex: large ? 1 : undefined, gap: 2 }}>
+        <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: encre }}>{titre}</Text>
+        <Text style={{ fontFamily: polices.texte, fontSize: 13, color: encre, opacity: 0.8 }}>{detail}</Text>
+      </View>
+      {large && <ChevronRight size={20} color={accent} />}
+    </Pressable>
+  );
+}
+
+function Retour({ libelle, onPress }: { libelle: string; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', minHeight: 44 }}>
+      <ChevronLeft size={20} color={couleurs.texte} />
+      <Text style={{ fontFamily: polices.texteMoyen, fontSize: 15, color: couleurs.texte }}>{libelle}</Text>
+    </Pressable>
   );
 }
 

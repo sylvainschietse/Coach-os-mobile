@@ -446,7 +446,8 @@ export function BarreClient<T extends string>({
               accessibilityState={{ selected: actif }}
               aria-selected={actif}
               aria-current={actif ? 'page' : undefined}
-              onPress={() => !actif && onChange(o.cle)}
+              // Toucher l'onglet ouvert ramène à son début (Progrès : la page des cartes).
+              onPress={() => onChange(o.cle)}
               style={[styles.barreBouton, actif && { backgroundColor: u?.clair ?? 'rgba(195, 24, 30, 0.065)' }]}
             >
               {actif && <View style={[styles.barreTrait, { backgroundColor: teinte, backgroundImage: u?.degrade }]} />}
