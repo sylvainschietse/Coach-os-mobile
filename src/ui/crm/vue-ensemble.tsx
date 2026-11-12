@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { crm } from '@/data/crm';
-import { ajouterJours, jourLocal, MODELES, rediger, statutBooster, type BoosterDossier, type ContactResume, type QuestionnaireATraiter, type RelanceAFaire } from '@/domain/crm';
+import { ajouterJours, jourLocal, MODELES, rediger, statutBooster, type BoosterDossier, type Carnet, type ContactResume, type QuestionnaireATraiter, type RelanceAFaire } from '@/domain/crm';
 import { decalerMois, moisDe, nomMois } from '@/domain/bilan-mois';
-import { montantLisible } from '@/domain/gestion';
+import { aEncaisserDuMois, encaissementsDuMois, montantLisible } from '@/domain/gestion';
 
 import { useSession } from '@/data/session';
+import { suiviHebdo } from '@/data/suivi-hebdo';
+import { aVerifier } from '@/domain/suivi-hebdo';
+import { useCharger } from '@/lib/useCharger';
 
 import { AgendaCoach } from '../agenda/agenda-coach';
 import { CeQuiSestPasse } from '../accueil/ce-qui-s-est-passe';
@@ -23,6 +26,8 @@ export type DonneesVueEnsemble = {
   boosters: BoosterDossier[];
   encaissements: number;
   aEncaisser: number;
+  /** Pour feuilleter les mois passés dans le bloc Encaissé / À encaisser. */
+  carnet: Carnet;
   lienQuestionnaire: string | null;
   /** Réponses reçues, Booster pas encore planifié. */
   questionnaires: QuestionnaireATraiter[];
@@ -38,6 +43,7 @@ export function VueEnsemble({
   onPlanifierBooster,
   onCycles,
   onAgenda,
+  onBilansSemaine,
 }: {
   donnees: DonneesVueEnsemble;
   onRubrique: (r: 'Contacts' | 'Boosters' | 'Paiements' | 'Bilan') => void;
@@ -48,6 +54,8 @@ export function VueEnsemble({
   onPlanifierBooster: (contactId: string) => void;
   onCycles: () => void;
   onAgenda: () => void;
+  /** Clients › Bilans de la semaine. */
+  onBilansSemaine: () => void;
 }) {
   const { width } = useWindowDimensions();
   const { profil } = useSession();
@@ -58,8 +66,18 @@ export function VueEnsemble({
     setErreur(undefined);
     action.catch((e) => setErreur(e instanceof Error ? e.message : 'Action non confirmée'));
   };
+  // Bilans de la semaine envoyés par les clients et pas encore relus : rappelés ici, à côté des autres choses à faire.
+  const bilans = useCharger(() => suiviHebdo.bilansCoach(), 'bilans-hebdo');
+  const bilansARelire = bilans.donnee?.filter(aVerifier).length ?? 0;
   const enRetard = donnees.relances.filter((r) => r.enRetard).length;
   const [proposer, setProposer] = useState<string>();
+  // Mois affiché par le bloc Encaissé / À encaisser : le mois en cours, puis les précédents avec les flèches.
+  const moisCourant = moisDe(new Date());
+  const [mois, setMois] = useState(moisCourant);
+  const [a, m] = mois.split('-').map(Number);
+  const encaisse = mois === moisCourant ? donnees.encaissements : encaissementsDuMois(donnees.carnet, new Date(a, m - 1, 15));
+  // Mois en cours : tout ce qui reste « En attente » ; mois passé : ce qui était attendu ce mois-là et ne l'est toujours pas.
+  const attendu = mois === moisCourant ? donnees.aEncaisser : aEncaisserDuMois(donnees.carnet, mois);
   const coach = useCoachNom();
   // La relance « Proposer une séance Booster » d'un contact qui vient de répondre est dans la carte des nouvelles réponses :
   // pas deux fois à l'écran.
@@ -125,6 +143,19 @@ export function VueEnsemble({
           ))}
         </Carte>
       )}
+      {bilansARelire > 0 && (
+        <Pressable accessibilityRole="button" onPress={onBilansSemaine}>
+          <Carte style={{ padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, backgroundColor: univers.bleu.clair, borderColor: univers.bleu.clair }}>
+            <View style={{ flexShrink: 1 }}>
+              <Text style={[titreCarte, { marginBottom: 2 }]}>
+                {bilansARelire} bilan{bilansARelire > 1 ? 's' : ''} de la semaine à relire
+              </Text>
+              <Text style={ligneDoux}>Sommeil, stress, énergie et ressenti envoyés par tes clients.</Text>
+            </View>
+            <BoutonContour libelle="Relire" onPress={onBilansSemaine} />
+          </Carte>
+        </Pressable>
+      )}
       {/* Les cinq chiffres dans une seule carte : deux rangées de petites cases, chacune ouvre sa rubrique. */}
       <Carte style={{ padding: 16 }}>
         <Text style={[titreCarte, { marginBottom: 12 }]}>En bref</Text>
@@ -134,11 +165,17 @@ export function VueEnsemble({
             <Chiffre teinte="bleu" libelle="Boosters" valeur={String(prochains.length)} onPress={() => onRubrique('Boosters')} />
             <Chiffre teinte="rouge" libelle="En retard" valeur={String(enRetard)} alerte={enRetard > 0} />
           </View>
+          {/* Flèches : feuilleter les mois passés, sans quitter l'accueil. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+            <FlecheMois sens="‹" nom="Mois précédent" onPress={() => setMois(decalerMois(mois, -1))} />
+            <Text style={{ fontFamily: polices.texteGras, fontSize: 14, color: univers.ambre.fonce, textTransform: 'capitalize' }}>{nomMois(mois)}</Text>
+            <FlecheMois sens="›" nom="Mois suivant" desactive={mois >= moisCourant} onPress={() => setMois(decalerMois(mois, 1))} />
+          </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            {/* Paiements « Payé » datés du mois en cours. */}
-            <Chiffre teinte="ambre" libelle="Encaissé ce mois" valeur={montantLisible(donnees.encaissements)} onPress={() => onRubrique('Paiements')} />
+            {/* Paiements « Payé » datés du mois affiché. */}
+            <Chiffre teinte="ambre" libelle="Encaissé" valeur={montantLisible(encaisse)} onPress={() => onRubrique('Paiements')} />
             {/* Paiements « En attente » : abonnements du mois et packs vendus, à passer en « Payé » une fois reçus. */}
-            <Chiffre teinte="ambre" libelle="À encaisser" valeur={montantLisible(donnees.aEncaisser)} alerte={donnees.aEncaisser > 0} onPress={() => onRubrique('Paiements')} />
+            <Chiffre teinte="ambre" libelle="À encaisser" valeur={montantLisible(attendu)} alerte={attendu > 0} onPress={() => onRubrique('Paiements')} />
           </View>
         </View>
       </Carte>
@@ -214,6 +251,22 @@ export function VueEnsemble({
  * Une case de la carte « En bref » : libellé discret, chiffre en gras ; rouge quand il demande une action. Le fond pâle
  * et le halo dans le coin donnent la couleur de son univers (ambre l'argent, bleu les rendez-vous…).
  */
+function FlecheMois({ sens, nom, desactive, onPress }: { sens: string; nom: string; desactive?: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={nom}
+      accessibilityState={{ disabled: !!desactive }}
+      disabled={desactive}
+      onPress={onPress}
+      hitSlop={6}
+      style={{ width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: univers.ambre.clair, opacity: desactive ? 0.35 : 1 }}
+    >
+      <Text style={{ fontFamily: polices.texteGras, fontSize: 18, color: univers.ambre.fonce }}>{sens}</Text>
+    </Pressable>
+  );
+}
+
 function Chiffre({ libelle, valeur, onPress, alerte, teinte }: { libelle: string; valeur: string; onPress?: () => void; alerte?: boolean; teinte: CleUnivers }) {
   const u = univers[teinte];
   return (

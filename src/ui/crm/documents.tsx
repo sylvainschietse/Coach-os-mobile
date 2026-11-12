@@ -23,7 +23,7 @@ import {
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Selecteur, Vide } from '../coque';
-import { Chargement, Erreur } from '../composants';
+import { Chargement, Erreur, Puce, Puces } from '../composants';
 import { choisirFichier, ouvrirFichier } from '../fichiers';
 import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
@@ -64,6 +64,8 @@ export function Documents({
 }) {
   const charge = useDonnees();
   const [recherche, setRecherche] = useState('');
+  // Factures, bilans, plans d'action… : une bulle par type présent, pour aller droit aux documents voulus.
+  const [type, setType] = useState<TypeDocument>();
   const dansFiche = !!contactId && !onToutAfficher;
   const [suppression, setSuppression] = useState<Document>();
 
@@ -76,7 +78,9 @@ export function Documents({
     );
   if (!charge.donnee) return <Chargement />;
   const { docs, contacts, make } = charge.donnee;
-  const visibles = filtrerDocuments(docs, contacts, recherche, contactId);
+  const duDossier = filtrerDocuments(docs, contacts, recherche, contactId);
+  const types = TYPES_DOCUMENT.map((t) => ({ t, n: duDossier.filter((d) => d.type === t).length })).filter((x) => x.n > 0);
+  const visibles = type ? duDossier.filter((d) => d.type === type) : duDossier;
   const nom = (id?: string) => {
     const c = contacts.find((x) => x.id === id);
     return c ? nomComplet(c) : '';
@@ -95,6 +99,14 @@ export function Documents({
           <Recherche valeur={recherche} onChange={setRecherche} />
           <BoutonPrincipal libelle="Ajouter un document" onPress={onNouveau} />
         </View>
+      )}
+      {!dansFiche && types.length > 1 && (
+        <Puces>
+          <Puce libelle={`Tous · ${duDossier.length}`} actif={!type} onPress={() => setType(undefined)} />
+          {types.map(({ t, n }) => (
+            <Puce key={t} libelle={`${t} · ${n}`} actif={type === t} onPress={() => setType(type === t ? undefined : t)} />
+          ))}
+        </Puces>
       )}
       {contactId && onToutAfficher && (
         <Text style={styles.filtre}>
