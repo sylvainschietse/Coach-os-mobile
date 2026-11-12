@@ -12,7 +12,7 @@ export type PointCourbe = { date: string; valeur: number };
 const jour = (d: string) => new Date(`${d}T12:00:00`).getTime();
 const dateCourte = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 
-export function Courbe({ points, unite, libelle }: { points: PointCourbe[]; unite: string; libelle: string }) {
+export function Courbe({ points, unite, libelle, couleur = couleurs.rouge }: { points: PointCourbe[]; unite: string; libelle: string; couleur?: string }) {
   const [largeur, setLargeur] = useState(0);
   const [choisi, setChoisi] = useState<number>();
   const degrade = `aire-${useId().replace(/:/g, '')}`;
@@ -49,21 +49,21 @@ export function Courbe({ points, unite, libelle }: { points: PointCourbe[]; unit
           <Svg width={largeur} height={hauteur}>
             <Defs>
               <LinearGradient id={degrade} x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={couleurs.rouge} stopOpacity={0.22} />
-                <Stop offset="1" stopColor={couleurs.rouge} stopOpacity={0} />
+                <Stop offset="0" stopColor={couleur} stopOpacity={0.22} />
+                <Stop offset="1" stopColor={couleur} stopOpacity={0} />
               </LinearGradient>
             </Defs>
             <Line x1={0} x2={largeur} y1={hauteur - marge.bas + 0.5} y2={hauteur - marge.bas + 0.5} stroke={couleurs.bordure} strokeWidth={1} />
             <Path d={aire} fill={`url(#${degrade})`} />
-            <Path d={ligne} stroke={couleurs.rouge} strokeWidth={2.5} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+            <Path d={ligne} stroke={couleur} strokeWidth={2.5} fill="none" strokeLinejoin="round" strokeLinecap="round" />
             {points.map((p, i) => (
               <Circle
                 key={`${p.date}-${i}`}
                 cx={x(p.date)}
                 cy={y(p.valeur)}
                 r={i === (choisi ?? points.length - 1) ? 5 : 3}
-                fill={i === (choisi ?? points.length - 1) ? couleurs.rouge : couleurs.carte}
-                stroke={couleurs.rouge}
+                fill={i === (choisi ?? points.length - 1) ? couleur : couleurs.carte}
+                stroke={couleur}
                 strokeWidth={2}
               />
             ))}
