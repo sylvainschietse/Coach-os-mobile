@@ -115,7 +115,12 @@ export function compterDestinataires(contacts: ContactNewsletter[]) {
 const echapper = (t: string) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 /** Le corps de l'article, en blocs : « ## » ouvre un intertitre, « - » une liste, « > » une citation mise en valeur. */
-export type Bloc = { type: 'paragraphe' | 'intertitre' | 'citation'; texte: string } | { type: 'liste'; points: string[] };
+export type Bloc =
+  | { type: 'paragraphe' | 'intertitre' | 'citation'; texte: string }
+  | { type: 'liste'; points: string[] }
+  /** « ## À retenir » suivi d'une liste : l'encadré noir de fin d'article. « ## Sources » : la liste des sources, en petit. */
+  | { type: 'retenir'; points: string[] }
+  | { type: 'sources'; points: string[] };
 
 export function blocsArticle(message: string): Bloc[] {
   const blocs: Bloc[] = [];
@@ -146,11 +151,23 @@ export function blocsArticle(message: string): Bloc[] {
     }
     finirTexte();
   }
-  return blocs;
+  // « À retenir » et « Sources » : l'intertitre et la liste qui suit deviennent un seul bloc mis en forme à part.
+  const sortie: Bloc[] = [];
+  for (let i = 0; i < blocs.length; i++) {
+    const b = blocs[i];
+    const suivant = blocs[i + 1];
+    const special: 'retenir' | 'sources' | null =
+      b.type === 'intertitre' ? (/^à retenir\s*:?$/i.test(b.texte) ? 'retenir' : /^sources?\s*:?$/i.test(b.texte) ? 'sources' : null) : null;
+    if (special && suivant?.type === 'liste') {
+      sortie.push({ type: special, points: suivant.points });
+      i++;
+    } else sortie.push(b);
+  }
+  return sortie;
 }
 
 /** Ce qui fait l'article : l'objet sert de grand titre, la rubrique de surtitre, le chapeau d'introduction. */
-export type Article = Pick<Newsletter, 'objet' | 'message'> & Partial<Pick<Newsletter, 'rubrique' | 'chapeau' | 'boutonLibelle' | 'boutonLien'>> & { image?: string };
+export type Article = Pick<Newsletter, 'objet' | 'message'> & Partial<Pick<Newsletter, 'rubrique' | 'chapeau' | 'boutonLibelle' | 'boutonLien' | 'cibles'>> & { image?: string };
 
 export interface MailNewsletter {
   sujet: string;
@@ -158,8 +175,11 @@ export interface MailNewsletter {
   texte: string;
 }
 
-const SERIF = "Georgia,'Times New Roman',serif";
-const SANS = 'Helvetica,Arial,sans-serif';
+const SERIF = "Georgia,Charter,'Times New Roman',serif";
+const SANS = "'Helvetica Neue',Helvetica,Arial,sans-serif";
+const ROUGE = '#D71920';
+const ENCRE = '#111111';
+const CREME = '#F6F1EA';
 
 /** « Décembre 2026 », pour le bandeau en haut de la lettre. */
 export function numeroDe(iso?: string) {
@@ -168,10 +188,14 @@ export function numeroDe(iso?: string) {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
+const publicDe = (cibles?: Cible[]) =>
+  !cibles?.length || cibles.length > 1 ? 'Pour nos clients' : cibles[0] === 'veille' ? 'Pour ceux qu’on a hâte de revoir' : 'Pour nos clients actifs';
+
 /**
- * L'e-mail d'une personne, mis en page comme un article de magazine : bandeau « La lettre de … », illustration pleine
- * largeur, surtitre, grand titre, chapeau, corps avec intertitres, listes et citation, bouton, signature, et en bas le
- * lien pour ne plus rien recevoir. Tableaux et styles en ligne : c'est ce que Gmail, Outlook et Apple Mail lisent.
+ * L'e-mail d'une personne, mis en page comme les PDF magazine : bandeau « La lettre de … » souligné de noir, surtitre
+ * rouge, grand titre gras, chapeau en italique, illustration, lettrine, intertitres filetés de rouge, puces rouges,
+ * citations sur fond crème, encadré noir « À retenir », sources en petit, signature, et en bas le lien pour ne plus
+ * rien recevoir. Tableaux et styles en ligne : c'est ce que Gmail, Outlook et Apple Mail lisent.
  */
 export function mailNewsletter(a: Article, v: { prenom?: string; coach: string; desabonnement: string; quand?: string }): MailNewsletter {
   const p = (t?: string) => personnaliser(t ?? '', v).trim();
@@ -182,49 +206,92 @@ export function mailNewsletter(a: Article, v: { prenom?: string; coach: string; 
   const bouton = a.boutonLibelle?.trim() && /^https:\/\/\S+$/.test(a.boutonLien?.trim() ?? '') ? { libelle: p(a.boutonLibelle), lien: a.boutonLien!.trim() } : undefined;
   const numero = numeroDe(v.quand);
   const pied = `Tu reçois cette lettre parce que tu es suivi(e) par ${v.coach}.`;
-  const t = (x: string) => echapper(x).replace(/\n/g, '<br>');
+  // Espace insécable devant ? ! : ; » et après « : la ponctuation ne part jamais seule à la ligne.
+  const t = (x: string) => echapper(x.replace(/ ([?!:;»])/g, '\u00a0$1').replace(/« /g, '«\u00a0')).replace(/\n/g, '<br>');
   // Les adresses citées (sources) deviennent cliquables ; la ponctuation finale reste hors du lien.
-  const liens = (x: string) => t(x).replace(/https:\/\/[^\s<]+[^\s<.,;:!?)»]/g, (u) => `<a href="${u}" style="color:#9F1418;word-break:break-all">${u}</a>`);
+  const liens = (x: string, couleur = '#9F1418') =>
+    t(x).replace(/https:\/\/[^\s<]+[^\s<.,;:!?)»]/g, (u) => `<a href="${u}" style="color:${couleur};word-break:break-all">${u}</a>`);
+  const corpsTexte = `font-family:${SERIF};font-size:17px;line-height:1.62;color:#22201D`;
+  const puce = (couleur: string) => `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${couleur}"></span>`;
+  const liste = (points: string[], style: string, couleurPuce: string, couleurLien?: string) =>
+    `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:4px 0 18px">${points
+      .map((x) => `<tr><td valign="top" width="22" style="padding:9px 0 0 2px;line-height:9px">${puce(couleurPuce)}</td><td style="padding:3px 0 6px;${style}">${liens(x, couleurLien)}</td></tr>`)
+      .join('')}</table>`;
+  let lettrine = !!blocs.length;
   const corps = blocs
-    .map((b, i) => {
+    .map((b) => {
       if (b.type === 'intertitre')
-        return `<h2 style="margin:30px 0 10px;font-family:${SANS};font-size:19px;line-height:1.3;color:#1A1C23">${t(b.texte)}</h2>`;
+        return `<h2 style="margin:30px 0 12px;padding-top:10px;border-top:3px solid ${ROUGE};font-family:${SANS};font-weight:800;font-size:21px;line-height:1.22;color:${ENCRE}">${t(b.texte)}</h2>`;
       if (b.type === 'citation')
-        return `<p style="margin:26px 0;padding:4px 0 4px 18px;border-left:4px solid #C3181E;font-family:${SERIF};font-style:italic;font-size:22px;line-height:1.4;color:#9F1418">« ${t(b.texte)} »</p>`;
-      if (b.type === 'liste')
-        return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 18px">${b.points
-          .map((x) => `<tr><td valign="top" style="padding:3px 12px 3px 0;font-size:17px;line-height:1.6;color:#C3181E">●</td><td style="padding:3px 0;font-family:${SERIF};font-size:17px;line-height:1.6;color:#2A2C33">${liens(x)}</td></tr>`)
-          .join('')}</table>`;
-      // Le premier paragraphe commence par une lettrine.
-      if (i === 0 && !chapeau && b.texte.length > 1)
-        return `<p style="margin:0 0 18px;font-family:${SERIF};font-size:17px;line-height:1.7;color:#2A2C33"><span style="float:left;font-size:52px;line-height:44px;padding:6px 8px 0 0;color:#C3181E;font-family:${SERIF}">${echapper(b.texte[0])}</span>${t(b.texte.slice(1))}</p>`;
-      return `<p style="margin:0 0 18px;font-family:${SERIF};font-size:17px;line-height:1.7;color:#2A2C33">${liens(b.texte)}</p>`;
+        return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:22px 0 24px;background:${CREME};border-radius:8px"><tr><td valign="top" width="44" style="padding:10px 0 0 16px;font-family:${SANS};font-size:58px;line-height:52px;font-weight:900;color:${ROUGE}">&#8220;</td><td style="padding:18px 22px 18px 6px;font-family:${SANS};font-weight:700;font-size:20px;line-height:1.3;color:${ENCRE}">${t(b.texte)}</td></tr></table>`;
+      if (b.type === 'liste') return liste(b.points, corpsTexte, ROUGE);
+      if (b.type === 'retenir')
+        return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:30px 0 22px;background:${ENCRE};border-radius:12px"><tr><td style="padding:22px 26px 10px"><p style="margin:0 0 14px;font-family:${SANS};font-weight:800;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:#FFFFFF"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;border:3px solid #FFFFFF;background:${ROUGE};vertical-align:-3px;margin-right:10px"></span>À retenir</p>${liste(
+          b.points,
+          `font-family:${SANS};font-size:15px;line-height:1.45;color:#FFFFFF`,
+          ROUGE,
+          '#FFFFFF',
+        )}</td></tr></table>`;
+      if (b.type === 'sources')
+        return `<p style="margin:26px 0 8px;font-family:${SANS};font-weight:800;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:#5B5651">Sources</p>${liste(
+          b.points,
+          `font-family:${SANS};font-size:12px;line-height:1.5;color:#5B5651`,
+          ROUGE,
+          '#5B5651',
+        )}`;
+      // Le premier paragraphe commence par une lettrine rouge.
+      if (lettrine && b.texte.length > 1) {
+        lettrine = false;
+        return `<p style="margin:0 0 16px;${corpsTexte}"><span style="float:left;font-family:${SANS};font-weight:900;font-size:60px;line-height:50px;padding:6px 10px 0 0;color:${ROUGE}">${echapper(b.texte[0])}</span>${liens(b.texte.slice(1))}</p>`;
+      }
+      lettrine = false;
+      return `<p style="margin:0 0 16px;${corpsTexte}">${liens(b.texte)}</p>`;
     })
     .join('');
   const html = [
-    `<div style="margin:0;padding:24px 12px;background:#F4F1EC">`,
-    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#FFFFFF;border-radius:16px;overflow:hidden">`,
-    `<tr><td style="padding:18px 32px;border-bottom:1px solid #EEE9E2"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>`,
-    `<td style="font-family:${SANS};font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#1A1C23">La lettre de ${echapper(v.coach)}</td>`,
-    `<td align="right" style="padding-left:12px;font-family:${SANS};font-size:12px;letter-spacing:1px;color:#8A8F99;white-space:nowrap">${echapper(numero)}</td></tr></table></td></tr>`,
-    ...(a.image && /^https:\/\//.test(a.image) ? [`<tr><td><img src="${echapper(a.image)}" width="600" alt="" style="display:block;width:100%;height:auto;border:0"></td></tr>`] : []),
-    `<tr><td style="padding:30px 32px 8px">`,
-    ...(rubrique ? [`<p style="margin:0 0 10px;font-family:${SANS};font-size:12px;font-weight:bold;letter-spacing:2.5px;text-transform:uppercase;color:#C3181E">${t(rubrique)}</p>`] : []),
-    `<h1 style="margin:0 0 16px;font-family:${SERIF};font-size:32px;line-height:1.18;font-weight:normal;color:#111216">${t(sujet)}</h1>`,
-    ...(chapeau ? [`<p style="margin:0 0 22px;font-family:${SANS};font-size:18px;line-height:1.55;color:#4A4E57">${t(chapeau)}</p>`] : []),
-    `<div style="width:48px;height:3px;background:#C3181E;margin:0 0 24px"></div>`,
+    `<div style="margin:0;padding:24px 10px;background:#EFEAE3">`,
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;background:#FFFFFF;border-radius:14px;overflow:hidden">`,
+    `<tr><td style="padding:24px 32px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-bottom:3px solid ${ENCRE}"><tr>`,
+    `<td style="padding:0 0 12px;font-family:${SANS};font-size:12px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:${ENCRE}">La lettre de ${echapper(v.coach)}</td>`,
+    `<td align="right" style="padding:0 0 12px 12px;white-space:nowrap"><span style="display:inline-block;padding:4px 10px;border-radius:4px;background:${ROUGE};font-family:${SANS};font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#FFFFFF">${echapper(numero)}</span></td></tr></table></td></tr>`,
+    `<tr><td style="padding:26px 32px 0">`,
+    ...(rubrique
+      ? [`<p style="margin:0 0 12px;font-family:${SANS};font-size:12px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:${ROUGE}"><span style="display:inline-block;width:30px;height:3px;background:${ROUGE};vertical-align:middle;margin-right:10px"></span>${t(rubrique)}</p>`]
+      : []),
+    `<h1 style="margin:0 0 16px;font-family:${SANS};font-weight:900;font-size:34px;line-height:1.08;letter-spacing:-0.5px;color:${ENCRE}">${t(sujet)}</h1>`,
+    ...(chapeau ? [`<p style="margin:0 0 22px;font-family:${SERIF};font-style:italic;font-size:19px;line-height:1.5;color:#2A2724">${t(chapeau)}</p>`] : []),
+    `</td></tr>`,
+    ...(a.image && /^https:\/\//.test(a.image)
+      ? [
+          `<tr><td style="padding:0 32px"><img src="${echapper(a.image)}" width="576" alt="" style="display:block;width:100%;height:auto;border:0;border-radius:10px"></td></tr>`,
+          `<tr><td align="right" style="padding:8px 32px 0;font-family:${SANS};font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:#5B5651">${echapper(publicDe(a.cibles))}</td></tr>`,
+        ]
+      : []),
+    `<tr><td style="padding:22px 32px 8px">`,
     corps,
     ...(bouton
-      ? [`<p style="margin:28px 0 8px"><a href="${echapper(bouton.lien)}" style="display:inline-block;padding:14px 24px;border-radius:999px;background:#C3181E;color:#FFFFFF;text-decoration:none;font-family:${SANS};font-size:15px;font-weight:bold">${t(bouton.libelle)}</a></p>`]
+      ? [`<p style="margin:28px 0 8px"><a href="${echapper(bouton.lien)}" style="display:inline-block;padding:15px 26px;border-radius:999px;background:${ROUGE};color:#FFFFFF;text-decoration:none;font-family:${SANS};font-size:15px;font-weight:800">${t(bouton.libelle)}</a></p>`]
       : []),
-    `<p style="margin:30px 0 0;font-family:${SERIF};font-style:italic;font-size:17px;color:#2A2C33">${echapper(v.coach)}</p>`,
-    `<p style="margin:2px 0 0;font-family:${SANS};font-size:13px;color:#8A8F99">Ton coach · réponds simplement à ce mail pour m’écrire</p>`,
+    `<p style="margin:30px 0 0;font-family:${SERIF};font-style:italic;font-size:18px;color:${ENCRE}">${echapper(v.coach)}</p>`,
+    `<p style="margin:2px 0 0;font-family:${SANS};font-size:13px;color:#5B5651">Ton coach · réponds simplement à ce mail pour m’écrire</p>`,
     `</td></tr>`,
-    `<tr><td style="padding:24px 32px 28px"><p style="margin:0;padding-top:16px;border-top:1px solid #EEE9E2;font-family:${SANS};font-size:12px;line-height:1.6;color:#8A8F99">${echapper(pied)}<br><a href="${echapper(v.desabonnement)}" style="color:#8A8F99">Ne plus recevoir ces nouvelles</a></p></td></tr>`,
+    `<tr><td style="padding:24px 32px 28px"><p style="margin:0;padding-top:14px;border-top:1px solid #E8DCC9;font-family:${SANS};font-size:11px;line-height:1.6;color:#8A847D">${echapper(pied)}<br><a href="${echapper(v.desabonnement)}" style="color:#8A847D">Ne plus recevoir ces nouvelles</a></p></td></tr>`,
     `</table></div>`,
   ].join('');
   const texteCorps = blocs
-    .map((b) => (b.type === 'liste' ? b.points.map((x) => `• ${x}`).join('\n') : b.type === 'intertitre' ? b.texte.toUpperCase() : b.type === 'citation' ? `« ${b.texte} »` : b.texte))
+    .map((b) =>
+      b.type === 'liste'
+        ? b.points.map((x) => `• ${x}`).join('\n')
+        : b.type === 'retenir'
+          ? `À RETENIR\n${b.points.map((x) => `• ${x}`).join('\n')}`
+          : b.type === 'sources'
+            ? `SOURCES\n${b.points.map((x) => `• ${x}`).join('\n')}`
+            : b.type === 'intertitre'
+              ? b.texte.toUpperCase()
+              : b.type === 'citation'
+                ? `« ${b.texte} »`
+                : b.texte,
+    )
     .join('\n\n');
   const texte = [rubrique.toUpperCase(), sujet, chapeau, texteCorps, bouton ? `${bouton.libelle} : ${bouton.lien}` : '', v.coach, `--\n${pied}\nNe plus recevoir ces nouvelles : ${v.desabonnement}`]
     .filter(Boolean)

@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
   if (!secret || req.headers.get('x-agenda-cle') !== secret) return repondre({ erreur: 'Accès refusé.' }, 401);
   const { data: dues, error } = await db
     .from('newsletters')
-    .select('id, coach_id, rubrique, objet, chapeau, message, image, bouton_libelle, bouton_lien, par_email, par_notif, envoi_le, etat')
+    .select('id, coach_id, rubrique, objet, chapeau, message, image, bouton_libelle, bouton_lien, cibles, par_email, par_notif, envoi_le, etat')
     .in('etat', ['programmee', 'en_cours'])
     .lte('envoi_le', new Date().toISOString())
     .order('envoi_le')
@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     const coach = c?.nom ?? 'Ton coach';
     const article: Article = {
       rubrique: n.rubrique, objet: n.objet, chapeau: n.chapeau, message: n.message,
-      boutonLibelle: n.bouton_libelle ?? undefined, boutonLien: n.bouton_lien ?? undefined, image: imagePublique(n.image),
+      boutonLibelle: n.bouton_libelle ?? undefined, boutonLien: n.bouton_lien ?? undefined, image: imagePublique(n.image), cibles: n.cibles,
     };
     const { data: liste } = await db.rpc('destinataires_newsletter', { p_id: n.id });
     let bloque = false;

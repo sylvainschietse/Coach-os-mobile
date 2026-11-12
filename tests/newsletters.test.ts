@@ -17,6 +17,7 @@ import {
   personnaliser,
   THEMES,
 } from '@/domain/newsletters';
+import { fichierIllustration } from '@/domain/illustrations-newsletters';
 
 const lire = (f: string) => readFileSync(join(__dirname, '..', f), 'utf8');
 
@@ -49,7 +50,7 @@ describe('newsletters', () => {
     expect(m.sujet).toBe('Salut Léa');
     expect(m.html).toContain('La lettre de Sylvain');
     expect(m.html).toContain('https://x.test/i.jpg');
-    expect(m.html).toContain('A &lt;b&gt;');
+    expect(m.html).toContain("A &lt;b&gt;");
     expect(m.html).not.toContain('<b>');
     expect(m.html).toContain('https://app.test/desabonnement/j1');
     expect(m.html).toContain('https://x.test/r');
@@ -98,7 +99,7 @@ describe('newsletters', () => {
     for (const t of THEMES) {
       expect(erreurNewsletter({ ...t, cibles: [t.pour], parEmail: true, parNotif: true })).toBeNull();
       expect(t.message.length).toBeLessThan(MAX_MESSAGE);
-      expect(() => readFileSync(join(__dirname, '../assets/newsletters', `${t.cle}.jpg`))).not.toThrow();
+      expect(() => readFileSync(join(__dirname, '../assets/newsletters', `${fichierIllustration(t.cle)}.jpg`))).not.toThrow();
     }
     expect(THEMES.filter((t) => t.pour === 'clients').length).toBeGreaterThan(3);
     expect(THEMES.filter((t) => t.pour === 'veille').length).toBeGreaterThan(3);
@@ -108,13 +109,17 @@ describe('newsletters', () => {
 describe('articles complets', () => {
   it('les 20 articles sont prêts à partir, avec une illustration livrée et des sources', async () => {
     const articles = (await import('@/domain/articles-newsletters.json')).default as { cle: string; pour: 'clients' | 'veille'; rubrique: string; objet: string; chapeau: string; message: string; illustration: string }[];
-    expect(articles).toHaveLength(20);
+    expect(articles.length).toBeGreaterThanOrEqual(49);
     for (const a of articles) {
       expect(erreurNewsletter({ ...a, cibles: [a.pour], parEmail: true, parNotif: true })).toBeNull();
+      expect(fichierIllustration(a.illustration)).toBe(a.illustration);
       expect(() => readFileSync(join(__dirname, '../assets/newsletters', `${a.illustration}.jpg`))).not.toThrow();
       expect(a.message).toMatch(/## Sources\n+- .+https:\/\//);
     }
     const m = mailNewsletter(articles[0], { coach: 'S', desabonnement: 'https://d' });
     expect(m.html).toMatch(/<a href="https:\/\/www\.who\.int\/[^"]+"/);
+    // « À retenir » et « Sources » sont mis à part, pas en simple liste.
+    expect(blocsArticle(articles[1].message).map((b) => b.type)).toEqual(expect.arrayContaining(['retenir', 'sources']));
+    expect(mailNewsletter(articles[1], { coach: 'S', desabonnement: 'https://d' }).html).toContain('À retenir');
   });
 });

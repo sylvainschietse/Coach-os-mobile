@@ -33,7 +33,7 @@ import { useCoachNom } from '../crm/commun';
 import { ChampDate, ChampHeure } from '../date-heure';
 import { ApercuHtml } from '../offres/apercu-html';
 import { couleurs, espace, polices } from '../theme';
-import { CLES_ILLUSTRATIONS, ILLUSTRATIONS, octetsIllustration } from './illustrations';
+import { CLES_ILLUSTRATIONS, imageIllustration, octetsIllustration } from './illustrations';
 
 /** 20 articles complets et sourcés sur le sport et l'alimentation (environ 3 pages chacun). */
 const ARTICLES = ARTICLES_BRUTS as Theme[];
@@ -152,7 +152,7 @@ export function MesNewsletters() {
                 onPress={() => setOuverte(depuisTheme(t))}
                 style={({ pressed }) => [styles.ligne, pressed && { backgroundColor: couleurs.discret }]}
               >
-                <Image source={ILLUSTRATIONS[t.illustration ?? t.cle]} style={styles.vignette} resizeMode="cover" />
+                <Image source={imageIllustration(t.illustration ?? t.cle)} style={styles.vignette} resizeMode="cover" />
                 <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
                   <Text style={styles.rubrique}>{t.rubrique}</Text>
                   <Text style={styles.titre} numberOfLines={3}>
@@ -181,7 +181,7 @@ export function MesNewsletters() {
                   onPress={() => setOuverte(depuisTheme(t))}
                   style={({ pressed }) => [styles.idee, pressed && { opacity: 0.8 }]}
                 >
-                  <Image source={ILLUSTRATIONS[t.cle]} style={styles.ideeImage} resizeMode="cover" />
+                  <Image source={imageIllustration(t.cle)} style={styles.ideeImage} resizeMode="cover" />
                   <View style={{ padding: 10, gap: 2 }}>
                     <Text style={styles.rubrique}>{t.rubrique}</Text>
                     <Text style={styles.ideeTitre} numberOfLines={2}>
@@ -224,7 +224,7 @@ function LigneNewsletter({ n, onPress }: { n: Newsletter; onPress: () => void })
           : 'Pas encore de date';
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.ligne, n.etat === 'envoyee' && { opacity: 0.8 }, pressed && { backgroundColor: couleurs.discret }]}>
-      {cle || url ? <Image source={cle ? ILLUSTRATIONS[cle] : { uri: url }} style={styles.vignette} resizeMode="cover" /> : <View style={[styles.vignette, { backgroundColor: couleurs.discret }]} />}
+      {cle || url ? <Image source={cle ? imageIllustration(cle) : { uri: url }} style={styles.vignette} resizeMode="cover" /> : <View style={[styles.vignette, { backgroundColor: couleurs.discret }]} />}
       <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
         {!!n.rubrique && <Text style={styles.rubrique}>{n.rubrique}</Text>}
         <Text style={styles.titre} numberOfLines={2}>
@@ -345,7 +345,7 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
 
   const sourceImage = illustration
     ? illustration.quoi === 'theme'
-      ? ILLUSTRATIONS[illustration.cle]
+      ? imageIllustration(illustration.cle)
       : illustration.quoi === 'photo'
         ? { uri: `data:image/jpeg;base64,${illustration.base64}` }
         : { uri: newsletters.urlImage(illustration.chemin) }
@@ -416,7 +416,7 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
                   }}
                   style={[styles.choixImage, illustration?.quoi === 'theme' && illustration.cle === cle && { borderColor: couleurs.rouge }]}
                 >
-                  <Image source={ILLUSTRATIONS[cle]} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  <Image source={imageIllustration(cle)} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                 </Pressable>
               ))}
             </View>
@@ -617,7 +617,7 @@ const styles = StyleSheet.create({
   sousGroupe: { fontFamily: polices.texteGras, fontSize: 14, color: couleurs.texte, marginTop: espace(1) },
   carte: { padding: 18, gap: espace(2) },
   ligne: { flexDirection: 'row', gap: 12, backgroundColor: couleurs.carte, borderRadius: 18, borderWidth: 1, borderColor: couleurs.bordure, padding: 12 },
-  vignette: { width: 84, height: 84, borderRadius: 12 },
+  vignette: { width: 104, height: 66, borderRadius: 10 },
   rubrique: { fontFamily: polices.texteGras, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase', color: couleurs.rouge },
   titre: { fontFamily: polices.texteGras, fontSize: 15, color: couleurs.texte },
   detail: { fontFamily: polices.texte, fontSize: 13, lineHeight: 18, color: couleurs.texteDoux, flexShrink: 1 },
