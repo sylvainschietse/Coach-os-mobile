@@ -575,11 +575,22 @@ function Crm({
             onSupprimer={(x) => setASupprimer({ quoi: 'ce bilan', nom: x.nom, contact: x.contact, action: () => crm.supprimerBilan(x.id) })}
           />
         )}
-        {rubrique === 'Bilan' && <BilanMois onPaiements={() => onRubrique('Paiements')} />}
+        {rubrique === 'Bilan' && (
+          <BilanMois
+            onPaiements={() => onRubrique('Paiements')}
+            onOuvrirPaiement={(id) => router.setParams({ ...FERME, paiement: id })}
+            onOuvrirContact={(id) => ouvrirContact(id)}
+          />
+        )}
         {/* Mon activité : bilan du mois, puis paiements, puis documents, sur une seule page. */}
         {rubrique === 'Activite' && (
           <ActiviteCoach
-            bilan={<BilanMois onPaiements={() => undefined} />}
+            bilan={
+              <BilanMois
+                onOuvrirPaiement={(id) => router.setParams({ ...FERME, paiement: id })}
+                onOuvrirContact={(id) => ouvrirContact(id)}
+              />
+            }
             paiements={
               <Gestion
                 module="Paiements"

@@ -1,7 +1,7 @@
 // Bilan du mois du coach : où il en est (encaissé, à encaisser, abonnements, packs, séances, clients) et l'évolution
 // mois par mois et année par année. Paiements du carnet, rendez-vous de l'agenda.
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { agenda } from '@/data/agenda';
@@ -11,6 +11,7 @@ import type { RendezVous } from '@/domain/agenda';
 import {
   chiffresDuMois,
   decalerMois,
+  detailDuMois,
   ecart,
   evolutionAnnuelle,
   evolutionMensuelle,
@@ -23,12 +24,14 @@ import {
   type Mesure,
   type Mois,
   type Point,
+  type Tuile,
 } from '@/domain/bilan-mois';
-import { montantLisible } from '@/domain/gestion';
+import { montantLisible, type Paiement } from '@/domain/gestion';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Stat } from '../coque';
 import { Carte, Chargement, Erreur, Puce, Puces } from '../composants';
+import { Modale } from './dossier';
 import { couleurs, polices } from '../theme';
 
 /** Tous les rendez-vous depuis la première activité, trimestre par trimestre (une lecture rend 1 000 lignes au plus). */
@@ -61,7 +64,20 @@ const evolution = (e: number, quand: string) => (e === 0 ? `comme en ${quand}` :
 const valeurDe = (p: Point, m: Mesure) => (m === 'encaisse' ? p.encaisse : m === 'seances' ? p.seances : p.clients);
 const lisible = (v: number, m: Mesure) => (m === 'encaisse' ? enEuros(v) : nombre(v));
 
-export function BilanMois({ onPaiements }: { onPaiements: () => void }) {
+/** Montant d'une tuile : sans centimes quand il n'y en a pas, pour tenir sur une ligne. */
+const enTuile = (v: number) => (Number.isInteger(v) ? enEuros(v) : montantLisible(v));
+
+export function BilanMois({
+  onPaiements,
+  onOuvrirPaiement,
+  onOuvrirContact,
+}: {
+  /** Ouvre la liste complète des paiements (absent quand elle est déjà sous le bilan). */
+  onPaiements?: () => void;
+  onOuvrirPaiement: (id: string) => void;
+  onOuvrirContact: (id: string) => void;
+}) {
+  const [tuile, setTuile] = useState<Tuile>();
   const { width } = useWindowDimensions();
   const maintenant = new Date();
   const [mois, setMois] = useState<Mois>(() => moisParDefaut(maintenant));
@@ -119,21 +135,23 @@ export function BilanMois({ onPaiements }: { onPaiements: () => void }) {
 
       {/* Les chiffres du mois */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-        <Stat style={{ flexBasis: base }} libelle="Encaissé" valeur={montantLisible(c.encaisse)} onPress={onPaiements} />
-        <Stat style={{ flexBasis: base }} libelle="À encaisser" valeur={montantLisible(c.aEncaisser)} onPress={onPaiements} />
+        <Stat style={{ flexBasis: base }} libelle="Encaissé" valeur={enTuile(c.encaisse)} onPress={() => setTuile('encaisse')} />
+        <Stat style={{ flexBasis: base }} libelle="À encaisser" valeur={enTuile(c.aEncaisser)} onPress={() => setTuile('aEncaisser')} />
         <Stat
           style={{ flexBasis: base }}
           libelle={c.abonnementsOfferts ? `Abonnements réglés (+ ${c.abonnementsOfferts} offert${c.abonnementsOfferts > 1 ? 's' : ''})` : 'Abonnements réglés'}
           valeur={nombre(c.abonnementsRegles)}
+          onPress={() => setTuile('abonnements')}
         />
-        <Stat style={{ flexBasis: base }} libelle="Packs vendus" valeur={nombre(c.packsVendus)} />
-        <Stat style={{ flexBasis: base }} libelle="Séances réalisées" valeur={nombre(c.seancesRealisees)} />
-        <Stat style={{ flexBasis: base }} libelle="Clients vus" valeur={nombre(c.clientsVus)} />
-        <Stat style={{ flexBasis: base }} libelle="Nouveaux clients" valeur={nombre(c.nouveauxClients)} />
+        <Stat style={{ flexBasis: base }} libelle="Packs vendus" valeur={nombre(c.packsVendus)} onPress={() => setTuile('packs')} />
+        <Stat style={{ flexBasis: base }} libelle="Séances réalisées" valeur={nombre(c.seancesRealisees)} onPress={() => setTuile('seances')} />
+        <Stat style={{ flexBasis: base }} libelle="Clients vus" valeur={nombre(c.clientsVus)} onPress={() => setTuile('clients')} />
+        <Stat style={{ flexBasis: base }} libelle="Nouveaux clients" valeur={nombre(c.nouveauxClients)} onPress={() => setTuile('nouveaux')} />
         <Stat
           style={{ flexBasis: base }}
           libelle="Absences et annulations tardives"
           valeur={nombre(c.seancesManquees)}
+          onPress={() => setTuile('manquees')}
         />
       </View>
 
@@ -214,7 +232,170 @@ export function BilanMois({ onPaiements }: { onPaiements: () => void }) {
           </Text>
         )}
       </Carte>
+
+      {tuile && (
+        <DetailTuile
+          tuile={tuile}
+          mois={mois}
+          donnees={d}
+          onFermer={() => setTuile(undefined)}
+          onPaiements={
+            onPaiements &&
+            (() => {
+              setTuile(undefined);
+              onPaiements();
+            })
+          }
+          onOuvrirPaiement={(id) => {
+            setTuile(undefined);
+            onOuvrirPaiement(id);
+          }}
+          onOuvrirContact={(id) => {
+            setTuile(undefined);
+            onOuvrirContact(id);
+          }}
+        />
+      )}
     </View>
+  );
+}
+
+const TITRES: Record<Tuile, string> = {
+  encaisse: 'Encaissé',
+  aEncaisser: 'À encaisser',
+  abonnements: 'Abonnements réglés',
+  packs: 'Packs vendus',
+  seances: 'Séances réalisées',
+  clients: 'Clients vus',
+  nouveaux: 'Nouveaux clients',
+  manquees: 'Absences et annulations tardives',
+};
+const VIDES: Record<Tuile, string> = {
+  encaisse: 'Aucun paiement réglé ce mois-ci.',
+  aEncaisser: 'Rien à encaisser ce mois-ci.',
+  abonnements: 'Aucun abonnement réglé ce mois-ci.',
+  packs: 'Aucun pack vendu ce mois-ci.',
+  seances: 'Aucune séance réalisée ce mois-ci.',
+  clients: 'Aucun client vu en séance ce mois-ci.',
+  nouveaux: 'Aucun nouveau client ce mois-ci.',
+  manquees: 'Aucune absence ni annulation tardive ce mois-ci.',
+};
+
+const jourHeure = (iso: string) =>
+  new Date(iso).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const jour = (date?: string) => (date ? new Date(`${date}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : 'Sans date');
+
+/** Ce qu'il y a derrière une tuile : les paiements, les séances ou les clients du mois. Un paiement ouvre sa fiche, un client la sienne. */
+function DetailTuile({
+  tuile,
+  mois,
+  donnees,
+  onFermer,
+  onPaiements,
+  onOuvrirPaiement,
+  onOuvrirContact,
+}: {
+  tuile: Tuile;
+  mois: Mois;
+  donnees: Donnees;
+  onFermer: () => void;
+  onPaiements?: () => void;
+  onOuvrirPaiement: (id: string) => void;
+  onOuvrirContact: (id: string) => void;
+}) {
+  const detail = detailDuMois(donnees, mois);
+  const contacts = new Map(donnees.contacts.map((x) => [x.id, `${x.prenom} ${x.nom}`.trim()]));
+  const parClient = new Map(donnees.contacts.filter((x) => x.clientId).map((x) => [x.clientId!, x.id]));
+  const titre = `${TITRES[tuile]} · ${nomMois(mois)}`;
+
+  const paiements: Paiement[] | undefined =
+    tuile === 'encaisse' ? detail.encaisse : tuile === 'aEncaisser' ? detail.aEncaisser : tuile === 'abonnements' ? detail.abonnements : tuile === 'packs' ? detail.packs : undefined;
+  const seances = tuile === 'seances' ? detail.seances : tuile === 'manquees' ? detail.manquees : undefined;
+  const personnes = tuile === 'clients' ? detail.clients : tuile === 'nouveaux' ? detail.nouveaux : undefined;
+  const nombreLignes = (paiements ?? seances ?? personnes ?? []).length;
+
+  return (
+    <Modale titre={titre} onFermer={onFermer}>
+      {nombreLignes === 0 && <Text style={doux}>{VIDES[tuile]}</Text>}
+
+      {paiements?.map((p, i, l) => (
+        <Ligne key={p.id} dernier={i === l.length - 1} onPress={() => onOuvrirPaiement(p.id)} libelle={`Ouvrir le paiement ${p.titre}`}>
+          <View style={{ flexShrink: 1 }}>
+            <Text style={texte} numberOfLines={2}>
+              {(p.contactId && contacts.get(p.contactId)) || p.titre}
+            </Text>
+            <Text style={doux} numberOfLines={2}>
+              {jour(p.date)}
+              {p.contactId && contacts.get(p.contactId) ? ` · ${p.titre}` : ''}
+              {p.moyen ? ` · ${p.moyen}` : ''}
+            </Text>
+          </View>
+          <Text style={[texte, { fontFamily: polices.texteGras }]}>{p.montant === 0 ? 'Offert' : montantLisible(p.montant)}</Text>
+        </Ligne>
+      ))}
+      {paiements && paiements.length > 0 && (
+        <Text style={[doux, { marginTop: 4 }]}>
+          Total : {montantLisible(Math.round(paiements.reduce((s, p) => s + (p.montant ?? 0), 0) * 100) / 100)}. Touchez un paiement pour l’ouvrir.
+        </Text>
+      )}
+
+      {seances?.map((r, i, l) => {
+        const seul = r.participants.length === 1 ? parClient.get(r.participants[0].clientId) : undefined;
+        const noms = r.participants.map((x) => (parClient.get(x.clientId) && contacts.get(parClient.get(x.clientId)!)) || `${x.prenom} ${x.nom}`.trim()).join(', ');
+        return (
+          <Ligne key={r.id} dernier={i === l.length - 1} onPress={seul ? () => onOuvrirContact(seul) : undefined} libelle={`Ouvrir la fiche de ${noms}`}>
+            <View style={{ flexShrink: 1 }}>
+              <Text style={texte} numberOfLines={2}>
+                {noms || 'Séance'}
+              </Text>
+              <Text style={doux}>
+                {jourHeure(r.debut)}
+                {r.type === 'visio' ? ' · visio' : ''}
+              </Text>
+            </View>
+            {tuile === 'manquees' && <Text style={doux}>{r.statut === 'absent' ? 'Absent' : 'Annulée tard'}</Text>}
+          </Ligne>
+        );
+      })}
+
+      {personnes?.map((x, i, l) => (
+        <Ligne
+          key={x.cle}
+          dernier={i === l.length - 1}
+          onPress={x.contactId ? () => onOuvrirContact(x.contactId!) : undefined}
+          libelle={`Ouvrir la fiche de ${x.nom}`}
+        >
+          <View style={{ flexShrink: 1 }}>
+            <Text style={texte} numberOfLines={2}>
+              {x.nom}
+            </Text>
+            <Text style={doux}>{x.seances ? `${x.seances} séance${x.seances > 1 ? 's' : ''}` : 'Pas de séance ce mois-ci'}</Text>
+          </View>
+          <Text style={[texte, { fontFamily: polices.texteGras }]}>{x.montant ? montantLisible(x.montant) : '—'}</Text>
+        </Ligne>
+      ))}
+
+      {onPaiements && paiements && (
+        <Pressable accessibilityRole="button" onPress={onPaiements} style={{ paddingVertical: 10 }}>
+          <Text style={[texte, { color: couleurs.rouge, fontFamily: polices.texteGras }]}>Voir tous les paiements</Text>
+        </Pressable>
+      )}
+    </Modale>
+  );
+}
+
+function Ligne({ children, dernier, onPress, libelle }: { children: ReactNode; dernier: boolean; onPress?: () => void; libelle: string }) {
+  return (
+    <Pressable
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? libelle : undefined}
+      disabled={!onPress}
+      onPress={onPress}
+      style={({ pressed }) => [ligne, { paddingVertical: 12, opacity: pressed ? 0.6 : 1 }, !dernier && bordure]}
+    >
+      {children}
+      {onPress && <ChevronRight size={16} color={couleurs.texteDoux} />}
+    </Pressable>
   );
 }
 
