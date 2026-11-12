@@ -1,4 +1,4 @@
-// Onglet « Moi » du client : ses coordonnées, son offre, les offres de son coach, ses documents et l'accès à ses données (RGPD).
+// « Mon compte » du client (ouvert depuis son avatar, en haut de l'écran) : ses coordonnées, son offre, les offres de son coach, ses documents et l'accès à ses données (RGPD).
 // Son offre s'affiche avec son prix et la remise du coach. Le paiement se fait sur la page Stripe du coach,
 // jamais dans l'appli iPhone : sur iPhone, le client demande le lien à son coach.
 import { router } from 'expo-router';
@@ -253,7 +253,21 @@ function OffresDeMonCoach({ a, apercu, onChange }: { a?: Abonnement | null; aper
   );
 }
 
-export function MonCompte({ clientId, prenom, apercu }: { clientId: string; prenom: string; apercu: boolean }) {
+export function MonCompte({
+  clientId,
+  prenom,
+  apercu,
+  onOuvrirMontre,
+  onOuvrirQuotidien,
+  onDeconnecter,
+}: {
+  clientId: string;
+  prenom: string;
+  apercu: boolean;
+  onOuvrirMontre?: () => void;
+  onOuvrirQuotidien?: () => void;
+  onDeconnecter?: () => void;
+}) {
   const infos = useCharger(() => mesInfos(clientId), `infos-${clientId}`);
   const abo = useCharger(() => abonnements.lire(clientId), `abo-${clientId}`);
   const packs = useCharger(() => abonnements.packs(clientId), `packs-${clientId}`);
@@ -297,9 +311,12 @@ export function MonCompte({ clientId, prenom, apercu }: { clientId: string; pren
       <OffresDeMonCoach a={abo.donnee} apercu={apercu} onChange={abo.recharger} />
       <MesDocuments clientId={clientId} />
       <MesFactures clientId={clientId} />
+      {!apercu && onOuvrirMontre && <Bouton variante="discret" libelle="Synchroniser ma montre" onPress={onOuvrirMontre} />}
+      {!apercu && onOuvrirQuotidien && <Bouton variante="discret" libelle="Mes suivis du quotidien (sommeil, eau, stress…)" onPress={onOuvrirQuotidien} />}
       {!apercu && <Bouton variante="discret" libelle="Mes notifications" onPress={() => demanderSortie(() => router.push('/client/notifications'))} />}
       {!apercu && <Bouton variante="discret" libelle="Mes données et confidentialité" onPress={() => demanderSortie(() => router.push('/client/donnees'))} />}
       {abo.erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{abo.erreur}</Texte>}
+      {!apercu && onDeconnecter && <Bouton variante="secondaire" libelle="Se déconnecter" onPress={() => demanderSortie(onDeconnecter)} />}
     </>
   );
 }

@@ -1,24 +1,24 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { LogOut } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { consentements } from '@/data/consentement';
 import { useSession } from '@/data/session';
 import { accordAttendu, type Consentement } from '@/domain/consentement';
-import { demanderSortie } from '@/lib/brouillon';
 import { messageErreur } from '@/lib/useCharger';
 import { AccesSuspendu } from '@/ui/abonnement';
 import { DefilementClavier } from '@/ui/clavier';
 import { Chargement, Erreur } from '@/ui/composants';
 import { AccordDonnees } from '@/ui/consentement';
 import { BoutonIcone, EnTete } from '@/ui/coque';
-import { LanceurMinuteurs, Minuteurs } from '@/ui/entrainement/minuteurs';
+import { Minuteurs } from '@/ui/entrainement/minuteurs';
 import { EspaceClient, UNIVERS_CLIENT, type OngletClient } from '@/ui/espace-client';
 import { BoutonMessagesClient } from '@/ui/messagerie/conversation';
 import { ClocheClient, useRappelsClient } from '@/ui/notifications/rappels';
-import { couleurs, espace, LARGEUR_CLIENT, univers } from '@/ui/theme';
+import { couleurs, espace, LARGEUR_CLIENT, polices, univers } from '@/ui/theme';
 
+// « moi » reste accepté : un ancien lien ou une notification qui le demande ouvre Mon compte.
 const ONGLETS: OngletClient[] = ['accueil', 'programme', 'suivi', 'nutrition', 'moi'];
 
 export default function AccueilClient() {
@@ -29,6 +29,8 @@ export default function AccueilClient() {
   const [ouvert, setOuvert] = useState<OngletClient>('accueil');
   // Chaque toucher du logo demande l'accueil, même si on y était déjà passé.
   const [versAccueil, setVersAccueil] = useState(0);
+  // Chaque toucher de l'avatar ouvre Mon compte.
+  const [versCompte, setVersCompte] = useState(0);
   // Rappels et notifications : seulement une fois l'accord RGPD donné, et l'accès ouvert.
   const pretPourRappels = profil?.role === 'client' && !profil.suspendu && !!accord.donnee && !accordAttendu(accord.donnee);
   useRappelsClient(pretPourRappels ? clientId : '', profil?.role === 'client' ? profil.prenom : '');
@@ -80,14 +82,50 @@ export default function AccueilClient() {
             <>
               <ClocheClient clientId={profil.clientId} prenom={profil.prenom} />
               <BoutonMessagesClient clientId={profil.clientId} />
-              <LanceurMinuteurs />
-              <BoutonIcone icone={LogOut} nom="Se déconnecter" onPress={() => demanderSortie(deconnecter)} />
+              <Avatar prenom={profil.prenom} actif={ouvert === 'moi'} onPress={() => setVersCompte((n) => n + 1)} />
             </>
           }
         />
-        <EspaceClient clientId={profil.clientId} prenom={profil.prenom} ongletInitial={initial} versAccueil={versAccueil} onOnglet={setOuvert} />
+        <EspaceClient
+          clientId={profil.clientId}
+          prenom={profil.prenom}
+          ongletInitial={initial}
+          versAccueil={versAccueil}
+          versCompte={versCompte}
+          onOnglet={setOuvert}
+          onDeconnecter={deconnecter}
+        />
       </View>
     </Minuteurs>
+  );
+}
+
+/** L'initiale du client : un appui ouvre Mon compte (coordonnées, formule, factures, déconnexion). */
+function Avatar({ prenom, actif, onPress }: { prenom: string; actif: boolean; onPress: () => void }) {
+  const initiale = prenom.trim().charAt(0).toUpperCase() || '?';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Mon compte"
+      onPress={onPress}
+      hitSlop={6}
+      style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
+    >
+      <View
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: actif ? '#FFFFFF' : couleurs.rouge,
+          borderWidth: 2,
+          borderColor: 'rgba(255,255,255,0.6)',
+        }}
+      >
+        <Text style={{ fontFamily: polices.texteGras, fontSize: 15, color: actif ? couleurs.rouge : '#FFFFFF' }}>{initiale}</Text>
+      </View>
+    </Pressable>
   );
 }
 

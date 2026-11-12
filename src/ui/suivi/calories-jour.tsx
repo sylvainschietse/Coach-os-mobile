@@ -16,6 +16,7 @@ import { foodTotal } from '@/domain/nutrition/personnel';
 import { useCharger } from '@/lib/useCharger';
 
 import { ts } from '../entrainement/commun';
+import { Jauge } from '../motivation/badges';
 import { couleurs, polices } from '../theme';
 
 const JOURS_EN_ARRIERE = 30;
@@ -172,6 +173,61 @@ function Chiffre({ libelle, valeur, detail, accent }: { libelle: string; valeur:
       </View>
       <Text style={{ fontFamily: polices.texteGras, fontSize: 18, color: couleurs.texte }}>{valeur}</Text>
       {detail && <Text style={[ts.doux, { fontSize: 12 }]}>{detail}</Text>}
+    </View>
+  );
+}
+
+/** Accueil : deux tuiles en couleur, ce qui est mangé face à l'objectif et ce qui est dépensé (avec les pas). */
+export function TuilesDuJour({ clientId, onOuvrir }: { clientId: string; onOuvrir?: () => void }) {
+  const jour = aujourdhuiParis();
+  const base = useCharger(() => chargerBase(clientId), `calories-base-${clientId}`);
+  const duJour = useCharger(() => chargerJour(clientId, jour), `calories-jour-${clientId}-${jour}`);
+  if (!base.donnee || !duJour.donnee) return null;
+  const { profil, realisations } = base.donnee;
+  const cible = profil?.objectifCoach ?? profil?.calcul.cible;
+  const b = bilanCalories({
+    metabolisme: profil?.calcul.repos,
+    poidsKg: profil?.preferences.poids,
+    pas: duJour.donnee.pas,
+    seances: realisations
+      .filter((r) => jourParis(r.fin || r.debut) === jour)
+      .map((r) => ({ titre: titreClient(r.seanceTitre || 'Séance du programme'), debut: r.debut, fin: r.fin })),
+    activites: base.donnee.activites.filter((a) => jourParis(a.debut) === jour),
+    mange: duJour.donnee.mange,
+    objectif: cible?.calories,
+  });
+  const nombre = (n: number) => new Intl.NumberFormat('fr-FR').format(Math.round(n));
+  const tuile = (fond: string, encre: string, kicker: string, valeur: string, detail: string, part: number | undefined, jauge: string, pied: string) => (
+    <Pressable accessibilityRole={onOuvrir ? 'button' : undefined} accessibilityLabel={`${kicker} : ${valeur}, ${detail}`} disabled={!onOuvrir} onPress={onOuvrir} style={{ flex: 1, minWidth: 0, borderRadius: 22, padding: 14, gap: 6, backgroundColor: fond }}>
+      <Text style={{ fontFamily: polices.texteGras, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: jauge }}>{kicker}</Text>
+      <Text style={{ fontFamily: polices.texteGras, fontSize: 24, color: encre }}>{valeur}</Text>
+      <Text style={{ fontFamily: polices.texte, fontSize: 12.5, color: encre, marginTop: -4 }}>{detail}</Text>
+      {part !== undefined && <Jauge part={part} couleur={jauge} fond="rgba(255,255,255,0.7)" hauteur={8} />}
+      <Text style={{ fontFamily: polices.texteMoyen, fontSize: 12.5, color: encre }}>{pied}</Text>
+    </Pressable>
+  );
+  return (
+    <View style={{ flexDirection: 'row', gap: 12 }}>
+      {tuile(
+        '#DDF3E5',
+        '#0F4D2A',
+        'Mangé',
+        b.mange !== undefined ? nombre(b.mange) : '0',
+        b.objectif !== undefined ? `sur ${nombre(b.objectif)} kcal` : 'kcal',
+        b.objectif ? (b.mange ?? 0) / b.objectif : undefined,
+        '#1B7A45',
+        onOuvrir ? '+ Noter un repas' : 'Note tes repas ci-dessous',
+      )}
+      {tuile(
+        '#E2E8FF',
+        '#1A2D73',
+        'Dépensé',
+        b.depense !== undefined ? nombre(b.depense) : nombre(b.mouvement),
+        b.depense !== undefined ? `kcal, dont ${nombre(b.mouvement)} en bougeant` : 'kcal en bougeant',
+        undefined,
+        '#2F4CC0',
+        duJour.donnee.pas ? `${nombre(duJour.donnee.pas)} pas` : 'Pas : synchronise ta montre',
+      )}
     </View>
   );
 }
