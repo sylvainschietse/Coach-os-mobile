@@ -4,7 +4,7 @@
 // Écart corrigé : un exercice au temps (gainage) ou à l'objectif (cardio) se saisit en durée, distance, calories ou
 // watts au lieu de « charge × répétitions ».
 import { router } from 'expo-router';
-import { AlertCircle, CheckCircle2, ChevronDown, Timer } from 'lucide-react-native';
+import { AlertCircle, CheckCircle2, ChevronDown, PlayCircle, Timer } from 'lucide-react-native';
 import { Fragment, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -123,9 +123,12 @@ export function SeanceLog({
   ouverteAuDepart,
   apercu,
   jour,
+  onDemarrer,
   onRepos,
   onEnregistre,
 }: {
+  /** Liste du programme : un appui ouvre la séance guidée (un bloc par page, vidéos) au lieu de la déplier ici. */
+  onDemarrer?: () => void;
   /** Séance faite un autre jour (ajoutée après coup depuis le suivi) : enregistrée à midi ce jour-là. */
   jour?: string;
   clientId: string;
@@ -157,6 +160,7 @@ export function SeanceLog({
   /** Séance d'activité (cours collectif, yoga, sport…) : aucun exercice, le client dit seulement s'il l'a faite. */
   const activite = lignes.length === 0;
   const brouillon = sale(d);
+  const guidee = !!onDemarrer && !activite && !apercu;
   // Vidéos de mouvement envoyées au coach (et ses réponses), chargées à l'ouverture de la séance.
   const mesVideos = useCharger(async () => (ouvert && !apercu ? videos.mesVideos(clientId) : []), `videos-mouvement-${clientId}-${ouvert && !apercu}`);
   useRechargerSur(mesVideos.recharger, ecouterVideos);
@@ -254,8 +258,9 @@ export function SeanceLog({
     <View nativeID={`seance-${seance.id}`} style={[ts.carte, { padding: 0, gap: 0, borderRadius: 16 }]}>
       <Pressable
         accessibilityRole="button"
-        accessibilityState={{ expanded: ouvert }}
-        onPress={() => (ouvert ? fermer() : setOuvert(true))}
+        accessibilityState={guidee ? undefined : { expanded: ouvert }}
+        accessibilityLabel={guidee ? `Démarrer ${titreClient(seance.titre)}` : undefined}
+        onPress={() => (guidee ? onDemarrer!() : ouvert ? fermer() : setOuvert(true))}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 56 }}
       >
         <View style={styles.jour}>
@@ -268,7 +273,11 @@ export function SeanceLog({
             {brouillon && ' · brouillon non enregistré'}
           </Text>
         </View>
-        <ChevronDown size={20} color={couleurs.texteDoux} style={ouvert ? { transform: [{ rotate: '180deg' }] } : undefined} />
+        {guidee ? (
+          <PlayCircle size={24} color={couleurs.rouge} />
+        ) : (
+          <ChevronDown size={20} color={couleurs.texteDoux} style={ouvert ? { transform: [{ rotate: '180deg' }] } : undefined} />
+        )}
       </Pressable>
 
       {ouvert && (

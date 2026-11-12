@@ -14,7 +14,7 @@ export const STATUTS: Record<StatutPastille, { libelle: string; couleur: string;
   manquee: { libelle: 'Manquée', couleur: couleurs.rouge, fond: couleurs.rougeClair, Icone: X },
   // Orange franc (ambre) : le rouge-orangé du thème se confond avec le rouge « manquée » sur une pastille.
   prevue: { libelle: 'À venir', couleur: '#E68A00', fond: '#FFF4DE', Icone: Clock },
-  libre: { libelle: 'Activité libre', couleur: couleurs.bleu, fond: '#E8F0FE', Icone: Plus },
+  libre: { libelle: 'Hors programme', couleur: couleurs.bleu, fond: '#E8F0FE', Icone: Plus },
 };
 
 /** « 5 oct. » */

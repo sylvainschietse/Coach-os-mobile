@@ -5,9 +5,8 @@ import { ArrowDown, ArrowRight, ArrowUp, Video } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
-import { activites } from '@/data/activites';
 import { entrainement } from '@/data/entrainement';
-import { estLibre, titreActivite, type Activite } from '@/domain/activites';
+import { estLibre, SOURCES, titreActivite, type Activite } from '@/domain/activites';
 import { ecouterVideos, videos } from '@/data/videos-mouvement';
 import { ajouterJours, aujourdhuiParis, avancementCycle, jourParis, titreClient } from '@/domain/entrainement';
 import type { CycleClient, RealisationLue } from '@/domain/entrainement-etat';
@@ -26,6 +25,7 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Puce, Puces } from '../composants';
 import { DetailActiviteLibre, resumeActivite } from '../suivi/activite-libre';
+import { ActivitesHorsProgramme, useActivitesClient } from '../suivi/activites-hors-programme';
 import { Courbe } from '../suivi/courbe';
 import { couleurs, polices } from '../theme';
 import { Action, Ligne, TexteLong, jourCourt, ts } from './commun';
@@ -86,8 +86,8 @@ export function EntrainementClient({
     return videos.videosClient(clientId);
   }, `videos-mouvement-coach-${clientId}`);
   useRechargerSur(videosClient.recharger, ecouterVideos);
-  // Activités ajoutées par le client hors programme (la table peut manquer si la base n'est pas à jour : on s'en passe).
-  const libres = useCharger(async () => (await activites.liste(clientId, 200).catch(() => [] as Activite[])).filter(estLibre), `libres-${clientId}`);
+  // Activités hors programme : saisies par le client (marche, cours, muscu à lui…) ou venues de sa montre.
+  const libres = useActivitesClient(clientId);
 
   const jour = aujourdhuiParis();
   const vue = useMemo(() => {
@@ -151,6 +151,7 @@ export function EntrainementClient({
             videos={videosClient.donnee ?? []}
             libres={libres.donnee ?? []}
           />
+          <ActivitesHorsProgramme liste={libres.donnee} proprietaire={false} />
           <Evolutions courbes={vue.courbes} />
           <ParSemaine bilan={vue.bilan} semaines={vue.semaines} />
         </>
@@ -260,7 +261,7 @@ function Semaines({
         <View style={{ borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: 12, gap: 8 }}>
           <Text style={ts.titre}>{titreActivite(libre)}</Text>
           <Text style={ts.doux}>
-            Activité libre ajoutée par le client, le {jourCourt(jourParis(libre.debut))} · {resumeActivite(libre)}
+            {estLibre(libre) ? 'Activité ajoutée par le client' : `Activité de sa montre (${SOURCES[libre.source]})`}, le {jourCourt(jourParis(libre.debut))} · {resumeActivite(libre)}
           </Text>
           <DetailActiviteLibre a={libre} />
         </View>

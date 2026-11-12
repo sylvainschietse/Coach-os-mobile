@@ -285,7 +285,18 @@ function ConnexionAppleSante({ clientId, onSynchro }: { clientId: string; onSync
   );
 }
 
-function Ligne({ a, proprietaire, onRetirer, onModifier }: { a: Activite; proprietaire: boolean; onRetirer: () => void; onModifier: () => void }) {
+/** Une activité (montre, appli, machine ou saisie libre) avec son détail. Sans `onRetirer` : lecture seule. */
+export function LigneActivite({
+  a,
+  proprietaire,
+  onRetirer,
+  onModifier,
+}: {
+  a: Activite;
+  proprietaire: boolean;
+  onRetirer?: () => void;
+  onModifier?: () => void;
+}) {
   const [confirmer, setConfirmer] = useState(false);
   const libre = estLibre(a);
   const r = rythme(a);
@@ -312,9 +323,9 @@ function Ligne({ a, proprietaire, onRetirer, onModifier }: { a: Activite; propri
         <Texte doux style={{ fontSize: 12, color: libre ? couleurs.bleu : couleurs.texteDoux }}>
           {libre ? (proprietaire ? 'Ajoutée par toi' : 'Saisie par le client') : nomAppli(a.appareil) || SOURCES[a.source]}
         </Texte>
-        {proprietaire && (
+        {proprietaire && onRetirer && (
           <View style={{ flexDirection: 'row', gap: espace(4) }}>
-            {libre && !confirmer && (
+            {libre && !confirmer && onModifier && (
               <Pressable accessibilityRole="button" hitSlop={8} onPress={onModifier}>
                 <Texte style={{ fontSize: 13, color: couleurs.rouge }}>Modifier</Texte>
               </Pressable>
@@ -397,7 +408,7 @@ export function Sport({ clientId, proprietaire = true }: { clientId: string; pro
           <SousTitre>Séances</SousTitre>
           {erreurRetrait ? <Erreur message={erreurRetrait} /> : null}
           {donnee.map((a) => (
-            <Ligne key={a.id} a={a} proprietaire={proprietaire} onRetirer={() => retirer(a.id)} onModifier={() => setModifiee(a)} />
+            <LigneActivite key={a.id} a={a} proprietaire={proprietaire} onRetirer={() => retirer(a.id)} onModifier={() => setModifiee(a)} />
           ))}
         </Carte>
       )}

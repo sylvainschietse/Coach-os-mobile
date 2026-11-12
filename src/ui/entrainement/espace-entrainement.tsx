@@ -26,6 +26,7 @@ import { Action, Confirmation, TexteLong, jourCourt, ts, PhotoProgramme } from '
 import { Historique, nbSeries } from './historique';
 import { BoutonPanneauMinuteurs } from './minuteurs';
 import { SeanceLog } from './seance-log';
+import { ActivitesHorsProgramme, useActivitesClient } from '../suivi/activites-hors-programme';
 
 /** Garde des brouillons (GardeBrouillon d'origine), montée une fois dans l'espace client. */
 export function GardeBrouillon() {
@@ -130,6 +131,8 @@ export function EntrainementClient({
 }) {
   const { donnee: espace, erreur, recharger } = useCharger(() => entrainement.espaceClient(clientId), `espace-${clientId}`);
   const records = useCharger(() => depot.records(clientId), `records-${clientId}`);
+  // Marche, course, cours, muscu à lui… : affichées avec les séances réalisées de la page Programme.
+  const activitesLibres = useActivitesClient(vue === 'programme' ? clientId : '');
   const cycleId = espace?.cycle?.id;
   const calendrier = useCharger(() => (cycleId ? entrainement.calendrier(clientId, cycleId) : Promise.resolve([])), `calendrier-${clientId}-${cycleId}`);
   const [page, setPage] = useState<Page>({ nom: 'accueil' });
@@ -151,9 +154,13 @@ export function EntrainementClient({
       router.push({ pathname: '/client/seance-bloc', params: { seance: seanceId, plan: planificationId ?? '' } });
     else aller({ nom: 'seance', seanceId, planificationId, jeton: Date.now() });
   };
+  // Liste du programme : une séance d'exercices s'ouvre en séance guidée, comme celle de l'accueil.
+  const demarrerDepuisListe = (seanceId: string) => () =>
+    demanderSortie(() => router.push({ pathname: '/client/seance-bloc', params: { seance: seanceId, plan: '' } }));
   // Retour de la séance plein écran : la séance faite et le créneau réalisé apparaissent tout de suite.
   const premierAffichage = useRef(true);
   const rechargerCalendrier = calendrier.recharger;
+  const rechargerActivites = activitesLibres.recharger;
   useFocusEffect(
     useCallback(() => {
       if (premierAffichage.current) {
@@ -162,7 +169,8 @@ export function EntrainementClient({
       }
       recharger();
       rechargerCalendrier();
-    }, [recharger, rechargerCalendrier]),
+      rechargerActivites();
+    }, [recharger, rechargerCalendrier, rechargerActivites]),
   );
 
   // Retour d'Android : d'une page du programme ou d'une séance, on revient à l'accueil au lieu de quitter l'app.
@@ -200,7 +208,7 @@ export function EntrainementClient({
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
               <Lock size={12} color={couleurs.texteDoux} />
-              <Text style={ts.doux}>{apercu ? 'Aperçu : seul le client peut noter une séance.' : 'Ouvrez une séance pour voir les exercices, puis notez ce que vous avez réalisé.'}</Text>
+              <Text style={ts.doux}>{apercu ? 'Aperçu : seul le client peut noter une séance.' : 'Touchez une séance pour la démarrer : un bloc par page, avec les vidéos.'}</Text>
             </View>
           </View>
           {espace.seances.map((s) => (
@@ -212,6 +220,7 @@ export function EntrainementClient({
               historique={espace.realisations}
               references={references}
               apercu={apercu}
+              onDemarrer={demarrerDepuisListe(s.id)}
               onRepos={onRepos}
               onEnregistre={apresEnregistrement}
             />
@@ -245,6 +254,7 @@ export function EntrainementClient({
               <Badge libelle={`${nbSeries(espace)} série${nbSeries(espace) > 1 ? 's' : ''}`} />
             </View>
             <Historique espace={espace} />
+            <ActivitesHorsProgramme liste={activitesLibres.donnee} proprietaire={!apercu} titre="Mes activités hors programme" />
           </>
         )}
       </>

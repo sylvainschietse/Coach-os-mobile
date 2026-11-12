@@ -11,6 +11,7 @@ import type { SerieRealisee } from '@/domain/types';
 import { useCharger } from '@/lib/useCharger';
 
 import { TitreDisplay } from '../coque';
+import { ActivitesHorsProgramme, useActivitesClient } from '../suivi/activites-hors-programme';
 import { Badge, Choix, Recherche } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
 import { Action, Ligne, ts } from './commun';
@@ -208,10 +209,17 @@ export function SeancesRealisees({
               <CarteSeance key={s.r.id} s={s} onOuvrirProgramme={onOuvrirProgramme} />
             ))}
           </View>
+          <ActivitesDuProfil clientId={profil.clientId} />
         </>
       )}
     </View>
   );
+}
+
+/** Marche, course, cours ou séance à lui : ce que le client a fait en plus du programme. */
+function ActivitesDuProfil({ clientId }: { clientId: string }) {
+  const { donnee } = useActivitesClient(clientId);
+  return <ActivitesHorsProgramme liste={donnee} proprietaire={false} />;
 }
 
 function CyclesLiens({
