@@ -411,9 +411,12 @@ export function BoutonFacture({
   date,
   onCree,
   envoi,
+  onOuvrirFiche,
 }: {
   /** Client de la ligne : Télécharger, WhatsApp et E-mail, comme dans la fiche client. */
   envoi?: DestinataireFacture;
+  /** Toucher une facture existante ouvre la fiche de la ligne (détail, dates, statut) au lieu du PDF. */
+  onOuvrirFiche?: () => void;
   facture?: Facture;
   facturable: boolean;
   paiementId: string;
@@ -430,7 +433,8 @@ export function BoutonFacture({
     setErreur(undefined);
     setOccupe(true);
     try {
-      if (facture) await ouvrirFacture(facture, style.donnee ?? {});
+      if (facture && onOuvrirFiche) onOuvrirFiche();
+      else if (facture) await ouvrirFacture(facture, style.donnee ?? {});
       else {
         if (seance) await factures.facturerMois(seance.clientId, seance.mois);
         else await factures.facturer(paiementId);
@@ -447,6 +451,60 @@ export function BoutonFacture({
       <Bouton variante="discret" libelle={facture ? `Facture ${facture.numero}${facture.payeLe || facture.total === 0 ? '' : ' · à régler'}` : seance ? 'Facturer le mois' : 'Créer la facture'} onPress={agir} chargement={occupe} />
       {erreur && <Texte style={{ fontSize: 12, color: couleurs.rouge }}>{erreur}</Texte>}
       {facture && envoi && <LigneFactureListe f={facture} style={style.donnee ?? {}} envoi={envoi} sansEntete />}
+    </View>
+  );
+}
+
+/**
+ * En tête de la fiche d'une ligne de Paiements : sa facture (numéro, à régler ou réglée), le PDF et l'envoi.
+ * Une facture pas encore réglée suit les corrections de la ligne une fois la fiche enregistrée.
+ */
+export function FactureDeLaFiche({ paiementId, envoi, modifie }: { paiementId: string; envoi?: DestinataireFacture; modifie: boolean }) {
+  const liste = useCharger(() => factures.parPaiement(), `facture-fiche-${paiementId}`);
+  const style = useCharger(() => factures.style(), 'factures-style');
+  const [occupe, setOccupe] = useState(false);
+  const [erreur, setErreur] = useState<string>();
+  const f = liste.donnee?.get(paiementId);
+  if (!f) return null;
+  // Facture du mois des séances une par une : elle couvre plusieurs lignes et ne suit pas les corrections.
+  const groupee = f.paiementId !== paiementId;
+  const voir = async () => {
+    setErreur(undefined);
+    setOccupe(true);
+    try {
+      await ouvrirFacture(f, style.donnee ?? {});
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'PDF non créé');
+    } finally {
+      setOccupe(false);
+    }
+  };
+  const aide = f.payeLe
+    ? 'Facture réglée : elle garde son contenu, tes corrections ici ne la changent plus.'
+    : groupee
+      ? 'Facture du mois : elle regroupe plusieurs séances et ne suit pas les corrections de cette ligne.'
+      : modifie
+        ? 'Enregistre la fiche : la facture reprendra tes corrections, sous le même numéro.'
+        : 'Corrige le détail, les dates ou le statut ci-dessous puis enregistre : la facture suit, sous le même numéro.';
+  return (
+    <View style={{ gap: espace(2), padding: espace(3), borderRadius: 12, borderWidth: 1, borderColor: couleurs.bordure, marginBottom: espace(4) }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: espace(3), flexWrap: 'wrap' }}>
+        <View style={{ flex: 1, minWidth: 160 }}>
+          <Texte style={{ fontWeight: '600' }}>
+            Facture {f.numero} · {f.objet}
+          </Texte>
+          <Texte doux style={{ fontSize: 13 }}>
+            {dateFr(f.date)} · {f.total === 0 ? 'offert' : euros(f.total)}
+            {f.total > 0 ? (f.payeLe ? ` · réglée le ${dateFr(f.payeLe)}` : ' · à régler') : ''}
+          </Texte>
+        </View>
+        <Bouton variante="discret" libelle="Voir le PDF" chargement={occupe} onPress={voir} />
+      </View>
+      {envoi && <LigneFactureListe f={f} style={style.donnee ?? {}} envoi={envoi} sansEntete />}
+      <Texte doux style={{ fontSize: 13 }}>
+        {aide}
+      </Texte>
+      {erreur && <Texte style={{ fontSize: 13, color: couleurs.rouge }}>{erreur}</Texte>}
     </View>
   );
 }

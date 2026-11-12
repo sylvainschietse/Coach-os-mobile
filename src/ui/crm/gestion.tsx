@@ -41,7 +41,7 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Selecteur, Vide } from '../coque';
 import { Chargement, Erreur } from '../composants';
-import { BoutonFacture, BoutonToutesFactures } from '../factures';
+import { BoutonFacture, BoutonToutesFactures, FactureDeLaFiche } from '../factures';
 import { couleurs, espace, polices } from '../theme';
 import { adresseQuestionnaire, EnvoiMessage, nomComplet, useCoachNom } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
@@ -166,6 +166,7 @@ export function Gestion({
                       reference={l.reference}
                       date={l.date}
                       onCree={lesFactures.recharger}
+                      onOuvrirFiche={() => onOuvrir(l.id)}
                       envoi={contact ? { contactId: contact.id, prenom: contact.prenom, telephone: contact.telephone, email: contact.email } : undefined}
                     />
                   )}
@@ -611,6 +612,16 @@ function Formulaire({
             <Saisie libelle="Notes" long valeur={b.notes} onChange={(notes) => maj({ notes })} />
           </Cellule>
         </Grille>
+      )}
+      {module === 'Paiements' && id && (
+        <FactureDeLaFiche
+          paiementId={id}
+          modifie={modifie}
+          envoi={(() => {
+            const c = carnet.contacts.find((x) => x.id === initial.contactId);
+            return c ? { contactId: c.id, prenom: c.prenom, telephone: c.telephone, email: c.email } : undefined;
+          })()}
+        />
       )}
       {module === 'Paiements' && lireSeances(initial.notes) && (
         <DetailSeances
