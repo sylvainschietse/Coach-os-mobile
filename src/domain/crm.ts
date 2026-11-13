@@ -800,7 +800,7 @@ export const MODELES: Record<ModeleMessage, { libelle: string; texte: string }> 
   nouvelles_10j: {
     libelle: 'Prendre des nouvelles (10 jours)',
     texte:
-      'Bonjour {prenom}, c’est {coach}. Comment ça se passe de ton côté avec l’entraînement ? Tu as réussi à garder le rythme ? Dis-moi où tu en es, ça m’intéresse 🙂',
+      'Bonjour {prenom}, c’est {coach}. Comment ça se passe de ton côté avec l’entraînement ? Tu as réussi à garder le rythme ? Dis-moi où tu en es, ça m’intéresse 🙂 Je t’offre aussi mon petit guide pour composer tes repas : {guide}',
   },
   nouvelles_1mois: {
     libelle: 'Prendre des nouvelles (1 mois)',
@@ -814,7 +814,7 @@ export const MODELES: Record<ModeleMessage, { libelle: string; texte: string }> 
 export function rediger(
   modele: ModeleMessage,
   contact: Pick<Contact, 'prenom'>,
-  infos: { coach: string; lienQuestionnaire?: string; booster?: string },
+  infos: { coach: string; lienQuestionnaire?: string; booster?: string; guide?: string },
   /** Le texte réécrit par le coach (Mes relances), à la place de celui d'origine. */
   texte?: string,
 ): string {
@@ -826,6 +826,7 @@ export function rediger(
     .split('{prenom}').join(contact.prenom || 'à toi')
     .split('{coach}').join(infos.coach)
     .split('{lien}').join(infos.lienQuestionnaire ?? '')
+    .split('{guide}').join(infos.guide ?? '')
     .split('{quand}').join(quand)
     .trim();
 }

@@ -25,6 +25,7 @@ export const VARIABLES = [
   { code: '{coach}', libelle: 'Mon prénom' },
   { code: '{quand}', libelle: 'Date du RDV' },
   { code: '{lien}', libelle: 'Lien du questionnaire' },
+  { code: '{guide}', libelle: 'Guide nutrition offert' },
 ] as const;
 
 export type Declencheur =
@@ -126,7 +127,7 @@ export function erreurTexte(texte: string): string | null {
   if (!texte.trim()) return 'Écris le message.';
   if (texte.length > MAX_TEXTE) return `${MAX_TEXTE} caractères au plus.`;
   const inconnues = (texte.match(/\{[^}]*\}/g) ?? []).filter((v) => !VARIABLES.some((x) => x.code === v));
-  if (inconnues.length) return `${inconnues[0]} n’est pas reconnu. Utilise les boutons pour insérer le prénom, la date ou le lien.`;
+  if (inconnues.length) return `${inconnues[0]} n’est pas reconnu. Utilise les boutons pour insérer le prénom, la date, le lien ou le guide.`;
   return null;
 }
 
@@ -138,12 +139,13 @@ export function erreurPerso(p: Pick<RelancePerso, 'nom' | 'texte' | 'declencheur
 }
 
 /** Remplace les variables ; une variable sans valeur disparaît proprement. */
-export function remplir(texte: string, v: { prenom?: string; coach: string; quand?: string; lien?: string }): string {
+export function remplir(texte: string, v: { prenom?: string; coach: string; quand?: string; lien?: string; guide?: string }): string {
   return texte
     .split('{prenom}').join(v.prenom || 'à toi')
     .split('{coach}').join(v.coach)
     .split('{quand}').join(v.quand ?? 'bientôt')
     .split('{lien}').join(v.lien ?? '')
+    .split('{guide}').join(v.guide ?? '')
     .replace(/[ \t]{2,}/g, ' ')
     .trim();
 }
@@ -185,7 +187,7 @@ const jourDe = (iso: string) => new Date(iso).toLocaleDateString('fr-CA', { time
 const RATTRAPAGE = 3;
 
 /** Les occasions du jour : une par relance active, dossier et événement, jamais deux fois la même. */
-export function relancesACreer(r: ReglagesRelances, situations: Situation[], jour: string, coach: string): RelanceACreer[] {
+export function relancesACreer(r: ReglagesRelances, situations: Situation[], jour: string, coach: string, guide?: string): RelanceACreer[] {
   const sortie: RelanceACreer[] = [];
   for (const p of r.perso) {
     if (!p.active) continue;
@@ -208,7 +210,7 @@ export function relancesACreer(r: ReglagesRelances, situations: Situation[], jou
       for (const o of occasions) {
         const cle = `${p.id}:${s.contact.id}:${o.cle}`;
         if (r.creees[cle] || sortie.some((x) => x.cle === cle)) continue;
-        sortie.push({ cle, persoId: p.id, contactId: s.contact.id, titre: p.nom, note: remplir(p.texte, { prenom: s.contact.prenom, coach, quand: o.quand }) });
+        sortie.push({ cle, persoId: p.id, contactId: s.contact.id, titre: p.nom, note: remplir(p.texte, { prenom: s.contact.prenom, coach, quand: o.quand, guide }) });
       }
     }
   }

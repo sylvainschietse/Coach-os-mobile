@@ -9,16 +9,13 @@ import { jourLocal } from '@/domain/crm';
 import { formaterDate, lireDate } from '@/domain/programmes';
 import { formaterNombre, lireNombre } from '@/domain/suivi';
 import type { NiveauActivite, ObjectifNutrition, ProfilNutrition, Regime, Sexe } from '@/domain/types';
-import { adresseWeb } from '@/lib/adresse-web';
+import { LIEN_GUIDE_MACROS } from '@/lib/guides';
 import { useCharger } from '@/lib/useCharger';
 
 import { BoutonContour } from '../coque';
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, Puce, Puces, SousTitre, Texte } from '../composants';
 import { couleurs, espace } from '../theme';
 import { libelleRegime } from './commun';
-
-/** Guide offert « Tes macros, mode d'emploi » (public/guide-macros-mode-d-emploi.pdf, publié avec le site web). */
-export const LIEN_GUIDE_MACROS = process.env.EXPO_PUBLIC_LIEN_GUIDE_MACROS || adresseWeb('/guide-macros-mode-d-emploi.pdf');
 
 /** Profil et dernière pesée du client, pour calculer ses besoins. */
 export async function chargerProfil(clientId: string) {
