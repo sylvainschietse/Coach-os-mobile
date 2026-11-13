@@ -618,6 +618,9 @@ export function LectureBooster({ booster: b }: { booster: Booster }) {
             libelle: `${t.libelle} — observations`,
             valeur: e?.tests[t.id]?.observations.join(' · '),
           },
+          ...(e?.tests[t.id]?.mesures?.length
+            ? [{ libelle: `${t.libelle} — mesures vidéo`, valeur: e.tests[t.id]!.mesures!.map((m) => `${m.libelle} ${m.angle}°`).join(' · ') }]
+            : []),
           ...(t.rpe
             ? [
                 {

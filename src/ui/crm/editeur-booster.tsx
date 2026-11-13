@@ -34,6 +34,7 @@ import { BoutonDictee } from '../dictee';
 import { couleurs, espace, polices } from '../theme';
 import { BoutonPied, CaseACocher, Cellule, Choix, ChoixMultiple, Grille, Libelle, Modale, PiedEditeur, Saisie } from './dossier';
 import { ConclusionBooster } from './conclusion-booster';
+import { MesuresVideoTest } from './mesures-video-test';
 import { TestsGolf, type GolfPrecedent } from './tests-golf';
 import { BoutonEtape } from './acces';
 import { EnvoiMessage, nomComplet, useMessageQuestionnaire } from './commun';
@@ -573,6 +574,13 @@ function Tests({
             onChange={(observations) => majTest(t.id, { observations })}
           />
         </Cellule>,
+        ...(t.id === 'mobilite' || t.id === 'posture'
+          ? [
+              <Cellule key={`${t.id}-video`} pleine>
+                <MesuresVideoTest test={t.id} libelle={t.libelle} mesures={test(t.id).mesures ?? []} onChange={(mesures) => majTest(t.id, { mesures })} />
+              </Cellule>,
+            ]
+          : []),
       ])}
       <Cellule>
         <Choix

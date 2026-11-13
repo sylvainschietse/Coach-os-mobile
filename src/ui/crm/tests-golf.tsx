@@ -1,5 +1,6 @@
 // Tests golf dans la rubrique Tests du Booster : une case « Client golfeur », puis huit tests chiffrés avec leur
 // protocole, et le résultat du Booster précédent sous chaque mesure pour suivre l'évolution.
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -13,6 +14,7 @@ import {
   type FamilleGolf,
 } from '@/domain/tests-golf';
 
+import { LienMesureVideo, MesureVideoModale } from '../mesure-video';
 import { couleurs, espace, polices } from '../theme';
 import { CaseACocher, Cellule, Saisie } from './dossier';
 
@@ -34,6 +36,7 @@ export function TestsGolf({
   const actif = !!golf?.actif;
   const dateAvant = precedent ? new Date(precedent.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
   let famille: FamilleGolf | undefined;
+  const [video, setVideo] = useState<{ test: (typeof TESTS_GOLF)[number]; champ: (typeof TESTS_GOLF)[number]['champs'][number] }>();
   return (
     <>
       <Cellule pleine>
@@ -84,6 +87,7 @@ export function TestsGolf({
                           erreur={valeur.trim() && n === undefined ? 'Un nombre, par exemple 42 ou 12,5.' : undefined}
                           aide={aide}
                         />
+                        {t.video && c.unite === '°' && <LienMesureVideo onPress={() => setVideo({ test: t, champ: c })} />}
                       </View>
                     );
                   })}
@@ -92,6 +96,17 @@ export function TestsGolf({
             </Cellule>,
           ];
         })}
+      {video?.test.video && (
+        <MesureVideoModale
+          titre={`${video.test.libelle} · ${video.champ.libelle}`}
+          facon={video.test.video}
+          onFermer={() => setVideo(undefined)}
+          onValider={(angle) => {
+            onChange(changerMesure(golf, video.test.id, video.champ.cle, String(angle)));
+            setVideo(undefined);
+          }}
+        />
+      )}
     </>
   );
 }

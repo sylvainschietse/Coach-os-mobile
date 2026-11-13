@@ -3,6 +3,8 @@
 // et des tests physiques que les études relient à la vitesse de swing. Adaptée à une salle sans charges libres :
 // la puissance de rotation se mesure à la poulie.
 
+import { MESURES_MOBILITE, type FaconDeMesurer } from './mesure-angle';
+
 export type IdTestGolf =
   | 'rotationThoracique'
   | 'rotationHanches'
@@ -33,6 +35,8 @@ export interface DefinitionTestGolf {
   /** Plus haut = mieux (sauf distance doigts-sol). */
   sens: 'plus' | 'moins';
   facultatif?: boolean;
+  /** Les champs en degrés peuvent se mesurer sur une vidéo. */
+  video?: FaconDeMesurer;
 }
 
 const cotes = (unite: string, d = 'Droite', g = 'Gauche'): ChampGolf[] => [
@@ -50,6 +54,7 @@ export const TESTS_GOLF: DefinitionTestGolf[] = [
     repere: '45° ou plus de chaque côté',
     champs: cotes('°', 'Vers la droite', 'Vers la gauche'),
     sens: 'plus',
+    video: MESURES_MOBILITE.find((m) => m.libelle === 'Rotation du haut du dos'),
   },
   {
     id: 'rotationHanches',
@@ -65,6 +70,7 @@ export const TESTS_GOLF: DefinitionTestGolf[] = [
       { cle: 'externeGauche', libelle: 'Externe gauche', unite: '°' },
     ],
     sens: 'plus',
+    video: MESURES_MOBILITE.find((m) => m.libelle === 'Rotation des hanches'),
   },
   {
     id: 'toucherOrteils',
