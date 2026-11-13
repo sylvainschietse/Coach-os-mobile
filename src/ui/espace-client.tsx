@@ -2,12 +2,13 @@
 // depuis l'avatar de l'en-tête. Progrès est une page de cartes : chacune ouvre sa rubrique, avec un retour.
 // Sert aussi à l'aperçu « Vue client » du coach.
 import { useFocusEffect } from 'expo-router';
-import { Award, CalendarCheck, ChevronLeft, ChevronRight, Dumbbell, Home, Moon, Ruler, Target, TrendingUp, Utensils, Watch, type LucideIcon } from 'lucide-react-native';
+import { Award, CalendarCheck, ChevronLeft, ChevronRight, Dumbbell, Flower2, Home, Moon, Ruler, Target, TrendingUp, Utensils, Watch, type LucideIcon } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { depot } from '@/data';
 import { abonnements } from '@/data/abonnements';
+import { alimentation } from '@/data/alimentation';
 import { envoyerEnAttente } from '@/data/file-envoi';
 import { demanderSortie } from '@/lib/brouillon';
 import { useCharger } from '@/lib/useCharger';
@@ -25,6 +26,7 @@ import { Carte, Texte } from './composants';
 import { CarteBadges, CarteSerie, FeteBadges, MesBadges } from './motivation/badges';
 import { TuilesDuJour } from './suivi/calories-jour';
 import { MaJournee } from './suivi/ma-journee';
+import { CarteCycleAccueil, MonCycle } from './suivi/mon-cycle';
 import { BilanSemaine } from './suivi/bilan-semaine';
 import { Mensurations } from './suivi/mensurations';
 import { Objectifs } from './suivi/objectifs';
@@ -38,7 +40,7 @@ import { UniversPage } from './univers';
 
 /** « moi » n'est plus dans la barre : c'est la page Mon compte, ouverte depuis l'avatar (ou un lien qui la demande). */
 export type OngletClient = 'accueil' | 'programme' | 'suivi' | 'nutrition' | 'moi';
-type RubriqueProgres = 'badges' | 'hebdo' | 'mesures' | 'pr' | 'quotidien' | 'objectifs' | 'sport';
+type RubriqueProgres = 'badges' | 'hebdo' | 'mesures' | 'pr' | 'quotidien' | 'cycle' | 'objectifs' | 'sport';
 
 const ONGLETS: OngletDef<OngletClient>[] = [
   { cle: 'accueil', libelle: 'Aujourd’hui', icone: Home },
@@ -63,14 +65,17 @@ const RUBRIQUES: { cle: Exclude<RubriqueProgres, 'badges'>; titre: string; detai
   { cle: 'pr', titre: 'Mes records', detail: 'Tes meilleures perfs', icone: Award, fond: '#FFF1CC', encre: '#5C3800', accent: '#8A5A00' },
   { cle: 'quotidien', titre: 'Ma journée', detail: 'Sommeil, eau, stress, énergie…', icone: Moon, fond: '#EFEAFF', encre: '#33236E', accent: '#6B4BC9' },
   { cle: 'objectifs', titre: 'Mes objectifs', detail: 'Tes défis perso, avec une date', icone: Target, fond: '#DDF3E5', encre: '#0F4D2A', accent: '#1B7A45' },
+  { cle: 'cycle', titre: 'Mon cycle', detail: 'Prochaines règles, énergie et séances selon ta phase', icone: Flower2, fond: '#FFE6E7', encre: '#6E1013', accent: '#B3141A' },
   { cle: 'sport', titre: 'Synchroniser ma montre', detail: 'Pas, sommeil et sorties', icone: Watch, fond: '#1B1D24', encre: '#FFFFFF', accent: '#8FA8FF' },
 ];
+const PLEINE_LARGEUR: RubriqueProgres[] = ['hebdo', 'cycle', 'sport'];
 const TITRES: Record<RubriqueProgres, string> = {
   badges: 'Mes badges',
   hebdo: 'Ma semaine',
   mesures: 'Mon corps',
   pr: 'Mes records',
   quotidien: 'Ma journée',
+  cycle: 'Mon cycle',
   objectifs: 'Mes objectifs',
   sport: 'Ma montre et mon sport',
 };
@@ -129,6 +134,8 @@ export function EspaceClient({
   const margeBarre = useMargeBarre();
   const defilement = useRef<ComponentRef<typeof ScrollView>>(null);
   const abo = useCharger(() => abonnements.lire(clientId), `abo-${clientId}`);
+  // « Mon cycle » est masqué pour un client dont le profil indique « homme ».
+  const profilNutrition = useCharger(() => alimentation.profil(clientId).catch(() => null), `profil-nutrition-${clientId}`);
 
   const enHaut = useCallback(() => defilement.current?.scrollTo({ y: 0, animated: false }), []);
   useEffect(() => {
@@ -186,6 +193,7 @@ export function EspaceClient({
                       <CarteSerie clientId={clientId} onOuvrir={() => ouvrir('badges')} />
                       <TuilesDuJour clientId={clientId} onOuvrir={() => demanderSortie(() => aller('nutrition'))} />
                       <MaJournee clientId={clientId} onNoter={() => ouvrir('quotidien')} />
+                      {!apercu && <CarteCycleAccueil clientId={clientId} onOuvrir={() => ouvrir('cycle')} />}
                       {!apercu && <CarteMessages clientId={clientId} />}
                     </>
                   )
@@ -202,9 +210,9 @@ export function EspaceClient({
               <Hero kicker="Ma progression" titre="Mes progrès" sousTitre="Tes badges, ton corps, tes records et ton quotidien, semaine après semaine." />
               <CarteBadges clientId={clientId} onOuvrir={() => ouvrir('badges')} />
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 }}>
-                {RUBRIQUES.map((r) => (
-                  <View key={r.cle} style={{ width: r.cle === 'hebdo' || r.cle === 'sport' ? '100%' : '50%', padding: 6 }}>
-                    <CarteRubrique {...r} large={r.cle === 'hebdo' || r.cle === 'sport'} onPress={() => ouvrir(r.cle)} />
+                {RUBRIQUES.filter((r) => r.cle !== 'cycle' || profilNutrition.donnee?.sexe !== 'homme').map((r) => (
+                  <View key={r.cle} style={{ width: PLEINE_LARGEUR.includes(r.cle) ? '100%' : '50%', padding: 6 }}>
+                    <CarteRubrique {...r} large={PLEINE_LARGEUR.includes(r.cle)} onPress={() => ouvrir(r.cle)} />
                   </View>
                 ))}
               </View>
@@ -228,6 +236,8 @@ export function EspaceClient({
               {rubrique === 'pr' && <Records key={clientId} clientId={clientId} />}
               {/* En aperçu, le coach peut aussi noter une journée pour son client (pendant une séance, par exemple). */}
               {rubrique === 'quotidien' && <Quotidien key={clientId} clientId={clientId} cibles parCoach={!!apercu} />}
+              {/* Données de santé : en aperçu, la coach ne voit que ce que la cliente partage. */}
+              {rubrique === 'cycle' && <MonCycle key={clientId} clientId={clientId} apercu={!!apercu} />}
               {rubrique === 'objectifs' && <Objectifs key={clientId} clientId={clientId} apercu={!!apercu} />}
               {rubrique === 'sport' && <Sport key={clientId} clientId={clientId} proprietaire={!apercu} />}
             </>
