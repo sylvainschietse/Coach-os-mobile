@@ -1,0 +1,324 @@
+// Mes newsletters : lecture et écriture des newsletters du coach (table newsletters), illustration rangée dans le
+// compartiment public « newsletters », destinataires comptés pour l'écran et envoi d'un test à soi-même (fonction Edge
+// envoyer-newsletters). En démo, tout reste en mémoire et rien ne part.
+import { cibleDe, compterDestinataires, emailValide, imagesDuTexte, type Article, type ContactNewsletter, type Newsletter } from '@/domain/newsletters';
+import { cheminPdf, VALIDITE_LIEN_PDF } from '@/domain/newsletters-pdf';
+import { nouvelId } from '@/lib/identifiant';
+
+import { crm } from './crm';
+import { supabase } from './supabase';
+
+export type Comptes = ReturnType<typeof compterDestinataires>;
+
+/** Une illustration à ranger : ses octets, ou déjà rangée (chemin du stockage). */
+export type ImageAEnregistrer = { octets: ArrayBuffer; type: string } | { chemin: string } | null;
+/** Les images du texte livrées avec l'appli (« ![légende](illus-07) ») : rangées à l'enregistrement, le texte pointe alors vers elles. */
+export type ImagesDuTexte = { cle: string; octets: ArrayBuffer }[];
+
+const estRangee = (src: string) => /^[0-9a-f-]{36}\/[A-Za-z0-9_.-]{1,80}$/.test(src);
+const remplacerImage = (message: string, avant: string, apres: string) => message.split(`](${avant})`).join(`](${apres})`);
+
+const abonnes = new Set<() => void>();
+export function ecouterNewsletters(fn: () => void) {
+  abonnes.add(fn);
+  return () => {
+    abonnes.delete(fn);
+  };
+}
+const prevenir = () => abonnes.forEach((fn) => fn());
+
+type Ligne = {
+  id: string;
+  rubrique: string;
+  objet: string;
+  chapeau: string;
+  message: string;
+  image: string | null;
+  bouton_libelle: string | null;
+  bouton_lien: string | null;
+  cibles: Newsletter['cibles'];
+  contacts_choisis?: string[] | null;
+  par_email: boolean;
+  par_notif: boolean;
+  envoi_le: string | null;
+  etat: Newsletter['etat'];
+  envoyee_le: string | null;
+  nb_emails: number;
+  nb_notifs: number;
+  cree_le: string;
+};
+const COLONNES = 'id, rubrique, objet, chapeau, message, image, bouton_libelle, bouton_lien, cibles, contacts_choisis, par_email, par_notif, envoi_le, etat, envoyee_le, nb_emails, nb_notifs, cree_le';
+
+const lire = (l: Ligne): Newsletter => ({
+  id: l.id,
+  rubrique: l.rubrique,
+  objet: l.objet,
+  chapeau: l.chapeau,
+  message: l.message,
+  image: l.image ?? undefined,
+  boutonLibelle: l.bouton_libelle ?? undefined,
+  boutonLien: l.bouton_lien ?? undefined,
+  cibles: l.cibles,
+  contacts: l.contacts_choisis ?? [],
+  parEmail: l.par_email,
+  parNotif: l.par_notif,
+  envoiLe: l.envoi_le ?? undefined,
+  etat: l.etat,
+  envoyeeLe: l.envoyee_le ?? undefined,
+  nbEmails: l.nb_emails,
+  nbNotifs: l.nb_notifs,
+  creeLe: l.cree_le,
+});
+
+const ecrire = (n: Newsletter, image: string | null) => ({
+  id: n.id,
+  rubrique: n.rubrique.trim(),
+  objet: n.objet.trim(),
+  chapeau: n.chapeau.trim(),
+  message: n.message.trim(),
+  image,
+  bouton_libelle: n.boutonLibelle?.trim() || null,
+  bouton_lien: n.boutonLibelle?.trim() ? n.boutonLien?.trim() || null : null,
+  cibles: n.cibles,
+  contacts_choisis: n.contacts ?? [],
+  par_email: n.parEmail,
+  par_notif: n.parNotif,
+  envoi_le: n.envoiLe ?? null,
+  etat: n.etat === 'programmee' ? 'programmee' : 'brouillon',
+});
+
+const ilYa = (jours: number, heure = 9) => {
+  const d = new Date();
+  d.setDate(d.getDate() - jours);
+  d.setHours(heure, 0, 0, 0);
+  return d.toISOString();
+};
+
+// Démo : une newsletter déjà partie, pour montrer la liste.
+let memoire: Newsletter[] = [
+  {
+    id: 'demo-newsletter-1',
+    rubrique: 'Le défi du mois',
+    objet: '10 000 pas par jour pendant 30 jours',
+    chapeau: 'Ce mois-ci, un défi simple qui fait une vraie différence sur l’énergie.',
+    message: '## Le principe\nChaque jour, atteins 10 000 pas.',
+    image: 'theme:defi',
+    cibles: ['clients'],
+    parEmail: true,
+    parNotif: true,
+    envoiLe: ilYa(9),
+    etat: 'envoyee',
+    envoyeeLe: ilYa(9),
+    nbEmails: 6,
+    nbNotifs: 4,
+    creeLe: ilYa(10),
+  },
+];
+const imagesDemo = new Map<string, string>();
+
+export const newsletters = {
+  async liste(): Promise<Newsletter[]> {
+    if (!supabase) return [...memoire].sort((a, b) => b.creeLe.localeCompare(a.creeLe));
+    const lireTout = (colonnes: string) => supabase!.from('newsletters').select(colonnes).order('cree_le', { ascending: false }).limit(200);
+    let { data, error } = await lireTout(COLONNES);
+    // Base pas encore à jour (pas de clients choisis un par un) : on lit sans.
+    if (error && /contacts_choisis/.test(error.message)) ({ data, error } = await lireTout(COLONNES.replace(' contacts_choisis,', '')));
+    if (error) {
+      if (error.code === '42P01' || /newsletters/.test(error.message)) throw new Error('Les newsletters ne sont pas encore activées sur le serveur : la base doit d’abord être mise à jour.');
+      throw new Error('Impossible de charger tes newsletters pour le moment.');
+    }
+    return (data as unknown as Ligne[]).map(lire);
+  },
+
+  /** Enregistre (brouillon ou programmée). L'illustration est rangée d'abord : sans elle, rien n'est enregistré. */
+  async enregistrer(n: Newsletter, image: ImageAEnregistrer, imagesTexte: ImagesDuTexte = []): Promise<Newsletter> {
+    const id = n.id || nouvelId();
+    if (!supabase) {
+      let chemin: string | undefined;
+      if (image && 'octets' in image) {
+        chemin = `demo/${id}`;
+        imagesDemo.set(chemin, `data:${image.type};base64,${base64(image.octets)}`);
+      } else if (image) chemin = image.chemin;
+      const enregistree = { ...n, id, image: chemin, creeLe: n.creeLe || new Date().toISOString() };
+      memoire = [enregistree, ...memoire.filter((x) => x.id !== id)];
+      prevenir();
+      return enregistree;
+    }
+    const db = supabase;
+    let chemin: string | null = null;
+    if (image && 'octets' in image) {
+      const { data: coach } = await db.rpc('mon_coach_id');
+      chemin = `${coach}/${id}-${Date.now().toString(36)}.${image.type === 'image/png' ? 'png' : 'jpg'}`;
+      const envoi = await db.storage.from('newsletters').upload(chemin, image.octets, { contentType: image.type, upsert: true });
+      if (envoi.error) throw new Error('L’illustration n’a pas pu être envoyée. Vérifie ta connexion et réessaie.');
+    } else if (image) chemin = image.chemin;
+    let message = n.message;
+    if (imagesTexte.length) {
+      const { data: coach } = await db.rpc('mon_coach_id');
+      for (const it of imagesTexte) {
+        if (!message.includes(`](${it.cle})`)) continue;
+        const dest = `${coach}/${id}-${it.cle.replace(/[^A-Za-z0-9_-]/g, '')}.jpg`;
+        const envoi = await db.storage.from('newsletters').upload(dest, it.octets, { contentType: 'image/jpeg', upsert: true });
+        if (envoi.error) throw new Error('Une image de l’article n’a pas pu être envoyée. Vérifie ta connexion et réessaie.');
+        message = remplacerImage(message, it.cle, dest);
+      }
+    }
+    const ligne = ecrire({ ...n, id, message }, chemin);
+    const r = n.id
+      ? await db.from('newsletters').update({ ...ligne, maj_le: new Date().toISOString() }).eq('id', id).select(COLONNES).single()
+      : await db.from('newsletters').insert(ligne).select(COLONNES).single();
+    if (r.error || !r.data) {
+      if (r.error?.code === '42P01') throw new Error('Les newsletters ne sont pas encore activées sur le serveur : la base doit d’abord être mise à jour.');
+      if (n.id && r.error?.code === 'PGRST116') throw new Error('Cette newsletter est déjà partie : elle ne peut plus être modifiée.');
+      throw new Error('Ta newsletter n’a pas pu être enregistrée. Réessaie.');
+    }
+    // L'ancienne illustration, remplacée, est effacée.
+    if (n.id && n.image && chemin && n.image !== chemin && !n.image.startsWith('theme:')) await db.storage.from('newsletters').remove([n.image]).catch(() => undefined);
+    prevenir();
+    return lire(r.data as Ligne);
+  },
+
+  async supprimer(n: Newsletter) {
+    if (!supabase) {
+      memoire = memoire.filter((x) => x.id !== n.id);
+      prevenir();
+      return;
+    }
+    const { error } = await supabase.from('newsletters').delete().eq('id', n.id);
+    if (error) throw new Error('Suppression impossible. Réessaie.');
+    const fichiers = [...(n.image && !n.image.startsWith('theme:') ? [n.image] : []), ...imagesDuTexte(n.message).filter(estRangee)];
+    if (fichiers.length) await supabase.storage.from('newsletters').remove(fichiers).catch(() => undefined);
+    prevenir();
+  },
+
+  /** Adresse publique d'une illustration rangée (celle que les e-mails affichent). */
+  urlImage(chemin?: string): string | undefined {
+    if (!chemin || chemin.startsWith('theme:')) return undefined;
+    if (!supabase) return imagesDemo.get(chemin);
+    return supabase.storage.from('newsletters').getPublicUrl(chemin).data.publicUrl;
+  },
+
+  /** Combien de clients actifs et en veille, et combien recevront vraiment un e-mail ou une notification. */
+  async destinataires(): Promise<Comptes> {
+    if (!supabase) {
+      const carnet = await crm.carnet();
+      return compterDestinataires(carnet.contacts.map((c) => ({ statut: c.statut, statutCrm: c.statutCrm, email: c.email, appli: !!c.clientId })));
+    }
+    const { data, error } = await supabase.from('contacts').select('statut, statut_crm, email, newsletter_coupee_le, clients(user_id, email)').neq('statut', 'archive');
+    if (error) {
+      // Base pas encore à jour : on compte sans le désabonnement.
+      const carnet = await crm.carnet();
+      return compterDestinataires(carnet.contacts.map((c) => ({ statut: c.statut, statutCrm: c.statutCrm, email: c.email, appli: !!c.clientId })));
+    }
+    return compterDestinataires(
+      (data as unknown as { statut: string; statut_crm: string | null; email: string | null; newsletter_coupee_le: string | null; clients: { user_id: string | null; email: string | null } | null }[]).map(
+        (c): ContactNewsletter => ({
+          statut: c.statut,
+          statutCrm: c.statut_crm,
+          email: c.email || c.clients?.email,
+          appli: !!c.clients?.user_id,
+          desabonne: !!c.newsletter_coupee_le,
+        }),
+      ),
+    );
+  },
+
+  /** Les contacts qu'on peut choisir un par un : tout le carnet, sauf les dossiers archivés. */
+  async choisissables(): Promise<{ id: string; nom: string; email: boolean; appli: boolean; groupe: string }[]> {
+    const carnet = await crm.carnet();
+    return carnet.contacts
+      .filter((c) => c.statut !== 'archive')
+      .map((c) => {
+        const g = cibleDe(c);
+        return { id: c.id, nom: `${c.prenom} ${c.nom}`.trim(), email: emailValide(c.email), appli: !!c.clientId, groupe: g === 'clients' ? 'Client actif' : g === 'veille' ? 'En veille' : 'Prospect' };
+      })
+      .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+  },
+
+  /** Les personnes visées par une newsletter (groupes choisis et clients précis), avec de quoi leur écrire. */
+  async destinatairesDe(n: Pick<Newsletter, 'cibles' | 'contacts'>): Promise<{ id: string; prenom: string; nom: string; telephone?: string; appli: boolean }[]> {
+    const carnet = await crm.carnet();
+    const choisis = new Set(n.contacts ?? []);
+    return carnet.contacts
+      .filter((c) => c.statut !== 'archive' && (choisis.has(c.id) || (n.cibles as string[]).includes(cibleDe(c) ?? '')))
+      .map((c) => ({ id: c.id, prenom: c.prenom, nom: `${c.prenom} ${c.nom}`.trim(), telephone: c.telephone, appli: !!c.clientId }))
+      .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+  },
+
+  /**
+   * Range le PDF d'un article dans les documents du coach (une fois pour toutes) et rend son chemin et un lien signé
+   * valable un an : c'est ce lien que portent le bouton de l'e-mail et le message WhatsApp.
+   */
+  async preparerPdf(article: string, octets: () => Promise<ArrayBuffer>): Promise<{ chemin: string; lien: string; taille?: number }> {
+    if (!supabase) return { chemin: `demo/newsletters/${article}.pdf`, lien: `https://exemple.coachgo.fr/newsletters/${article}.pdf` };
+    const { data: coach } = await supabase.rpc('mon_coach_id');
+    if (!coach) throw new Error('Session coach introuvable : reconnecte-toi.');
+    const chemin = cheminPdf(coach as string, article);
+    const donnees = await octets();
+    const envoi = await supabase.storage.from('documents').upload(chemin, donnees, { contentType: 'application/pdf', upsert: false });
+    // Déjà rangé par une newsletter précédente : on garde ce fichier.
+    if (envoi.error && !/exist|duplicate|409/i.test(`${envoi.error.message} ${(envoi.error as { statusCode?: string }).statusCode ?? ''}`))
+      throw new Error('Le PDF n’a pas pu être préparé. Vérifie ta connexion et réessaie.');
+    const signe = await supabase.storage.from('documents').createSignedUrl(chemin, VALIDITE_LIEN_PDF);
+    if (signe.error || !signe.data) throw new Error('Le lien vers le PDF n’a pas pu être créé. Réessaie.');
+    return { chemin, lien: signe.data.signedUrl, taille: donnees.byteLength };
+  },
+
+  /** Dépose le PDF dans « Mes documents » de chaque personne (une seule fois par personne). Rend combien l'ont reçu et combien l'avaient déjà. */
+  async deposerPdfDansDocuments(pdf: { chemin: string; nom: string; nomFichier: string; taille?: number }, contacts: string[]): Promise<{ ajoutes: number; deja: number }> {
+    if (!contacts.length) return { ajoutes: 0, deja: 0 };
+    if (!supabase) return { ajoutes: contacts.length, deja: 0 };
+    const { data: existants, error: e1 } = await supabase.from('documents').select('contact_id').eq('chemin', pdf.chemin).in('contact_id', contacts);
+    if (e1) throw new Error('Les documents n’ont pas pu être lus. Réessaie.');
+    const deja = new Set((existants ?? []).map((l: { contact_id: string }) => l.contact_id));
+    const lignes = contacts
+      .filter((c) => !deja.has(c))
+      .map((c) => ({
+        contact_id: c,
+        nom: pdf.nom.slice(0, 200),
+        type: 'Autre',
+        chemin: pdf.chemin,
+        nom_fichier: pdf.nomFichier,
+        type_fichier: 'application/pdf',
+        taille: pdf.taille ?? null,
+        partage_client: true,
+        envoye: true,
+      }));
+    if (lignes.length) {
+      const { error } = await supabase.from('documents').insert(lignes);
+      if (error) throw new Error('Le PDF n’a pas pu être déposé dans leurs documents. Réessaie.');
+    }
+    return { ajoutes: lignes.length, deja: deja.size };
+  },
+
+  /** Envoie l'article, tel qu'il est à l'écran, à l'adresse du coach. Rend l'adresse. */
+  async envoyerTest(a: Article): Promise<string> {
+    if (!supabase) throw new Error('En démonstration, aucun e-mail ne part. Connecte-toi pour recevoir le test.');
+    const { data, error } = await supabase.functions.invoke<{ envoye?: string; erreur?: string }>('envoyer-newsletters', { body: { test: a } });
+    if (error || !data?.envoye) {
+      let detail = data?.erreur;
+      try {
+        detail ??= (await (error as { context?: Response })?.context?.json())?.erreur;
+      } catch {
+        // Réponse illisible : message par défaut.
+      }
+      throw new Error(detail ?? 'Le test n’a pas pu partir. Réessaie dans un instant.');
+    }
+    return data.envoye;
+  },
+
+  /** Lien « Ne plus recevoir ces nouvelles » : rend le nom du coach. */
+  async desabonner(jeton: string): Promise<string> {
+    if (!supabase) return 'ton coach';
+    const { data, error } = await supabase.rpc('desabonner_newsletter', { p_jeton: jeton });
+    if (error) throw new Error(/Lien inconnu/.test(error.message) ? 'Ce lien est inconnu : vérifie qu’il est complet.' : 'Le désabonnement n’a pas pu être enregistré. Réessaie.');
+    return (data as string) || 'ton coach';
+  },
+};
+
+function base64(b: ArrayBuffer) {
+  const octets = new Uint8Array(b);
+  let s = '';
+  for (let i = 0; i < octets.length; i += 0x8000) s += String.fromCharCode(...octets.subarray(i, i + 0x8000));
+  return btoa(s);
+}

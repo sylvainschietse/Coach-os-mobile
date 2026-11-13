@@ -1,0 +1,5741 @@
+-- Coach OS : installation complète de la base, à coller en une fois dans Supabase > SQL Editor > Run.
+-- Fichier généré par scripts/installation-sql.mjs à partir de supabase/migrations : ne pas modifier à la main.
+
+-- ===== 20261019000000_prototype.sql =====
+-- Coach OS · schéma du prototype
+-- Plusieurs coachs dès le départ : chaque donnée est rattachée à un coach,
+-- un coach ne voit que ses clients, un client ne voit que ses propres données.
+
+create table public.coachs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references auth.users (id) on delete cascade,
+  nom text not null,
+  created_at timestamptz not null default now()
+);
+
+create table public.clients (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  -- Lien de connexion par identifiant, pas par e-mail : l'e-mail peut changer.
+  user_id uuid unique references auth.users (id) on delete set null,
+  prenom text not null,
+  nom text not null default '',
+  telephone text,
+  email text,
+  actif boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index on public.clients (coach_id);
+
+create table public.exercices (
+  id uuid primary key default gen_random_uuid(),
+  -- null = catalogue commun à tous les coachs
+  coach_id uuid references public.coachs (id) on delete cascade,
+  nom text not null,
+  mesures text[] not null,
+  video_url text,
+  constraint mesures_connues check (
+    mesures <@ array['charge', 'repetitions', 'duree', 'distance', 'calories', 'watts', 'allure500']
+    and cardinality(mesures) > 0
+  )
+);
+
+create table public.seances (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  client_id uuid not null references public.clients (id) on delete cascade,
+  titre text not null,
+  date_prevue date,
+  consignes text,
+  created_at timestamptz not null default now()
+);
+create index on public.seances (client_id);
+
+create table public.blocs (
+  id uuid primary key default gen_random_uuid(),
+  seance_id uuid not null references public.seances (id) on delete cascade,
+  ordre int not null,
+  titre text not null,
+  -- Chrono du circuit : {exercices, travailS, reposS, tours, reposEntreToursS}
+  minuteur jsonb
+);
+
+create table public.lignes (
+  id uuid primary key default gen_random_uuid(),
+  bloc_id uuid not null references public.blocs (id) on delete cascade,
+  ordre int not null,
+  exercice_id uuid not null references public.exercices (id),
+  series int not null check (series > 0),
+  repetitions_min int,
+  repetitions_max int,
+  charge_indicative numeric,
+  duree_s int,
+  recuperation_s int,
+  rir int,
+  tempo text,
+  consignes text,
+  -- Chrono propre à l'exercice (fractionné, tabata…), même format que pour un bloc
+  minuteur jsonb
+);
+
+-- Ce que le client a réellement fait. L'id est créé sur le téléphone :
+-- un renvoi après coupure réseau ne crée pas de doublon.
+create table public.realisations (
+  id uuid primary key,
+  seance_id uuid not null references public.seances (id) on delete cascade,
+  client_id uuid not null references public.clients (id) on delete cascade,
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  debut timestamptz not null,
+  fin timestamptz not null,
+  commentaire text,
+  created_at timestamptz not null default now()
+);
+create index on public.realisations (client_id, fin desc);
+
+create table public.series_realisees (
+  id uuid primary key,
+  realisation_id uuid not null references public.realisations (id) on delete cascade,
+  ligne_id uuid not null references public.lignes (id),
+  exercice_id uuid not null references public.exercices (id),
+  index int not null,
+  valeurs jsonb not null,
+  -- La suggestion affichée au client, gardée à part pour comparaison : jamais une performance.
+  suggestion jsonb not null default '{}'
+);
+create index on public.series_realisees (realisation_id);
+
+-- Qui suis-je ? (security definer pour éviter les boucles entre règles d'accès)
+create function public.mon_coach_id() returns uuid
+language sql stable security definer set search_path = public as $$
+  select id from public.coachs where user_id = auth.uid()
+$$;
+
+create function public.mon_client_id() returns uuid
+language sql stable security definer set search_path = public as $$
+  select id from public.clients where user_id = auth.uid() and actif
+$$;
+
+create function public.coach_de_mon_client() returns uuid
+language sql stable security definer set search_path = public as $$
+  select coach_id from public.clients where user_id = auth.uid() and actif
+$$;
+
+alter table public.coachs enable row level security;
+alter table public.clients enable row level security;
+alter table public.exercices enable row level security;
+alter table public.seances enable row level security;
+alter table public.blocs enable row level security;
+alter table public.lignes enable row level security;
+alter table public.realisations enable row level security;
+alter table public.series_realisees enable row level security;
+
+create policy "coach : sa fiche" on public.coachs for select
+  using (id = public.mon_coach_id() or id = public.coach_de_mon_client());
+
+create policy "coach : ses clients" on public.clients for all
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+create policy "client : sa fiche" on public.clients for select
+  using (id = public.mon_client_id());
+
+create policy "exercices visibles" on public.exercices for select
+  using (coach_id is null or coach_id = public.mon_coach_id() or coach_id = public.coach_de_mon_client());
+create policy "coach : ses exercices" on public.exercices for all
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+
+create policy "coach : ses séances" on public.seances for all
+  using (coach_id = public.mon_coach_id())
+  with check (
+    coach_id = public.mon_coach_id()
+    and exists (select 1 from public.clients c where c.id = client_id and c.coach_id = public.mon_coach_id())
+  );
+create policy "client : ses séances" on public.seances for select
+  using (client_id = public.mon_client_id());
+
+create policy "blocs de séances visibles" on public.blocs for select
+  using (exists (select 1 from public.seances s where s.id = seance_id));
+create policy "coach : blocs de ses séances" on public.blocs for all
+  using (exists (select 1 from public.seances s where s.id = seance_id and s.coach_id = public.mon_coach_id()))
+  with check (exists (select 1 from public.seances s where s.id = seance_id and s.coach_id = public.mon_coach_id()));
+
+create policy "lignes de blocs visibles" on public.lignes for select
+  using (exists (select 1 from public.blocs b where b.id = bloc_id));
+create policy "coach : lignes de ses séances" on public.lignes for all
+  using (exists (
+    select 1 from public.blocs b join public.seances s on s.id = b.seance_id
+    where b.id = bloc_id and s.coach_id = public.mon_coach_id()))
+  with check (exists (
+    select 1 from public.blocs b join public.seances s on s.id = b.seance_id
+    where b.id = bloc_id and s.coach_id = public.mon_coach_id()));
+
+create policy "client : ses réalisations" on public.realisations for select
+  using (client_id = public.mon_client_id());
+create policy "client : enregistre ses réalisations" on public.realisations for insert
+  with check (
+    client_id = public.mon_client_id()
+    and coach_id = public.coach_de_mon_client()
+    and exists (select 1 from public.seances s where s.id = seance_id and s.client_id = public.mon_client_id())
+  );
+create policy "coach : réalisations de ses clients" on public.realisations for select
+  using (coach_id = public.mon_coach_id());
+
+create policy "séries visibles" on public.series_realisees for select
+  using (exists (select 1 from public.realisations r where r.id = realisation_id));
+create policy "client : enregistre ses séries" on public.series_realisees for insert
+  with check (exists (
+    select 1 from public.realisations r where r.id = realisation_id and r.client_id = public.mon_client_id()));
+
+grant usage on schema public to authenticated;
+grant select on all tables in schema public to authenticated;
+grant insert, update, delete on public.clients, public.exercices, public.seances, public.blocs, public.lignes
+  to authenticated;
+grant insert on public.realisations, public.series_realisees to authenticated;
+grant execute on function public.mon_coach_id(), public.mon_client_id(), public.coach_de_mon_client()
+  to authenticated;
+
+
+-- ===== 20261019010000_crm.sql =====
+-- Coach OS · accueil des clients (CRM)
+-- Remplace le parcours Tally → Make → Airtable : contacts, questionnaire d'accueil,
+-- séance Booster et relances. Même règles que src/domain/crm.ts.
+
+-- Adresse publique du questionnaire de chaque coach : /questionnaire/<lien>
+alter table public.coachs add column lien_questionnaire text unique
+  check (lien_questionnaire ~ '^[a-z0-9-]{3,40}$');
+
+create table public.contacts (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  prenom text not null default '',
+  nom text not null default '',
+  -- Numéro normalisé au format international sans « + » (336…), clé de rapprochement.
+  telephone text check (telephone ~ '^\d{9,15}$'),
+  email text,
+  date_naissance text,
+  statut text not null default 'prospect'
+    check (statut in ('prospect', 'booster_prevu', 'booster_fait', 'client', 'archive')),
+  statut_avant_archive text,
+  source text,
+  notes text,
+  client_id uuid references public.clients (id) on delete set null,
+  cree_le timestamptz not null default now()
+);
+create index on public.contacts (coach_id, cree_le desc);
+-- Un numéro = une personne active par coach. Les fiches archivées gardent leur numéro.
+create unique index contacts_telephone_actif on public.contacts (coach_id, telephone)
+  where telephone is not null and statut <> 'archive';
+
+create table public.questionnaires (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  contact_id uuid not null references public.contacts (id) on delete cascade,
+  recu_le timestamptz not null default now(),
+  reponses jsonb not null,
+  -- Ce que le rapprochement n'a pas pu trancher, à vérifier par le coach.
+  alertes text[] not null default '{}'
+);
+
+create table public.boosters (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  contact_id uuid not null references public.contacts (id) on delete cascade,
+  date timestamptz not null,
+  statut text not null default 'prevu' check (statut in ('prevu', 'fait', 'annule')),
+  tests text,
+  compte_rendu text,
+  priorites text[] not null default '{}',
+  paye boolean not null default false
+);
+
+create table public.relances (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  contact_id uuid not null references public.contacts (id) on delete cascade,
+  echeance date not null,
+  modele text not null check (modele in ('questionnaire', 'booster', 'rappel_booster', 'suivi_booster', 'libre')),
+  note text,
+  faite_le timestamptz,
+  auto boolean not null default false
+);
+create index on public.relances (coach_id, echeance) where faite_le is null;
+
+alter table public.contacts enable row level security;
+alter table public.questionnaires enable row level security;
+alter table public.boosters enable row level security;
+alter table public.relances enable row level security;
+
+create policy "coach : ses contacts" on public.contacts for all
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+create policy "coach : ses questionnaires" on public.questionnaires for all
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+create policy "coach : ses boosters" on public.boosters for all
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+create policy "coach : ses relances" on public.relances for all
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+
+grant select, insert, update, delete on public.contacts, public.questionnaires, public.boosters, public.relances
+  to authenticated;
+grant update (lien_questionnaire) on public.coachs to authenticated;
+create policy "coach : modifie sa fiche" on public.coachs for update
+  using (id = public.mon_coach_id()) with check (id = public.mon_coach_id());
+
+-- 06 12 34 56 78, +33 6…, 0033 6… → 33612345678 ; null si ce n'est pas un numéro.
+create function public.normaliser_telephone(brut text) returns text
+language plpgsql immutable as $$
+declare
+  t text := regexp_replace(coalesce(brut, ''), '[^0-9+]', '', 'g');
+begin
+  if t like '+%' then t := substr(t, 2);
+  elsif t like '00%' then t := substr(t, 3);
+  elsif t like '0%' and length(t) = 10 then t := '33' || substr(t, 2);
+  end if;
+  t := regexp_replace(t, '[^0-9]', '', 'g');
+  if t like '330%' then t := '33' || substr(t, 4); end if;
+  return case when length(t) between 9 and 15 then t end;
+end $$;
+
+-- Réception du questionnaire d'accueil, ouverte sans compte (rôle anon).
+-- security definer : le prospect n'a aucun droit de lecture, la fonction fait le rapprochement
+-- (téléphone puis e-mail, jamais le nom), complète sans écraser et note les différences.
+create function public.soumettre_questionnaire(lien text, reponses jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_coach uuid;
+  tel text := normaliser_telephone(reponses->>'telephone');
+  mail text := lower(trim(reponses->>'email'));
+  par_tel contacts;
+  par_mail contacts;
+  c contacts;
+  alertes text[] := '{}';
+  aujourdhui date := (now() at time zone 'Europe/Paris')::date;
+begin
+  select id into v_coach from coachs where lien_questionnaire = lien;
+  if v_coach is null then raise exception 'Questionnaire introuvable'; end if;
+  if pg_column_size(reponses) > 20000 then raise exception 'Réponses trop longues'; end if;
+  if mail !~ '^[^\s@]+@[^\s@]+\.[^\s@]+$' then mail := null; end if;
+  if tel is null and mail is null then raise exception 'Téléphone ou e-mail requis'; end if;
+
+  select * into par_tel from contacts
+    where coach_id = v_coach and tel is not null and telephone = tel
+    order by statut = 'archive', cree_le limit 1;
+  select * into par_mail from contacts
+    where coach_id = v_coach and mail is not null and email = mail
+    order by statut = 'archive', cree_le limit 1;
+  if par_tel.id is not null then c := par_tel; elsif par_mail.id is not null then c := par_mail; end if;
+
+  if par_tel.id is not null and par_mail.id is not null and par_tel.id <> par_mail.id then
+    alertes := alertes || format('L’e-mail correspond aussi à la fiche de %s %s. À vérifier.', par_mail.prenom, par_mail.nom);
+  end if;
+
+  if c.id is null then
+    insert into contacts (coach_id, prenom, nom, telephone, email, date_naissance, source)
+    values (v_coach, coalesce(trim(reponses->>'prenom'), ''), coalesce(trim(reponses->>'nom'), ''), tel, mail,
+            reponses->>'dateNaissance', reponses->>'source')
+    returning * into c;
+  else
+    if mail is not null and c.email is not null and c.email <> mail then
+      alertes := alertes || format('E-mail différent dans le questionnaire : %s (fiche : %s).', mail, c.email);
+    end if;
+    if tel is not null and c.telephone is not null and c.telephone <> tel then
+      alertes := alertes || format('Téléphone différent dans le questionnaire : %s (fiche : %s).', tel, c.telephone);
+    end if;
+    if c.statut = 'archive' then
+      alertes := alertes || 'Ce contact était archivé : il a été réactivé par ses réponses.'::text;
+    end if;
+    update contacts set
+      prenom = case when prenom = '' then coalesce(trim(reponses->>'prenom'), '') else prenom end,
+      nom = case when nom = '' then coalesce(trim(reponses->>'nom'), '') else nom end,
+      telephone = coalesce(telephone, tel),
+      email = coalesce(email, mail),
+      date_naissance = coalesce(date_naissance, reponses->>'dateNaissance'),
+      source = coalesce(source, reponses->>'source'),
+      statut = case when statut = 'archive' then coalesce(statut_avant_archive, 'prospect') else statut end,
+      statut_avant_archive = case when statut = 'archive' then null else statut_avant_archive end
+    where id = c.id
+    returning * into c;
+  end if;
+
+  insert into questionnaires (coach_id, contact_id, reponses, alertes) values (v_coach, c.id, reponses, alertes);
+  update relances set faite_le = now(), auto = true
+    where contact_id = c.id and modele = 'questionnaire' and faite_le is null;
+  if c.statut = 'prospect' and not exists (
+    select 1 from relances where contact_id = c.id and modele = 'booster' and faite_le is null
+  ) then
+    insert into relances (coach_id, contact_id, echeance, modele) values (v_coach, c.id, aujourdhui, 'booster');
+  end if;
+end $$;
+
+revoke execute on function public.soumettre_questionnaire(text, jsonb) from public;
+grant execute on function public.soumettre_questionnaire(text, jsonb) to anon, authenticated;
+
+
+-- ===== 20261019020000_booster_evaluation.sql =====
+-- Évaluation physique et entretien de la séance Booster (champs repris d'Airtable).
+-- evaluation : { tests: { poussee|tirage|jambes|cardio|mobilite|posture: { resultat, observations[], rpe } },
+--                douleur, douleurPrecision, notes }
+-- entretien : { pourquoiMaintenant, dejaEssaye, freins, attentesCoach, projection, observationsCoach }
+-- La synthèse texte reste dans boosters.tests ; compte_rendu porte le mot du coach du compte rendu.
+alter table public.boosters
+  add column evaluation jsonb,
+  add column entretien jsonb,
+  add column plan_envoye_le timestamptz;
+
+
+-- ===== 20261019030000_booster_redaction.sql =====
+-- Textes développés du compte rendu (regard du coach, explication des tests, semaine, suite).
+alter table public.boosters add column redaction jsonb;
+
+
+-- ===== 20261020000000_creer_coach.sql =====
+-- Ouvre l'espace d'un coach pour un compte déjà créé dans Authentication > Users.
+-- À lancer depuis l'éditeur SQL de Supabase (rôle postgres) : select public.creer_coach('e-mail', 'Prénom', 'lien');
+-- Le lien donne l'adresse publique du questionnaire d'accueil : /questionnaire/<lien>.
+create function public.creer_coach(email_compte text, nom text, lien text) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  v_user uuid;
+  v_coach uuid;
+begin
+  select id into v_user from auth.users where lower(email) = lower(trim(email_compte));
+  if v_user is null then
+    raise exception 'Aucun compte avec l''e-mail % : crée-le d''abord dans Authentication > Users.', email_compte;
+  end if;
+  insert into coachs (user_id, nom, lien_questionnaire) values (v_user, trim(nom), lower(trim(lien)))
+  on conflict (user_id) do update set nom = excluded.nom, lien_questionnaire = excluded.lien_questionnaire
+  returning id into v_coach;
+  return v_coach;
+end $$;
+
+-- Réservée à l'administrateur du projet : ni les visiteurs ni les comptes connectés ne peuvent l'appeler.
+revoke execute on function public.creer_coach(text, text, text) from public, anon, authenticated;
+
+
+-- ===== 20261020010000_durcissement.sql =====
+-- Recommandations de sécurité de Supabase : les fonctions « qui suis-je » ne servent qu'aux comptes connectés,
+-- et normaliser_telephone a un search_path fixe. soumettre_questionnaire reste ouverte aux visiteurs (voulu).
+revoke execute on function public.mon_coach_id(), public.mon_client_id(), public.coach_de_mon_client() from public, anon;
+alter function public.normaliser_telephone(text) set search_path = public;
+
+
+-- ===== 20261020020000_rattacher_compte.sql =====
+-- Connexion d'un client avec Google, Microsoft, Apple ou son propre e-mail et mot de passe.
+-- À sa première connexion, son compte est relié à sa fiche client si l'e-mail est vérifié
+-- (par le fournisseur, ou par l'e-mail de confirmation) et correspond à un seul client actif sans compte.
+-- Sans vérification, n'importe qui pourrait taper l'e-mail d'un client et voir ses données.
+create function public.rattacher_mon_compte() returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  u auth.users;
+  v_client uuid;
+  candidats uuid[];
+begin
+  select * into u from auth.users where id = auth.uid();
+  if u.id is null or u.email is null or u.email_confirmed_at is null then return null; end if;
+  if exists (select 1 from coachs where user_id = u.id) then return null; end if;
+  select id into v_client from clients where user_id = u.id;
+  if v_client is not null then return v_client; end if;
+
+  select array_agg(id) into candidats from clients
+    where user_id is null and actif and lower(trim(email)) = lower(u.email);
+  -- Même e-mail chez deux coachs : on ne devine pas, le coach crée l'accès depuis la fiche.
+  if coalesce(cardinality(candidats), 0) <> 1 then return null; end if;
+  update clients set user_id = u.id where id = candidats[1];
+  return candidats[1];
+end $$;
+
+revoke execute on function public.rattacher_mon_compte() from public, anon;
+grant execute on function public.rattacher_mon_compte() to authenticated;
+
+
+-- ===== 20261020030000_taches.sql =====
+-- Tâches libres sur une fiche (ex. Airtable « Tâches ») : une relance sans message, le texte à faire est dans la note.
+alter table public.relances drop constraint relances_modele_check;
+alter table public.relances add constraint relances_modele_check
+  check (modele in ('questionnaire', 'booster', 'rappel_booster', 'suivi_booster', 'libre', 'tache'));
+
+
+-- ===== 20261021000000_programmes_suivi.sql =====
+-- Coach OS · programmes et séances créés par le coach, catalogue d'exercices,
+-- mensurations, records (PR) et nutrition.
+
+-- ===== Catalogue d'exercices (importé d'Airtable, où il reste la référence) =====
+alter table public.exercices
+  add column ref_externe text,
+  add column nom_en text,
+  add column alias text,
+  add column famille text,
+  add column pattern text,
+  add column muscles text[] not null default '{}',
+  add column muscles_secondaires text[] not null default '{}',
+  add column materiel text[] not null default '{}',
+  add column modalite text,
+  add column niveau text,
+  add column position text,
+  add column lateralite text,
+  add column actif boolean not null default true;
+create unique index exercices_ref_externe on public.exercices (coach_id, ref_externe) where ref_externe is not null;
+create index exercices_coach_famille on public.exercices (coach_id, famille);
+
+-- ===== Programmes =====
+-- Un modèle (client_id vide) garde ses séances en JSON, invisibles des clients.
+-- Attribué à un client, il devient de vraies séances rattachées au programme.
+create table public.programmes (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  client_id uuid references public.clients (id) on delete cascade,
+  titre text not null check (length(trim(titre)) > 0),
+  objectif text,
+  duree_semaines int check (duree_semaines between 1 and 104),
+  seances_par_semaine int check (seances_par_semaine between 1 and 14),
+  niveau text,
+  notes text,
+  modele_seances jsonb not null default '[]',
+  archive boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index on public.programmes (coach_id);
+create index on public.programmes (client_id);
+
+alter table public.programmes enable row level security;
+create policy "coach : ses programmes" on public.programmes for all
+  using (coach_id = public.mon_coach_id())
+  with check (
+    coach_id = public.mon_coach_id()
+    and (client_id is null or exists (select 1 from public.clients c where c.id = client_id and c.coach_id = public.mon_coach_id()))
+  );
+create policy "client : ses programmes" on public.programmes for select
+  using (client_id = public.mon_client_id());
+
+alter table public.seances
+  add column programme_id uuid references public.programmes (id) on delete set null,
+  add column ordre int,
+  add column archivee boolean not null default false;
+create index on public.seances (programme_id);
+
+-- Une ligne ou un bloc enlevé de la séance est marqué retiré : l'historique du client reste intact.
+alter table public.blocs add column retire boolean not null default false;
+alter table public.lignes add column retiree boolean not null default false;
+
+-- Enregistre une séance complète (en-tête, blocs, lignes) en une fois, avec les droits de l'appelant.
+-- Les identifiants viennent de l'app : une ligne gardée garde son id, l'historique reste rattaché.
+create function public.enregistrer_seance(s jsonb) returns uuid
+language plpgsql security invoker set search_path = public as $$
+declare
+  v_id uuid := (s->>'id')::uuid;
+  v_blocs uuid[];
+  v_lignes uuid[];
+  b jsonb;
+  l jsonb;
+  i int := 0;
+  j int;
+begin
+  select coalesce(array_agg((x->>'id')::uuid), '{}') into v_blocs from jsonb_array_elements(coalesce(s->'blocs', '[]')) x;
+  select coalesce(array_agg((x->>'id')::uuid), '{}') into v_lignes
+  from jsonb_array_elements(coalesce(s->'blocs', '[]')) bl, jsonb_array_elements(coalesce(bl->'lignes', '[]')) x;
+
+  insert into public.seances (id, coach_id, client_id, programme_id, titre, date_prevue, consignes, ordre)
+  values (
+    v_id, public.mon_coach_id(), (s->>'clientId')::uuid, nullif(s->>'programmeId', '')::uuid,
+    s->>'titre', nullif(s->>'datePrevue', '')::date, nullif(s->>'consignes', ''), nullif(s->>'ordre', '')::int)
+  on conflict (id) do update set
+    titre = excluded.titre, date_prevue = excluded.date_prevue, consignes = excluded.consignes, ordre = excluded.ordre;
+
+  -- Ce qui est enlevé est retiré, jamais effacé : une ligne déjà réalisée garde son historique.
+  update public.lignes set retiree = true
+  where bloc_id in (select id from public.blocs where seance_id = v_id) and not (id = any (v_lignes));
+  update public.blocs set retire = true where seance_id = v_id and not (id = any (v_blocs));
+
+  for b in select * from jsonb_array_elements(coalesce(s->'blocs', '[]')) loop
+    i := i + 1;
+    insert into public.blocs (id, seance_id, ordre, titre, minuteur)
+    values ((b->>'id')::uuid, v_id, i, coalesce(nullif(b->>'titre', ''), 'Bloc ' || i), nullif(b->'minuteur', 'null'::jsonb))
+    on conflict (id) do update set ordre = excluded.ordre, titre = excluded.titre, minuteur = excluded.minuteur, retire = false
+    where blocs.seance_id = v_id;
+    j := 0;
+    for l in select * from jsonb_array_elements(coalesce(b->'lignes', '[]')) loop
+      j := j + 1;
+      insert into public.lignes (id, bloc_id, ordre, exercice_id, series, repetitions_min, repetitions_max,
+        charge_indicative, duree_s, recuperation_s, rir, tempo, consignes, minuteur)
+      values ((l->>'id')::uuid, (b->>'id')::uuid, j, (l->>'exerciceId')::uuid, (l->>'series')::int,
+        (l->>'repetitionsMin')::int, (l->>'repetitionsMax')::int, (l->>'chargeIndicative')::numeric,
+        (l->>'dureeS')::int, (l->>'recuperationS')::int, (l->>'rir')::int, nullif(l->>'tempo', ''),
+        nullif(l->>'consignes', ''), nullif(l->'minuteur', 'null'::jsonb))
+      on conflict (id) do update set
+        bloc_id = excluded.bloc_id, ordre = excluded.ordre, exercice_id = excluded.exercice_id,
+        series = excluded.series, repetitions_min = excluded.repetitions_min,
+        repetitions_max = excluded.repetitions_max, charge_indicative = excluded.charge_indicative,
+        duree_s = excluded.duree_s, recuperation_s = excluded.recuperation_s, rir = excluded.rir,
+        tempo = excluded.tempo, consignes = excluded.consignes, minuteur = excluded.minuteur, retiree = false;
+    end loop;
+  end loop;
+  return v_id;
+end $$;
+
+-- ===== Suivi du client : mensurations, records, nutrition =====
+-- Le client saisit les siennes, le coach voit (et peut corriger) celles de ses clients.
+create function public.est_mon_client(c uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.clients where id = c and coach_id = public.mon_coach_id())
+$$;
+
+create table public.mensurations (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients (id) on delete cascade,
+  date date not null default current_date,
+  poids_kg numeric check (poids_kg between 20 and 400),
+  masse_grasse_pct numeric check (masse_grasse_pct between 2 and 75),
+  tour_taille_cm numeric check (tour_taille_cm between 30 and 250),
+  tour_hanches_cm numeric check (tour_hanches_cm between 30 and 250),
+  tour_poitrine_cm numeric check (tour_poitrine_cm between 30 and 250),
+  tour_bras_cm numeric check (tour_bras_cm between 10 and 100),
+  tour_cuisse_cm numeric check (tour_cuisse_cm between 20 and 150),
+  note text,
+  created_at timestamptz not null default now(),
+  constraint mensuration_non_vide check (num_nonnulls(poids_kg, masse_grasse_pct, tour_taille_cm, tour_hanches_cm,
+    tour_poitrine_cm, tour_bras_cm, tour_cuisse_cm) > 0)
+);
+create index on public.mensurations (client_id, date desc);
+
+create table public.records (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients (id) on delete cascade,
+  exercice_id uuid references public.exercices (id) on delete set null,
+  libelle text not null check (length(trim(libelle)) > 0),
+  valeur numeric not null check (valeur > 0),
+  unite text not null check (unite in ('kg', 'reps', 's', 'm', 'cal')),
+  -- Pour une charge : à combien de répétitions (1 = 1RM)
+  repetitions int check (repetitions > 0),
+  date date not null default current_date,
+  note text,
+  created_at timestamptz not null default now()
+);
+create index on public.records (client_id, date desc);
+
+create table public.plans_nutrition (
+  client_id uuid primary key references public.clients (id) on delete cascade,
+  calories int check (calories between 800 and 8000),
+  proteines_g int check (proteines_g between 0 and 600),
+  glucides_g int check (glucides_g between 0 and 1200),
+  lipides_g int check (lipides_g between 0 and 400),
+  eau_l numeric check (eau_l between 0 and 10),
+  conseils text,
+  updated_at timestamptz not null default now()
+);
+
+create table public.journal_nutrition (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients (id) on delete cascade,
+  date date not null default current_date,
+  -- Ressenti du client sur le respect du plan, de 1 (pas du tout) à 5 (parfaitement)
+  respect int check (respect between 1 and 5),
+  eau_l numeric check (eau_l between 0 and 15),
+  repas text,
+  ressenti text,
+  created_at timestamptz not null default now(),
+  unique (client_id, date),
+  constraint journal_non_vide check (num_nonnulls(respect, eau_l, nullif(trim(repas), ''), nullif(trim(ressenti), '')) > 0)
+);
+
+alter table public.mensurations enable row level security;
+alter table public.records enable row level security;
+alter table public.plans_nutrition enable row level security;
+alter table public.journal_nutrition enable row level security;
+
+create policy "client et coach : mensurations" on public.mensurations for all
+  using (client_id = public.mon_client_id() or public.est_mon_client(client_id))
+  with check (client_id = public.mon_client_id() or public.est_mon_client(client_id));
+create policy "client et coach : records" on public.records for all
+  using (client_id = public.mon_client_id() or public.est_mon_client(client_id))
+  with check (client_id = public.mon_client_id() or public.est_mon_client(client_id));
+create policy "client et coach : journal nutrition" on public.journal_nutrition for all
+  using (client_id = public.mon_client_id() or public.est_mon_client(client_id))
+  with check (client_id = public.mon_client_id() or public.est_mon_client(client_id));
+create policy "coach : plans nutrition" on public.plans_nutrition for all
+  using (public.est_mon_client(client_id)) with check (public.est_mon_client(client_id));
+create policy "client : son plan nutrition" on public.plans_nutrition for select
+  using (client_id = public.mon_client_id());
+
+grant select, insert, update, delete on public.programmes, public.mensurations, public.records,
+  public.plans_nutrition, public.journal_nutrition to authenticated;
+grant execute on function public.enregistrer_seance(jsonb), public.est_mon_client(uuid) to authenticated;
+
+
+-- ===== 20261024000000_alimentation.sql =====
+-- Alimentation : profil du client (besoins calculés dans l'app), base d'aliments et codes-barres,
+-- recettes (banque du coach et recettes personnelles), journal des repas.
+-- Migration additive : rien n'est supprimé.
+
+create table public.profils_nutrition (
+  client_id uuid primary key references public.clients (id) on delete cascade,
+  sexe text check (sexe in ('femme', 'homme')),
+  naissance date check (naissance >= '1920-01-01'),
+  taille_cm numeric check (taille_cm between 100 and 250),
+  poids_kg numeric check (poids_kg between 25 and 350),
+  activite text check (activite in ('sedentaire', 'leger', 'modere', 'actif', 'tres_actif')),
+  objectif text check (objectif in ('perte', 'maintien', 'prise')),
+  regimes text[] not null default '{}'
+    check (regimes <@ array['vegetarien', 'vegan', 'pescetarien', 'sans_gluten', 'sans_lactose', 'low_carb', 'high_protein']),
+  exclusions text check (length(exclusions) <= 1000),
+  updated_at timestamptz not null default now()
+);
+
+-- coach_id vide : base commune. client_id rempli : aliment personnel de ce client.
+create table public.aliments (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid references public.coachs (id) on delete cascade,
+  client_id uuid references public.clients (id) on delete cascade,
+  source text not null check (source in ('base', 'off', 'coach', 'client')),
+  nom text not null check (length(trim(nom)) between 1 and 200),
+  marque text check (length(marque) <= 200),
+  code_barres text check (code_barres ~ '^[0-9]{8,14}$'),
+  categorie text,
+  kcal numeric not null check (kcal between 0 and 900),
+  proteines numeric not null check (proteines between 0 and 100),
+  glucides numeric not null check (glucides between 0 and 100),
+  lipides numeric not null check (lipides between 0 and 100),
+  fibres numeric check (fibres between 0 and 100),
+  portion_g numeric check (portion_g > 0 and portion_g < 5000),
+  portion_libelle text,
+  contient text[] not null default '{}'
+    check (contient <@ array['viande', 'poisson', 'fruits_de_mer', 'oeuf', 'lait', 'gluten', 'miel']),
+  archive boolean not null default false,
+  created_at timestamptz not null default now(),
+  check (client_id is null or coach_id is not null)
+);
+create index aliments_coach on public.aliments (coach_id);
+create index aliments_code on public.aliments (code_barres) where code_barres is not null;
+-- Un code-barres partagé n'existe qu'une fois par coach (et une fois dans la base commune).
+create unique index aliments_code_unique on public.aliments (coalesce(coach_id, '00000000-0000-0000-0000-000000000000'::uuid), code_barres)
+  where code_barres is not null and client_id is null;
+
+create table public.recettes (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  -- Vide : recette de la banque du coach. Rempli : recette personnelle du client.
+  client_id uuid references public.clients (id) on delete cascade,
+  titre text not null check (length(trim(titre)) between 1 and 200),
+  description text,
+  portions int not null default 1 check (portions between 1 and 50),
+  temps_min int check (temps_min between 0 and 1440),
+  etapes text,
+  ingredients jsonb not null default '[]' check (jsonb_typeof(ingredients) = 'array'),
+  statut text not null default 'brouillon' check (statut in ('brouillon', 'approuvee')),
+  regimes_confirmes text[] not null default '{}',
+  archive boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index recettes_coach on public.recettes (coach_id);
+create index recettes_client on public.recettes (client_id) where client_id is not null;
+
+create table public.repas (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients (id) on delete cascade,
+  date date not null,
+  moment text not null check (moment in ('petit_dejeuner', 'dejeuner', 'collation', 'diner')),
+  libelle text not null check (length(trim(libelle)) between 1 and 300),
+  quantite_g numeric check (quantite_g > 0 and quantite_g <= 5000),
+  portions numeric check (portions > 0 and portions <= 20),
+  kcal numeric not null check (kcal between 0 and 10000),
+  proteines numeric not null check (proteines between 0 and 1000),
+  glucides numeric not null check (glucides between 0 and 1000),
+  lipides numeric not null check (lipides between 0 and 1000),
+  aliment_id uuid references public.aliments (id) on delete set null,
+  recette_id uuid references public.recettes (id) on delete set null,
+  source text not null check (source in ('saisie', 'scan', 'photo', 'recette')),
+  created_at timestamptz not null default now()
+);
+create index repas_client_date on public.repas (client_id, date);
+
+alter table public.profils_nutrition enable row level security;
+alter table public.aliments enable row level security;
+alter table public.recettes enable row level security;
+alter table public.repas enable row level security;
+
+create policy "client : son profil nutrition" on public.profils_nutrition for all
+  using (client_id = public.mon_client_id()) with check (client_id = public.mon_client_id());
+create policy "coach : profils nutrition" on public.profils_nutrition for all
+  using (public.est_mon_client(client_id)) with check (public.est_mon_client(client_id));
+
+create policy "lecture des aliments" on public.aliments for select using (
+  coach_id is null
+  or coach_id = public.mon_coach_id()
+  or (coach_id = public.coach_de_mon_client() and (client_id is null or client_id = public.mon_client_id()))
+);
+create policy "coach : ses aliments" on public.aliments for insert
+  with check (coach_id = public.mon_coach_id() and source in ('coach', 'off'));
+create policy "coach : modifier ses aliments" on public.aliments for update
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+-- Le client ajoute ses aliments personnels, et les produits scannés pour tous les clients de son coach.
+create policy "client : ajouter un aliment" on public.aliments for insert with check (
+  coach_id = public.coach_de_mon_client()
+  and (
+    (client_id = public.mon_client_id() and source = 'client')
+    or (client_id is null and source = 'off' and code_barres is not null)
+  )
+);
+create policy "client : modifier ses aliments" on public.aliments for update
+  using (client_id = public.mon_client_id()) with check (client_id = public.mon_client_id() and coach_id = public.coach_de_mon_client());
+
+create policy "coach : recettes" on public.recettes for all
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+create policy "client : lire les recettes" on public.recettes for select using (
+  coach_id = public.coach_de_mon_client()
+  and ((client_id is null and statut = 'approuvee') or client_id = public.mon_client_id())
+);
+create policy "client : ajouter ses recettes" on public.recettes for insert
+  with check (client_id = public.mon_client_id() and coach_id = public.coach_de_mon_client() and statut = 'brouillon');
+create policy "client : modifier ses recettes" on public.recettes for update
+  using (client_id = public.mon_client_id())
+  with check (client_id = public.mon_client_id() and coach_id = public.coach_de_mon_client() and statut = 'brouillon');
+
+create policy "client : ses repas" on public.repas for all
+  using (client_id = public.mon_client_id()) with check (client_id = public.mon_client_id());
+create policy "coach : repas de ses clients" on public.repas for select using (public.est_mon_client(client_id));
+
+grant select, insert, update, delete on public.profils_nutrition, public.repas to authenticated;
+grant select, insert, update on public.aliments, public.recettes to authenticated;
+
+
+-- ===== 20261024100000_alimentation_zite.sql =====
+-- Reprise de l'ancienne app Zite : table Ciqual 2025 et recettes sourcées avec leurs variantes.
+-- Uniquement des ajouts de colonnes ; les données se chargent avec scripts/import-zite-nutrition.mjs --sql.
+
+-- Aliments : code Ciqual et nutriments non mesurés (enregistrés à 0 mais connus comme inconnus, pas comme des zéros).
+alter table public.aliments
+  add column if not exists code_ciqual text,
+  add column if not exists valeurs_inconnues text[] not null default '{}'
+    check (valeurs_inconnues <@ array['kcal', 'proteines', 'glucides', 'lipides']);
+
+-- Recettes : valeurs par portion publiées par la source, variantes (végé, végan, + protéines), origine et types de repas.
+alter table public.recettes
+  add column if not exists macros_portion jsonb check (macros_portion is null or jsonb_typeof(macros_portion) = 'object'),
+  add column if not exists variantes jsonb not null default '[]' check (jsonb_typeof(variantes) = 'array'),
+  add column if not exists origine jsonb check (origine is null or jsonb_typeof(origine) = 'object'),
+  add column if not exists types text[] not null default '{}',
+  add column if not exists regime_source text check (regime_source in ('omnivore', 'vegetarien', 'vegan')),
+  add column if not exists ref_externe text check (length(ref_externe) <= 200);
+
+create unique index if not exists recettes_ref_externe_unique on public.recettes (coach_id, ref_externe) where ref_externe is not null;
+
+-- La base provisoire du premier jour laisse la place à Ciqual : archivée, pas supprimée (les repas déjà notés la gardent).
+update public.aliments set archive = true where source = 'base' and coach_id is null and code_ciqual is null and archive = false;
+
+
+-- ===== 20261024200000_plans_repas.sql =====
+-- Plan alimentaire de la semaine (repris de plansAlimentaires / mealPlan.ts de l'app d'origine).
+-- Une ligne par client et par semaine (un lundi), 7 jours de repas en JSON.
+-- Le coach crée et modifie ; le client lit son plan. `version` refuse l'écrasement d'une modification concurrente.
+create table if not exists public.plans_repas (
+  client_id uuid not null references public.clients (id) on delete cascade,
+  semaine date not null check (extract(isodow from semaine) = 1),
+  jours jsonb not null check (jsonb_typeof(jours) = 'array' and jsonb_array_length(jours) = 7),
+  version timestamptz not null default now(),
+  auteur text not null default 'coach' check (auteur in ('coach', 'client')),
+  primary key (client_id, semaine)
+);
+
+alter table public.plans_repas enable row level security;
+
+create policy "coach : plans de repas" on public.plans_repas for all
+  using (public.est_mon_client(client_id)) with check (public.est_mon_client(client_id) and auteur = 'coach');
+create policy "client : lire son plan de repas" on public.plans_repas for select
+  using (client_id = public.mon_client_id());
+grant select, insert, update on public.plans_repas to authenticated;
+
+
+-- ===== 20261024300000_crm_champs_origine.sql =====
+-- Lot 2 : champs de la configuration d'origine (Champs-CRM.json) pour la fiche Contact et l'éditeur Booster.
+-- Ajouts seulement : les colonnes existantes et leurs données restent telles quelles.
+
+-- Statut affiché choisi par le coach ; null = il suit l'étape du parcours (colonne statut).
+alter table public.contacts add column if not exists statut_crm text
+  check (statut_crm in ('Nouveau Prospect', 'Booster planifié', 'Booster réalisé', 'En réflexion', 'Client actif',
+                        'Coaching terminé', 'A relancer', 'Perdu'));
+alter table public.contacts add column if not exists objectif_principal text;
+alter table public.contacts add column if not exists prochaine_action text;
+alter table public.contacts add column if not exists offre_vendue text;
+
+alter table public.boosters add column if not exists nom text;
+-- Statuts ouverts choisis par le coach ; Terminée / Annulée découlent de statut (fait / annule).
+alter table public.boosters add column if not exists statut_crm text
+  check (statut_crm in ('À préparer', 'Questionnaire reçu', 'En cours', 'Terminée', 'Annulée'));
+alter table public.boosters add column if not exists resume_ia text;
+alter table public.boosters add column if not exists points_attention text;
+alter table public.boosters add column if not exists offre_recommandee text;
+alter table public.boosters add column if not exists resultat_commercial text;
+alter table public.boosters add column if not exists date_relance date;
+-- Réservées au coach : le compte rendu envoyé au client ne les reprend pas.
+alter table public.boosters add column if not exists notes_internes text;
+
+
+-- ===== 20261024400000_documents.sql =====
+-- Lot 2 : Documents (C07) et « Mes documents » du client (U11).
+-- Un document = une ligne versionnée ; son fichier est dans le compartiment privé « documents »,
+-- sous <coach>/<document>/v<version>-<nom>. Le client ne lit que les documents partagés de son propre dossier,
+-- sans les commentaires internes, et seulement par lien signé de courte durée.
+
+create table public.documents (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  contact_id uuid references public.contacts (id) on delete set null,
+  booster_id uuid references public.boosters (id) on delete set null,
+  nom text not null check (length(trim(nom)) > 0),
+  type text not null default 'Autre'
+    check (type in ('Plan d''action', 'Contrat', 'Facture', 'Bilan', 'Avant / Après', 'Photo', 'Autre')),
+  date date not null default (now() at time zone 'Europe/Paris')::date,
+  version integer not null default 1 check (version >= 1),
+  -- Fichier de la version courante ; les versions précédentes restent dans le compartiment.
+  chemin text,
+  nom_fichier text,
+  type_fichier text,
+  taille integer check (taille is null or taille >= 0),
+  partage_client boolean not null default false,
+  -- Vrai seulement quand l'envoi est confirmé : ouvrir une messagerie ne suffit pas.
+  envoye boolean not null default false,
+  commentaires text,
+  cree_le timestamptz not null default now(),
+  modifie_le timestamptz not null default now()
+);
+create index on public.documents (coach_id, date desc);
+create index on public.documents (contact_id);
+-- Un compte rendu par Booster : les nouvelles générations en sont des versions.
+create unique index documents_compte_rendu on public.documents (booster_id) where booster_id is not null and type = 'Plan d''action';
+
+alter table public.documents enable row level security;
+create policy "coach : ses documents" on public.documents for all
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+grant select, insert, update, delete on public.documents to authenticated;
+
+-- Dossiers (contacts) rattachés au client connecté ; le client n'a aucun droit direct sur contacts.
+create function public.documents_partages_avec_moi()
+returns table (id uuid, nom text, type text, date date, version integer, chemin text, nom_fichier text, type_fichier text, taille integer)
+language sql stable security definer set search_path = public as $$
+  select d.id, d.nom, d.type, d.date, d.version, d.chemin, d.nom_fichier, d.type_fichier, d.taille
+  from documents d
+  join contacts c on c.id = d.contact_id
+  where d.partage_client and d.chemin is not null
+    and public.mon_client_id() is not null and c.client_id = public.mon_client_id()
+  order by d.date desc, d.modifie_le desc
+$$;
+revoke execute on function public.documents_partages_avec_moi() from public, anon;
+grant execute on function public.documents_partages_avec_moi() to authenticated;
+
+-- Utilisée par la règle du compartiment : ce fichier est-il la version partagée d'un document du client ?
+create function public.fichier_partage_avec_moi(p_chemin text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from documents d join contacts c on c.id = d.contact_id
+    where d.chemin = p_chemin and d.partage_client
+      and public.mon_client_id() is not null and c.client_id = public.mon_client_id()
+  )
+$$;
+revoke execute on function public.fichier_partage_avec_moi(text) from public, anon;
+grant execute on function public.fichier_partage_avec_moi(text) to authenticated;
+
+
+-- ===== 20261024400100_documents_stockage.sql =====
+-- Fichiers des documents : compartiment privé, rien n'est public. Le coach dépose et lit dans son dossier ;
+-- le client ne lit que les fichiers des documents partagés avec lui (lien signé de courte durée).
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('documents', 'documents', false, 10485760, array['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic'])
+on conflict (id) do nothing;
+
+create policy "documents : le coach dépose dans son dossier" on storage.objects for insert to authenticated
+  with check (bucket_id = 'documents' and (storage.foldername(name))[1] = public.mon_coach_id()::text);
+create policy "documents : le coach lit son dossier" on storage.objects for select to authenticated
+  using (bucket_id = 'documents' and (storage.foldername(name))[1] = public.mon_coach_id()::text);
+create policy "documents : le client lit ce qui lui est partagé" on storage.objects for select to authenticated
+  using (bucket_id = 'documents' and public.fichier_partage_avec_moi(name));
+
+
+-- ===== 20261024400200_documents_un_par_booster.sql =====
+-- Le compte rendu d'origine (createBoosterReport) est de type « Bilan » : l'unicité vaut pour tout document lié à un Booster.
+create unique index documents_un_par_booster on public.documents (booster_id) where booster_id is not null;
+
+
+-- ===== 20261024500000_entrainement.sql =====
+-- Coach OS · lot 3 : entraînement complet repris de l'app Zite.
+-- Programmes et séances modèles en vraies lignes (comme dans Airtable), suivis et cycles clients,
+-- calendrier du client et réalisations rattachées à leur cycle avec des libellés figés.
+-- Tout est ajouté : seules la règle « coach : ses séances », celle d'insertion des réalisations et
+-- la fonction enregistrer_seance sont remplacées pour accepter une séance de modèle (sans client).
+
+-- ===== Programmes : les champs d'Airtable =====
+alter table public.programmes
+  add column ref_externe text,
+  add column statut text not null default 'Brouillon',
+  add column environnement text,
+  add column materiel text,
+  add column contraintes text,
+  add column consignes text,
+  add column duree_cible_min int check (duree_cible_min between 1 and 600),
+  add column priorites text[] not null default '{}',
+  add column version text,
+  add column modele_origine_id uuid references public.programmes (id) on delete set null,
+  add column cycle_applique int check (cycle_applique between 1 and 4),
+  -- « Séance seule · … » : conteneur d'une séance créée hors programme (version coachos-single d'origine).
+  add column seance_seule boolean not null default false,
+  -- Corbeille : masqué de la bibliothèque, restaurable. Rien n'est effacé.
+  add column supprime_le timestamptz;
+create unique index programmes_ref_externe on public.programmes (coach_id, ref_externe) where ref_externe is not null;
+
+-- ===== Séances : une séance de modèle n'a pas de client =====
+alter table public.seances alter column client_id drop not null;
+alter table public.seances
+  add column dominante text,
+  add column duree_prevue_min int check (duree_prevue_min between 1 and 600),
+  add column objectif text,
+  add column ref_externe text,
+  add column supprime_le timestamptz;
+create unique index seances_ref_externe on public.seances (coach_id, ref_externe) where ref_externe is not null;
+
+-- ===== Lignes : prescription complète d'Airtable =====
+alter table public.lignes
+  -- Texte tel que prescrit (« 12–15 », « 6–8 par côté ») ; repetitions_min/max restent pour la saisie.
+  add column repetitions text,
+  add column distance_m numeric check (distance_m > 0),
+  -- « Charge à ajuster au RIR cible », « 70 % 1RM », ou l'objectif cardio « 20 cal », « 2:05 / 500 m »…
+  add column charge_intensite text,
+  add column phase text check (phase in ('Échauffement', 'Principal', 'Finisher', 'Retour au calme')),
+  add column progression text,
+  -- Les quatre variantes du modèle (ancien marqueur COACHOS_CYCLES), jamais montrées telles quelles.
+  add column cycles jsonb check (cycles is null or (jsonb_typeof(cycles) = 'array' and jsonb_array_length(cycles) = 4)),
+  add column ref_externe text;
+alter table public.lignes drop constraint lignes_series_check;
+alter table public.lignes add constraint lignes_series_check check (series between 0 and 50);
+
+drop policy "coach : ses séances" on public.seances;
+create policy "coach : ses séances" on public.seances for all
+  using (coach_id = public.mon_coach_id())
+  with check (
+    coach_id = public.mon_coach_id()
+    and (client_id is null or exists (select 1 from public.clients c where c.id = client_id and c.coach_id = public.mon_coach_id()))
+    and (programme_id is null or exists (select 1 from public.programmes p where p.id = programme_id and p.coach_id = public.mon_coach_id()))
+  );
+
+-- ===== Suivi d'un client et ses cycles (Suivis.tsx, saveSuivi, saveCycle, activerCycle) =====
+create table public.suivis (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  client_id uuid not null unique references public.clients (id) on delete cascade,
+  debut date not null,
+  duree_mois int not null check (duree_mois between 1 and 24),
+  cree_le timestamptz not null default now()
+);
+
+create table public.cycles (
+  id uuid primary key default gen_random_uuid(),
+  suivi_id uuid not null references public.suivis (id) on delete cascade,
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  client_id uuid not null references public.clients (id) on delete cascade,
+  ordre int not null,
+  nom text not null check (length(trim(nom)) between 1 and 120),
+  objectif text check (length(objectif) <= 2000),
+  debut date not null,
+  fin date not null,
+  statut text not null default 'Brouillon' check (statut in ('Brouillon', 'Prêt', 'Actif', 'Terminé')),
+  programme_id uuid references public.programmes (id) on delete set null,
+  mode text check (mode in ('Modèle', 'Copie personnalisée')),
+  cree_le timestamptz not null default now(),
+  constraint cycle_dates check (fin >= debut)
+);
+create index on public.cycles (suivi_id, ordre);
+create index on public.cycles (client_id);
+-- Un seul cycle actif par suivi : deux activations simultanées ne peuvent pas passer toutes les deux.
+create unique index cycles_un_actif on public.cycles (suivi_id) where statut = 'Actif';
+
+-- Règles d'origine tenues par la base : l'activation ne passe que par activer_cycle, un cycle actif garde
+-- un programme, le programme d'un cycle terminé est figé.
+create function public.controler_cycle() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  if new.statut = 'Actif' and (tg_op = 'INSERT' or old.statut <> 'Actif')
+     and coalesce(current_setting('coachos.activation', true), '') <> 'oui' then
+    raise exception 'Utilisez « Activer » pour rendre un cycle actif';
+  end if;
+  if new.statut = 'Actif' and new.programme_id is null then
+    raise exception 'Un cycle actif doit garder un programme';
+  end if;
+  if tg_op = 'UPDATE' and old.statut = 'Terminé' and new.programme_id is distinct from old.programme_id then
+    raise exception 'Cycle terminé : programme figé';
+  end if;
+  return new;
+end $$;
+create trigger controler_cycle before insert or update on public.cycles for each row execute function public.controler_cycle();
+
+alter table public.suivis enable row level security;
+alter table public.cycles enable row level security;
+create policy "coach : suivis de ses clients" on public.suivis for all
+  using (coach_id = public.mon_coach_id())
+  with check (coach_id = public.mon_coach_id() and public.est_mon_client(client_id));
+create policy "client : son suivi" on public.suivis for select using (client_id = public.mon_client_id());
+create policy "coach : cycles de ses clients" on public.cycles for all
+  using (coach_id = public.mon_coach_id())
+  with check (
+    coach_id = public.mon_coach_id() and public.est_mon_client(client_id)
+    and exists (select 1 from public.suivis s where s.id = suivi_id and s.client_id = cycles.client_id)
+    and (programme_id is null or exists (select 1 from public.programmes p where p.id = programme_id and p.coach_id = public.mon_coach_id()))
+  );
+-- Brouillons et cycles « Prêt » ne sont jamais montrés au client (getClientEspace d'origine).
+create policy "client : ses cycles visibles" on public.cycles for select
+  using (client_id = public.mon_client_id() and statut in ('Actif', 'Terminé'));
+
+-- Le programme du cycle actif, lié tel quel (modèle) ou en copie : le client le lit, sans rien d'autre.
+create function public.mes_programmes_visibles() returns setof uuid
+language sql stable security definer set search_path = public as $$
+  select programme_id from public.cycles where client_id = public.mon_client_id() and statut = 'Actif' and programme_id is not null
+$$;
+revoke execute on function public.mes_programmes_visibles() from public, anon;
+grant execute on function public.mes_programmes_visibles() to authenticated;
+
+create policy "client : programme de son cycle actif" on public.programmes for select
+  using (id in (select public.mes_programmes_visibles()));
+create policy "client : séances de son cycle actif" on public.seances for select
+  using (supprime_le is null and programme_id in (select public.mes_programmes_visibles()));
+
+-- Activation contrôlée (activerCycle.ts) : Prêt, programme lié, aujourd'hui (Paris) dans les dates ;
+-- l'ancien cycle actif passe Terminé. L'index unique empêche deux actifs.
+create function public.activer_cycle(c uuid) returns void
+language plpgsql security invoker set search_path = public as $$
+declare
+  v public.cycles;
+  jour date := (now() at time zone 'Europe/Paris')::date;
+begin
+  select * into v from public.cycles where id = c for update;
+  if not found then raise exception 'Cycle introuvable'; end if;
+  if v.statut = 'Actif' then return; end if;
+  if v.statut <> 'Prêt' then
+    raise exception 'Activation refusée : le cycle est « % ». Passez-le d''abord en « Prêt ».', v.statut;
+  end if;
+  if jour < v.debut or jour > v.fin then
+    raise exception 'Activation refusée : aujourd''hui (%, Paris) est hors du cycle (% → %). Replanifiez les dates ou attendez le début.',
+      to_char(jour, 'DD/MM/YYYY'), to_char(v.debut, 'DD/MM/YYYY'), to_char(v.fin, 'DD/MM/YYYY');
+  end if;
+  if v.programme_id is null then raise exception 'Activation refusée : aucun programme lié.'; end if;
+  perform set_config('coachos.activation', 'oui', true);
+  update public.cycles set statut = 'Terminé' where suivi_id = v.suivi_id and statut = 'Actif' and id <> c;
+  update public.cycles set statut = 'Actif' where id = c;
+  perform set_config('coachos.activation', '', true);
+end $$;
+
+-- Monte ou descend un cycle dans son suivi (moveCycle.ts) : les ordres sont renumérotés 1..n.
+create function public.deplacer_cycle(c uuid, sens int) returns void
+language plpgsql security invoker set search_path = public as $$
+declare
+  v_suivi uuid;
+  ids uuid[];
+  i int;
+  j int;
+  t uuid;
+begin
+  select suivi_id into v_suivi from public.cycles where id = c;
+  if v_suivi is null then raise exception 'Cycle introuvable'; end if;
+  select array_agg(id order by ordre, cree_le) into ids from public.cycles where suivi_id = v_suivi;
+  i := array_position(ids, c);
+  j := i + sign(sens)::int;
+  if j < 1 or j > array_length(ids, 1) then return; end if;
+  t := ids[i]; ids[i] := ids[j]; ids[j] := t;
+  update public.cycles set ordre = array_position(ids, id) where suivi_id = v_suivi;
+end $$;
+
+-- ===== Calendrier du client (MyCalendar, saveMySchedule, calendar.ts) =====
+create table public.planifications (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients (id) on delete cascade,
+  cycle_id uuid not null references public.cycles (id) on delete cascade,
+  seance_id uuid not null references public.seances (id) on delete cascade,
+  seance_titre text not null,
+  date date not null,
+  heure text check (heure ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'),
+  statut text not null default 'Prévue' check (statut in ('Prévue', 'Réalisée', 'Annulée')),
+  realisee_le timestamptz,
+  realisation_id uuid,
+  -- Identifiant d'envoi venu de l'app : un double appui ne crée pas deux créneaux.
+  envoi_id text not null unique check (length(envoi_id) between 8 and 64),
+  cree_le timestamptz not null default now()
+);
+create index on public.planifications (client_id, cycle_id, date);
+
+alter table public.planifications enable row level security;
+-- Écriture uniquement par les fonctions ci-dessous, qui vérifient le dossier, le cycle et les dates.
+create policy "client : son calendrier" on public.planifications for select using (client_id = public.mon_client_id());
+create policy "coach : calendrier de ses clients" on public.planifications for select using (public.est_mon_client(client_id));
+
+-- Contrôle commun : le cycle est celui du client connecté. Renvoie le cycle.
+create function public.mon_cycle(c uuid) returns public.cycles
+language plpgsql stable security definer set search_path = public as $$
+declare v public.cycles;
+begin
+  select * into v from public.cycles where id = c and client_id = public.mon_client_id();
+  if not found then raise exception 'Cycle hors de votre dossier'; end if;
+  return v;
+end $$;
+revoke execute on function public.mon_cycle(uuid) from public, anon;
+
+-- Planifie ou déplace un créneau (saveMySchedule action « save »).
+create function public.planifier_seance(p jsonb) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  v public.cycles := public.mon_cycle((p->>'cycleId')::uuid);
+  ancien public.planifications;
+  s public.seances;
+  jour date := (now() at time zone 'Europe/Paris')::date;
+  d date := nullif(p->>'date', '')::date;
+  h text := nullif(p->>'heure', '');
+  v_id uuid := nullif(p->>'id', '')::uuid;
+begin
+  if exists (select 1 from public.planifications where envoi_id = p->>'envoiId' and client_id = v.client_id) then
+    return (select id from public.planifications where envoi_id = p->>'envoiId');
+  end if;
+  if v_id is not null then
+    select * into ancien from public.planifications where id = v_id and client_id = v.client_id and cycle_id = v.id;
+    if not found then raise exception 'Créneau hors de votre dossier'; end if;
+    if ancien.statut = 'Réalisée' then raise exception 'Une séance réalisée reste conservée dans votre historique'; end if;
+  end if;
+  if v.statut <> 'Actif' or v.programme_id is null then raise exception 'Le coach doit activer ce cycle avant de planifier'; end if;
+  if d is null or d < jour or d < v.debut or d > v.fin or coalesce(p->>'envoiId', '') = '' then
+    raise exception 'Choisissez une date à venir dans les dates du cycle actif';
+  end if;
+  if h is not null and h !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then raise exception 'Heure invalide'; end if;
+  select * into s from public.seances where id = (p->>'seanceId')::uuid and supprime_le is null;
+  if not found or s.programme_id is distinct from v.programme_id then raise exception 'Séance hors de votre programme actif'; end if;
+  if exists (select 1 from public.planifications where client_id = v.client_id and cycle_id = v.id and statut = 'Prévue'
+             and seance_id = s.id and date = d and id is distinct from v_id) then
+    raise exception 'Cette séance est déjà prévue ce jour-là';
+  end if;
+  if v_id is not null then
+    update public.planifications set seance_id = s.id, seance_titre = s.titre, date = d, heure = h, envoi_id = p->>'envoiId' where id = v_id;
+    return v_id;
+  end if;
+  insert into public.planifications (client_id, cycle_id, seance_id, seance_titre, date, heure, envoi_id)
+  values (v.client_id, v.id, s.id, s.titre, d, h, p->>'envoiId') returning id into v_id;
+  return v_id;
+end $$;
+
+-- Annule un créneau prévu ; une séance réalisée ne peut pas l'être.
+create function public.annuler_creneau(c uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare ancien public.planifications;
+begin
+  select * into ancien from public.planifications where id = c and client_id = public.mon_client_id();
+  if not found then raise exception 'Créneau introuvable'; end if;
+  if ancien.statut = 'Réalisée' then raise exception 'Une séance réalisée reste conservée dans votre historique'; end if;
+  update public.planifications set statut = 'Annulée' where id = c;
+end $$;
+
+-- ===== Réalisations rattachées au cycle, avec libellés figés (logSeance.ts) =====
+alter table public.realisations
+  add column cycle_id uuid references public.cycles (id) on delete set null,
+  add column programme_id uuid references public.programmes (id) on delete set null,
+  add column planification_id uuid references public.planifications (id) on delete set null,
+  -- Ressenti (effort perçu) de 1 à 10, facultatif.
+  add column note int check (note between 1 and 10),
+  add column seance_titre text,
+  add column programme_nom text,
+  add column cycle_nom text;
+-- Le nom de l'exercice au moment de la séance : l'historique reste lisible si le catalogue change.
+alter table public.series_realisees add column exercice_nom text;
+
+drop policy "client : enregistre ses réalisations" on public.realisations;
+create policy "client : enregistre ses réalisations" on public.realisations for insert
+  with check (
+    client_id = public.mon_client_id()
+    and coach_id = public.coach_de_mon_client()
+    and exists (select 1 from public.seances s where s.id = seance_id
+                and (s.client_id = public.mon_client_id() or s.programme_id in (select public.mes_programmes_visibles())))
+  );
+
+-- Enregistre une séance réalisée en une fois. Idempotent : le même id renvoyé ne crée rien de plus,
+-- mais le créneau du calendrier est quand même marqué réalisé.
+create function public.enregistrer_realisation(r jsonb) returns text
+language plpgsql security definer set search_path = public as $$
+declare
+  moi uuid := public.mon_client_id();
+  v_id uuid := (r->>'id')::uuid;
+  s public.seances;
+  c public.cycles;
+  prog public.programmes;
+  plan public.planifications;
+  jour date := (now() at time zone 'Europe/Paris')::date;
+  v_fin timestamptz := coalesce(nullif(r->>'fin', '')::timestamptz, now());
+  doublon boolean;
+  serie jsonb;
+begin
+  if moi is null or moi <> (r->>'clientId')::uuid then raise exception 'Séance hors de votre dossier'; end if;
+  select * into s from public.seances where id = (r->>'seanceId')::uuid and supprime_le is null;
+  if not found then raise exception 'Séance introuvable ou retirée par votre coach'; end if;
+  if nullif(r->>'cycleId', '') is not null then
+    select * into c from public.cycles where id = (r->>'cycleId')::uuid and client_id = moi;
+    if not found or c.statut <> 'Actif' or c.programme_id is null then raise exception 'Ce cycle n''est pas en cours'; end if;
+    if jour < c.debut or jour > c.fin then raise exception 'Cette séance est en dehors des dates du cycle actif'; end if;
+    if s.programme_id is distinct from c.programme_id then raise exception 'Séance hors du cycle en cours'; end if;
+    select * into prog from public.programmes where id = c.programme_id;
+  elsif s.client_id is distinct from moi then
+    raise exception 'Séance hors de votre dossier';
+  end if;
+  if nullif(r->>'planificationId', '') is not null then
+    select * into plan from public.planifications where id = (r->>'planificationId')::uuid;
+    if not found or plan.client_id <> moi or plan.cycle_id is distinct from c.id or plan.seance_id <> s.id or plan.statut = 'Annulée' then
+      raise exception 'Créneau hors de cette séance';
+    end if;
+    if plan.statut = 'Réalisée' and plan.realisation_id is distinct from v_id then raise exception 'Ce créneau est déjà réalisé'; end if;
+  end if;
+
+  select exists (select 1 from public.realisations where id = v_id) into doublon;
+  if doublon then
+    if not exists (select 1 from public.realisations where id = v_id and client_id = moi and seance_id = s.id) then
+      raise exception 'Envoi déjà utilisé pour une autre séance';
+    end if;
+    select realisations.fin into v_fin from public.realisations where id = v_id;
+  else
+    if jsonb_array_length(coalesce(r->'series', '[]')) = 0 and nullif(r->>'note', '') is null and coalesce(trim(r->>'commentaire'), '') = '' then
+      raise exception 'Renseignez au moins un résultat ou un ressenti';
+    end if;
+    insert into public.realisations (id, seance_id, client_id, coach_id, debut, fin, commentaire, note, cycle_id, programme_id,
+      planification_id, seance_titre, programme_nom, cycle_nom)
+    values (v_id, s.id, moi, s.coach_id, coalesce(nullif(r->>'debut', '')::timestamptz, v_fin), v_fin, nullif(trim(r->>'commentaire'), ''),
+      nullif(r->>'note', '')::int, c.id, c.programme_id, plan.id, s.titre, prog.titre, c.nom);
+    for serie in select * from jsonb_array_elements(coalesce(r->'series', '[]')) loop
+      if not exists (select 1 from public.lignes l join public.blocs b on b.id = l.bloc_id
+                     where l.id = (serie->>'ligneId')::uuid and b.seance_id = s.id) then
+        raise exception 'Exercice hors de cette séance';
+      end if;
+      insert into public.series_realisees (id, realisation_id, ligne_id, exercice_id, index, valeurs, suggestion, exercice_nom)
+      select (serie->>'id')::uuid, v_id, l.id, l.exercice_id, (serie->>'index')::int, coalesce(serie->'valeurs', '{}'),
+        coalesce(serie->'suggestion', '{}'), e.nom
+      from public.lignes l join public.exercices e on e.id = l.exercice_id where l.id = (serie->>'ligneId')::uuid;
+    end loop;
+  end if;
+
+  -- Calendrier (markCompleted) : le créneau choisi, sinon celui prévu ce jour-là, sinon un créneau réalisé créé.
+  if c.id is not null and not exists (select 1 from public.planifications where realisation_id = v_id) then
+    if plan.id is null then
+      select * into plan from public.planifications
+      where client_id = moi and cycle_id = c.id and seance_id = s.id and statut = 'Prévue' and date = (v_fin at time zone 'Europe/Paris')::date
+      order by cree_le limit 1;
+    end if;
+    if plan.id is not null then
+      update public.planifications set statut = 'Réalisée', realisee_le = v_fin, realisation_id = v_id where id = plan.id;
+    else
+      insert into public.planifications (client_id, cycle_id, seance_id, seance_titre, date, statut, realisee_le, realisation_id, envoi_id)
+      values (moi, c.id, s.id, s.titre, (v_fin at time zone 'Europe/Paris')::date, 'Réalisée', v_fin, v_id, 'realisation-' || v_id);
+    end if;
+  end if;
+  return case when doublon then 'doublon' else 'enregistree' end;
+end $$;
+
+-- ===== Séances : enregistrer_seance accepte une séance de modèle et la prescription complète =====
+create or replace function public.enregistrer_seance(s jsonb) returns uuid
+language plpgsql security invoker set search_path = public as $$
+declare
+  v_id uuid := (s->>'id')::uuid;
+  v_blocs uuid[];
+  v_lignes uuid[];
+  b jsonb;
+  l jsonb;
+  i int := 0;
+  j int;
+begin
+  select coalesce(array_agg((x->>'id')::uuid), '{}') into v_blocs from jsonb_array_elements(coalesce(s->'blocs', '[]')) x;
+  select coalesce(array_agg((x->>'id')::uuid), '{}') into v_lignes
+  from jsonb_array_elements(coalesce(s->'blocs', '[]')) bl, jsonb_array_elements(coalesce(bl->'lignes', '[]')) x;
+
+  insert into public.seances (id, coach_id, client_id, programme_id, titre, date_prevue, consignes, ordre, dominante, duree_prevue_min, objectif)
+  values (
+    v_id, public.mon_coach_id(), nullif(s->>'clientId', '')::uuid, nullif(s->>'programmeId', '')::uuid,
+    s->>'titre', nullif(s->>'datePrevue', '')::date, nullif(s->>'consignes', ''), nullif(s->>'ordre', '')::int,
+    nullif(s->>'dominante', ''), nullif(s->>'dureeMin', '')::int, nullif(s->>'objectif', ''))
+  on conflict (id) do update set
+    titre = excluded.titre, date_prevue = excluded.date_prevue, consignes = excluded.consignes, ordre = excluded.ordre,
+    programme_id = excluded.programme_id, dominante = excluded.dominante, duree_prevue_min = excluded.duree_prevue_min,
+    objectif = excluded.objectif;
+
+  -- Ce qui est enlevé est retiré, jamais effacé : une ligne déjà réalisée garde son historique.
+  update public.lignes set retiree = true
+  where bloc_id in (select id from public.blocs where seance_id = v_id) and not (id = any (v_lignes));
+  update public.blocs set retire = true where seance_id = v_id and not (id = any (v_blocs));
+
+  for b in select * from jsonb_array_elements(coalesce(s->'blocs', '[]')) loop
+    i := i + 1;
+    insert into public.blocs (id, seance_id, ordre, titre, minuteur)
+    values ((b->>'id')::uuid, v_id, i, coalesce(nullif(b->>'titre', ''), 'Bloc ' || i), nullif(b->'minuteur', 'null'::jsonb))
+    on conflict (id) do update set ordre = excluded.ordre, titre = excluded.titre, minuteur = excluded.minuteur, retire = false
+    where blocs.seance_id = v_id;
+    j := 0;
+    for l in select * from jsonb_array_elements(coalesce(b->'lignes', '[]')) loop
+      j := j + 1;
+      insert into public.lignes (id, bloc_id, ordre, exercice_id, series, repetitions_min, repetitions_max,
+        charge_indicative, duree_s, recuperation_s, rir, tempo, consignes, minuteur,
+        repetitions, distance_m, charge_intensite, phase, progression, cycles)
+      values ((l->>'id')::uuid, (b->>'id')::uuid, j, (l->>'exerciceId')::uuid, (l->>'series')::int,
+        (l->>'repetitionsMin')::int, (l->>'repetitionsMax')::int, (l->>'chargeIndicative')::numeric,
+        (l->>'dureeS')::int, (l->>'recuperationS')::int, (l->>'rir')::int, nullif(l->>'tempo', ''),
+        nullif(l->>'consignes', ''), nullif(l->'minuteur', 'null'::jsonb),
+        nullif(l->>'repetitions', ''), (l->>'distanceM')::numeric, nullif(l->>'chargeIntensite', ''),
+        nullif(l->>'phase', ''), nullif(l->>'progression', ''), nullif(l->'cycles', 'null'::jsonb))
+      on conflict (id) do update set
+        bloc_id = excluded.bloc_id, ordre = excluded.ordre, exercice_id = excluded.exercice_id,
+        series = excluded.series, repetitions_min = excluded.repetitions_min,
+        repetitions_max = excluded.repetitions_max, charge_indicative = excluded.charge_indicative,
+        duree_s = excluded.duree_s, recuperation_s = excluded.recuperation_s, rir = excluded.rir,
+        tempo = excluded.tempo, consignes = excluded.consignes, minuteur = excluded.minuteur,
+        repetitions = excluded.repetitions, distance_m = excluded.distance_m, charge_intensite = excluded.charge_intensite,
+        phase = excluded.phase, progression = excluded.progression, cycles = excluded.cycles, retiree = false;
+    end loop;
+  end loop;
+  return v_id;
+end $$;
+
+-- Programme complet en une transaction : en-tête puis séances (copie d'un modèle, duplication).
+-- Si une séance échoue, rien n'est gardé (pas de copie à moitié faite).
+create function public.enregistrer_programme(p jsonb) returns uuid
+language plpgsql security invoker set search_path = public as $$
+declare
+  v_id uuid := (p->>'id')::uuid;
+  x jsonb;
+begin
+  insert into public.programmes (id, coach_id, client_id, titre, objectif, duree_semaines, seances_par_semaine, niveau,
+    statut, environnement, materiel, contraintes, consignes, duree_cible_min, priorites, version, modele_origine_id,
+    cycle_applique, seance_seule)
+  values (v_id, public.mon_coach_id(), nullif(p->>'clientId', '')::uuid, trim(p->>'titre'), nullif(p->>'objectif', ''),
+    nullif(p->>'dureeSemaines', '')::int, nullif(p->>'seancesParSemaine', '')::int, nullif(p->>'niveau', ''),
+    coalesce(nullif(p->>'statut', ''), 'Brouillon'), nullif(p->>'environnement', ''), nullif(p->>'materiel', ''),
+    nullif(p->>'contraintes', ''), nullif(p->>'consignes', ''), nullif(p->>'dureeCibleMin', '')::int,
+    coalesce(array(select jsonb_array_elements_text(coalesce(p->'priorites', '[]'))), '{}'), nullif(p->>'version', ''),
+    nullif(p->>'modeleOrigineId', '')::uuid, nullif(p->>'cycleApplique', '')::int, coalesce((p->>'seanceSeule')::boolean, false))
+  on conflict (id) do update set
+    titre = excluded.titre, objectif = excluded.objectif, duree_semaines = excluded.duree_semaines,
+    seances_par_semaine = excluded.seances_par_semaine, niveau = excluded.niveau, materiel = excluded.materiel,
+    consignes = excluded.consignes
+  where programmes.coach_id = public.mon_coach_id();
+  for x in select * from jsonb_array_elements(coalesce(p->'seances', '[]')) loop
+    perform public.enregistrer_seance(x || jsonb_build_object('programmeId', v_id, 'clientId', p->>'clientId'));
+  end loop;
+  return v_id;
+end $$;
+
+-- Corbeille (manageDeletion.ts) : on valide toute la sélection avant d'écrire. Un programme lié à un cycle
+-- ou dont une séance a des résultats est protégé.
+create function public.mettre_a_la_corbeille(items jsonb) returns void
+language plpgsql security invoker set search_path = public as $$
+declare
+  it jsonb;
+  v_prog uuid;
+  nom text;
+begin
+  for it in select * from jsonb_array_elements(items) loop
+    if it->>'kind' = 'programme' then
+      select id, titre into v_prog, nom from public.programmes where id = (it->>'id')::uuid;
+    else
+      select s.programme_id, s.titre into v_prog, nom from public.seances s where s.id = (it->>'id')::uuid;
+    end if;
+    if nom is null then raise exception 'Élément introuvable'; end if;
+    if exists (select 1 from public.cycles where programme_id = v_prog)
+       or exists (select 1 from public.realisations r join public.seances s on s.id = r.seance_id where s.programme_id = v_prog)
+       or exists (select 1 from public.programmes where id = v_prog and client_id is not null) then
+      raise exception '% : Ce programme est lié à un dossier client ou à des résultats. Il ne peut pas être supprimé.', nom;
+    end if;
+  end loop;
+  update public.programmes set supprime_le = now()
+  where id in (select (x->>'id')::uuid from jsonb_array_elements(items) x where x->>'kind' = 'programme') and supprime_le is null;
+  update public.seances set supprime_le = now()
+  where id in (select (x->>'id')::uuid from jsonb_array_elements(items) x where x->>'kind' = 'seance') and supprime_le is null;
+end $$;
+
+grant select, insert, update, delete on public.suivis, public.cycles to authenticated;
+grant select on public.planifications to authenticated;
+revoke execute on function public.activer_cycle(uuid), public.deplacer_cycle(uuid, int), public.planifier_seance(jsonb),
+  public.annuler_creneau(uuid), public.enregistrer_realisation(jsonb), public.enregistrer_programme(jsonb),
+  public.mettre_a_la_corbeille(jsonb) from public, anon;
+grant execute on function public.activer_cycle(uuid), public.deplacer_cycle(uuid, int), public.planifier_seance(jsonb),
+  public.annuler_creneau(uuid), public.enregistrer_realisation(jsonb), public.enregistrer_programme(jsonb),
+  public.mettre_a_la_corbeille(jsonb) to authenticated;
+
+
+-- ===== 20261024600000_suivi_hebdo.sql =====
+-- Coach OS · lot 4 : suivi de la semaine repris de l'app Zite.
+-- Bilans hebdomadaires avec synthèse automatique (saveMyWeekly, buildAutoWeekly) et retour du coach (replyWeekly),
+-- objectifs personnels du client (saveMyGoal) et photos de progression privées ou partagées (savePhoto).
+-- Uniquement des ajouts : trois tables, leurs règles d'accès et quatre fonctions.
+
+-- ===== Bilans hebdomadaires =====
+create table public.bilans_hebdo (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  client_id uuid not null references public.clients (id) on delete cascade,
+  -- Lundi de la semaine concernée.
+  semaine date not null check (extract(isodow from semaine) = 1),
+  reponses jsonb not null,
+  envoye_le timestamptz not null default now(),
+  -- Dernier envoi du téléphone : renvoyé deux fois, il ne crée ni ne modifie rien.
+  envoi_id text not null check (length(envoi_id) between 8 and 80),
+  retour_coach text not null default '' check (length(retour_coach) <= 12000),
+  priorite text not null default '' check (length(priorite) <= 1000),
+  repondu_le timestamptz,
+  source_retour text check (source_retour in ('Automatique', 'Coach')),
+  a_revoir boolean not null default false,
+  unique (client_id, semaine)
+);
+create index on public.bilans_hebdo (coach_id, semaine desc);
+create index on public.bilans_hebdo (client_id, envoi_id);
+
+alter table public.bilans_hebdo enable row level security;
+create policy "client : ses bilans" on public.bilans_hebdo for select using (client_id = public.mon_client_id());
+create policy "coach : les bilans de ses clients" on public.bilans_hebdo for select using (coach_id = public.mon_coach_id());
+-- Lecture seule : tout passe par enregistrer_bilan et repondre_bilan (les droits par défaut de Supabase donnent tout).
+revoke all on public.bilans_hebdo from anon, authenticated;
+grant select on public.bilans_hebdo to authenticated;
+
+/** buildAutoWeekly d'origine, mot pour mot (le même texte est produit par domain/suivi-hebdo.ts). */
+create function public.synthese_bilan(a jsonb, prec jsonb, prec_semaine date, cible int)
+returns table (retour text, priorite text, a_revoir boolean)
+language plpgsql immutable set search_path = public as $$
+declare
+  nettoyer constant text := '^\s+|\s+$';
+  douleurs text := regexp_replace(coalesce(a->>'douleurs', ''), nettoyer, '', 'g');
+  victoire text := regexp_replace(coalesce(a->>'victoire', ''), nettoyer, '', 'g');
+  difficultes text := regexp_replace(coalesce(a->>'difficultes', ''), nettoyer, '', 'g');
+  energie int := (a->>'energie')::int;
+  sommeil int := (a->>'sommeil')::int;
+  stress int := (a->>'stress')::int;
+  motivation int := (a->>'motivation')::int;
+  seances int := (a->>'seances')::int;
+  douleur boolean;
+  bas boolean := energie <= 3 or sommeil <= 3;
+  stresse boolean := stress >= 8;
+  demotive boolean := motivation <= 3;
+  p text[];
+begin
+  douleur := douleurs <> '' and douleurs !~* '^(?:non|aucun(?:e)?(?: douleur(?:s)?| gêne(?:s)?)?|pas de (?:douleur(?:s)?|gêne(?:s)?)|ras|rien|0)[.! ]*$';
+  p := array[
+    'Tu as déclaré ' || seances || ' séance' || case when seances > 1 then 's' else '' end || ' cette semaine'
+      || case when cible is null then '.' else ' pour un objectif de ' || cible || ' séance' || case when cible > 1 then 's' else '' end || ' dans ton programme.' end,
+    'Énergie : ' || energie || '/10 · sommeil : ' || sommeil || '/10 · stress : ' || stress || '/10 · motivation : ' || motivation || '/10.'
+  ];
+  if prec is not null then
+    p := p || ('Par rapport au bilan du ' || to_char(prec_semaine, 'DD/MM/YYYY') || ' : énergie ' || public.ecart_bilan(energie - (prec->>'energie')::int)
+      || ', sommeil ' || public.ecart_bilan(sommeil - (prec->>'sommeil')::int) || ', motivation ' || public.ecart_bilan(motivation - (prec->>'motivation')::int) || '.');
+  end if;
+  if victoire <> '' then p := p || ('Réussite que tu as signalée : ' || victoire); end if;
+  if difficultes <> '' then p := p || ('Difficulté que tu as signalée : ' || difficultes); end if;
+  if douleur then p := p || 'Une douleur ou une gêne a été signalée : ton coach doit regarder ce point.'::text; end if;
+  retour := array_to_string(p, E'\n\n');
+  priorite := case
+    when douleur then 'Décrire à ton coach la gêne, le mouvement concerné et le moment où elle apparaît, pour faire le point avant de faire évoluer les charges.'
+    when bas then 'Faire le point avec ton coach sur ton énergie et ton sommeil, puis convenir avec lui d’un rythme réaliste pour la semaine suivante.'
+    when stresse then 'Identifier la principale contrainte de la semaine et en parler à ton coach pour organiser les séances prévues autour de celle-ci.'
+    when seances = 0 or (cible is not null and seances < cible) then
+      case when cible is not null
+        then 'Bloquer dans ton agenda les ' || cible || ' créneaux prévus par ton programme pour la semaine suivante, puis signaler au coach les éventuelles contraintes.'
+        else 'Choisir avec ton coach les créneaux des séances prévues au programme pour la semaine suivante.' end
+    when demotive then 'Identifier avec ton coach un objectif simple et motivant pour la semaine suivante, en tenant compte de la difficulté que tu as signalée.'
+    when sommeil <= 5 then 'Choisir un horaire de coucher régulier cette semaine et noter ta qualité de sommeil dans le prochain bilan.'
+    when difficultes <> '' then 'Choisir avec ton coach une solution concrète à la difficulté signalée, tout en gardant les séances prévues au programme.'
+    when cible is not null then 'Planifier les ' || cible || ' séances de la semaine suivante selon ton programme, et noter une réussite à partager au prochain bilan.'
+    else 'Planifier les séances de la semaine suivante selon ton programme, et noter une réussite à partager au prochain bilan.'
+  end;
+  a_revoir := douleur or bas or stresse;
+  return next;
+end $$;
+
+create function public.ecart_bilan(n int) returns text language sql immutable as $$
+  select case when n = 0 then 'stable' else case when n > 0 then '+' else '' end || n || ' point' || case when abs(n) > 1 then 's' else '' end end
+$$;
+
+/** saveMyWeekly : contrôles, synthèse automatique publiée tout de suite, modifiable tant que le coach n'a pas répondu. */
+create function public.enregistrer_bilan(b jsonb) returns text
+language plpgsql security definer set search_path = public as $$
+declare
+  moi uuid := public.mon_client_id();
+  mon_coach uuid := public.coach_de_mon_client();
+  s date;
+  jour date := (now() at time zone 'Europe/Paris')::date;
+  r jsonb := b->'reponses';
+  ancien public.bilans_hebdo;
+  prec public.bilans_hebdo;
+  cible int;
+  syn record;
+  k text;
+begin
+  if moi is null then raise exception 'Bilan hors de votre dossier'; end if;
+  begin
+    s := (b->>'semaine')::date;
+  exception when others then
+    raise exception 'Semaine invalide ou future';
+  end;
+  if s is null or b->>'semaine' <> to_char(s, 'YYYY-MM-DD') or extract(isodow from s) <> 1 or s > jour - (extract(isodow from jour)::int - 1) then
+    raise exception 'Semaine invalide ou future';
+  end if;
+  if length(coalesce(b->>'envoiId', '')) not between 8 and 80 then raise exception 'Envoi invalide'; end if;
+  foreach k in array array['energie', 'sommeil', 'stress', 'motivation'] loop
+    if jsonb_typeof(r->k) <> 'number' or (r->>k)::numeric not between 1 and 10 or (r->>k)::numeric <> trunc((r->>k)::numeric) then
+      raise exception 'Complétez les quatre scores et le nombre de séances réalisées.';
+    end if;
+  end loop;
+  if jsonb_typeof(r->'seances') <> 'number' or (r->>'seances')::numeric not between 0 and 30 or (r->>'seances')::numeric <> trunc((r->>'seances')::numeric) then
+    raise exception 'Complétez les quatre scores et le nombre de séances réalisées.';
+  end if;
+  if jsonb_typeof(r->'difficultes') <> 'string' or jsonb_typeof(r->'douleurs') <> 'string' or jsonb_typeof(r->'victoire') <> 'string'
+    or length(r->>'difficultes') > 2000 or length(r->>'douleurs') > 1500 or length(r->>'victoire') > 1000 then
+    raise exception 'Réponse trop longue.';
+  end if;
+  if exists (select 1 from public.bilans_hebdo where client_id = moi and envoi_id = b->>'envoiId') then return 'doublon'; end if;
+  select * into ancien from public.bilans_hebdo where client_id = moi and semaine = s;
+  if found and ancien.repondu_le is not null and ancien.source_retour = 'Coach' then
+    raise exception 'Votre coach a déjà répondu à ce bilan. Il reste conservé dans votre historique.';
+  end if;
+  select * into prec from public.bilans_hebdo where client_id = moi and semaine < s order by semaine desc limit 1;
+  select p.seances_par_semaine into cible
+  from public.cycles c join public.programmes p on p.id = c.programme_id
+  where c.client_id = moi and c.statut in ('Actif', 'Terminé') and c.debut <= s + 6 and c.fin >= s
+  order by c.debut desc limit 1;
+  r := jsonb_build_object('energie', (r->>'energie')::int, 'sommeil', (r->>'sommeil')::int, 'stress', (r->>'stress')::int, 'motivation', (r->>'motivation')::int,
+    'seances', (r->>'seances')::int, 'difficultes', r->>'difficultes', 'douleurs', r->>'douleurs', 'victoire', r->>'victoire');
+  select * into syn from public.synthese_bilan(r, prec.reponses, prec.semaine, cible);
+  insert into public.bilans_hebdo (coach_id, client_id, semaine, reponses, envoye_le, envoi_id, retour_coach, priorite, repondu_le, source_retour, a_revoir)
+  values (mon_coach, moi, s, r, now(), b->>'envoiId', syn.retour, syn.priorite, now(), 'Automatique', syn.a_revoir)
+  on conflict (client_id, semaine) do update set reponses = excluded.reponses, envoye_le = excluded.envoye_le, envoi_id = excluded.envoi_id,
+    retour_coach = excluded.retour_coach, priorite = excluded.priorite, repondu_le = excluded.repondu_le, source_retour = excluded.source_retour,
+    a_revoir = excluded.a_revoir;
+  return 'enregistre';
+end $$;
+
+/** replyWeekly : le coach publie son retour ; refusé si le client a modifié son bilan entre-temps. */
+create function public.repondre_bilan(p_id uuid, p_message text, p_priorite text, p_envoye_le timestamptz) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  b public.bilans_hebdo;
+begin
+  select * into b from public.bilans_hebdo where id = p_id and coach_id = public.mon_coach_id();
+  if not found then raise exception 'Bilan introuvable'; end if;
+  if b.envoye_le <> p_envoye_le then raise exception 'Le client a modifié son bilan. Actualisez avant de répondre.'; end if;
+  if length(btrim(coalesce(p_message, ''))) not between 1 and 4000 or length(btrim(coalesce(p_priorite, ''))) not between 1 and 1000 then
+    raise exception 'Renseignez le message et la priorité';
+  end if;
+  update public.bilans_hebdo set retour_coach = btrim(p_message), priorite = btrim(p_priorite), source_retour = 'Coach', a_revoir = false, repondu_le = now()
+  where id = b.id;
+end $$;
+
+-- ===== Objectifs du client =====
+create table public.objectifs (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  client_id uuid not null references public.clients (id) on delete cascade,
+  titre text not null check (length(titre) between 3 and 120),
+  unite text not null check (unite in ('kg', 'répétitions', 'minutes', 'km', 'séances', 'cm')),
+  depart numeric not null check (depart between 0 and 1000000),
+  cible numeric not null check (cible between 0 and 1000000),
+  echeance date,
+  -- [{date, valeur, envoiId}] : la première valeur est le point de départ.
+  historique jsonb not null,
+  cree_le timestamptz not null default now(),
+  modifie_le timestamptz not null default now(),
+  atteint_le timestamptz,
+  archive boolean not null default false,
+  dernier_envoi text not null,
+  constraint objectif_cible check (cible <> depart)
+);
+create index on public.objectifs (client_id);
+
+alter table public.objectifs enable row level security;
+create policy "client : ses objectifs" on public.objectifs for select using (client_id = public.mon_client_id());
+create policy "coach : les objectifs de ses clients" on public.objectifs for select using (coach_id = public.mon_coach_id());
+revoke all on public.objectifs from anon, authenticated;
+grant select on public.objectifs to authenticated;
+
+/** saveMyGoal : créer, noter une valeur, archiver ou réactiver ; un envoi répété ne change rien. */
+create function public.enregistrer_objectif(o jsonb) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  moi uuid := public.mon_client_id();
+  envoi text := o->>'envoiId';
+  action text := o->>'action';
+  g public.objectifs;
+  v jsonb := o->'objectif';
+  val numeric;
+  jour date := (now() at time zone 'Europe/Paris')::date;
+  nouvel uuid;
+begin
+  if moi is null then raise exception 'Objectif hors de votre dossier'; end if;
+  if length(coalesce(envoi, '')) not between 8 and 80 then raise exception 'Envoi invalide'; end if;
+  if action = 'creer' then
+    select id into nouvel from public.objectifs where client_id = moi and (dernier_envoi = envoi or historique->0->>'envoiId' = envoi);
+    if found then return nouvel; end if;
+    if length(btrim(coalesce(v->>'titre', ''))) not between 3 and 120 then raise exception 'Nommez votre objectif (3 à 120 caractères)'; end if;
+    if jsonb_typeof(v->'depart') <> 'number' or jsonb_typeof(v->'cible') <> 'number'
+      or (v->>'depart')::numeric not between 0 and 1000000 or (v->>'cible')::numeric not between 0 and 1000000 then
+      raise exception 'Renseignez le départ et la cible';
+    end if;
+    if (v->>'depart')::numeric = (v->>'cible')::numeric then raise exception 'La cible doit être différente du point de départ'; end if;
+    if coalesce(v->>'echeance', '') <> '' and ((v->>'echeance')::date < jour or (v->>'echeance')::date > '2100-12-31') then raise exception 'Échéance invalide'; end if;
+    insert into public.objectifs (coach_id, client_id, titre, unite, depart, cible, echeance, historique, dernier_envoi)
+    values (public.coach_de_mon_client(), moi, btrim(v->>'titre'), v->>'unite', (v->>'depart')::numeric, (v->>'cible')::numeric,
+      nullif(v->>'echeance', '')::date, jsonb_build_array(jsonb_build_object('date', now(), 'valeur', (v->>'depart')::numeric, 'envoiId', envoi)), envoi)
+    returning id into nouvel;
+    return nouvel;
+  end if;
+  select * into g from public.objectifs where id = (o->>'id')::uuid and client_id = moi for update;
+  if not found then raise exception 'Objectif hors de votre dossier'; end if;
+  if g.dernier_envoi = envoi or g.historique @> jsonb_build_array(jsonb_build_object('envoiId', envoi)) then return g.id; end if;
+  if nullif(o->>'version', '') is null or g.modifie_le <> (o->>'version')::timestamptz then raise exception 'Cet objectif a changé. Actualisez avant de réessayer.'; end if;
+  if action = 'progresser' then
+    if g.archive then raise exception 'Cet objectif est archivé'; end if;
+    if jsonb_typeof(o->'valeur') <> 'number' or (o->>'valeur')::numeric not between 0 and 1000000 then raise exception 'Valeur actuelle invalide'; end if;
+    if jsonb_array_length(g.historique) >= 500 then raise exception 'Historique complet : créez un nouvel objectif'; end if;
+    val := (o->>'valeur')::numeric;
+    update public.objectifs set
+      historique = historique || jsonb_build_array(jsonb_build_object('date', now(), 'valeur', val, 'envoiId', envoi)),
+      atteint_le = case when (cible > depart and val >= cible) or (cible < depart and val <= cible) then coalesce(atteint_le, now()) end,
+      modifie_le = now(), dernier_envoi = envoi
+    where id = g.id;
+  elsif action in ('archiver', 'restaurer') then
+    update public.objectifs set archive = action = 'archiver', modifie_le = now(), dernier_envoi = envoi where id = g.id;
+  else
+    raise exception 'Action inconnue';
+  end if;
+  return g.id;
+end $$;
+
+-- ===== Photos de progression =====
+-- Image JPEG réduite (350 000 caractères au plus) gardée dans la ligne : la règle d'accès de la ligne protège aussi l'image.
+create table public.photos_clients (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.coach_de_mon_client() references public.coachs (id) on delete cascade,
+  client_id uuid not null default public.mon_client_id() references public.clients (id) on delete cascade,
+  date_photo date not null,
+  vue text not null check (vue in ('Face', 'Profil', 'Dos')),
+  partage boolean not null default false,
+  image text not null check (length(image) <= 350000 and image ~ '^data:image/jpeg;base64,/9j/[A-Za-z0-9+/=]+$'),
+  envoi_id text not null check (length(envoi_id) between 8 and 80),
+  cree_le timestamptz not null default now(),
+  unique (client_id, envoi_id)
+);
+create index on public.photos_clients (client_id, date_photo desc);
+
+alter table public.photos_clients enable row level security;
+create policy "client : ses photos" on public.photos_clients for select using (client_id = public.mon_client_id());
+create policy "client : ajouter ses photos" on public.photos_clients for insert
+  with check (client_id = public.mon_client_id() and coach_id = public.coach_de_mon_client() and date_photo <= (now() at time zone 'Europe/Paris')::date);
+create policy "client : partager ses photos" on public.photos_clients for update
+  using (client_id = public.mon_client_id()) with check (client_id = public.mon_client_id());
+create policy "client : supprimer ses photos" on public.photos_clients for delete using (client_id = public.mon_client_id());
+-- Le coach ne voit que ce que le client partage, au moment où il le demande.
+create policy "coach : photos partagées" on public.photos_clients for select using (coach_id = public.mon_coach_id() and partage);
+-- Les droits par défaut de Supabase donnent tout : on repart de rien pour cette table.
+revoke all on public.photos_clients from anon, authenticated;
+grant select, insert, delete on public.photos_clients to authenticated;
+-- Seul le partage se modifie : ni la date, ni la vue, ni l'image.
+grant update (partage) on public.photos_clients to authenticated;
+
+revoke execute on function public.enregistrer_bilan(jsonb), public.repondre_bilan(uuid, text, text, timestamptz), public.enregistrer_objectif(jsonb),
+  public.synthese_bilan(jsonb, jsonb, date, int), public.ecart_bilan(int) from public, anon;
+grant execute on function public.enregistrer_bilan(jsonb), public.repondre_bilan(uuid, text, text, timestamptz), public.enregistrer_objectif(jsonb)
+  to authenticated;
+grant execute on function public.synthese_bilan(jsonb, jsonb, date, int), public.ecart_bilan(int) to authenticated;
+
+
+-- ===== 20261024700000_nutrition_origine.sql =====
+-- Lot 5 · Nutrition reprise de l'app d'origine : profilsNutrition, plansAlimentaires et alimentationPersonnelle.
+-- Les données personnelles repartent de zéro (décision de Sylvain) : nouvelles tables, rien n'est supprimé ni recopié.
+-- Les catalogues (200 recettes, Ciqual) restent embarqués dans l'app ; la base garde les choix du client.
+-- Chaque écriture passe par une fonction qui vérifie la version lue (modification concurrente refusée)
+-- et l'identifiant d'envoi (un double envoi ne crée rien de plus).
+
+create function public.acces_nutrition(c uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce(c = public.mon_client_id(), false) or public.est_mon_client(c)
+$$;
+
+create function public.version_nutrition() returns text
+language sql stable as $$
+  select to_char(clock_timestamp() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
+$$;
+
+-- ===== Profil alimentaire (api/nutritionProfile) =====
+create table public.profils_alimentaires (
+  client_id uuid primary key references public.clients (id) on delete cascade,
+  -- Préférences du formulaire Mon profil (lib/nutrition.ts) ; vide tant que le client n'a rien enregistré.
+  preferences jsonb check (preferences is null or jsonb_typeof(preferences) = 'object'),
+  -- Objectifs fixés par le coach ; vide : calcul automatique.
+  objectifs jsonb check (objectifs is null or jsonb_typeof(objectifs) = 'object'),
+  version text not null,
+  envoi_id text not null check (length(envoi_id) between 8 and 64),
+  maj_le timestamptz not null default now()
+);
+
+-- Le poids saisi dans Mon profil rejoint Mesures, une seule fois par envoi.
+alter table public.mensurations add column if not exists envoi_id text check (envoi_id is null or length(envoi_id) between 8 and 80);
+
+create function public.enregistrer_profil_alimentaire(p_client uuid, p_action text, p_preferences jsonb, p_objectif jsonb, p_version text, p_envoi text)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  ligne public.profils_alimentaires;
+  prefs jsonb;
+  ancien jsonb;
+  jour date := (now() at time zone 'Europe/Paris')::date;
+  poids_actuel numeric;
+  poids numeric;
+  total numeric;
+begin
+  if p_action not in ('preferences', 'coach', 'auto') then raise exception 'Action inconnue'; end if;
+  if p_action in ('coach', 'auto') and not public.est_mon_client(p_client) then raise exception 'Réservé au coach du client'; end if;
+  if not public.acces_nutrition(p_client) then raise exception 'Profil hors de votre dossier'; end if;
+  if length(coalesce(p_envoi, '')) not between 8 and 64 then raise exception 'Identifiant de saisie manquant'; end if;
+  select * into ligne from public.profils_alimentaires where client_id = p_client for update;
+  if found and ligne.envoi_id = p_envoi then return; end if;
+  if coalesce(ligne.version, '') <> coalesce(p_version, '') then raise exception 'Le profil a changé. Actualisez avant de réessayer.'; end if;
+
+  if p_action = 'preferences' then
+    if p_preferences is null or jsonb_typeof(p_preferences) <> 'object' then raise exception 'Profil alimentaire incomplet'; end if;
+    prefs := p_preferences;
+    -- Âge déclaré : on garde la date de saisie tant qu'il ne change pas (pas de date de naissance dans le dossier).
+    ancien := coalesce(ligne.preferences, '{}'::jsonb);
+    if jsonb_typeof(prefs->'age') = 'number' then
+      prefs := prefs || jsonb_build_object('ageSaisiLe',
+        case when ancien->'age' = prefs->'age' and coalesce(ancien->>'ageSaisiLe', '') <> '' then ancien->>'ageSaisiLe' else to_char(jour, 'YYYY-MM-DD') end);
+    else
+      prefs := prefs || '{"ageSaisiLe": ""}'::jsonb;
+    end if;
+    -- syncNutritionMeasures : une mesure datée du jour seulement si le poids diffère de la dernière mesure.
+    if jsonb_typeof(prefs->'poids') = 'number' then
+      poids := (prefs->>'poids')::numeric;
+      select m.poids_kg into poids_actuel from public.mensurations m
+      where m.client_id = p_client and m.poids_kg is not null and m.date <= jour order by m.date desc, m.created_at desc limit 1;
+      if poids is distinct from poids_actuel and poids between 20 and 400
+        and not exists (select 1 from public.mensurations where client_id = p_client and envoi_id = 'nutrition:' || p_envoi) then
+        insert into public.mensurations (client_id, date, poids_kg, envoi_id) values (p_client, jour, poids, 'nutrition:' || p_envoi);
+      end if;
+    end if;
+    insert into public.profils_alimentaires (client_id, preferences, objectifs, version, envoi_id)
+    values (p_client, prefs, null, public.version_nutrition(), p_envoi)
+    on conflict (client_id) do update set preferences = excluded.preferences, version = excluded.version, envoi_id = excluded.envoi_id, maj_le = now();
+    return;
+  end if;
+
+  if ligne.preferences is null then raise exception 'Le client doit d’abord enregistrer son profil alimentaire.'; end if;
+  if p_action = 'coach' then
+    if p_objectif is null or jsonb_typeof(p_objectif->'calories') <> 'number' or (p_objectif->>'calories')::numeric not between 1 and 10000
+      or (p_objectif->>'calories')::numeric <> trunc((p_objectif->>'calories')::numeric) then
+      raise exception 'Objectifs incomplets';
+    end if;
+    total := coalesce((p_objectif->>'proteinesPct')::numeric, -1000) + coalesce((p_objectif->>'lipidesPct')::numeric, -1000)
+      + coalesce((p_objectif->>'glucidesPct')::numeric, -1000);
+    if abs(total - 100) >= 0.01 then raise exception 'La répartition doit totaliser 100 %%'; end if;
+    if length(coalesce(p_objectif->>'note', '')) > 1500 then raise exception 'Note trop longue'; end if;
+  end if;
+  update public.profils_alimentaires
+  set objectifs = case when p_action = 'auto' then null else p_objectif end, version = public.version_nutrition(), envoi_id = p_envoi, maj_le = now()
+  where client_id = p_client;
+end $$;
+
+-- ===== Planning de la semaine choisi par le client (api/mealPlan) =====
+create table public.plans_alimentaires (
+  client_id uuid not null references public.clients (id) on delete cascade,
+  semaine date not null check (extract(isodow from semaine) = 1),
+  -- 7 jours de repas {recipeId, variantId, portions, slot?, swaps?} (lib/recipes.ts).
+  plan jsonb not null check (jsonb_typeof(plan) = 'array' and jsonb_array_length(plan) = 7),
+  version text not null,
+  envoi_id text not null check (length(envoi_id) between 8 and 64),
+  maj_le timestamptz not null default now(),
+  primary key (client_id, semaine)
+);
+
+create function public.enregistrer_plan_alimentaire(p_client uuid, p_semaine date, p_plan jsonb, p_version text, p_envoi text)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  ligne public.plans_alimentaires;
+  jour jsonb;
+  repas jsonb;
+  v text;
+begin
+  if not public.acces_nutrition(p_client) then raise exception 'Planning hors de votre dossier'; end if;
+  if p_semaine is null or extract(isodow from p_semaine) <> 1 then raise exception 'Choisissez un lundi'; end if;
+  if length(coalesce(p_envoi, '')) not between 8 and 64 then raise exception 'Planning incomplet'; end if;
+  if p_plan is null or jsonb_typeof(p_plan) <> 'array' or jsonb_array_length(p_plan) <> 7 then raise exception 'Planning incomplet'; end if;
+  for jour in select * from jsonb_array_elements(p_plan) loop
+    if jsonb_typeof(jour) <> 'array' or jsonb_array_length(jour) > 12 then raise exception 'Maximum de 12 éléments par jour.'; end if;
+    for repas in select * from jsonb_array_elements(jour) loop
+      if jsonb_typeof(repas->'recipeId') <> 'string' or jsonb_typeof(repas->'variantId') <> 'string' or jsonb_typeof(repas->'portions') <> 'number'
+        or (repas->>'portions')::numeric not between 0.125 and 4 then
+        raise exception 'Recette ou variante inconnue';
+      end if;
+    end loop;
+  end loop;
+  select * into ligne from public.plans_alimentaires where client_id = p_client and semaine = p_semaine for update;
+  if found and ligne.envoi_id = p_envoi then return ligne.version; end if;
+  if coalesce(ligne.version, '') <> coalesce(p_version, '') then raise exception 'Le planning a été modifié. Actualisez avant de réessayer.'; end if;
+  v := public.version_nutrition();
+  insert into public.plans_alimentaires (client_id, semaine, plan, version, envoi_id) values (p_client, p_semaine, p_plan, v, p_envoi)
+  on conflict (client_id, semaine) do update set plan = excluded.plan, version = excluded.version, envoi_id = excluded.envoi_id, maj_le = now();
+  return v;
+end $$;
+
+-- ===== Journal et recettes personnelles (api/personalFood) =====
+create table public.alimentation_personnelle (
+  client_id uuid not null references public.clients (id) on delete cascade,
+  type text not null check (type in ('recipes', 'diary')),
+  -- 'library' pour les recettes, le jour (AAAA-MM-JJ) pour le journal.
+  cle text not null check ((type = 'recipes' and cle = 'library') or (type = 'diary' and cle ~ '^\d{4}-\d{2}-\d{2}$')),
+  donnees jsonb not null check (jsonb_typeof(donnees) = 'array'),
+  version int not null check (version >= 1),
+  envoi_id text not null check (length(envoi_id) between 8 and 64),
+  maj_le timestamptz not null default now(),
+  primary key (client_id, type, cle)
+);
+
+create function public.enregistrer_alimentation_personnelle(p_client uuid, p_type text, p_date date, p_donnees jsonb, p_version int, p_envoi text)
+returns int language plpgsql security definer set search_path = public as $$
+declare
+  ligne public.alimentation_personnelle;
+  k text;
+begin
+  if not public.acces_nutrition(p_client) then raise exception 'Dossier alimentaire hors de votre dossier'; end if;
+  if p_type not in ('recipes', 'diary') then raise exception 'Type inconnu'; end if;
+  if p_type = 'diary' and p_date is null then raise exception 'Date manquante'; end if;
+  if length(coalesce(p_envoi, '')) not between 8 and 64 then raise exception 'Enregistrement incomplet'; end if;
+  if p_donnees is null or jsonb_typeof(p_donnees) <> 'array' then raise exception 'Données manquantes'; end if;
+  if jsonb_array_length(p_donnees) > (case when p_type = 'recipes' then 200 else 100 end) then raise exception 'Trop d’éléments'; end if;
+  k := case when p_type = 'recipes' then 'library' else to_char(p_date, 'YYYY-MM-DD') end;
+  select * into ligne from public.alimentation_personnelle where client_id = p_client and type = p_type and cle = k for update;
+  if found and ligne.envoi_id = p_envoi then return ligne.version; end if;
+  if coalesce(ligne.version, 0) <> coalesce(p_version, 0) then raise exception 'Ces données ont changé. Actualisez avant de réessayer.'; end if;
+  insert into public.alimentation_personnelle (client_id, type, cle, donnees, version, envoi_id) values (p_client, p_type, k, p_donnees, coalesce(ligne.version, 0) + 1, p_envoi)
+  on conflict (client_id, type, cle) do update set donnees = excluded.donnees, version = excluded.version, envoi_id = excluded.envoi_id, maj_le = now();
+  return coalesce(ligne.version, 0) + 1;
+end $$;
+
+alter table public.profils_alimentaires enable row level security;
+alter table public.plans_alimentaires enable row level security;
+alter table public.alimentation_personnelle enable row level security;
+
+create policy "lecture : profil alimentaire" on public.profils_alimentaires for select using (public.acces_nutrition(client_id));
+create policy "lecture : planning alimentaire" on public.plans_alimentaires for select using (public.acces_nutrition(client_id));
+create policy "lecture : alimentation personnelle" on public.alimentation_personnelle for select using (public.acces_nutrition(client_id));
+
+revoke all on public.profils_alimentaires, public.plans_alimentaires, public.alimentation_personnelle from anon, authenticated;
+grant select on public.profils_alimentaires, public.plans_alimentaires, public.alimentation_personnelle to authenticated;
+
+revoke execute on function public.acces_nutrition(uuid), public.version_nutrition(),
+  public.enregistrer_profil_alimentaire(uuid, text, jsonb, jsonb, text, text),
+  public.enregistrer_plan_alimentaire(uuid, date, jsonb, text, text),
+  public.enregistrer_alimentation_personnelle(uuid, text, date, jsonb, int, text) from public, anon;
+grant execute on function public.acces_nutrition(uuid), public.version_nutrition(),
+  public.enregistrer_profil_alimentaire(uuid, text, jsonb, jsonb, text, text),
+  public.enregistrer_plan_alimentaire(uuid, date, jsonb, text, text),
+  public.enregistrer_alimentation_personnelle(uuid, text, date, jsonb, int, text) to authenticated;
+
+
+-- ===== 20261025000000_gestion_crm.sql =====
+-- Lot 6 · Coachings, Tâches, Paiements et Bilans du CRM d'origine (Champs-CRM.json, reports.ts).
+-- Ajouts seulement : nouvelles tables, colonnes facultatives sur relances et documents. Rien n'est supprimé.
+-- Mêmes règles que src/domain/gestion.ts ; le coach ne voit et n'écrit que ses propres lignes.
+
+create table public.coachings (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  contact_id uuid not null references public.contacts (id) on delete cascade,
+  booster_id uuid references public.boosters (id) on delete set null,
+  nom text not null check (length(trim(nom)) > 0),
+  date_debut date,
+  date_fin_prevue date check (date_fin_prevue is null or date_debut is null or date_fin_prevue >= date_debut),
+  statut text check (statut in ('À démarrer', 'Actif', 'En pause', 'Terminé', 'Abandonné')),
+  -- L'offre choisie n'est pas un paiement.
+  formule text check (formule in ('Essentiel', 'Premium')),
+  objectif text,
+  commentaires text,
+  cree_le timestamptz not null default now()
+);
+create index on public.coachings (coach_id, contact_id);
+-- Un coaching par Booster d'origine (createCoachingFromBooster sans doublon).
+create unique index coachings_booster on public.coachings (booster_id) where booster_id is not null;
+
+create table public.paiements (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  titre text not null check (length(trim(titre)) > 0),
+  contact_id uuid references public.contacts (id) on delete set null,
+  coaching_id uuid references public.coachings (id) on delete set null,
+  date date,
+  -- null = non renseigné, jamais 0 par défaut.
+  montant numeric(12, 2) check (montant is null or (montant >= 0 and montant <= 1000000)),
+  devise text not null default 'EUR' check (devise = 'EUR'),
+  -- « Stripe » est un moyen déclaré : aucun encaissement n'est fait par l'app.
+  moyen text check (moyen in ('Stripe', 'Carte bancaire', 'Espèces', 'Virement', 'Chèque')),
+  statut text check (statut in ('En attente', 'Payé', 'Remboursé', 'Annulé')),
+  reference text,
+  notes text,
+  cree_le timestamptz not null default now()
+);
+create index on public.paiements (coach_id, date desc);
+
+create table public.bilans_coach (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  contact_id uuid not null references public.contacts (id) on delete cascade,
+  coaching_id uuid references public.coachings (id) on delete set null,
+  date date not null,
+  poids numeric(5, 1) check (poids is null or poids between 0 and 500),
+  taille numeric(5, 1) check (taille is null or taille between 0 and 500),
+  tour_taille numeric(5, 1) check (tour_taille is null or tour_taille between 0 and 500),
+  tour_hanches numeric(5, 1) check (tour_hanches is null or tour_hanches between 0 and 500),
+  -- { "Force": 7, "Sommeil": null, … } : null = Non évalué, distinct d'une note.
+  piliers jsonb not null default '{}' check (jsonb_typeof(piliers) = 'object'),
+  synthese text not null default '',
+  priorites text[] not null default '{}' check (cardinality(priorites) <= 3),
+  -- PDF du bilan dans Documents (type Bilan).
+  document_id uuid references public.documents (id) on delete set null,
+  cree_le timestamptz not null default now(),
+  modifie_le timestamptz not null default now()
+);
+create index on public.bilans_coach (coach_id, contact_id, date desc);
+
+-- Notes de 1 à 10 seulement, et uniquement les dix piliers de reports.ts.
+create function public.piliers_valides(p jsonb) returns boolean
+language sql immutable as $$
+  select coalesce(bool_and(
+    k in ('Activité physique', 'Force', 'Endurance', 'Mobilité', 'Posture', 'Sommeil', 'Stress', 'Alimentation', 'Récupération', 'Régularité')
+    and (jsonb_typeof(v) = 'null' or (jsonb_typeof(v) = 'number' and (v #>> '{}')::numeric in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)))
+  ), true)
+  from jsonb_each(p) as e(k, v)
+$$;
+alter table public.bilans_coach add constraint bilans_coach_piliers check (public.piliers_valides(piliers));
+
+-- Une relance est une tâche : champs de la table Tâches d'origine.
+alter table public.relances
+  add column if not exists titre text,
+  add column if not exists booster_id uuid references public.boosters (id) on delete set null,
+  add column if not exists coaching_id uuid references public.coachings (id) on delete set null,
+  add column if not exists responsable text,
+  add column if not exists priorite text check (priorite in ('Haute', 'Moyenne', 'Basse')),
+  add column if not exists statut_tache text check (statut_tache in ('À faire', 'En cours', 'Terminée', 'Annulée'));
+
+-- Lien Coaching d'un document (C07).
+alter table public.documents add column if not exists coaching_id uuid references public.coachings (id) on delete set null;
+
+-- Les liens restent dans le dossier du coach : un coach ne peut pas rattacher la ligne d'un autre.
+create function public.liens_du_coach(p_contact uuid, p_booster uuid, p_coaching uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select (p_contact is null or exists (select 1 from contacts where id = p_contact and coach_id = mon_coach_id()))
+     and (p_booster is null or exists (select 1 from boosters where id = p_booster and coach_id = mon_coach_id()))
+     and (p_coaching is null or exists (select 1 from coachings where id = p_coaching and coach_id = mon_coach_id()))
+$$;
+revoke execute on function public.liens_du_coach(uuid, uuid, uuid) from public, anon;
+grant execute on function public.liens_du_coach(uuid, uuid, uuid) to authenticated;
+
+alter table public.coachings enable row level security;
+alter table public.paiements enable row level security;
+alter table public.bilans_coach enable row level security;
+
+create policy "coach : ses coachings" on public.coachings for all
+  using (coach_id = public.mon_coach_id())
+  with check (coach_id = public.mon_coach_id() and public.liens_du_coach(contact_id, booster_id, null));
+create policy "coach : ses paiements" on public.paiements for all
+  using (coach_id = public.mon_coach_id())
+  with check (coach_id = public.mon_coach_id() and public.liens_du_coach(contact_id, null, coaching_id));
+create policy "coach : ses bilans" on public.bilans_coach for all
+  using (coach_id = public.mon_coach_id())
+  with check (coach_id = public.mon_coach_id() and public.liens_du_coach(contact_id, null, coaching_id)
+    and (document_id is null or exists (select 1 from public.documents d where d.id = document_id and d.coach_id = public.mon_coach_id())));
+
+revoke all on public.coachings, public.paiements, public.bilans_coach from anon, authenticated;
+grant select, insert, update, delete on public.coachings, public.paiements, public.bilans_coach to authenticated;
+
+-- Nouvelles colonnes de lien sur des tables existantes : contrôle ajouté sans toucher aux règles en place.
+create policy "coach : liens des tâches" on public.relances as restrictive for insert
+  with check (public.liens_du_coach(contact_id, booster_id, coaching_id));
+create policy "coach : liens des tâches (modification)" on public.relances as restrictive for update
+  with check (public.liens_du_coach(contact_id, booster_id, coaching_id));
+create policy "coach : coaching d'un document" on public.documents as restrictive for insert
+  with check (public.liens_du_coach(contact_id, booster_id, coaching_id));
+create policy "coach : coaching d'un document (modification)" on public.documents as restrictive for update
+  with check (public.liens_du_coach(contact_id, booster_id, coaching_id));
+
+
+-- ===== 20261025010000_automatisations.sql =====
+-- Lot 6 · Flux externes : questionnaire Tally reçu sans Make, envoi des comptes rendus par le scénario Make,
+-- et journal des états observables (C08). Ajouts seulement.
+-- Règles : une réponse rejouée ne crée rien de plus ; un accusé de réception Make n'est pas un e-mail envoyé ;
+-- un e-mail confirmé n'est jamais renvoyé automatiquement.
+
+alter table public.questionnaires
+  add column if not exists envoi_id text,
+  add column if not exists source text not null default 'app' check (source in ('app', 'tally'));
+create unique index if not exists questionnaires_envoi on public.questionnaires (coach_id, envoi_id) where envoi_id is not null;
+
+create table public.journal_automatisations (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  flux text not null check (flux in ('questionnaire', 'compte_rendu')),
+  -- Clé de reprise : identifiant de la réponse Tally, ou document:version pour un compte rendu.
+  cle text not null check (length(cle) between 1 and 200),
+  etat text not null check (etat in ('erreur', 'en_cours', 'transmis', 'envoye', 'echec', 'bloque')),
+  contact_id uuid references public.contacts (id) on delete set null,
+  document_id uuid references public.documents (id) on delete set null,
+  version integer,
+  detail text check (detail is null or length(detail) <= 1000),
+  tentatives integer not null default 1,
+  cree_le timestamptz not null default now(),
+  maj_le timestamptz not null default now(),
+  unique (coach_id, flux, cle)
+);
+create index on public.journal_automatisations (coach_id, maj_le desc);
+alter table public.journal_automatisations enable row level security;
+create policy "coach : son journal" on public.journal_automatisations for select using (coach_id = public.mon_coach_id());
+revoke all on public.journal_automatisations from anon, authenticated;
+grant select on public.journal_automatisations to authenticated;
+
+-- Réponse reçue d'un service externe (webhook Tally), rejouable : la même réponse ne crée ni contact ni questionnaire de plus.
+create function public.recevoir_questionnaire_externe(p_lien text, p_envoi text, p_reponses jsonb) returns text
+language plpgsql security definer set search_path = public as $$
+declare
+  v_coach uuid;
+begin
+  if p_envoi is null or p_envoi !~ '^tally:[A-Za-z0-9_-]{1,80}$' then raise exception 'Identifiant de réponse invalide'; end if;
+  select id into v_coach from coachs where lien_questionnaire = p_lien;
+  if v_coach is null then raise exception 'Questionnaire introuvable'; end if;
+  perform pg_advisory_xact_lock(hashtext(v_coach::text || p_envoi));
+  if exists (select 1 from questionnaires where coach_id = v_coach and envoi_id = p_envoi) then return 'deja_recu'; end if;
+  perform soumettre_questionnaire(p_lien, p_reponses || jsonb_build_object('_envoi', p_envoi));
+  update questionnaires set envoi_id = p_envoi, source = 'tally'
+    where coach_id = v_coach and envoi_id is null and reponses->>'_envoi' = p_envoi;
+  -- Une erreur notée plus tôt pour cette réponse est réglée par la reprise.
+  delete from journal_automatisations where coach_id = v_coach and flux = 'questionnaire' and cle = p_envoi;
+  return 'recu';
+end $$;
+revoke execute on function public.recevoir_questionnaire_externe(text, text, jsonb) from public;
+grant execute on function public.recevoir_questionnaire_externe(text, text, jsonb) to anon, authenticated;
+
+-- Réponse reçue mais non traitée (signature, format, téléphone et e-mail absents…) : visible du coach comme « en erreur ».
+create function public.noter_erreur_questionnaire(p_lien text, p_envoi text, p_detail text) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_coach uuid;
+begin
+  select id into v_coach from coachs where lien_questionnaire = p_lien;
+  if v_coach is null or p_envoi is null or length(p_envoi) > 200 then return; end if;
+  if exists (select 1 from questionnaires where coach_id = v_coach and envoi_id = p_envoi) then return; end if;
+  -- Ouverte aux visiteurs comme le formulaire : on borne le nombre d'erreurs ouvertes pour qu'elle ne remplisse pas le journal.
+  if (select count(*) from journal_automatisations where coach_id = v_coach and flux = 'questionnaire') >= 200 then return; end if;
+  insert into journal_automatisations (coach_id, flux, cle, etat, detail)
+  values (v_coach, 'questionnaire', p_envoi, 'erreur', left(p_detail, 1000))
+  on conflict (coach_id, flux, cle) do update
+    set detail = excluded.detail, tentatives = journal_automatisations.tentatives + 1, maj_le = now();
+end $$;
+revoke execute on function public.noter_erreur_questionnaire(text, text, text) from public;
+grant execute on function public.noter_erreur_questionnaire(text, text, text) to anon, authenticated;
+
+-- Compte rendu, avant d'appeler Make : réserve la tentative pour cette version, ou dit pourquoi on ne renvoie pas.
+-- Comme l'original : une tentative existante bloque tout nouvel envoi. Seule une tentative en échec ou bloquée
+-- peut être relancée, et seulement à la demande du coach (p_relancer) après vérification dans Make.
+-- Renvoie 'ok' quand l'envoi peut partir, sinon l'état qui l'en empêche.
+create function public.reserver_envoi_compte_rendu(p_document uuid, p_version integer, p_relancer boolean) returns text
+language plpgsql security definer set search_path = public as $$
+declare
+  d documents;
+  v_cle text := p_document::text || ':' || p_version;
+  v_etat text;
+begin
+  select * into d from documents where id = p_document and coach_id = mon_coach_id();
+  if d.id is null then raise exception 'Document introuvable'; end if;
+  if d.envoye then return 'envoye'; end if;
+  if d.chemin is null then raise exception 'Générez le PDF avant l’envoi'; end if;
+  if d.version <> p_version then raise exception 'Ce n’est plus la version courante du document'; end if;
+  perform pg_advisory_xact_lock(hashtext(v_cle));
+  select etat into v_etat from journal_automatisations where coach_id = d.coach_id and flux = 'compte_rendu' and cle = v_cle;
+  if v_etat is null then
+    insert into journal_automatisations (coach_id, flux, cle, etat, contact_id, document_id, version, detail)
+    values (d.coach_id, 'compte_rendu', v_cle, 'en_cours', d.contact_id, d.id, p_version, 'Transmission à Make');
+    return 'ok';
+  end if;
+  -- Une transmission restée « en cours » plus de 15 minutes a été interrompue (fonction arrêtée) : relançable comme un échec.
+  if p_relancer and (v_etat in ('echec', 'bloque') or (v_etat = 'en_cours' and exists (
+    select 1 from journal_automatisations where coach_id = d.coach_id and flux = 'compte_rendu' and cle = v_cle and maj_le < now() - interval '15 minutes'
+  ))) then
+    update journal_automatisations set etat = 'en_cours', detail = 'Nouvelle transmission demandée par le coach',
+      tentatives = tentatives + 1, maj_le = now()
+    where coach_id = d.coach_id and flux = 'compte_rendu' and cle = v_cle;
+    return 'ok';
+  end if;
+  return v_etat;
+end $$;
+revoke execute on function public.reserver_envoi_compte_rendu(uuid, integer, boolean) from public, anon;
+grant execute on function public.reserver_envoi_compte_rendu(uuid, integer, boolean) to authenticated;
+
+-- Résultat de la transmission, noté par la fonction Edge au nom du coach.
+-- « envoye » seulement si Make confirme l'e-mail (sent=true, même document, identifiant du message) ;
+-- alors seulement Documents.Envoyé est coché et le plan d'action du Booster marqué envoyé.
+create function public.noter_envoi_compte_rendu(p_document uuid, p_version integer, p_etat text, p_detail text) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  d documents;
+  v_cle text := p_document::text || ':' || p_version;
+begin
+  if p_etat not in ('transmis', 'envoye', 'echec', 'bloque') then raise exception 'État inconnu'; end if;
+  select * into d from documents where id = p_document and coach_id = mon_coach_id();
+  if d.id is null then raise exception 'Document introuvable'; end if;
+  update journal_automatisations
+    set etat = case when etat = 'envoye' then 'envoye' else p_etat end, detail = left(p_detail, 1000), maj_le = now()
+    where coach_id = d.coach_id and flux = 'compte_rendu' and cle = v_cle;
+  if not found then raise exception 'Aucune transmission réservée pour cette version'; end if;
+  if p_etat = 'envoye' and d.version = p_version then
+    update documents set envoye = true, modifie_le = now() where id = d.id;
+    if d.booster_id is not null then
+      update boosters set plan_envoye_le = coalesce(plan_envoye_le, now()) where id = d.booster_id;
+    end if;
+  end if;
+end $$;
+revoke execute on function public.noter_envoi_compte_rendu(uuid, integer, text, text) from public, anon;
+grant execute on function public.noter_envoi_compte_rendu(uuid, integer, text, text) to authenticated;
+
+
+-- ===== 20261025020000_reference_records.sql =====
+-- Lot 6 · Performances : la référence des charges calculées (% du 1RM) est choisie par le client, comme à l'origine
+-- (« Utiliser comme référence »). Une seule par exercice ; elle ne s'applique jamais à un autre mouvement. Ajouts seulement.
+
+alter table public.records add column if not exists reference boolean not null default false;
+create unique index if not exists records_reference on public.records (client_id, exercice_id) where reference;
+
+-- Choisit la référence d'un exercice en une fois (l'ancienne cesse de l'être), pour le client ou son coach.
+create function public.definir_reference_record(p_record uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  r records;
+begin
+  select * into r from records where id = p_record and (client_id = mon_client_id() or est_mon_client(client_id));
+  if r.id is null then raise exception 'Record introuvable'; end if;
+  if r.exercice_id is null or r.unite <> 'kg' then raise exception 'Seule une charge rattachée à un exercice de la liste peut servir de référence.'; end if;
+  update records set reference = false where client_id = r.client_id and exercice_id = r.exercice_id and reference and id <> r.id;
+  update records set reference = true where id = r.id;
+end $$;
+revoke execute on function public.definir_reference_record(uuid) from public, anon;
+grant execute on function public.definir_reference_record(uuid) to authenticated;
+
+
+-- ===== 20261029000000_blocs_details.sql =====
+-- Blocs : format (biset, superset…), descriptif, tempo et mode de contraction choisis par le coach. Ajouts seulement :
+-- quatre colonnes facultatives, et enregistrer_seance les recopie. Le reste de la fonction est inchangé.
+
+alter table public.blocs add column if not exists format text;
+alter table public.blocs add column if not exists description text;
+alter table public.blocs add column if not exists tempo text;
+alter table public.blocs add column if not exists contraction text;
+
+CREATE OR REPLACE FUNCTION public.enregistrer_seance(s jsonb)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_id uuid := (s->>'id')::uuid;
+  v_blocs uuid[];
+  v_lignes uuid[];
+  b jsonb;
+  l jsonb;
+  i int := 0;
+  j int;
+begin
+  select coalesce(array_agg((x->>'id')::uuid), '{}') into v_blocs from jsonb_array_elements(coalesce(s->'blocs', '[]')) x;
+  select coalesce(array_agg((x->>'id')::uuid), '{}') into v_lignes
+  from jsonb_array_elements(coalesce(s->'blocs', '[]')) bl, jsonb_array_elements(coalesce(bl->'lignes', '[]')) x;
+
+  insert into public.seances (id, coach_id, client_id, programme_id, titre, date_prevue, consignes, ordre, dominante, duree_prevue_min, objectif)
+  values (
+    v_id, public.mon_coach_id(), nullif(s->>'clientId', '')::uuid, nullif(s->>'programmeId', '')::uuid,
+    s->>'titre', nullif(s->>'datePrevue', '')::date, nullif(s->>'consignes', ''), nullif(s->>'ordre', '')::int,
+    nullif(s->>'dominante', ''), nullif(s->>'dureeMin', '')::int, nullif(s->>'objectif', ''))
+  on conflict (id) do update set
+    titre = excluded.titre, date_prevue = excluded.date_prevue, consignes = excluded.consignes, ordre = excluded.ordre,
+    programme_id = excluded.programme_id, dominante = excluded.dominante, duree_prevue_min = excluded.duree_prevue_min,
+    objectif = excluded.objectif;
+
+  -- Ce qui est enlevé est retiré, jamais effacé : une ligne déjà réalisée garde son historique.
+  update public.lignes set retiree = true
+  where bloc_id in (select id from public.blocs where seance_id = v_id) and not (id = any (v_lignes));
+  update public.blocs set retire = true where seance_id = v_id and not (id = any (v_blocs));
+
+  for b in select * from jsonb_array_elements(coalesce(s->'blocs', '[]')) loop
+    i := i + 1;
+    insert into public.blocs (id, seance_id, ordre, titre, minuteur, format, description, tempo, contraction)
+    values ((b->>'id')::uuid, v_id, i, coalesce(nullif(b->>'titre', ''), 'Bloc ' || i), nullif(b->'minuteur', 'null'::jsonb),
+      nullif(b->>'format', ''), nullif(b->>'description', ''), nullif(b->>'tempo', ''), nullif(b->>'contraction', ''))
+    on conflict (id) do update set ordre = excluded.ordre, titre = excluded.titre, minuteur = excluded.minuteur,
+      format = excluded.format, description = excluded.description, tempo = excluded.tempo, contraction = excluded.contraction,
+      retire = false
+    where blocs.seance_id = v_id;
+    j := 0;
+    for l in select * from jsonb_array_elements(coalesce(b->'lignes', '[]')) loop
+      j := j + 1;
+      insert into public.lignes (id, bloc_id, ordre, exercice_id, series, repetitions_min, repetitions_max,
+        charge_indicative, duree_s, recuperation_s, rir, tempo, consignes, minuteur,
+        repetitions, distance_m, charge_intensite, phase, progression, cycles)
+      values ((l->>'id')::uuid, (b->>'id')::uuid, j, (l->>'exerciceId')::uuid, (l->>'series')::int,
+        (l->>'repetitionsMin')::int, (l->>'repetitionsMax')::int, (l->>'chargeIndicative')::numeric,
+        (l->>'dureeS')::int, (l->>'recuperationS')::int, (l->>'rir')::int, nullif(l->>'tempo', ''),
+        nullif(l->>'consignes', ''), nullif(l->'minuteur', 'null'::jsonb),
+        nullif(l->>'repetitions', ''), (l->>'distanceM')::numeric, nullif(l->>'chargeIntensite', ''),
+        nullif(l->>'phase', ''), nullif(l->>'progression', ''), nullif(l->'cycles', 'null'::jsonb))
+      on conflict (id) do update set
+        bloc_id = excluded.bloc_id, ordre = excluded.ordre, exercice_id = excluded.exercice_id,
+        series = excluded.series, repetitions_min = excluded.repetitions_min,
+        repetitions_max = excluded.repetitions_max, charge_indicative = excluded.charge_indicative,
+        duree_s = excluded.duree_s, recuperation_s = excluded.recuperation_s, rir = excluded.rir,
+        tempo = excluded.tempo, consignes = excluded.consignes, minuteur = excluded.minuteur,
+        repetitions = excluded.repetitions, distance_m = excluded.distance_m, charge_intensite = excluded.charge_intensite,
+        phase = excluded.phase, progression = excluded.progression, cycles = excluded.cycles, retiree = false;
+    end loop;
+  end loop;
+  return v_id;
+end $function$;
+
+
+-- ===== 20261029100000_suivis_quotidiens.sql =====
+-- Coach OS · suivis du quotidien (objectifs secondaires) : pas, eau, cigarettes, sommeil, fruits et légumes,
+-- alcool, sucre, énergie, stress, dernier écran, activité hors séance.
+-- Un relevé par client, jour et indicateur ; un réglage (actif, cible) par client et indicateur.
+-- La liste des indicateurs et leurs bornes vivent dans l'app (domain/quotidien.ts) : en ajouter un ne demande pas de migration.
+-- Uniquement des ajouts : deux tables et leurs règles d'accès.
+
+create table public.suivis_quotidiens (
+  client_id uuid not null references public.clients (id) on delete cascade,
+  jour date not null,
+  indicateur text not null check (indicateur ~ '^[a-z_]{2,40}$'),
+  valeur numeric not null check (valeur between 0 and 100000),
+  -- « telephone » : lu sur le téléphone ou la montre (Health Connect), pas saisi à la main.
+  source text not null default 'saisie' check (source in ('saisie', 'telephone')),
+  modifie_le timestamptz not null default now(),
+  primary key (client_id, indicateur, jour)
+);
+create index on public.suivis_quotidiens (client_id, jour desc);
+
+alter table public.suivis_quotidiens enable row level security;
+create policy "client : ses suivis du quotidien" on public.suivis_quotidiens for all
+  using (client_id = public.mon_client_id()) with check (client_id = public.mon_client_id() and jour <= current_date + 1);
+create policy "coach : suivis du quotidien de ses clients" on public.suivis_quotidiens for select using (public.est_mon_client(client_id));
+revoke all on public.suivis_quotidiens from anon, authenticated;
+grant select, insert, update, delete on public.suivis_quotidiens to authenticated;
+
+create table public.reglages_quotidiens (
+  client_id uuid not null references public.clients (id) on delete cascade,
+  indicateur text not null check (indicateur ~ '^[a-z_]{2,40}$'),
+  actif boolean not null default true,
+  -- Vide : la cible par défaut de l'app.
+  cible numeric check (cible between 0 and 100000),
+  modifie_par text not null default 'client' check (modifie_par in ('client', 'coach')),
+  modifie_le timestamptz not null default now(),
+  primary key (client_id, indicateur)
+);
+
+alter table public.reglages_quotidiens enable row level security;
+create policy "client : ses réglages du quotidien" on public.reglages_quotidiens for all
+  using (client_id = public.mon_client_id()) with check (client_id = public.mon_client_id());
+-- Le coach choisit les suivis et fixe les cibles avec son client.
+create policy "coach : réglages du quotidien de ses clients" on public.reglages_quotidiens for all
+  using (public.est_mon_client(client_id)) with check (public.est_mon_client(client_id));
+revoke all on public.reglages_quotidiens from anon, authenticated;
+grant select, insert, update, delete on public.reglages_quotidiens to authenticated;
+
+
+-- ===== 20261029200000_activites_sport.sql =====
+-- Coach OS · activités sportives (courses, vélo, marche…) lues sur le téléphone du client dans Health Connect.
+-- Le client les envoie depuis l'appli ; lui et son coach les voient. Une activité est reconnue par sa source et
+-- son identifiant d'origine : la renvoyer la met à jour sans la dupliquer. Le client peut en retirer une.
+-- Uniquement des ajouts : une table, ses règles d'accès et deux fonctions.
+
+create table public.activites_sport (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  client_id uuid not null references public.clients (id) on delete cascade,
+  source text not null check (source in ('health_connect', 'fichier', 'strava', 'garmin', 'suunto', 'polar', 'manuel')),
+  id_externe text not null check (length(id_externe) between 1 and 200),
+  sport text not null check (sport in ('course', 'trail', 'velo', 'marche', 'randonnee', 'natation', 'autre')),
+  titre text not null default '' check (length(titre) <= 200),
+  debut timestamptz not null,
+  duree_s int not null check (duree_s between 1 and 604800),
+  distance_m int check (distance_m between 0 and 1000000),
+  denivele_m int check (denivele_m between 0 and 20000),
+  fc_moy int check (fc_moy between 25 and 250),
+  fc_max int check (fc_max between 25 and 250),
+  calories int check (calories between 0 and 50000),
+  appareil text not null default '' check (length(appareil) <= 200),
+  importee_le timestamptz not null default now(),
+  -- Retirée par le client : cachée partout, et un nouvel envoi ne la fait pas revenir.
+  retiree boolean not null default false,
+  unique (client_id, source, id_externe)
+);
+create index on public.activites_sport (client_id, debut desc);
+create index on public.activites_sport (coach_id, debut desc);
+
+alter table public.activites_sport enable row level security;
+create policy "client : ses activités" on public.activites_sport for select using (client_id = public.mon_client_id() and not retiree);
+create policy "coach : les activités de ses clients" on public.activites_sport for select using (coach_id = public.mon_coach_id() and not retiree);
+-- Lecture seule : tout passe par enregistrer_activites et retirer_activite.
+revoke all on public.activites_sport from anon, authenticated;
+grant select on public.activites_sport to authenticated;
+
+/** Le client envoie un lot d'activités (au plus 200) ; renvoie le nombre de lignes ajoutées ou mises à jour. */
+create function public.enregistrer_activites(lot jsonb) returns int
+language plpgsql security definer set search_path = public as $$
+declare
+  moi uuid := public.mon_client_id();
+  mon_coach uuid := public.coach_de_mon_client();
+  a jsonb;
+  n int := 0;
+  k text;
+  t timestamptz;
+begin
+  if moi is null then raise exception 'Activités hors de votre dossier'; end if;
+  if jsonb_typeof(lot) <> 'array' or jsonb_array_length(lot) > 200 then raise exception 'Lot d’activités invalide'; end if;
+  for a in select * from jsonb_array_elements(lot) loop
+    if jsonb_typeof(a->'idExterne') <> 'string' or jsonb_typeof(a->'source') <> 'string' or jsonb_typeof(a->'sport') <> 'string'
+      or jsonb_typeof(a->'debut') <> 'string' or jsonb_typeof(a->'dureeS') <> 'number' then
+      raise exception 'Activité incomplète';
+    end if;
+    foreach k in array array['distanceM', 'deniveleM', 'fcMoy', 'fcMax', 'calories'] loop
+      if a ? k and jsonb_typeof(a->k) not in ('number', 'null') then raise exception 'Activité invalide'; end if;
+    end loop;
+    begin
+      t := (a->>'debut')::timestamptz;
+    exception when others then
+      raise exception 'Date de début invalide';
+    end;
+    if t > now() + interval '1 hour' then raise exception 'Date de début invalide'; end if;
+    insert into public.activites_sport (coach_id, client_id, source, id_externe, sport, titre, debut, duree_s, distance_m, denivele_m, fc_moy, fc_max, calories, appareil)
+    values (mon_coach, moi, a->>'source', a->>'idExterne', a->>'sport', coalesce(a->>'titre', ''), t, round((a->>'dureeS')::numeric),
+      round((a->>'distanceM')::numeric), round((a->>'deniveleM')::numeric), round((a->>'fcMoy')::numeric), round((a->>'fcMax')::numeric),
+      round((a->>'calories')::numeric), coalesce(a->>'appareil', ''))
+    on conflict (client_id, source, id_externe) do update set sport = excluded.sport, titre = excluded.titre, debut = excluded.debut,
+      duree_s = excluded.duree_s, distance_m = excluded.distance_m, denivele_m = excluded.denivele_m, fc_moy = excluded.fc_moy,
+      fc_max = excluded.fc_max, calories = excluded.calories, appareil = excluded.appareil, importee_le = now()
+    where not public.activites_sport.retiree;
+    if found then n := n + 1; end if;
+  end loop;
+  return n;
+end $$;
+
+/** Le client retire une de ses activités (mauvaise séance, doublon…). */
+create function public.retirer_activite(p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  update public.activites_sport set retiree = true where id = p_id and client_id = public.mon_client_id();
+  if not found then raise exception 'Activité introuvable'; end if;
+end $$;
+
+revoke all on function public.enregistrer_activites(jsonb) from public, anon;
+revoke all on function public.retirer_activite(uuid) from public, anon;
+grant execute on function public.enregistrer_activites(jsonb) to authenticated;
+grant execute on function public.retirer_activite(uuid) to authenticated;
+
+
+-- ===== 20261030000000_consentements.sql =====
+-- Coach OS · RGPD : consentement du client à ses données de santé et à l'analyse de ses photos de repas par une IA.
+-- Chaque accord (ou changement d'avis) est une nouvelle ligne datée, jamais modifiée ni effacée par l'app : l'historique
+-- prouve ce que le client a accepté, quand, et pour quelle version de la politique de confidentialité.
+-- Uniquement des ajouts : une table, ses règles d'accès et deux fonctions.
+
+create table public.consentements (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients (id) on delete cascade,
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  user_id uuid references auth.users (id) on delete set null,
+  -- Version de la politique de confidentialité affichée au moment de l'accord (domain/consentement.ts).
+  version text not null check (length(version) between 1 and 40),
+  -- Mesures, photos de progression, nutrition, bilans, séances et activités lues dans Health Connect.
+  donnees_sante boolean not null,
+  -- Photo de repas envoyée à un service d'IA (Claude, Anthropic) pour estimer les aliments. Facultatif.
+  analyse_ia boolean not null,
+  accepte_le timestamptz not null default clock_timestamp()
+);
+create index on public.consentements (client_id, accepte_le desc);
+
+alter table public.consentements enable row level security;
+
+create policy "client : ses consentements" on public.consentements for select
+  using (client_id = public.mon_client_id());
+create policy "coach : consentements de ses clients" on public.consentements for select
+  using (coach_id = public.mon_coach_id());
+
+-- Lecture seule pour tous : l'écriture passe par enregistrer_consentement.
+revoke all on public.consentements from public, anon, authenticated;
+grant select on public.consentements to authenticated;
+
+-- Le dernier choix du client connecté (null s'il n'a encore rien accepté).
+create function public.mon_consentement() returns public.consentements
+language sql stable security definer set search_path = public as $$
+  select * from consentements where client_id = mon_client_id() order by accepte_le desc, id desc limit 1
+$$;
+
+-- Le client connecté enregistre son choix. Sans accord sur les données de santé, rien n'est enregistré :
+-- l'app ne peut pas fonctionner sans elles, le client se déconnecte.
+create function public.enregistrer_consentement(p_version text, p_analyse_ia boolean) returns public.consentements
+language plpgsql security definer set search_path = public as $$
+declare
+  v_client uuid := mon_client_id();
+  c consentements;
+begin
+  if v_client is null then raise exception 'Réservé aux clients connectés'; end if;
+  insert into consentements (client_id, coach_id, user_id, version, donnees_sante, analyse_ia)
+  select v_client, coach_id, auth.uid(), p_version, true, coalesce(p_analyse_ia, false) from clients where id = v_client
+  returning * into c;
+  return c;
+end $$;
+
+revoke execute on function public.mon_consentement(), public.enregistrer_consentement(text, boolean) from public, anon;
+grant execute on function public.mon_consentement(), public.enregistrer_consentement(text, boolean) to authenticated;
+
+
+-- ===== 20261030000000_quotidien_saisie_coach.sql =====
+-- Coach OS · suivis du quotidien : le coach peut aussi noter une journée pour son client
+-- (pendant une séance, ou quand le client lui donne ses chiffres). Ajout de règles d'accès seulement.
+
+create policy "coach : noter le quotidien de ses clients" on public.suivis_quotidiens for insert
+  with check (public.est_mon_client(client_id) and jour <= current_date + 1);
+create policy "coach : corriger le quotidien de ses clients" on public.suivis_quotidiens for update
+  using (public.est_mon_client(client_id)) with check (public.est_mon_client(client_id) and jour <= current_date + 1);
+create policy "coach : effacer le quotidien de ses clients" on public.suivis_quotidiens for delete
+  using (public.est_mon_client(client_id));
+
+
+-- ===== 20261030200000_abonnements.sql =====
+-- Abonnements : le coach encaisse en dehors de l'appli (aucun achat dans l'appli), l'appli ouvre ou ferme l'accès.
+-- · acces_appli : abonnement appli (59 €/mois) — programmes, séances, suivi, documents et nutrition limitée aux macros.
+-- · option_nutrition : option nutrition (+40 €/mois) — recettes, plan de repas automatique, photo d'assiette.
+-- · packs_seances : séances avec le coach (60 € l'unité ou pack de 10 + 1 offerte), décomptées par le coach.
+-- Un client « séances seulement » a une fiche sans accès appli : le coach l'enregistre, le client ne se connecte pas.
+
+alter table public.clients add column acces_appli boolean not null default true;
+alter table public.clients add column option_nutrition boolean not null default false;
+-- Les dossiers déjà créés gardent tout ce qu'ils voyaient jusqu'ici.
+update public.clients set option_nutrition = true;
+
+-- Accès coupé : toutes les règles « client » s'appuient sur ces deux fonctions, le client ne lit plus rien.
+create or replace function public.mon_client_id() returns uuid
+language sql stable security definer set search_path = public as $$
+  select id from public.clients where user_id = auth.uid() and actif and acces_appli
+$$;
+
+create or replace function public.coach_de_mon_client() returns uuid
+language sql stable security definer set search_path = public as $$
+  select coach_id from public.clients where user_id = auth.uid() and actif and acces_appli
+$$;
+
+create function public.mon_option_nutrition() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select option_nutrition from public.clients where id = public.mon_client_id()), false)
+$$;
+
+-- Prénom du client connecté dont l’accès appli est coupé, pour lui afficher « Contacte ton coach ».
+create function public.mon_acces_suspendu() returns text
+language sql stable security definer set search_path = public as $$
+  select prenom from public.clients where user_id = auth.uid() and actif and not acces_appli
+$$;
+
+revoke execute on function public.mon_option_nutrition() from public, anon;
+grant execute on function public.mon_option_nutrition() to authenticated;
+revoke execute on function public.mon_acces_suspendu() from public, anon;
+grant execute on function public.mon_acces_suspendu() to authenticated;
+
+-- Recettes (banque du coach et recettes perso) : réservées à l'option nutrition.
+drop policy "client : lire les recettes" on public.recettes;
+create policy "client : lire les recettes" on public.recettes for select using (
+  public.mon_option_nutrition()
+  and coach_id = public.coach_de_mon_client()
+  and ((client_id is null and statut = 'approuvee') or client_id = public.mon_client_id())
+);
+drop policy "client : ajouter ses recettes" on public.recettes;
+create policy "client : ajouter ses recettes" on public.recettes for insert
+  with check (public.mon_option_nutrition() and client_id = public.mon_client_id() and coach_id = public.coach_de_mon_client() and statut = 'brouillon');
+drop policy "client : modifier ses recettes" on public.recettes;
+create policy "client : modifier ses recettes" on public.recettes for update
+  using (public.mon_option_nutrition() and client_id = public.mon_client_id())
+  with check (client_id = public.mon_client_id() and coach_id = public.coach_de_mon_client() and statut = 'brouillon');
+
+create table public.packs_seances (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  client_id uuid not null references public.clients (id) on delete cascade,
+  -- 1 pour une séance à l'unité, 11 pour un pack de 10 + 1 offerte.
+  seances_total int not null check (seances_total between 1 and 100),
+  seances_faites int not null default 0,
+  prix numeric(8, 2) check (prix >= 0),
+  achete_le date not null default current_date,
+  cree_le timestamptz not null default now(),
+  check (seances_faites between 0 and seances_total)
+);
+create index packs_seances_client on public.packs_seances (client_id);
+
+alter table public.packs_seances enable row level security;
+create policy "coach : packs de ses clients" on public.packs_seances for all
+  using (coach_id = public.mon_coach_id())
+  with check (coach_id = public.mon_coach_id() and public.est_mon_client(client_id));
+create policy "client : ses packs" on public.packs_seances for select
+  using (client_id = public.mon_client_id());
+
+grant select, insert, update, delete on public.packs_seances to authenticated;
+
+
+-- ===== 20261030300000_formules_coaching.sql =====
+-- Formules du coaching alignées sur l'offre CoachGo ; Essentiel et Premium restent lisibles pour l'historique.
+alter table public.coachings drop constraint coachings_formule_check;
+alter table public.coachings add constraint coachings_formule_check
+  check (formule in ('Appli', 'Appli + nutrition', 'Séances', 'Essentiel', 'Premium'));
+
+
+-- ===== 20261030400000_relances_nouvelles.sql =====
+-- Relances « prendre des nouvelles » 10 jours et 1 mois après le Booster, tant que le contact n'a pris aucun suivi.
+alter table public.relances drop constraint relances_modele_check;
+alter table public.relances add constraint relances_modele_check
+  check (modele in ('questionnaire', 'booster', 'rappel_booster', 'suivi_booster', 'nouvelles_10j', 'nouvelles_1mois', 'libre', 'tache'));
+
+
+-- ===== 20261030500000_telephone_coach.sql =====
+-- Numéro du coach : ses clients peuvent lui écrire sur WhatsApp depuis l'appli (ex. pour l'option nutrition).
+alter table public.coachs add column telephone text;
+
+-- Le client lit le prénom et le numéro de son coach, rien d'autre de la table coachs.
+create function public.mon_coach() returns table (nom text, telephone text)
+language sql stable security definer set search_path = public as $$
+  select nom, telephone from public.coachs where id = public.coach_de_mon_client()
+$$;
+revoke execute on function public.mon_coach() from public, anon;
+grant execute on function public.mon_coach() to authenticated;
+
+
+-- ===== 20261031000000_profil_coach.sql =====
+-- Profil du coach : il modifie lui-même son prénom, son numéro WhatsApp et sa photo. Ses clients voient les trois.
+-- La photo est une petite image JPEG en base64 (environ 400 px), comme les photos de suivi : pas de stockage à part.
+alter table public.coachs add column photo text
+  check (photo is null or (photo like 'data:image/jpeg;base64,%' and length(photo) <= 200000));
+alter table public.coachs add constraint coachs_nom_non_vide check (length(trim(nom)) > 0) not valid;
+
+grant update (nom, telephone, photo) on public.coachs to authenticated;
+
+drop function public.mon_coach();
+create function public.mon_coach() returns table (nom text, telephone text, photo text)
+language sql stable security definer set search_path = public as $$
+  select nom, telephone, photo from public.coachs where id = public.coach_de_mon_client()
+$$;
+revoke execute on function public.mon_coach() from public, anon;
+grant execute on function public.mon_coach() to authenticated;
+
+
+-- ===== 20261101000000_echeances_sans_doublons.sql =====
+-- Mensualités préparées à l'ouverture de la Gestion (référence « abonnement:AAAA-MM:client ») :
+-- · une seule ligne par client et par mois, même si l'écran se charge deux fois en même temps ;
+-- · une ligne que le coach supprime ne revient plus au chargement suivant.
+
+-- Doublons déjà créés : on garde la plus ancienne, les autres passent « Annulé » sans référence (le coach peut les supprimer).
+update public.paiements p
+set reference = null, statut = 'Annulé', notes = 'Doublon créé automatiquement'
+from public.paiements q
+where p.reference like 'abonnement:%'
+  and q.coach_id = p.coach_id
+  and q.reference = p.reference
+  and (q.cree_le, q.id) < (p.cree_le, p.id);
+
+create unique index paiements_une_echeance on public.paiements (coach_id, reference) where reference like 'abonnement:%';
+
+-- Mensualités écartées par le coach : la préparation du mois les saute.
+create table public.echeances_ecartees (
+  coach_id uuid not null default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  reference text not null check (reference like 'abonnement:%'),
+  ecartee_le timestamptz not null default now(),
+  primary key (coach_id, reference)
+);
+alter table public.echeances_ecartees enable row level security;
+create policy "coach : ses échéances écartées" on public.echeances_ecartees for select using (coach_id = public.mon_coach_id());
+grant select on public.echeances_ecartees to authenticated;
+
+create function public.ecarter_echeance() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  -- Rien à retenir quand c'est le coach lui-même qui est supprimé.
+  insert into public.echeances_ecartees (coach_id, reference)
+  select old.coach_id, old.reference where exists (select 1 from public.coachs where id = old.coach_id)
+  on conflict do nothing;
+  return old;
+end
+$$;
+revoke execute on function public.ecarter_echeance() from public, anon, authenticated;
+
+create trigger paiements_ecarter_echeance after delete on public.paiements
+  for each row when (old.reference like 'abonnement:%') execute function public.ecarter_echeance();
+
+
+-- ===== 20261101100000_adresse_clients.sql =====
+-- Adresse postale du client, pour ses factures : saisie par le coach (fiche contact) ou par le client (« Mon compte »).
+alter table public.contacts add column if not exists adresse text;
+alter table public.clients add column if not exists adresse text;
+
+
+-- ===== 20261102000000_videos_mouvement.sql =====
+-- Vidéos de mouvement : depuis sa séance, le client envoie une courte vidéo (60 s au plus, compressée) d'un exercice ;
+-- le coach la regarde à côté des charges, répétitions et ressenti, puis répond par écrit et/ou par un vocal.
+-- Les fichiers sont dans le compartiment privé « videos-mouvement », sous <client>/<video>.<ext>
+-- (et <client>/<video>-reponse.<ext> pour le vocal du coach). Tout est effacé 30 jours après l'envoi :
+-- la ligne disparaît aussitôt pour le client (règle ci-dessous), et l'appli du coach efface les fichiers expirés.
+
+create table public.videos_mouvement (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.coach_de_mon_client() references public.coachs (id) on delete cascade,
+  client_id uuid not null default public.mon_client_id() references public.clients (id) on delete cascade,
+  -- Identifiant de la réalisation en cours de saisie : la séance peut être enregistrée après l'envoi de la vidéo,
+  -- ou jamais. Pas de clé étrangère pour cette raison.
+  realisation_id uuid,
+  seance_id uuid references public.seances (id) on delete set null,
+  ligne_id uuid,
+  exercice_id uuid,
+  exercice_nom text not null check (length(trim(exercice_nom)) > 0),
+  seance_titre text,
+  chemin text not null unique,
+  type_fichier text not null check (type_fichier like 'video/%'),
+  taille integer not null check (taille > 0 and taille <= 26214400),
+  duree_s integer check (duree_s is null or (duree_s > 0 and duree_s <= 65)),
+  commentaire text check (commentaire is null or length(commentaire) <= 500),
+  cree_le timestamptz not null default now(),
+  expire_le timestamptz not null default now() + interval '30 days',
+  vue_le timestamptz,
+  reponse_texte text check (reponse_texte is null or length(reponse_texte) <= 2000),
+  reponse_audio text,
+  reponse_audio_type text,
+  reponse_audio_duree_s integer check (reponse_audio_duree_s is null or (reponse_audio_duree_s > 0 and reponse_audio_duree_s <= 300)),
+  reponse_le timestamptz,
+  constraint conservation_30_jours check (expire_le <= cree_le + interval '30 days'),
+  constraint chemin_du_client check (chemin like client_id::text || '/%'),
+  constraint vocal_du_client check (reponse_audio is null or reponse_audio like client_id::text || '/%')
+);
+create index on public.videos_mouvement (coach_id, client_id, cree_le desc);
+create index on public.videos_mouvement (client_id, cree_le desc);
+create index on public.videos_mouvement (expire_le);
+
+alter table public.videos_mouvement enable row level security;
+
+create policy "client : ses vidéos encore conservées" on public.videos_mouvement for select
+  using (client_id = public.mon_client_id() and expire_le > now());
+-- Le client dépose pour son coach, sans réponse ni « vue » préremplies.
+create policy "client : envoie une vidéo" on public.videos_mouvement for insert
+  with check (
+    client_id = public.mon_client_id()
+    and coach_id = public.coach_de_mon_client()
+    and vue_le is null and reponse_texte is null and reponse_audio is null and reponse_le is null
+  );
+create policy "client : retire sa vidéo" on public.videos_mouvement for delete
+  using (client_id = public.mon_client_id());
+
+-- Le coach voit aussi les lignes expirées, pour en effacer les fichiers.
+create policy "coach : vidéos de ses clients" on public.videos_mouvement for select
+  using (coach_id = public.mon_coach_id());
+create policy "coach : répond" on public.videos_mouvement for update
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+create policy "coach : efface" on public.videos_mouvement for delete
+  using (coach_id = public.mon_coach_id());
+
+revoke all on public.videos_mouvement from public, anon, authenticated;
+grant select, insert, delete on public.videos_mouvement to authenticated;
+-- Le coach ne modifie que la réponse et le « vu » : ni le fichier, ni le client, ni la date d'effacement.
+grant update (vue_le, reponse_texte, reponse_audio, reponse_audio_type, reponse_audio_duree_s, reponse_le)
+  on public.videos_mouvement to authenticated;
+
+-- Fichiers : compartiment privé, 25 Mo au plus par fichier.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('videos-mouvement', 'videos-mouvement', false, 26214400,
+  array['video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp',
+        'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/aac', 'audio/mpeg', 'audio/webm', 'audio/ogg', 'audio/wav'])
+on conflict (id) do nothing;
+
+-- Le dossier <client> appartient-il à un client du coach connecté ?
+create function public.dossier_video_de_mon_client(p_nom text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from clients c
+    where c.id::text = (storage.foldername(p_nom))[1] and c.coach_id = public.mon_coach_id()
+  )
+$$;
+revoke execute on function public.dossier_video_de_mon_client(text) from public, anon;
+grant execute on function public.dossier_video_de_mon_client(text) to authenticated;
+
+create policy "videos-mouvement : le client dépose dans son dossier" on storage.objects for insert to authenticated
+  with check (bucket_id = 'videos-mouvement' and (storage.foldername(name))[1] = public.mon_client_id()::text);
+create policy "videos-mouvement : le client lit son dossier" on storage.objects for select to authenticated
+  using (bucket_id = 'videos-mouvement' and (storage.foldername(name))[1] = public.mon_client_id()::text);
+create policy "videos-mouvement : le client efface ses fichiers" on storage.objects for delete to authenticated
+  using (bucket_id = 'videos-mouvement' and (storage.foldername(name))[1] = public.mon_client_id()::text);
+
+create policy "videos-mouvement : le coach dépose ses vocaux" on storage.objects for insert to authenticated
+  with check (bucket_id = 'videos-mouvement' and public.dossier_video_de_mon_client(name));
+create policy "videos-mouvement : le coach lit" on storage.objects for select to authenticated
+  using (bucket_id = 'videos-mouvement' and public.dossier_video_de_mon_client(name));
+create policy "videos-mouvement : le coach efface" on storage.objects for delete to authenticated
+  using (bucket_id = 'videos-mouvement' and public.dossier_video_de_mon_client(name));
+
+
+-- ===== 20261102100000_agenda.sql =====
+-- Agenda du coach (étape 1) : rendez-vous posés sur un ou plusieurs clients (duo, couple), confirmés ou refusés par eux,
+-- annulables jusqu'à 24 h avant (au-delà : par téléphone, saisi par le coach). Une séance passée et non annulée se compte
+-- toute seule : décomptée du pack (une fois par pack, même partagé), ou sinon ajoutée aux paiements « En attente » au
+-- tarif de chacun, partagé entre les personnes présentes ce jour-là. Le coach peut corriger.
+-- Les mails (invitation, relance, rappels, fin de pack) partent de la fonction Edge `agenda-mails`.
+
+-- Réglages de l'agenda, une ligne par coach (créée au premier enregistrement ; sinon les valeurs par défaut s'appliquent).
+create table public.reglages_agenda (
+  coach_id uuid primary key default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  duree_minutes int not null default 60 check (duree_minutes between 15 and 240),
+  -- Temps laissé libre entre deux rendez-vous (trajet), pour l'alerte de chevauchement.
+  tampon_minutes int not null default 0 check (tampon_minutes between 0 and 120),
+  delai_annulation_heures int not null default 24 check (delai_annulation_heures between 0 and 168),
+  rappel_heures int not null default 24 check (rappel_heures between 1 and 72),
+  -- Second rappel court, 2 h avant.
+  rappel_court boolean not null default false,
+  -- Alerte « fin de pack » quand il reste ce nombre de séances (ou moins).
+  seuil_fin_pack int not null default 2 check (seuil_fin_pack between 0 and 10),
+  -- Un client sans rendez-vous ni séance depuis ce nombre de jours remonte comme inactif.
+  inactivite_jours int not null default 21 check (inactivite_jours between 7 and 120),
+  lieu_defaut text not null default ''
+);
+alter table public.reglages_agenda enable row level security;
+create policy "coach : ses réglages d'agenda" on public.reglages_agenda for all
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+revoke all on public.reglages_agenda from anon, authenticated;
+grant select, insert, update on public.reglages_agenda to authenticated;
+
+-- Pack partagé (couple, amis) : chaque séance faite par l'un ou l'autre se décompte une fois du même pack.
+create table public.packs_partages (
+  pack_id uuid not null references public.packs_seances (id) on delete cascade,
+  client_id uuid not null references public.clients (id) on delete cascade,
+  primary key (pack_id, client_id)
+);
+create index packs_partages_client on public.packs_partages (client_id);
+alter table public.packs_partages enable row level security;
+create policy "coach : partages de ses packs" on public.packs_partages for all
+  using (exists (select 1 from public.packs_seances p where p.id = pack_id and p.coach_id = public.mon_coach_id()))
+  with check (
+    exists (select 1 from public.packs_seances p where p.id = pack_id and p.coach_id = public.mon_coach_id() and p.client_id <> packs_partages.client_id)
+    and public.est_mon_client(client_id)
+  );
+create policy "client : ses partages" on public.packs_partages for select using (client_id = public.mon_client_id());
+revoke all on public.packs_partages from anon, authenticated;
+grant select, insert, delete on public.packs_partages to authenticated;
+
+-- Le client voit aussi les packs partagés avec lui.
+create function public.pack_partage_avec_moi(p uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.packs_partages where pack_id = p and client_id = public.mon_client_id())
+$$;
+revoke execute on function public.pack_partage_avec_moi(uuid) from public, anon;
+grant execute on function public.pack_partage_avec_moi(uuid) to authenticated;
+drop policy "client : ses packs" on public.packs_seances;
+create policy "client : ses packs" on public.packs_seances for select
+  using (client_id = public.mon_client_id() or public.pack_partage_avec_moi(id));
+
+-- Alerte « fin de pack » déjà envoyée au client : une seule fois par pack.
+alter table public.packs_seances add column alerte_fin_envoyee_le timestamptz;
+
+
+-- Tarif de la séance à l'unité, client par client (60 € par défaut, au cas par cas sinon).
+alter table public.clients add column tarif_seance numeric(8, 2) not null default 60 check (tarif_seance between 0 and 10000);
+
+create table public.rendez_vous (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  -- seance et visio se comptent (pack ou paiement) ; appel (point téléphonique) non.
+  type text not null default 'seance' check (type in ('seance', 'visio', 'appel')),
+  debut timestamptz not null,
+  fin timestamptz not null,
+  lieu text not null default '',
+  lien_visio text check (lien_visio is null or lien_visio ~ '^https://'),
+  note text not null default '',
+  -- propose : en attente de réponse ; annule_tard : annulation à moins de 24 h, saisie par le coach après un appel.
+  statut text not null default 'propose'
+    check (statut in ('propose', 'confirme', 'refuse', 'annule', 'annule_tard', 'absent', 'realise')),
+  annule_par text check (annule_par in ('client', 'coach')),
+  -- Vrai quand la séance a été comptée (pack décompté ou paiement à l'unité créé) : voir rendez_vous_participants.
+  compte boolean not null default false,
+  -- Rendez-vous créés ensemble (« tous les mardis pendant 10 semaines »).
+  serie_id uuid,
+  -- Lien des mails (confirmer, refuser, annuler) sans connexion.
+  jeton uuid not null default gen_random_uuid() unique,
+  invitation_envoyee_le timestamptz,
+  relance_envoyee_le timestamptz,
+  rappel_envoye_le timestamptz,
+  rappel_court_envoye_le timestamptz,
+  annulation_envoyee_le timestamptz,
+  coach_prevenu_le timestamptz,
+  cree_le timestamptz not null default now(),
+  maj_le timestamptz not null default now(),
+  check (fin > debut and fin - debut <= interval '8 hours')
+);
+create index rendez_vous_coach_debut on public.rendez_vous (coach_id, debut);
+
+-- Une ou plusieurs personnes par rendez-vous (duo, couple, petit groupe). Ce qui a été compté pour chacune y est noté.
+create table public.rendez_vous_participants (
+  rendez_vous_id uuid not null references public.rendez_vous (id) on delete cascade,
+  client_id uuid not null references public.clients (id) on delete cascade,
+  -- Pack d'où vient la séance (décomptée par cette personne, ou par l'autre personne du même pack partagé).
+  pack_id uuid references public.packs_seances (id) on delete set null,
+  decompte boolean not null default false,
+  -- Séance à l'unité : sa part du prix et la ligne « En attente » créée dans Paiements.
+  montant numeric(8, 2),
+  paiement_id uuid references public.paiements (id) on delete set null,
+  primary key (rendez_vous_id, client_id)
+);
+create index rendez_vous_participants_client on public.rendez_vous_participants (client_id);
+
+create function public.mon_rendez_vous(p uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.rendez_vous_participants where rendez_vous_id = p and client_id = public.mon_client_id())
+$$;
+create function public.rendez_vous_du_coach(p uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.rendez_vous where id = p and coach_id = public.mon_coach_id())
+$$;
+create function public.rendez_vous_compte(p uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select compte from public.rendez_vous where id = p), false)
+$$;
+revoke execute on function public.mon_rendez_vous(uuid), public.rendez_vous_du_coach(uuid), public.rendez_vous_compte(uuid) from public, anon;
+grant execute on function public.mon_rendez_vous(uuid), public.rendez_vous_du_coach(uuid), public.rendez_vous_compte(uuid) to authenticated;
+
+alter table public.rendez_vous enable row level security;
+create policy "coach : lire ses rendez-vous" on public.rendez_vous for select using (coach_id = public.mon_coach_id());
+create policy "coach : créer un rendez-vous" on public.rendez_vous for insert
+  with check (coach_id = public.mon_coach_id() and statut = 'propose' and not compte);
+create policy "coach : modifier un rendez-vous" on public.rendez_vous for update
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+-- Un rendez-vous déjà compté ne se supprime pas : le coach le passe d'abord en « annulé » (pack recrédité, paiement retiré).
+create policy "coach : supprimer un rendez-vous" on public.rendez_vous for delete using (coach_id = public.mon_coach_id() and not compte);
+create policy "client : ses rendez-vous" on public.rendez_vous for select using (public.mon_rendez_vous(id));
+
+alter table public.rendez_vous_participants enable row level security;
+create policy "coach : lire les participants" on public.rendez_vous_participants for select using (public.rendez_vous_du_coach(rendez_vous_id));
+create policy "coach : ajouter un participant" on public.rendez_vous_participants for insert
+  with check (public.rendez_vous_du_coach(rendez_vous_id) and public.est_mon_client(client_id) and not public.rendez_vous_compte(rendez_vous_id));
+create policy "coach : retirer un participant" on public.rendez_vous_participants for delete
+  using (public.rendez_vous_du_coach(rendez_vous_id) and not public.rendez_vous_compte(rendez_vous_id));
+create policy "client : sa participation" on public.rendez_vous_participants for select using (client_id = public.mon_client_id());
+
+-- Le coach modifie le contenu ; le statut et le comptage passent par changer_statut_rendez_vous, qui tient packs et paiements à jour.
+-- Supabase donne tous les droits par défaut sur une nouvelle table : on les retire avant d'accorder les seules colonnes utiles.
+revoke all on public.rendez_vous, public.rendez_vous_participants from anon, authenticated;
+grant select, delete on public.rendez_vous to authenticated;
+grant insert (id, type, debut, fin, lieu, lien_visio, note, serie_id) on public.rendez_vous to authenticated;
+grant update (type, debut, fin, lieu, lien_visio, note) on public.rendez_vous to authenticated;
+grant select, delete on public.rendez_vous_participants to authenticated;
+grant insert (rendez_vous_id, client_id) on public.rendez_vous_participants to authenticated;
+
+-- Date ou heure changée : nouvelle invitation à reconfirmer, les rappels repartent de zéro.
+create function public.rendez_vous_modifie() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  new.maj_le := now();
+  if new.debut is distinct from old.debut or new.fin is distinct from old.fin then
+    new.invitation_envoyee_le := null;
+    new.relance_envoyee_le := null;
+    new.rappel_envoye_le := null;
+    new.rappel_court_envoye_le := null;
+    if old.statut in ('confirme', 'refuse') then new.statut := 'propose'; end if;
+  end if;
+  return new;
+end $$;
+create trigger rendez_vous_modifie before update on public.rendez_vous for each row execute function public.rendez_vous_modifie();
+
+-- Délai d'annulation du coach (24 h si non réglé).
+create function public.delai_annulation(p_coach uuid) returns interval
+language sql stable security definer set search_path = public as $$
+  select make_interval(hours => coalesce((select delai_annulation_heures from public.reglages_agenda where coach_id = p_coach), 24))
+$$;
+revoke execute on function public.delai_annulation(uuid) from public, anon;
+grant execute on function public.delai_annulation(uuid) to authenticated;
+
+-- Compte la séance pour chaque personne présente :
+-- · un pack (le sien ou un pack partagé avec elle) : une séance retirée, une seule fois par pack et par rendez-vous ;
+-- · sans pack : sa part du prix (son tarif divisé par le nombre de personnes ce jour-là) devient une ligne « En attente ».
+create function public._compter_rendez_vous(p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  r public.rendez_vous;
+  pr record;
+  p uuid;
+  n int;
+  tarif numeric;
+  part numeric;
+  contact uuid;
+  pai uuid;
+begin
+  select * into r from public.rendez_vous where id = p_id for update;
+  if r.compte or r.type = 'appel' then return; end if;
+  select count(*) into n from public.rendez_vous_participants where rendez_vous_id = p_id;
+  for pr in
+    select rp.client_id, c.prenom, c.tarif_seance from public.rendez_vous_participants rp
+    join public.clients c on c.id = rp.client_id
+    where rp.rendez_vous_id = p_id order by c.prenom, rp.client_id
+  loop
+    -- Pack déjà décompté pour ce rendez-vous par l'autre personne du même pack.
+    select rp.pack_id into p from public.rendez_vous_participants rp
+    join public.packs_seances ps on ps.id = rp.pack_id
+    where rp.rendez_vous_id = p_id and rp.decompte
+      and (ps.client_id = pr.client_id or exists (select 1 from public.packs_partages pp where pp.pack_id = ps.id and pp.client_id = pr.client_id))
+    limit 1;
+    if p is not null then
+      update public.rendez_vous_participants set pack_id = p where rendez_vous_id = p_id and client_id = pr.client_id;
+      continue;
+    end if;
+    select ps.id into p from public.packs_seances ps
+    where ps.coach_id = r.coach_id
+      and ps.seances_faites < ps.seances_total
+      and (ps.client_id = pr.client_id or exists (select 1 from public.packs_partages pp where pp.pack_id = ps.id and pp.client_id = pr.client_id))
+    order by ps.achete_le, ps.cree_le
+    limit 1
+    for update;
+    if p is not null then
+      update public.packs_seances set seances_faites = seances_faites + 1 where id = p;
+      update public.rendez_vous_participants set pack_id = p, decompte = true where rendez_vous_id = p_id and client_id = pr.client_id;
+    else
+      tarif := pr.tarif_seance;
+      part := round(tarif / greatest(n, 1), 2);
+      select id into contact from public.contacts where client_id = pr.client_id limit 1;
+      insert into public.paiements (coach_id, titre, contact_id, date, montant, statut, reference)
+      values (
+        r.coach_id,
+        'Séance du ' || to_char(r.debut at time zone 'Europe/Paris', 'DD/MM') || ' · ' || pr.prenom || case when n > 1 then ' (à ' || n || ')' else '' end,
+        contact, (r.debut at time zone 'Europe/Paris')::date, part, 'En attente', 'seance:' || p_id || ':' || pr.client_id
+      )
+      returning id into pai;
+      update public.rendez_vous_participants set montant = part, paiement_id = pai where rendez_vous_id = p_id and client_id = pr.client_id;
+    end if;
+  end loop;
+  update public.rendez_vous set compte = true where id = p_id;
+end $$;
+
+-- Défait le comptage : séances rendues aux packs, lignes de paiement encore « En attente » retirées.
+create function public._decompter_rendez_vous(p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  pr record;
+begin
+  perform 1 from public.rendez_vous where id = p_id for update;
+  for pr in select * from public.rendez_vous_participants where rendez_vous_id = p_id loop
+    if pr.decompte and pr.pack_id is not null then
+      update public.packs_seances set seances_faites = greatest(seances_faites - 1, 0) where id = pr.pack_id;
+    end if;
+    if pr.paiement_id is not null then
+      delete from public.paiements where id = pr.paiement_id and statut = 'En attente';
+    end if;
+  end loop;
+  update public.rendez_vous_participants set pack_id = null, decompte = false, montant = null, paiement_id = null where rendez_vous_id = p_id;
+  update public.rendez_vous set compte = false where id = p_id;
+end $$;
+revoke execute on function public._compter_rendez_vous(uuid) from public, anon, authenticated;
+revoke execute on function public._decompter_rendez_vous(uuid) from public, anon, authenticated;
+
+-- Coach : change le statut d'un rendez-vous. Réalisé : compté ; absent ou annulé tard : compté si p_compter ;
+-- annulé, proposé ou confirmé : ce qui avait été compté est défait.
+create function public.changer_statut_rendez_vous(p_id uuid, p_statut text, p_compter boolean default true) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  r public.rendez_vous;
+begin
+  select * into r from public.rendez_vous where id = p_id and coach_id = public.mon_coach_id() for update;
+  if r.id is null then raise exception 'Rendez-vous introuvable.'; end if;
+  if p_statut not in ('propose', 'confirme', 'annule', 'annule_tard', 'absent', 'realise') then
+    raise exception 'Statut inconnu : %', p_statut;
+  end if;
+  perform public._decompter_rendez_vous(p_id);
+  update public.rendez_vous set
+    statut = p_statut,
+    annule_par = case when p_statut = 'annule' then 'coach' when p_statut = 'annule_tard' then 'client' else null end,
+    annulation_envoyee_le = case when p_statut = 'annule' and r.statut <> 'annule' then null else annulation_envoyee_le end
+  where id = p_id;
+  if p_statut = 'realise' or (p_statut in ('annule_tard', 'absent') and p_compter) then
+    perform public._compter_rendez_vous(p_id);
+  end if;
+end $$;
+revoke execute on function public.changer_statut_rendez_vous(uuid, text, boolean) from public, anon;
+grant execute on function public.changer_statut_rendez_vous(uuid, text, boolean) to authenticated;
+
+-- Rendez-vous terminés et non annulés : passés en « réalisé » et comptés. p_coach null : tous les coachs (tâche planifiée).
+create function public._cloturer_rendez_vous(p_coach uuid) returns int
+language plpgsql security definer set search_path = public as $$
+declare
+  r record;
+  n int := 0;
+begin
+  for r in
+    select id from public.rendez_vous
+    where statut in ('propose', 'confirme') and fin <= now() and (p_coach is null or coach_id = p_coach)
+    order by debut
+  loop
+    update public.rendez_vous set statut = 'realise' where id = r.id;
+    perform public._compter_rendez_vous(r.id);
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+revoke execute on function public._cloturer_rendez_vous(uuid) from public, anon, authenticated;
+
+-- Appelée par l'app du coach à l'ouverture de l'agenda, en plus de la tâche planifiée.
+create function public.cloturer_mes_rendez_vous() returns int
+language sql security definer set search_path = public as $$
+  select case when public.mon_coach_id() is null then 0 else public._cloturer_rendez_vous(public.mon_coach_id()) end
+$$;
+revoke execute on function public.cloturer_mes_rendez_vous() from public, anon;
+grant execute on function public.cloturer_mes_rendez_vous() to authenticated;
+
+-- Réponse d'une personne inscrite, depuis l'app ou depuis le lien du mail. Actions : confirme, refuse, annule.
+-- Annuler n'est possible que jusqu'au délai du coach (24 h par défaut) ; ensuite, on appelle le coach.
+create function public._agir_rendez_vous(r public.rendez_vous, p_action text) returns text
+language plpgsql security definer set search_path = public as $$
+begin
+  if r.debut <= now() then raise exception 'Ce rendez-vous est déjà passé.'; end if;
+  if p_action in ('confirme', 'refuse') then
+    if r.statut not in ('propose', 'confirme', 'refuse') then raise exception 'Ce rendez-vous a été annulé.'; end if;
+    update public.rendez_vous set statut = p_action, coach_prevenu_le = case when p_action = 'refuse' then null else coach_prevenu_le end
+    where id = r.id;
+    return p_action;
+  elsif p_action = 'annule' then
+    if r.statut not in ('propose', 'confirme') then raise exception 'Ce rendez-vous n’est plus à venir.'; end if;
+    if r.debut - now() < public.delai_annulation(r.coach_id) then
+      raise exception 'Trop tard pour annuler en ligne : appelle ton coach.';
+    end if;
+    update public.rendez_vous set statut = 'annule', annule_par = 'client', coach_prevenu_le = null where id = r.id;
+    return 'annule';
+  end if;
+  raise exception 'Action inconnue : %', p_action;
+end $$;
+revoke execute on function public._agir_rendez_vous(public.rendez_vous, text) from public, anon, authenticated;
+
+create function public.repondre_rendez_vous(p_id uuid, p_action text) returns text
+language plpgsql security definer set search_path = public as $$
+declare
+  r public.rendez_vous;
+begin
+  select * into r from public.rendez_vous where id = p_id and public.mon_rendez_vous(id) for update;
+  if r.id is null then raise exception 'Rendez-vous introuvable.'; end if;
+  return public._agir_rendez_vous(r, p_action);
+end $$;
+revoke execute on function public.repondre_rendez_vous(uuid, text) from public, anon;
+grant execute on function public.repondre_rendez_vous(uuid, text) to authenticated;
+
+-- Client connecté : ses rendez-vous avec le prénom des autres personnes inscrites.
+create function public.mes_rendez_vous()
+returns table (id uuid, type text, debut timestamptz, fin timestamptz, lieu text, lien_visio text, statut text, avec text, annulable_jusqu_au timestamptz)
+language sql stable security definer set search_path = public as $$
+  select r.id, r.type, r.debut, r.fin, r.lieu, r.lien_visio, r.statut,
+    (select string_agg(c.prenom, ', ' order by c.prenom) from public.rendez_vous_participants o join public.clients c on c.id = o.client_id
+      where o.rendez_vous_id = r.id and o.client_id <> public.mon_client_id()),
+    r.debut - public.delai_annulation(r.coach_id)
+  from public.rendez_vous r
+  where public.mon_rendez_vous(r.id)
+  order by r.debut
+$$;
+revoke execute on function public.mes_rendez_vous() from public, anon;
+grant execute on function public.mes_rendez_vous() to authenticated;
+
+-- Page ouverte depuis le mail, sans compte : seulement ce qu'il faut pour répondre.
+create function public.rendez_vous_par_jeton(p_jeton uuid)
+returns table (prenoms text, coach text, telephone text, type text, debut timestamptz, fin timestamptz, lieu text, lien_visio text, statut text, annulable_jusqu_au timestamptz)
+language sql stable security definer set search_path = public as $$
+  select
+    (select string_agg(c.prenom, ' et ' order by c.prenom) from public.rendez_vous_participants o join public.clients c on c.id = o.client_id where o.rendez_vous_id = r.id),
+    co.nom, co.telephone, r.type, r.debut, r.fin, r.lieu, r.lien_visio, r.statut, r.debut - public.delai_annulation(r.coach_id)
+  from public.rendez_vous r
+  join public.coachs co on co.id = r.coach_id
+  where r.jeton = p_jeton
+$$;
+revoke execute on function public.rendez_vous_par_jeton(uuid) from public;
+grant execute on function public.rendez_vous_par_jeton(uuid) to anon, authenticated;
+
+create function public.repondre_par_jeton(p_jeton uuid, p_action text) returns text
+language plpgsql security definer set search_path = public as $$
+declare
+  r public.rendez_vous;
+begin
+  select * into r from public.rendez_vous where jeton = p_jeton for update;
+  if r.id is null then raise exception 'Lien inconnu ou expiré.'; end if;
+  return public._agir_rendez_vous(r, p_action);
+end $$;
+revoke execute on function public.repondre_par_jeton(uuid, text) from public;
+grant execute on function public.repondre_par_jeton(uuid, text) to anon, authenticated;
+
+-- Tâche planifiée toutes les 15 minutes quand pg_cron est activé dans Supabase (Database > Extensions).
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.schedule('agenda-cloture', '*/15 * * * *', 'select public._cloturer_rendez_vous(null)');
+  end if;
+end $$;
+
+
+-- ===== 20261102200000_agenda_google.sql =====
+-- Agenda, étape 2 : synchronisation avec le Google Agenda du coach (fonction Edge `agenda-google`).
+--   · les rendez-vous de l'app sont copiés dans son agenda Google et suivent chaque changement ;
+--   · ses événements perso (hors ceux de l'app) sont recopiés en « créneaux occupés » pour éviter les doublons ;
+--   · une visio sans lien reçoit un lien Google Meet.
+-- Le jeton Google n'est lisible que par la fonction Edge (clé service) : ni le coach ni ses clients n'y ont accès.
+
+create table public.google_agenda (
+  coach_id uuid primary key references public.coachs (id) on delete cascade,
+  email text not null default '',
+  refresh_token text not null,
+  calendrier text not null default 'primary',
+  connecte_le timestamptz not null default now(),
+  synchro_le timestamptz,
+  erreur text
+);
+alter table public.google_agenda enable row level security;
+revoke all on public.google_agenda from anon, authenticated;
+
+-- Demande de connexion en cours (protection du retour de Google), valable 15 minutes.
+create table public.google_connexions (
+  etat uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  retour text not null,
+  cree_le timestamptz not null default now()
+);
+alter table public.google_connexions enable row level security;
+revoke all on public.google_connexions from anon, authenticated;
+
+-- Événements perso du Google Agenda du coach (60 jours à venir), affichés en gris et pris en compte pour les chevauchements.
+create table public.google_occupations (
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  id text not null,
+  debut timestamptz not null,
+  fin timestamptz not null,
+  titre text not null default '',
+  journee boolean not null default false,
+  primary key (coach_id, id)
+);
+create index google_occupations_debut on public.google_occupations (coach_id, debut);
+alter table public.google_occupations enable row level security;
+create policy "coach : ses créneaux Google" on public.google_occupations for select using (coach_id = public.mon_coach_id());
+revoke all on public.google_occupations from anon, authenticated;
+grant select on public.google_occupations to authenticated;
+
+-- Événement Google du rendez-vous et date de la dernière copie.
+alter table public.rendez_vous add column google_event_id text, add column google_synchro_le timestamptz;
+create index rendez_vous_google_a_faire on public.rendez_vous (coach_id) where google_synchro_le is null;
+
+-- maj_le ne bouge plus que si le contenu change (pas pour une date d'envoi de mail ou de synchro Google) :
+-- la synchro sait ainsi quoi recopier, et le mail « nouvelle date » ne part pas à tort.
+create or replace function public.rendez_vous_modifie() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  if (new.type, new.debut, new.fin, new.lieu, new.lien_visio, new.note, new.statut)
+     is distinct from (old.type, old.debut, old.fin, old.lieu, old.lien_visio, old.note, old.statut) then
+    new.maj_le := now();
+  end if;
+  if new.debut is distinct from old.debut or new.fin is distinct from old.fin then
+    new.invitation_envoyee_le := null;
+    new.relance_envoyee_le := null;
+    new.rappel_envoye_le := null;
+    new.rappel_court_envoye_le := null;
+    if old.statut in ('confirme', 'refuse') then new.statut := 'propose'; end if;
+  end if;
+  return new;
+end $$;
+
+-- Personnes ajoutées ou retirées : le titre de l'événement Google change.
+create function public.rendez_vous_participants_google() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  update public.rendez_vous set google_synchro_le = null
+  where id = coalesce(new.rendez_vous_id, old.rendez_vous_id) and google_synchro_le is not null;
+  return null;
+end $$;
+revoke execute on function public.rendez_vous_participants_google() from public, anon, authenticated;
+create trigger rendez_vous_participants_google after insert or delete on public.rendez_vous_participants
+  for each row execute function public.rendez_vous_participants_google();
+
+-- Rendez-vous supprimé : son événement Google est à retirer au prochain passage.
+create table public.google_suppressions (
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  event_id text not null,
+  cree_le timestamptz not null default now(),
+  primary key (coach_id, event_id)
+);
+alter table public.google_suppressions enable row level security;
+revoke all on public.google_suppressions from anon, authenticated;
+
+create function public.rendez_vous_supprime_google() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if old.google_event_id is not null then
+    insert into public.google_suppressions (coach_id, event_id) values (old.coach_id, old.google_event_id) on conflict do nothing;
+  end if;
+  return old;
+end $$;
+revoke execute on function public.rendez_vous_supprime_google() from public, anon, authenticated;
+create trigger rendez_vous_supprime_google after delete on public.rendez_vous
+  for each row execute function public.rendez_vous_supprime_google();
+
+-- Coach : état de sa connexion Google (sans le jeton).
+create function public.mon_google_agenda()
+returns table (email text, connecte_le timestamptz, synchro_le timestamptz, erreur text)
+language sql stable security definer set search_path = public as $$
+  select email, connecte_le, synchro_le, erreur from public.google_agenda where coach_id = public.mon_coach_id()
+$$;
+revoke execute on function public.mon_google_agenda() from public, anon;
+grant execute on function public.mon_google_agenda() to authenticated;
+
+
+-- ===== 20261102300000_activites_libres.sql =====
+-- Coach OS · activités libres : le client déclare ce qu'il a fait en dehors de son programme (un cours de RPM,
+-- une séance de musculation à lui…). Elles vivent dans activites_sport avec la source « manuel », à côté des
+-- séances de la montre, avec une dépense estimée (calories) calculée sur le téléphone. Le client peut les
+-- corriger ou les retirer ; il ne touche jamais au programme du coach.
+-- Uniquement des ajouts : de nouveaux types d'activité, trois colonnes et une fonction.
+
+alter table public.activites_sport drop constraint if exists activites_sport_sport_check;
+alter table public.activites_sport add constraint activites_sport_sport_check
+  check (sport in ('course', 'trail', 'velo', 'marche', 'randonnee', 'natation', 'musculation', 'cours', 'yoga', 'aquatique',
+    'raquette', 'sport_co', 'combat', 'danse', 'glisse', 'autre'));
+
+alter table public.activites_sport
+  -- Effort ressenti, de 1 (très facile) à 10 (maximal).
+  add column if not exists ressenti int check (ressenti between 1 and 10),
+  add column if not exists note text not null default '' check (length(note) <= 2000),
+  -- Séance de musculation : [{ exerciceId?, nom, mesures?, series: [{ repetitions?, charge?, duree?, distance? }] }].
+  add column if not exists exercices jsonb not null default '[]'
+    check (jsonb_typeof(exercices) = 'array' and jsonb_array_length(exercices) <= 40);
+
+/**
+ * Le client ajoute ou corrige une de ses activités libres. L'id vient du téléphone : renvoyer la même activité
+ * la met à jour sans la dupliquer. Renvoie l'id.
+ */
+create or replace function public.enregistrer_activite_libre(a jsonb) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  moi uuid := public.mon_client_id();
+  mon_coach uuid := public.coach_de_mon_client();
+  v_id uuid;
+  t timestamptz;
+  v_duree numeric;
+  v_ressenti int;
+  e jsonb;
+  s jsonb;
+  k text;
+  v_exercices jsonb := coalesce(a->'exercices', '[]');
+begin
+  if moi is null then raise exception 'Activité hors de votre dossier'; end if;
+  begin
+    v_id := (a->>'id')::uuid;
+    t := (a->>'debut')::timestamptz;
+  exception when others then
+    raise exception 'Activité invalide';
+  end;
+  if v_id is null or t is null then raise exception 'Activité incomplète'; end if;
+  if t > now() + interval '1 hour' then raise exception 'Une activité ne peut pas être dans le futur'; end if;
+  if t < now() - interval '1 year' then raise exception 'Date trop ancienne'; end if;
+  if jsonb_typeof(a->'sport') <> 'string' then raise exception 'Type d’activité manquant'; end if;
+  if jsonb_typeof(a->'dureeS') <> 'number' then raise exception 'Durée manquante'; end if;
+  v_duree := (a->>'dureeS')::numeric;
+  if v_duree < 60 or v_duree > 86400 then raise exception 'Durée invalide'; end if;
+  if a ? 'ressenti' and jsonb_typeof(a->'ressenti') not in ('number', 'null') then raise exception 'Ressenti invalide'; end if;
+  v_ressenti := round((a->>'ressenti')::numeric);
+  if a ? 'calories' and jsonb_typeof(a->'calories') not in ('number', 'null') then raise exception 'Calories invalides'; end if;
+  if a ? 'distanceM' and jsonb_typeof(a->'distanceM') not in ('number', 'null') then raise exception 'Distance invalide'; end if;
+  if length(coalesce(a->>'note', '')) > 2000 then raise exception 'Note trop longue'; end if;
+
+  -- Exercices : un tableau d'au plus 40 exercices de 20 séries, valeurs chiffrées seulement.
+  if jsonb_typeof(v_exercices) <> 'array' or jsonb_array_length(v_exercices) > 40 then raise exception 'Exercices invalides'; end if;
+  for e in select * from jsonb_array_elements(v_exercices) loop
+    if jsonb_typeof(e) <> 'object' or jsonb_typeof(e->'nom') <> 'string' or length(e->>'nom') not between 1 and 200
+      or jsonb_typeof(e->'series') <> 'array' or jsonb_array_length(e->'series') > 20 then
+      raise exception 'Exercice invalide';
+    end if;
+    if e ? 'exerciceId' and jsonb_typeof(e->'exerciceId') <> 'null' then
+      begin
+        perform (e->>'exerciceId')::uuid;
+      exception when others then
+        raise exception 'Exercice invalide';
+      end;
+    end if;
+    for s in select * from jsonb_array_elements(e->'series') loop
+      if jsonb_typeof(s) <> 'object' then raise exception 'Série invalide'; end if;
+      for k in select jsonb_object_keys(s) loop
+        if k not in ('repetitions', 'charge', 'duree', 'distance') or jsonb_typeof(s->k) not in ('number', 'null') then
+          raise exception 'Série invalide';
+        end if;
+        if (s->>k)::numeric < 0 or (s->>k)::numeric > 100000 then raise exception 'Série invalide'; end if;
+      end loop;
+    end loop;
+  end loop;
+
+  -- Une activité existante ne peut être modifiée que par son client, et seulement si c'est une saisie libre.
+  if exists (select 1 from public.activites_sport where id = v_id and (client_id <> moi or source <> 'manuel')) then
+    raise exception 'Activité introuvable';
+  end if;
+
+  insert into public.activites_sport (id, coach_id, client_id, source, id_externe, sport, titre, debut, duree_s, distance_m, calories, ressenti, note, exercices)
+  values (v_id, mon_coach, moi, 'manuel', v_id::text, a->>'sport', left(coalesce(trim(a->>'titre'), ''), 200), t, round(v_duree),
+    round((a->>'distanceM')::numeric), round((a->>'calories')::numeric), v_ressenti, coalesce(trim(a->>'note'), ''), v_exercices)
+  on conflict (id) do update set sport = excluded.sport, titre = excluded.titre, debut = excluded.debut, duree_s = excluded.duree_s,
+    distance_m = excluded.distance_m, calories = excluded.calories, ressenti = excluded.ressenti, note = excluded.note, exercices = excluded.exercices, importee_le = now()
+  where public.activites_sport.client_id = moi and public.activites_sport.source = 'manuel' and not public.activites_sport.retiree;
+  if not found then raise exception 'Activité introuvable'; end if;
+  return v_id;
+end $$;
+
+revoke all on function public.enregistrer_activite_libre(jsonb) from public, anon;
+grant execute on function public.enregistrer_activite_libre(jsonb) to authenticated;
+
+
+-- ===== 20261102400000_activites_technogym.sql =====
+-- Coach OS · séances des machines de salle (Technogym…) et d'Apple Santé.
+-- Un nouveau sport (cardio : elliptique, rameur, escalier…) et une nouvelle source (apple_sante).
+-- Rien n'est retiré : les valeurs existantes restent permises, seules les listes autorisées s'allongent.
+
+alter table public.activites_sport drop constraint if exists activites_sport_sport_check;
+alter table public.activites_sport add constraint activites_sport_sport_check
+  check (sport in ('course', 'trail', 'velo', 'marche', 'randonnee', 'natation', 'cardio', 'musculation', 'cours', 'yoga', 'aquatique',
+    'raquette', 'sport_co', 'combat', 'danse', 'glisse', 'autre'));
+
+alter table public.activites_sport drop constraint if exists activites_sport_source_check;
+alter table public.activites_sport add constraint activites_sport_source_check
+  check (source in ('health_connect', 'apple_sante', 'fichier', 'strava', 'garmin', 'suunto', 'polar', 'manuel'));
+
+
+-- ===== 20261103000000_messagerie.sql =====
+-- Messagerie coach-client : un fil par client, avec texte, photos, vidéos et vocaux.
+-- · Le coach affiche ses horaires de réponse (coachs.horaires_reponse), visibles en haut du fil côté client.
+-- · Les vidéos que le client envoie (ici ou depuis sa séance) sont comptées par mois, face au nombre inclus
+--   dans sa formule (clients.videos_mois) : au-delà, le coach facture la vidéo en plus.
+-- · Pièces jointes dans le compartiment privé « messagerie », sous <client>/<message>.<ext>. Les vidéos sont
+--   effacées 30 jours après l'envoi (l'appli du coach fait le ménage), le message reste avec « vidéo expirée ».
+-- · appareils_push : jetons de notification des téléphones, pour prévenir le destinataire d'un nouveau message.
+
+alter table public.coachs add column horaires_reponse text
+  check (horaires_reponse is null or length(horaires_reponse) <= 200);
+grant update (horaires_reponse) on public.coachs to authenticated;
+
+-- Vidéos corrigées incluses chaque mois dans la formule du client (0 : aucune, chaque vidéo est facturée).
+alter table public.clients add column videos_mois integer not null default 0 check (videos_mois between 0 and 30);
+
+-- Le client lit les horaires de réponse de son coach (fonction à part : mon_coach() reste inchangée).
+create function public.horaires_de_mon_coach() returns text
+language sql stable security definer set search_path = public as $$
+  select horaires_reponse from public.coachs where id = public.coach_de_mon_client()
+$$;
+revoke execute on function public.horaires_de_mon_coach() from public, anon;
+grant execute on function public.horaires_de_mon_coach() to authenticated;
+
+-- Le client lit sa propre limite de vidéos.
+create function public.mes_videos_mois() returns integer
+language sql stable security definer set search_path = public as $$
+  select videos_mois from public.clients where id = public.mon_client_id()
+$$;
+revoke execute on function public.mes_videos_mois() from public, anon;
+grant execute on function public.mes_videos_mois() to authenticated;
+
+create table public.messages (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  client_id uuid not null references public.clients (id) on delete cascade,
+  auteur text not null check (auteur in ('coach', 'client')),
+  texte text check (texte is null or length(texte) <= 2000),
+  piece_chemin text unique,
+  piece_type text check (piece_type is null or piece_type ~ '^(image|video|audio)/'),
+  piece_taille integer check (piece_taille is null or (piece_taille > 0 and piece_taille <= 26214400)),
+  piece_duree_s integer check (piece_duree_s is null or (piece_duree_s > 0 and piece_duree_s <= 305)),
+  -- Vidéo effacée au bout de 30 jours : le type reste, pour le décompte du mois.
+  piece_expiree boolean not null default false,
+  cree_le timestamptz not null default now(),
+  lu_le timestamptz,
+  constraint message_non_vide check (length(trim(coalesce(texte, ''))) > 0 or piece_chemin is not null or piece_expiree),
+  constraint piece_complete check (piece_chemin is null or (piece_type is not null and piece_taille is not null)),
+  constraint piece_du_client check (piece_chemin is null or piece_chemin like client_id::text || '/%')
+);
+create index on public.messages (client_id, cree_le desc);
+create index on public.messages (coach_id, cree_le desc);
+create index on public.messages (coach_id, lu_le) where auteur = 'client' and lu_le is null;
+
+alter table public.messages enable row level security;
+
+create policy "client : son fil" on public.messages for select using (client_id = public.mon_client_id());
+create policy "client : écrit à son coach" on public.messages for insert with check (
+  auteur = 'client' and client_id = public.mon_client_id() and coach_id = public.coach_de_mon_client() and not piece_expiree
+);
+create policy "client : lit les messages du coach" on public.messages for update
+  using (client_id = public.mon_client_id() and auteur = 'coach') with check (client_id = public.mon_client_id() and auteur = 'coach');
+create policy "client : retire son message" on public.messages for delete using (client_id = public.mon_client_id() and auteur = 'client');
+
+create policy "coach : fils de ses clients" on public.messages for select using (coach_id = public.mon_coach_id());
+create policy "coach : écrit à son client" on public.messages for insert with check (
+  auteur = 'coach' and coach_id = public.mon_coach_id() and not piece_expiree
+  and exists (select 1 from public.clients c where c.id = client_id and c.coach_id = public.mon_coach_id())
+);
+create policy "coach : lit les messages du client" on public.messages for update
+  using (coach_id = public.mon_coach_id() and auteur = 'client') with check (coach_id = public.mon_coach_id() and auteur = 'client');
+create policy "coach : retire son message" on public.messages for delete using (coach_id = public.mon_coach_id() and auteur = 'coach');
+
+revoke all on public.messages from public, anon, authenticated;
+grant select, delete on public.messages to authenticated;
+-- La date d'envoi et le « lu » ne se choisissent pas à l'envoi.
+grant insert (id, coach_id, client_id, auteur, texte, piece_chemin, piece_type, piece_taille, piece_duree_s) on public.messages to authenticated;
+-- Seul le « lu » change ensuite.
+grant update (lu_le) on public.messages to authenticated;
+
+-- Fils du coach : un par client actif, avec le dernier message et le nombre de messages non lus.
+create function public.conversations_coach()
+returns table (client_id uuid, prenom text, nom text, dernier_texte text, dernier_type text, dernier_auteur text, dernier_le timestamptz, non_lus integer)
+language sql stable security invoker set search_path = public as $$
+  select c.id, c.prenom, c.nom, d.texte, d.piece_type, d.auteur, d.cree_le,
+    (select count(*)::int from messages m where m.client_id = c.id and m.auteur = 'client' and m.lu_le is null)
+  from clients c
+  left join lateral (
+    select m.texte, m.piece_type, m.auteur, m.cree_le from messages m where m.client_id = c.id order by m.cree_le desc limit 1
+  ) d on true
+  where c.coach_id = public.mon_coach_id() and c.actif and c.user_id is not null
+  order by d.cree_le desc nulls last, c.prenom
+$$;
+revoke execute on function public.conversations_coach() from public, anon;
+grant execute on function public.conversations_coach() to authenticated;
+
+-- Ménage du coach : ses vidéos de plus de 30 jours, dont l'appli vient d'effacer les fichiers.
+create function public.marquer_videos_expirees(p_ids uuid[]) returns void
+language sql security definer set search_path = public as $$
+  update messages set piece_chemin = null, piece_expiree = true
+  where id = any (p_ids) and coach_id = public.mon_coach_id() and piece_type like 'video/%' and cree_le < now() - interval '30 days'
+$$;
+revoke execute on function public.marquer_videos_expirees(uuid[]) from public, anon;
+grant execute on function public.marquer_videos_expirees(uuid[]) to authenticated;
+
+-- Pièces jointes : compartiment privé, 25 Mo au plus par fichier.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('messagerie', 'messagerie', false, 26214400,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/heic',
+        'video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp',
+        'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/aac', 'audio/mpeg', 'audio/webm', 'audio/ogg', 'audio/wav'])
+on conflict (id) do nothing;
+
+create policy "messagerie : le client dépose dans son dossier" on storage.objects for insert to authenticated
+  with check (bucket_id = 'messagerie' and (storage.foldername(name))[1] = public.mon_client_id()::text);
+create policy "messagerie : le client lit son dossier" on storage.objects for select to authenticated
+  using (bucket_id = 'messagerie' and (storage.foldername(name))[1] = public.mon_client_id()::text);
+create policy "messagerie : le client efface ses fichiers" on storage.objects for delete to authenticated
+  using (bucket_id = 'messagerie' and (storage.foldername(name))[1] = public.mon_client_id()::text);
+create policy "messagerie : le coach dépose" on storage.objects for insert to authenticated
+  with check (bucket_id = 'messagerie' and public.dossier_video_de_mon_client(name));
+create policy "messagerie : le coach lit" on storage.objects for select to authenticated
+  using (bucket_id = 'messagerie' and public.dossier_video_de_mon_client(name));
+create policy "messagerie : le coach efface" on storage.objects for delete to authenticated
+  using (bucket_id = 'messagerie' and public.dossier_video_de_mon_client(name));
+
+-- Jetons de notification : un téléphone appartient au dernier compte qui s'y est connecté.
+create table public.appareils_push (
+  jeton text primary key check (length(jeton) between 10 and 300),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  plateforme text check (plateforme in ('ios', 'android')),
+  maj_le timestamptz not null default now()
+);
+create index on public.appareils_push (user_id);
+alter table public.appareils_push enable row level security;
+create policy "appareils : les miens" on public.appareils_push for select using (user_id = auth.uid());
+revoke all on public.appareils_push from public, anon, authenticated;
+grant select on public.appareils_push to authenticated;
+
+create function public.enregistrer_appareil(p_jeton text, p_plateforme text) returns void
+language sql security definer set search_path = public as $$
+  insert into appareils_push (jeton, user_id, plateforme, maj_le) values (p_jeton, auth.uid(), p_plateforme, now())
+  on conflict (jeton) do update set user_id = excluded.user_id, plateforme = excluded.plateforme, maj_le = now()
+$$;
+create function public.oublier_appareil(p_jeton text) returns void
+language sql security definer set search_path = public as $$
+  delete from appareils_push where jeton = p_jeton and user_id = auth.uid()
+$$;
+revoke execute on function public.enregistrer_appareil(text, text) from public, anon;
+grant execute on function public.enregistrer_appareil(text, text) to authenticated;
+revoke execute on function public.oublier_appareil(text) from public, anon;
+grant execute on function public.oublier_appareil(text) to authenticated;
+
+
+-- ===== 20261103160000_notifier_questionnaire.sql =====
+-- Le coach est prévenu sur son téléphone dès qu'une réponse au questionnaire arrive (Tally ou questionnaire de l'app).
+-- Un déclencheur appelle la fonction Edge « notifier-questionnaire » (pg_net, appel asynchrone : la réception de la
+-- réponse n'attend pas et n'échoue jamais à cause de la notification). notifie_le évite toute double notification.
+
+-- pg_net existe sur Supabase ; ailleurs (base de test), on s'en passe : le déclencheur ne fait alors rien.
+do $$ begin
+  if exists (select 1 from pg_available_extensions where name = 'pg_net') then create extension if not exists pg_net; end if;
+end $$;
+
+alter table public.questionnaires add column if not exists notifie_le timestamptz;
+-- Les réponses déjà reçues ne déclenchent rien.
+update public.questionnaires set notifie_le = recu_le where notifie_le is null;
+
+create or replace function public._prevenir_coach_questionnaire() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  perform net.http_post(
+    url := 'https://rxkclcytevhtbpcdozdv.supabase.co/functions/v1/notifier-questionnaire',
+    headers := jsonb_build_object('Content-Type', 'application/json'),
+    body := jsonb_build_object('id', new.id)
+  );
+  return new;
+exception when others then
+  -- Jamais bloquer l'enregistrement d'une réponse pour une notification.
+  return new;
+end $$;
+revoke execute on function public._prevenir_coach_questionnaire() from public, anon, authenticated;
+
+drop trigger if exists prevenir_coach_questionnaire on public.questionnaires;
+create trigger prevenir_coach_questionnaire after insert on public.questionnaires
+  for each row execute function public._prevenir_coach_questionnaire();
+
+
+-- ===== 20261104000000_formules_paiement.sql =====
+-- Formules du site, remise exceptionnelle et paiement par Stripe.
+-- · formule : Appli (59 €), Appli + nutrition (99 €), Hybride léger (149 €), Hybride complet (269 €) ; null = réglage sur mesure.
+--   La formule règle les droits déjà en place (acces_appli, option_nutrition, videos_mois) : rien ne change pour les règles d'accès.
+-- · remise_* : remise accordée par le coach, en % (100 % = offert) ou en euros par mois, avec un motif affiché au client.
+-- · paiement : 'manuel' (le coach encaisse et coche « Payé ») ou 'stripe' (prélèvement mensuel, tenu à jour par Stripe).
+-- Rien n'est payé dans l'appli : le lien de paiement Stripe part par message, e-mail ou WhatsApp.
+
+alter table public.clients
+  add column formule text check (formule in ('appli', 'appli_nutrition', 'hybride_leger', 'hybride_complet')),
+  add column remise_type text check (remise_type in ('pourcent', 'montant')),
+  add column remise_valeur numeric(8, 2) check (remise_valeur is null or remise_valeur > 0),
+  add column remise_motif text check (remise_motif is null or length(remise_motif) <= 80),
+  add column remise_jusqu_au date,
+  add column paiement text not null default 'manuel' check (paiement in ('manuel', 'stripe')),
+  add column statut_stripe text check (
+    statut_stripe in ('incomplete', 'incomplete_expired', 'trialing', 'active', 'past_due', 'canceled', 'unpaid', 'paused')
+  ),
+  add column stripe_client text,
+  add column stripe_abonnement text,
+  add column prochaine_echeance date,
+  add constraint clients_remise_complete check ((remise_type is null) = (remise_valeur is null)),
+  add constraint clients_remise_max check (remise_type is distinct from 'pourcent' or remise_valeur <= 100);
+
+create unique index clients_stripe_abonnement on public.clients (stripe_abonnement) where stripe_abonnement is not null;
+
+-- Les identifiants Stripe ne s'écrivent que côté serveur (fonctions stripe-webhook et abonnement-stripe) :
+-- le coach règle la formule et la remise, jamais l'état du prélèvement.
+create function public.proteger_champs_stripe() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  if current_user = 'authenticated' and (
+    new.statut_stripe is distinct from old.statut_stripe
+    or new.stripe_client is distinct from old.stripe_client
+    or new.stripe_abonnement is distinct from old.stripe_abonnement
+    or new.prochaine_echeance is distinct from old.prochaine_echeance
+  ) then
+    raise exception 'L’état du prélèvement est tenu par Stripe.' using errcode = '42501';
+  end if;
+  return new;
+end
+$$;
+create trigger clients_proteger_champs_stripe before update on public.clients
+  for each row execute function public.proteger_champs_stripe();
+
+-- Séances incluses dans la formule (Hybride) : un pack crédité par mois, jamais deux fois le même mois.
+alter table public.packs_seances add column reference text;
+create unique index packs_seances_une_par_mois on public.packs_seances (client_id, reference) where reference is not null;
+
+-- Événements Stripe déjà traités : Stripe peut renvoyer le même deux fois.
+create table public.stripe_evenements (
+  id text primary key,
+  type text not null,
+  recu_le timestamptz not null default now()
+);
+alter table public.stripe_evenements enable row level security;
+revoke all on public.stripe_evenements from anon, authenticated;
+
+
+-- ===== 20261105000000_offres_coachs.sql =====
+-- Chaque coach crée ses offres et fixe ses prix, et ses clients le paient directement (Stripe Connect).
+-- · offres : nom, prix, durée (mois, trimestre, année ou paiement unique) et contenu coché
+--   (programme dans l'appli, nutrition complète, messagerie, vidéos corrigées, séances avec le coach, essai gratuit).
+-- · coachs.stripe_compte : le compte Stripe du coach (ouvert depuis l'appli), où arrive l'argent de ses clients.
+-- · clients.offre_id / offre_prix : l'offre du client et le prix qu'il paie. Quand le coach change le prix d'une offre,
+--   ceux qui sont déjà abonnés gardent leur prix (offre_prix ne bouge pas, et Stripe garde l'ancien tarif).
+-- Les 4 formules d'avant deviennent les offres de départ des coachs déjà inscrits, qu'ils modifient à leur guise.
+
+create table public.offres (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  -- Modèle de départ choisi par le coach (sert seulement à pré-remplir et à l'icône).
+  modele text not null default 'libre' check (modele in ('en_ligne', 'hybride', 'presentiel', 'seances', 'libre')),
+  nom text not null check (length(btrim(nom)) between 1 and 60),
+  accroche text check (accroche is null or length(accroche) <= 140),
+  prix numeric(8, 2) not null check (prix >= 0 and prix <= 10000),
+  periodicite text not null default 'mois' check (periodicite in ('mois', 'trimestre', 'annee', 'unique')),
+  acces_appli boolean not null default true,
+  nutrition boolean not null default false,
+  messagerie boolean not null default true,
+  videos_mois integer not null default 0 check (videos_mois between 0 and 30),
+  -- Séances avec le coach : par période pour un abonnement, dans le pack pour un paiement unique.
+  seances integer not null default 0 check (seances between 0 and 100),
+  essai_jours integer not null default 0 check (essai_jours between 0 and 60),
+  active boolean not null default true,
+  ordre integer not null default 0,
+  -- Tenus par le serveur : produit et prix sur le compte Stripe du coach, et ce que ce prix facture.
+  stripe_produit text,
+  stripe_prix text,
+  stripe_prix_cle text,
+  cree_le timestamptz not null default now(),
+  constraint offres_unique_sans_option check (periodicite <> 'unique' or (not acces_appli and not nutrition and videos_mois = 0 and essai_jours = 0 and seances > 0))
+);
+create index on public.offres (coach_id, ordre);
+
+alter table public.offres enable row level security;
+create policy "coach : ses offres" on public.offres for all
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+create policy "client : les offres de son coach" on public.offres for select
+  using (active and coach_id = public.coach_de_mon_client());
+grant select on public.offres to authenticated;
+grant insert (coach_id, modele, nom, accroche, prix, periodicite, acces_appli, nutrition, messagerie, videos_mois, seances, essai_jours, active, ordre)
+  on public.offres to authenticated;
+grant update (modele, nom, accroche, prix, periodicite, acces_appli, nutrition, messagerie, videos_mois, seances, essai_jours, active, ordre)
+  on public.offres to authenticated;
+grant delete on public.offres to authenticated;
+
+-- Compte Stripe du coach : écrit seulement par le serveur (aucun droit de modification côté appli).
+alter table public.coachs
+  add column stripe_compte text unique,
+  add column stripe_pret boolean not null default false;
+
+alter table public.clients
+  add column offre_id uuid references public.offres (id) on delete set null,
+  add column offre_prix numeric(8, 2) check (offre_prix is null or offre_prix >= 0);
+create index on public.clients (offre_id);
+
+-- Le coach ne rattache un client qu'à ses propres offres.
+create function public.verifier_offre_client() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  if new.offre_id is not null and new.offre_id is distinct from old.offre_id
+     and not exists (select 1 from public.offres o where o.id = new.offre_id and o.coach_id = new.coach_id) then
+    raise exception 'Cette offre n’est pas à toi.' using errcode = '42501';
+  end if;
+  return new;
+end
+$$;
+create trigger clients_verifier_offre before insert or update of offre_id on public.clients
+  for each row execute function public.verifier_offre_client();
+
+-- Offres de départ des coachs déjà inscrits : les 4 formules d'avant, avec leurs prix.
+insert into public.offres (coach_id, modele, nom, accroche, prix, periodicite, acces_appli, nutrition, messagerie, videos_mois, seances, ordre)
+select c.id, f.modele, f.nom, f.accroche, f.prix, 'mois', true, f.nutrition, true, f.videos, f.seances, f.ordre
+from public.coachs c
+cross join (values
+  ('en_ligne', 'Appli', 'Pour t’entraîner seul, bien guidé.', 59, false, 0, 0, 1),
+  ('en_ligne', 'Appli + nutrition', 'Pour des résultats aussi dans l’assiette.', 99, true, 0, 0, 2),
+  ('hybride', 'Hybride léger', 'Pour garder le contact avec ton coach.', 149, true, 0, 1, 3),
+  ('hybride', 'Hybride complet', 'Pour progresser vite, aux côtés de ton coach.', 269, true, 2, 4, 4)
+) as f (modele, nom, accroche, prix, nutrition, videos, seances, ordre);
+
+-- Chaque client garde ce qu'il a : sa formule s'il en avait une, sinon l'offre qui correspond à ses accès, au même prix.
+update public.clients k set offre_id = o.id, offre_prix = o.prix
+from public.offres o
+where o.coach_id = k.coach_id and k.acces_appli and o.nom = case k.formule
+  when 'appli' then 'Appli'
+  when 'appli_nutrition' then 'Appli + nutrition'
+  when 'hybride_leger' then 'Hybride léger'
+  when 'hybride_complet' then 'Hybride complet'
+  else case when k.option_nutrition then 'Appli + nutrition' else 'Appli' end
+end;
+
+
+-- ===== 20261106000000_factures.sql =====
+-- Factures du coach, à ses couleurs et avec sa numérotation par client (RT38, BT1, GT11…).
+-- · À chaque prélèvement Stripe réussi, la ligne « Payé » de la Gestion reçoit sa facture, sans rien à faire.
+-- · Pour un paiement encaissé à la main, le coach la crée d'un bouton.
+-- Une facture émise ne change plus : l'émetteur, le client et les lignes y sont recopiés au moment de l'émission.
+
+-- ---------- En-tête du coach ----------
+alter table public.coachs
+  add column facture_nom text,
+  add column facture_adresse text,
+  add column facture_telephone text,
+  add column facture_siret text check (facture_siret is null or facture_siret ~ '^[0-9]{14}$'),
+  add column facture_mentions text not null default
+    'Dispensé d’immatriculation au registre du commerce et des sociétés (RCS) et au répertoire des métiers (RM)' || chr(10) ||
+    'TVA non applicable, art. 293 B du CGI',
+  add column facture_couleur text not null default '#D71920' check (facture_couleur ~ '^#[0-9A-Fa-f]{6}$'),
+  -- Image en data URL, réduite par l'appli.
+  add column facture_logo text check (facture_logo is null or length(facture_logo) <= 400000);
+
+grant update (facture_nom, facture_adresse, facture_telephone, facture_siret, facture_mentions, facture_couleur, facture_logo)
+  on public.coachs to authenticated;
+
+-- ---------- Numérotation et destinataire, client par client ----------
+alter table public.clients
+  add column facture_prefixe text check (facture_prefixe is null or facture_prefixe ~ '^[A-Z0-9]{1,10}$'),
+  add column facture_prochain integer not null default 1 check (facture_prochain between 1 and 999999),
+  -- À qui est adressée la facture quand ce n'est pas le client lui-même (société, parent…).
+  add column facture_nom text;
+
+-- ---------- Factures ----------
+create table public.factures (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coachs (id) on delete cascade,
+  client_id uuid references public.clients (id) on delete set null,
+  paiement_id uuid unique references public.paiements (id) on delete set null,
+  numero text not null,
+  date date not null,
+  objet text not null,
+  -- { nom, adresse, telephone, siret, mentions }
+  emetteur jsonb not null,
+  -- { nom, adresse }
+  destinataire jsonb not null,
+  -- [{ libelle, quantite, prix_unitaire, montant }]
+  lignes jsonb not null,
+  total numeric(12, 2) not null check (total >= 0),
+  moyen text,
+  paye_le date,
+  cree_le timestamptz not null default now(),
+  unique (coach_id, numero)
+);
+create index factures_client on public.factures (client_id, date desc);
+
+alter table public.factures enable row level security;
+create policy "coach : ses factures" on public.factures for select using (coach_id = public.mon_coach_id());
+create policy "client : ses factures" on public.factures for select using (client_id = public.mon_client_id());
+grant select on public.factures to authenticated;
+-- Aucune écriture directe : seule facturer_paiement() émet une facture.
+
+-- Lignes déduites du paiement : « Prix 269 €, remise 269 € » (noté par le prélèvement Stripe) devient le prix et la remise.
+create function public.lignes_facture(p public.paiements, motif text) returns jsonb
+language plpgsql immutable set search_path = public as $$
+declare
+  libelle text := btrim(regexp_replace(p.titre, ' · .*$', ''));
+  m text[] := regexp_match(coalesce(p.notes, ''), 'Prix ([0-9]+(?:\.[0-9]+)?) €, remise ([0-9]+(?:\.[0-9]+)?) €');
+  prix numeric := coalesce(m[1]::numeric, p.montant, 0);
+  remise numeric := coalesce(m[2]::numeric, 0);
+begin
+  if libelle = '' then libelle := 'Coaching'; end if;
+  return jsonb_build_array(jsonb_build_object('libelle', libelle, 'quantite', 1, 'prix_unitaire', prix, 'montant', prix))
+    || case when remise > 0 then jsonb_build_array(jsonb_build_object(
+         'libelle', 'Remise' || case when coalesce(btrim(motif), '') <> '' then ' · ' || btrim(motif) else '' end,
+         'quantite', 1, 'prix_unitaire', -remise, 'montant', -remise)) else '[]'::jsonb end;
+end $$;
+
+-- Émet la facture d'un paiement « Payé » (une seule par paiement) et avance la numérotation du client.
+-- Appelée par le déclencheur des prélèvements Stripe, ou par le coach pour un paiement encaissé à la main.
+create function public.facturer_paiement(p_paiement uuid) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  p public.paiements;
+  c public.clients;
+  k public.contacts;
+  co public.coachs;
+  v_id uuid;
+  v_client uuid;
+  v_prefixe text;
+  v_num integer;
+  v_numero text;
+begin
+  select * into p from public.paiements where id = p_paiement;
+  if not found or (auth.uid() is not null and p.coach_id is distinct from public.mon_coach_id()) then
+    raise exception 'Paiement introuvable.';
+  end if;
+  select id into v_id from public.factures where paiement_id = p.id;
+  if found then return v_id; end if;
+  if p.statut is distinct from 'Payé' or p.montant is null then
+    raise exception 'Seul un paiement « Payé » avec un montant se facture.';
+  end if;
+
+  select * into k from public.contacts where id = p.contact_id;
+  v_client := coalesce(k.client_id, (substring(p.reference from '([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$'))::uuid);
+  -- Verrou : deux factures en même temps ne prennent pas le même numéro.
+  select * into c from public.clients where id = v_client and coach_id = p.coach_id for update;
+  if not found then raise exception 'Relie ce paiement à un client pour le facturer.'; end if;
+  if k.id is null then select * into k from public.contacts where client_id = c.id limit 1; end if;
+  select * into co from public.coachs where id = p.coach_id;
+
+  v_prefixe := coalesce(c.facture_prefixe,
+    nullif(upper(left(coalesce(nullif(c.prenom, ''), k.prenom, ''), 1) || left(coalesce(nullif(c.nom, ''), k.nom, ''), 1)), ''), 'F');
+  v_num := c.facture_prochain;
+  -- Numéro déjà pris (deux clients au même préfixe) : on passe au suivant.
+  while exists (select 1 from public.factures where coach_id = p.coach_id and numero = v_prefixe || v_num) loop
+    v_num := v_num + 1;
+  end loop;
+  v_numero := v_prefixe || v_num;
+  update public.clients set facture_prochain = v_num + 1 where id = c.id;
+
+  insert into public.factures (coach_id, client_id, paiement_id, numero, date, objet, emetteur, destinataire, lignes, total, moyen, paye_le)
+  values (
+    p.coach_id, c.id, p.id, v_numero, coalesce(p.date, current_date),
+    btrim(regexp_replace(p.titre, ' · .*$', '')),
+    jsonb_build_object('nom', coalesce(nullif(co.facture_nom, ''), co.nom), 'adresse', co.facture_adresse,
+      'telephone', co.facture_telephone, 'siret', co.facture_siret, 'mentions', co.facture_mentions),
+    jsonb_build_object('nom', coalesce(nullif(c.facture_nom, ''), btrim(coalesce(nullif(c.prenom, ''), k.prenom, '') || ' ' || coalesce(nullif(c.nom, ''), k.nom, ''))),
+      'adresse', coalesce(nullif(c.adresse, ''), k.adresse)),
+    public.lignes_facture(p, c.remise_motif),
+    p.montant, p.moyen, coalesce(p.date, current_date))
+  returning id into v_id;
+  return v_id;
+end $$;
+
+revoke execute on function public.facturer_paiement(uuid) from public;
+grant execute on function public.facturer_paiement(uuid) to authenticated;
+
+-- Prélèvement Stripe réussi : facture émise d'office. Un souci de facture ne bloque jamais l'enregistrement du paiement.
+create function public.facturer_prelevement() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.statut = 'Payé' and new.moyen = 'Stripe' and new.montant is not null
+     and not exists (select 1 from public.factures where paiement_id = new.id) then
+    begin
+      perform public.facturer_paiement(new.id);
+    exception when others then
+      raise warning 'Facture non émise pour le paiement % : %', new.id, sqlerrm;
+    end;
+  end if;
+  return new;
+end $$;
+
+create trigger paiements_facturer_prelevement after insert or update of statut, montant on public.paiements
+  for each row execute function public.facturer_prelevement();
+
+
+-- ===== 20261107000000_factures_auto.sql =====
+-- Factures émises d'office pour toutes les lignes que l'appli prépare elle-même, pas seulement les prélèvements Stripe :
+-- mois d'abonnement (y compris offerts, réglés à 0 €), packs de séances et achats d'offre, dès qu'ils passent à « Payé ».
+-- Les paiements saisis à la main par le coach restent facturés d'un bouton (il peut encore corriger le montant).
+-- L'objet de la facture nomme l'offre du client (« Abonnement 11/2026 · Hybride complet »).
+
+create or replace function public.facture_automatique(p public.paiements) returns boolean
+language sql immutable set search_path = public as $$
+  select p.statut = 'Payé' and p.montant is not null
+    and (p.moyen = 'Stripe' or p.reference like 'abonnement:%' or p.reference like 'pack:%' or p.reference like 'achat:%')
+$$;
+
+create or replace function public.facturer_prelevement() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if public.facture_automatique(new) and not exists (select 1 from public.factures where paiement_id = new.id) then
+    begin
+      perform public.facturer_paiement(new.id);
+    exception when others then
+      raise warning 'Facture non émise pour le paiement % : %', new.id, sqlerrm;
+    end;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists paiements_facturer_prelevement on public.paiements;
+create trigger paiements_facturer_prelevement after insert or update of statut, montant, moyen on public.paiements
+  for each row execute function public.facturer_prelevement();
+
+-- Libellé : le titre du paiement sans le prénom, complété du nom de l'offre pour un mois d'abonnement.
+drop function public.lignes_facture(public.paiements, text);
+create function public.lignes_facture(p public.paiements, motif text, libelle text) returns jsonb
+language plpgsql immutable set search_path = public as $$
+declare
+  m text[] := regexp_match(coalesce(p.notes, ''), 'Prix ([0-9]+(?:\.[0-9]+)?) €, remise ([0-9]+(?:\.[0-9]+)?) €');
+  prix numeric := coalesce(m[1]::numeric, p.montant, 0);
+  remise numeric := coalesce(m[2]::numeric, 0);
+begin
+  if coalesce(libelle, '') = '' then libelle := 'Coaching'; end if;
+  return jsonb_build_array(jsonb_build_object('libelle', libelle, 'quantite', 1, 'prix_unitaire', prix, 'montant', prix))
+    || case when remise > 0 then jsonb_build_array(jsonb_build_object(
+         'libelle', 'Remise' || case when coalesce(btrim(motif), '') <> '' then ' · ' || btrim(motif) else '' end,
+         'quantite', 1, 'prix_unitaire', -remise, 'montant', -remise)) else '[]'::jsonb end;
+end $$;
+
+create or replace function public.facturer_paiement(p_paiement uuid) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  p public.paiements;
+  c public.clients;
+  k public.contacts;
+  co public.coachs;
+  v_id uuid;
+  v_client uuid;
+  v_prefixe text;
+  v_num integer;
+  v_numero text;
+  v_objet text;
+  v_offre text;
+begin
+  select * into p from public.paiements where id = p_paiement;
+  if not found or (auth.uid() is not null and p.coach_id is distinct from public.mon_coach_id()) then
+    raise exception 'Paiement introuvable.';
+  end if;
+  select id into v_id from public.factures where paiement_id = p.id;
+  if found then return v_id; end if;
+  if p.statut is distinct from 'Payé' or p.montant is null then
+    raise exception 'Seul un paiement « Payé » avec un montant se facture.';
+  end if;
+
+  select * into k from public.contacts where id = p.contact_id;
+  v_client := coalesce(k.client_id, (substring(p.reference from '([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$'))::uuid);
+  -- Verrou : deux factures en même temps ne prennent pas le même numéro.
+  select * into c from public.clients where id = v_client and coach_id = p.coach_id for update;
+  if not found then raise exception 'Relie ce paiement à un client pour le facturer.'; end if;
+  if k.id is null then select * into k from public.contacts where client_id = c.id limit 1; end if;
+  select * into co from public.coachs where id = p.coach_id;
+
+  v_objet := btrim(regexp_replace(p.titre, ' · .*$', ''));
+  if p.reference like 'abonnement:%' then
+    select o.nom into v_offre from public.offres o where o.id = c.offre_id;
+    if v_offre is not null and position(v_offre in v_objet) = 0 then v_objet := v_objet || ' · ' || v_offre; end if;
+  end if;
+
+  v_prefixe := coalesce(c.facture_prefixe,
+    nullif(upper(left(coalesce(nullif(c.prenom, ''), k.prenom, ''), 1) || left(coalesce(nullif(c.nom, ''), k.nom, ''), 1)), ''), 'F');
+  v_num := c.facture_prochain;
+  -- Numéro déjà pris (deux clients au même préfixe) : on passe au suivant.
+  while exists (select 1 from public.factures where coach_id = p.coach_id and numero = v_prefixe || v_num) loop
+    v_num := v_num + 1;
+  end loop;
+  v_numero := v_prefixe || v_num;
+  update public.clients set facture_prochain = v_num + 1 where id = c.id;
+
+  insert into public.factures (coach_id, client_id, paiement_id, numero, date, objet, emetteur, destinataire, lignes, total, moyen, paye_le)
+  values (
+    p.coach_id, c.id, p.id, v_numero, coalesce(p.date, current_date), v_objet,
+    jsonb_build_object('nom', coalesce(nullif(co.facture_nom, ''), co.nom), 'adresse', co.facture_adresse,
+      'telephone', co.facture_telephone, 'siret', co.facture_siret, 'mentions', co.facture_mentions),
+    jsonb_build_object('nom', coalesce(nullif(c.facture_nom, ''), btrim(coalesce(nullif(c.prenom, ''), k.prenom, '') || ' ' || coalesce(nullif(c.nom, ''), k.nom, ''))),
+      'adresse', coalesce(nullif(c.adresse, ''), k.adresse)),
+    public.lignes_facture(p, c.remise_motif, v_objet),
+    p.montant, p.moyen, coalesce(p.date, current_date))
+  returning id into v_id;
+  return v_id;
+end $$;
+
+-- Lignes déjà réglées avant cette règle : facturées maintenant, une fois.
+do $$
+declare r record;
+begin
+  for r in select p.id from public.paiements p
+           where public.facture_automatique(p) and not exists (select 1 from public.factures f where f.paiement_id = p.id)
+           order by p.date, p.cree_le
+  loop
+    begin
+      perform public.facturer_paiement(r.id);
+    exception when others then
+      raise warning 'Facture non émise pour le paiement % : %', r.id, sqlerrm;
+    end;
+  end loop;
+end $$;
+
+
+-- ===== 20261108000000_offre_conseil.sql =====
+-- « Mon conseil » : l'offre que le coach met en avant (badge sur la brochure et pour ses clients).
+alter table public.offres add column if not exists conseil boolean not null default false;
+grant insert (conseil), update (conseil) on public.offres to authenticated;
+
+-- Sylvain conseillait déjà l'Hybride léger sur son tract.
+update public.offres set conseil = true
+where coach_id = 'db277d8d-1f4c-43b1-99d2-dcc69391308e' and nom ilike 'hybride l%ger' and active
+  and not exists (select 1 from public.offres where coach_id = 'db277d8d-1f4c-43b1-99d2-dcc69391308e' and conseil);
+
+
+-- ===== 20261109000000_factures_a_regler.sql =====
+-- Facture « à régler » : le coach peut facturer une ligne « En attente » pour l'envoyer comme demande de paiement.
+-- · La facture porte « À régler » tant que la ligne n'est pas payée ; quand elle passe à « Payé », la date et le moyen
+--   de règlement y sont notés (le reste de la facture ne change pas).
+-- · Les séances du mois notées « 06/10, 08/10 · 50 € la séance » (ou « Seul (40 €) : … · Avec Romain (20 €) : … »)
+--   deviennent des lignes détaillées : quantité × prix de la séance.
+
+-- Les séances du mois (référence « mois:AAAA-MM:<client> ») reçoivent leur facture d'office, même « En attente » :
+-- le coach la retrouve dans la fiche du client et dans Paiements, prête à envoyer.
+create or replace function public.facture_automatique(p public.paiements) returns boolean
+language sql immutable set search_path = public as $$
+  select p.montant is not null and (
+    (p.statut = 'Payé' and (p.moyen = 'Stripe' or p.reference like 'abonnement:%' or p.reference like 'pack:%' or p.reference like 'achat:%'))
+    or (p.statut in ('Payé', 'En attente') and p.reference like 'mois:%'))
+$$;
+
+-- Lignes détaillées des séances, ou null si les notes ne suivent pas ce format (ou ne retombent pas sur le montant).
+create function public.lignes_seances(p public.paiements) returns jsonb
+language plpgsql immutable set search_path = public as $$
+declare
+  n text := btrim(coalesce(p.notes, ''));
+  m text[];
+  seg text;
+  lignes jsonb := '[]'::jsonb;
+  total numeric := 0;
+  qte integer;
+begin
+  if n = '' or p.montant is null then return null; end if;
+  -- « 06/10, 08/10 · 50 € la séance »
+  m := regexp_match(n, '^([0-9/, ]+) · ([0-9]+(?:[.,][0-9]+)?) € la séance$');
+  if m is not null then
+    qte := array_length(regexp_split_to_array(btrim(m[1]), '\s*,\s*'), 1);
+    lignes := jsonb_build_array(jsonb_build_object('libelle', 'Séances du ' || btrim(m[1]), 'quantite', qte,
+      'prix_unitaire', replace(m[2], ',', '.')::numeric, 'montant', qte * replace(m[2], ',', '.')::numeric));
+    total := qte * replace(m[2], ',', '.')::numeric;
+  else
+    -- « Seul (40 €) : 02/10, 09/10 · Avec Romain (20 €) : 06/10 »
+    foreach seg in array regexp_split_to_array(n, '\s+·\s+') loop
+      m := regexp_match(btrim(seg), '^(.+?) \(([0-9]+(?:[.,][0-9]+)?) €\) : ([0-9/, ]+)$');
+      if m is null then return null; end if;
+      qte := array_length(regexp_split_to_array(btrim(m[3]), '\s*,\s*'), 1);
+      lignes := lignes || jsonb_build_array(jsonb_build_object('libelle', 'Séances ' || lower(left(m[1], 1)) || substr(m[1], 2) || ' : ' || btrim(m[3]),
+        'quantite', qte, 'prix_unitaire', replace(m[2], ',', '.')::numeric, 'montant', qte * replace(m[2], ',', '.')::numeric));
+      total := total + qte * replace(m[2], ',', '.')::numeric;
+    end loop;
+  end if;
+  if total <> p.montant then return null; end if;
+  return lignes;
+end $$;
+
+create or replace function public.facturer_paiement(p_paiement uuid) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  p public.paiements;
+  c public.clients;
+  k public.contacts;
+  co public.coachs;
+  v_id uuid;
+  v_client uuid;
+  v_prefixe text;
+  v_num integer;
+  v_numero text;
+  v_objet text;
+  v_offre text;
+  v_paye boolean;
+begin
+  select * into p from public.paiements where id = p_paiement;
+  if not found or (auth.uid() is not null and p.coach_id is distinct from public.mon_coach_id()) then
+    raise exception 'Paiement introuvable.';
+  end if;
+  select id into v_id from public.factures where paiement_id = p.id;
+  if found then return v_id; end if;
+  if p.statut not in ('Payé', 'En attente') or p.montant is null then
+    raise exception 'Seul un paiement « Payé » ou « En attente », avec un montant, se facture.';
+  end if;
+  v_paye := p.statut = 'Payé';
+
+  select * into k from public.contacts where id = p.contact_id;
+  v_client := coalesce(k.client_id, (substring(p.reference from '([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$'))::uuid);
+  -- Verrou : deux factures en même temps ne prennent pas le même numéro.
+  select * into c from public.clients where id = v_client and coach_id = p.coach_id for update;
+  if not found then raise exception 'Relie ce paiement à un client pour le facturer.'; end if;
+  if k.id is null then select * into k from public.contacts where client_id = c.id limit 1; end if;
+  select * into co from public.coachs where id = p.coach_id;
+
+  v_objet := btrim(regexp_replace(p.titre, ' · .*$', ''));
+  if p.reference like 'abonnement:%' then
+    select o.nom into v_offre from public.offres o where o.id = c.offre_id;
+    if v_offre is not null and position(v_offre in v_objet) = 0 then v_objet := v_objet || ' · ' || v_offre; end if;
+  end if;
+
+  v_prefixe := coalesce(c.facture_prefixe,
+    nullif(upper(left(coalesce(nullif(c.prenom, ''), k.prenom, ''), 1) || left(coalesce(nullif(c.nom, ''), k.nom, ''), 1)), ''), 'F');
+  v_num := c.facture_prochain;
+  -- Numéro déjà pris (deux clients au même préfixe) : on passe au suivant.
+  while exists (select 1 from public.factures where coach_id = p.coach_id and numero = v_prefixe || v_num) loop
+    v_num := v_num + 1;
+  end loop;
+  v_numero := v_prefixe || v_num;
+  update public.clients set facture_prochain = v_num + 1 where id = c.id;
+
+  insert into public.factures (coach_id, client_id, paiement_id, numero, date, objet, emetteur, destinataire, lignes, total, moyen, paye_le)
+  values (
+    p.coach_id, c.id, p.id, v_numero,
+    -- Facture à régler : datée du jour où elle est émise.
+    case when v_paye then coalesce(p.date, current_date) else current_date end,
+    v_objet,
+    jsonb_build_object('nom', coalesce(nullif(co.facture_nom, ''), co.nom), 'adresse', co.facture_adresse,
+      'telephone', co.facture_telephone, 'siret', co.facture_siret, 'mentions', co.facture_mentions),
+    jsonb_build_object('nom', coalesce(nullif(c.facture_nom, ''), btrim(coalesce(nullif(c.prenom, ''), k.prenom, '') || ' ' || coalesce(nullif(c.nom, ''), k.nom, ''))),
+      'adresse', coalesce(nullif(c.adresse, ''), k.adresse)),
+    coalesce(public.lignes_seances(p), public.lignes_facture(p, c.remise_motif, v_objet)),
+    p.montant,
+    case when v_paye then p.moyen end,
+    case when v_paye then coalesce(p.date, current_date) end)
+  returning id into v_id;
+  return v_id;
+end $$;
+
+-- Ligne payée : facture d'office si besoin, et une facture « à régler » déjà émise reçoit sa date et son moyen de règlement.
+-- Tant qu'elle n'est pas réglée, une facture suit les corrections de sa ligne (montant, détail), sous le même numéro.
+create or replace function public.facturer_prelevement() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  c public.clients;
+begin
+  if tg_op = 'UPDATE' and new.montant is not null
+     and (new.montant, new.notes, new.titre) is distinct from (old.montant, old.notes, old.titre) then
+    select cl.* into c from public.factures f join public.clients cl on cl.id = f.client_id
+      where f.paiement_id = new.id and f.paye_le is null;
+    if found then
+      update public.factures set
+        total = new.montant,
+        objet = btrim(regexp_replace(new.titre, ' · .*$', '')),
+        lignes = coalesce(public.lignes_seances(new), public.lignes_facture(new, c.remise_motif, btrim(regexp_replace(new.titre, ' · .*$', ''))))
+        where paiement_id = new.id and paye_le is null;
+    end if;
+  end if;
+  if new.statut = 'Payé' then
+    update public.factures set paye_le = coalesce(new.date, current_date), moyen = new.moyen
+      where paiement_id = new.id and paye_le is null;
+  end if;
+  if public.facture_automatique(new) and not exists (select 1 from public.factures where paiement_id = new.id) then
+    begin
+      perform public.facturer_paiement(new.id);
+    exception when others then
+      raise warning 'Facture non émise pour le paiement % : %', new.id, sqlerrm;
+    end;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists paiements_facturer_prelevement on public.paiements;
+create trigger paiements_facturer_prelevement after insert or update of statut, montant, moyen, date, notes, titre on public.paiements
+  for each row execute function public.facturer_prelevement();
+
+-- Factures de séances du mois déjà émises sur une seule ligne (quantité 1) : détaillées séance par séance.
+update public.factures f set lignes = public.lignes_seances(p)
+  from public.paiements p
+  where p.id = f.paiement_id and p.reference like 'mois:%' and public.lignes_seances(p) is not null
+    and jsonb_array_length(f.lignes) = 1 and (f.lignes->0->>'quantite')::numeric = 1;
+
+-- Séances du mois déjà notées : facturées maintenant, une fois.
+do $$
+declare r record;
+begin
+  for r in select p.id from public.paiements p
+           where public.facture_automatique(p) and not exists (select 1 from public.factures f where f.paiement_id = p.id)
+           order by p.date, p.cree_le
+  loop
+    begin
+      perform public.facturer_paiement(r.id);
+    exception when others then
+      raise warning 'Facture non émise pour le paiement % : %', r.id, sqlerrm;
+    end;
+  end loop;
+end $$;
+
+-- ---------- Facture du mois : les séances une par une (référence « seance:<rdv>:<client> ») regroupées ----------
+-- Une facture peut couvrir plusieurs lignes de paiement : chaque ligne n'appartient qu'à une facture.
+create table public.factures_paiements (
+  facture_id uuid not null references public.factures (id) on delete cascade,
+  paiement_id uuid primary key references public.paiements (id) on delete cascade
+);
+create index factures_paiements_facture on public.factures_paiements (facture_id);
+alter table public.factures_paiements enable row level security;
+create policy "coach : ses factures" on public.factures_paiements for select
+  using (exists (select 1 from public.factures f where f.id = facture_id and f.coach_id = public.mon_coach_id()));
+grant select on public.factures_paiements to authenticated;
+
+-- Factures déjà liées à une seule ligne : reprises dans la table.
+insert into public.factures_paiements (facture_id, paiement_id)
+  select id, paiement_id from public.factures where paiement_id is not null
+  on conflict do nothing;
+
+-- Toute facture émise d'une ligne y est aussi notée.
+create function public.noter_facture_paiement() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.paiement_id is not null then
+    insert into public.factures_paiements (facture_id, paiement_id) values (new.id, new.paiement_id) on conflict do nothing;
+  end if;
+  return new;
+end $$;
+create trigger factures_noter_paiement after insert on public.factures
+  for each row execute function public.noter_facture_paiement();
+
+-- Facture d'un mois (AAAA-MM) pour un client : toutes ses séances du mois pas encore facturées, une ligne chacune.
+-- Rien à facturer : renvoie null.
+create function public.facturer_mois(p_client uuid, p_mois text) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  c public.clients;
+  k public.contacts;
+  co public.coachs;
+  debut date;
+  v_id uuid;
+  v_prefixe text;
+  v_num integer;
+  v_lignes jsonb;
+  v_total numeric;
+  v_tout_paye boolean;
+  v_dernier date;
+  v_moyen text;
+  v_mois text;
+begin
+  if p_mois !~ '^\d{4}-\d{2}$' then raise exception 'Mois invalide.'; end if;
+  debut := (p_mois || '-01')::date;
+  select * into c from public.clients where id = p_client for update;
+  if not found or (auth.uid() is not null and c.coach_id is distinct from public.mon_coach_id()) then
+    raise exception 'Client introuvable.';
+  end if;
+
+  create temp table if not exists _seances_a_facturer (id uuid, date date, titre text, montant numeric, statut text, moyen text) on commit drop;
+  delete from _seances_a_facturer;
+  insert into _seances_a_facturer
+    select p.id, p.date, p.titre, p.montant, p.statut, p.moyen from public.paiements p
+    where p.coach_id = c.coach_id and p.reference like 'seance:%:' || c.id
+      and p.date >= debut and p.date < (debut + interval '1 month')
+      and p.montant is not null and p.statut in ('Payé', 'En attente')
+      and not exists (select 1 from public.factures_paiements fp where fp.paiement_id = p.id);
+  if not exists (select 1 from _seances_a_facturer) then return null; end if;
+
+  select jsonb_agg(jsonb_build_object('libelle', btrim(regexp_replace(s.titre, ' · [^·]*$', '')), 'quantite', 1,
+           'prix_unitaire', s.montant, 'montant', s.montant) order by s.date),
+         sum(s.montant), bool_and(s.statut = 'Payé'), max(s.date),
+         case when count(distinct coalesce(s.moyen, '')) = 1 then max(s.moyen) end
+    into v_lignes, v_total, v_tout_paye, v_dernier, v_moyen
+    from _seances_a_facturer s;
+
+  select * into k from public.contacts where client_id = c.id limit 1;
+  select * into co from public.coachs where id = c.coach_id;
+  v_prefixe := coalesce(c.facture_prefixe,
+    nullif(upper(left(coalesce(nullif(c.prenom, ''), k.prenom, ''), 1) || left(coalesce(nullif(c.nom, ''), k.nom, ''), 1)), ''), 'F');
+  v_num := c.facture_prochain;
+  while exists (select 1 from public.factures where coach_id = c.coach_id and numero = v_prefixe || v_num) loop
+    v_num := v_num + 1;
+  end loop;
+  update public.clients set facture_prochain = v_num + 1 where id = c.id;
+  v_mois := (array['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'])[extract(month from debut)::int]
+            || ' ' || extract(year from debut)::int;
+
+  insert into public.factures (coach_id, client_id, numero, date, objet, emetteur, destinataire, lignes, total, moyen, paye_le)
+  values (
+    c.coach_id, c.id, v_prefixe || v_num, current_date, 'Séances de ' || v_mois,
+    jsonb_build_object('nom', coalesce(nullif(co.facture_nom, ''), co.nom), 'adresse', co.facture_adresse,
+      'telephone', co.facture_telephone, 'siret', co.facture_siret, 'mentions', co.facture_mentions),
+    jsonb_build_object('nom', coalesce(nullif(c.facture_nom, ''), btrim(coalesce(nullif(c.prenom, ''), k.prenom, '') || ' ' || coalesce(nullif(c.nom, ''), k.nom, ''))),
+      'adresse', coalesce(nullif(c.adresse, ''), k.adresse)),
+    v_lignes, v_total,
+    case when v_tout_paye then v_moyen end,
+    case when v_tout_paye then v_dernier end)
+  returning id into v_id;
+  insert into public.factures_paiements (facture_id, paiement_id) select v_id, id from _seances_a_facturer;
+  return v_id;
+end $$;
+revoke execute on function public.facturer_mois(uuid, text) from public;
+grant execute on function public.facturer_mois(uuid, text) to authenticated;
+
+-- Le 1er de chaque mois : la facture du mois écoulé pour chaque client qui a des séances à facturer.
+create function public._facturer_mois_ecoule() returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  r record;
+  m text := to_char((now() at time zone 'Europe/Paris')::date - interval '1 month', 'YYYY-MM');
+begin
+  for r in select distinct cl.id from public.paiements p
+           join public.clients cl on cl.id::text = split_part(p.reference, ':', 3)
+           where p.reference like 'seance:%' and to_char(p.date, 'YYYY-MM') = m
+  loop
+    begin
+      perform public.facturer_mois(r.id, m);
+    exception when others then
+      raise warning 'Facture du mois non émise pour le client % : %', r.id, sqlerrm;
+    end;
+  end loop;
+end $$;
+revoke execute on function public._facturer_mois_ecoule() from public, anon, authenticated;
+
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.schedule('factures-du-mois', '0 6 1 * *', 'select public._facturer_mois_ecoule()');
+  end if;
+end $$;
+
+-- Une séance réglée : la facture du mois est notée payée quand toutes ses séances le sont.
+create function public.regler_facture_du_mois() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  f uuid;
+begin
+  if new.statut = 'Payé' then
+    select fp.facture_id into f from public.factures_paiements fp join public.factures fa on fa.id = fp.facture_id
+      where fp.paiement_id = new.id and fa.paiement_id is null and fa.paye_le is null;
+    if f is not null and not exists (
+      select 1 from public.factures_paiements fp join public.paiements p on p.id = fp.paiement_id
+      where fp.facture_id = f and p.statut is distinct from 'Payé'
+    ) then
+      update public.factures set paye_le = (select max(p.date) from public.factures_paiements fp join public.paiements p on p.id = fp.paiement_id where fp.facture_id = f),
+        moyen = new.moyen
+        where id = f;
+    end if;
+  end if;
+  return new;
+end $$;
+create trigger paiements_regler_facture_du_mois after update of statut on public.paiements
+  for each row execute function public.regler_facture_du_mois();
+
+
+-- ===== 20261110000000_facture_iban.sql =====
+-- IBAN (et BIC) du coach, imprimés sur chacune de ses factures pour un règlement par virement.
+-- Tarif de base d'une séance : toutes les séances y sont facturées, et un prix plus bas apparaît en remise.
+alter table public.coachs
+  add column facture_tarif_base numeric(8, 2) not null default 60 check (facture_tarif_base between 0 and 10000),
+  add column facture_iban text check (facture_iban is null or facture_iban ~ '^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$'),
+  add column facture_bic text check (facture_bic is null or facture_bic ~ '^[A-Z0-9]{8}([A-Z0-9]{3})?$');
+
+grant update (facture_tarif_base, facture_iban, facture_bic) on public.coachs to authenticated;
+
+-- Détail des lignes d'une facture : séances du mois (d'après les notes) et, désormais, packs de séances
+-- (11 × 60 € au tarif habituel, séance offerte, remise pack = prix payé).
+create or replace function public.lignes_seances(p public.paiements) returns jsonb
+language plpgsql stable set search_path = public as $$
+declare
+  n text := btrim(coalesce(p.notes, ''));
+  m text[];
+  seg text;
+  lignes jsonb := '[]'::jsonb;
+  total numeric := 0;
+  qte integer;
+  pk public.packs_seances;
+  tarif numeric;
+  offertes integer;
+  normal numeric;
+begin
+  if p.montant is null then return null; end if;
+  -- Pack de séances : prix habituel du client × séances, séances offertes, remise, puis le prix du pack.
+  if p.reference like 'pack:%' then
+    select * into pk from public.packs_seances where id::text = substr(p.reference, 6);
+    if not found then return null; end if;
+    select facture_tarif_base into tarif from public.coachs where id = pk.coach_id;
+    offertes := coalesce((regexp_match(coalesce(p.titre, ''), '\+\s*([0-9]+)\s+offerte'))[1]::int, 0);
+    if tarif is null or tarif <= 0 or pk.seances_total <= offertes then return null; end if;
+    normal := pk.seances_total * tarif;
+    if normal <= p.montant then return null; end if;
+    lignes := jsonb_build_array(jsonb_build_object('libelle', 'Séances de coaching au tarif de base', 'quantite', pk.seances_total,
+      'prix_unitaire', tarif, 'montant', normal));
+    if offertes > 0 then
+      lignes := lignes || jsonb_build_array(jsonb_build_object('libelle',
+        case when offertes = 1 then 'Séance offerte' else offertes || ' séances offertes' end,
+        'quantite', offertes, 'prix_unitaire', -tarif, 'montant', -offertes * tarif));
+    end if;
+    if normal - offertes * tarif > p.montant then
+      lignes := lignes || jsonb_build_array(jsonb_build_object('libelle', 'Remise pack', 'quantite', 1,
+        'prix_unitaire', p.montant - (normal - offertes * tarif), 'montant', p.montant - (normal - offertes * tarif)));
+    end if;
+    return lignes;
+  end if;
+  if n = '' then return null; end if;
+  -- « 06/10, 08/10 · 50 € la séance »
+  m := regexp_match(n, '^([0-9/, ]+) · ([0-9]+(?:[.,][0-9]+)?) € la séance$');
+  if m is not null then
+    qte := array_length(regexp_split_to_array(btrim(m[1]), '\s*,\s*'), 1);
+    lignes := jsonb_build_array(jsonb_build_object('libelle', 'Séances du ' || btrim(m[1]), 'quantite', qte,
+      'prix_unitaire', replace(m[2], ',', '.')::numeric, 'montant', qte * replace(m[2], ',', '.')::numeric));
+    total := qte * replace(m[2], ',', '.')::numeric;
+  else
+    -- « Seul (40 €) : 02/10, 09/10 · Avec Romain (20 €) : 06/10 »
+    foreach seg in array regexp_split_to_array(n, '\s+·\s+') loop
+      m := regexp_match(btrim(seg), '^(.+?) \(([0-9]+(?:[.,][0-9]+)?) €\) : ([0-9/, ]+)$');
+      if m is null then return null; end if;
+      qte := array_length(regexp_split_to_array(btrim(m[3]), '\s*,\s*'), 1);
+      lignes := lignes || jsonb_build_array(jsonb_build_object('libelle', 'Séances ' || lower(left(m[1], 1)) || substr(m[1], 2) || ' : ' || btrim(m[3]),
+        'quantite', qte, 'prix_unitaire', replace(m[2], ',', '.')::numeric, 'montant', qte * replace(m[2], ',', '.')::numeric));
+      total := total + qte * replace(m[2], ',', '.')::numeric;
+    end loop;
+  end if;
+  if total <> p.montant then return null; end if;
+  return lignes;
+end $$;
+
+-- Séances au tarif de base : une séance facturée moins cher que le tarif de base du coach est remise au tarif de base,
+-- et l'écart apparaît sur une ligne « Remise tarif préférentiel ». Sans effet si la facture est déjà au tarif de base.
+create function public.lignes_tarif_base(p_coach uuid, l jsonb) returns jsonb
+language plpgsql stable set search_path = public as $$
+declare
+  base numeric;
+  x jsonb;
+  sortie jsonb := '[]'::jsonb;
+  remise numeric := 0;
+  pu numeric;
+  q numeric;
+begin
+  select facture_tarif_base into base from public.coachs where id = p_coach;
+  if base is null or base <= 0 or l is null then return l; end if;
+  for x in select * from jsonb_array_elements(l) loop
+    pu := (x->>'prix_unitaire')::numeric;
+    q := (x->>'quantite')::numeric;
+    if x->>'libelle' ~* '^séance' and q > 0 and pu > 0 and pu < base then
+      remise := remise + (base - pu) * q;
+      x := x || jsonb_build_object('prix_unitaire', base, 'montant', base * q);
+    end if;
+    sortie := sortie || jsonb_build_array(x);
+  end loop;
+  if remise > 0 then
+    sortie := sortie || jsonb_build_array(jsonb_build_object('libelle', 'Remise tarif préférentiel', 'quantite', 1,
+      'prix_unitaire', -remise, 'montant', -remise));
+  end if;
+  return sortie;
+end $$;
+
+create function public.factures_tarif_base() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  new.lignes := public.lignes_tarif_base(new.coach_id, new.lignes);
+  return new;
+end $$;
+create trigger factures_tarif_base before insert or update of lignes on public.factures
+  for each row execute function public.factures_tarif_base();
+
+-- Factures de séances déjà émises : remises au tarif de base, avec la remise en ligne séparée.
+update public.factures set lignes = lignes where lignes::text ~* '"libelle": "séance';
+
+-- Factures de packs encore à régler : détaillées à leur tour.
+update public.factures f set lignes = public.lignes_seances(p)
+  from public.paiements p
+  where p.id = f.paiement_id and p.reference like 'pack:%' and f.paye_le is null
+    and public.lignes_seances(p) is not null and jsonb_array_length(f.lignes) = 1;
+
+
+-- ===== 20261110000000_notifications_push.sql =====
+-- Notifications sur le téléphone du coach et du client, envoyées par le serveur (service de notifications d'Expo).
+--
+-- Chaque événement (séance acceptée, message, entraînement fait, nouveau programme…) écrit une ligne dans
+-- « notifications » grâce à un déclencheur ; la base appelle aussitôt la fonction Edge « envoyer-notification »
+-- (pg_net, appel asynchrone parti après validation) qui la porte aux téléphones de la personne.
+-- · Rien n'est envoyé à celui qui a fait l'action lui-même (le coach qui saisit une séance pour son client, etc.).
+-- · Chacun coupe les alertes qu'il ne veut pas (« notifications_coupees »), depuis ses réglages dans l'appli.
+-- · Une notification ne bloque jamais l'action qui la déclenche : toute erreur est ignorée.
+-- · Les messages et les réponses au questionnaire passent désormais par ici (fini l'appel depuis l'appli).
+
+do $$ begin
+  if exists (select 1 from pg_available_extensions where name = 'pg_net') then create extension if not exists pg_net; end if;
+end $$;
+
+-- ---------- Ce qui a été envoyé (et l'historique, pour une future cloche dans l'appli) ----------
+create table public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  genre text not null check (length(genre) between 1 and 40),
+  titre text not null check (length(titre) between 1 and 200),
+  corps text not null default '' check (length(corps) <= 400),
+  -- Écran ouvert quand on touche la notification (adresse dans l'appli).
+  url text check (url is null or url like '/%'),
+  cree_le timestamptz not null default now(),
+  envoyee_le timestamptz
+);
+create index on public.notifications (user_id, cree_le desc);
+alter table public.notifications enable row level security;
+create policy "notifications : les miennes" on public.notifications for select using (user_id = auth.uid());
+revoke all on public.notifications from public, anon, authenticated;
+grant select on public.notifications to authenticated;
+
+-- ---------- Alertes coupées, personne par personne ----------
+create table public.notifications_coupees (
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  genre text not null check (length(genre) between 1 and 40),
+  primary key (user_id, genre)
+);
+alter table public.notifications_coupees enable row level security;
+create policy "alertes coupées : les miennes" on public.notifications_coupees for all
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+revoke all on public.notifications_coupees from public, anon, authenticated;
+grant select, insert, delete on public.notifications_coupees to authenticated;
+
+-- ---------- Le cœur : prévenir quelqu'un ----------
+create function public.notifier(p_user uuid, p_genre text, p_titre text, p_corps text, p_url text) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v uuid;
+begin
+  if p_user is null or p_user is not distinct from auth.uid() then return; end if;
+  if exists (select 1 from public.notifications_coupees where user_id = p_user and genre = p_genre) then return; end if;
+  insert into public.notifications (user_id, genre, titre, corps, url)
+  values (p_user, p_genre, left(p_titre, 200), left(coalesce(p_corps, ''), 400), p_url)
+  returning id into v;
+  -- Pas de téléphone inscrit : la ligne reste dans l'historique, rien à envoyer.
+  if not exists (select 1 from public.appareils_push where user_id = p_user) then return; end if;
+  begin
+    perform net.http_post(
+      url := 'https://rxkclcytevhtbpcdozdv.supabase.co/functions/v1/envoyer-notification',
+      headers := jsonb_build_object('Content-Type', 'application/json'),
+      body := jsonb_build_object('id', v)
+    );
+  exception when others then
+    null; -- base sans pg_net (tests) ou appel refusé : tant pis pour cette notification.
+  end;
+end $$;
+revoke execute on function public.notifier(uuid, text, text, text, text) from public, anon, authenticated;
+
+-- ---------- Petites aides ----------
+create function public._nom_client(p uuid) returns text
+language sql stable security definer set search_path = public as $$
+  select coalesce(nullif(trim(prenom || ' ' || coalesce(nom, '')), ''), 'Un client') from public.clients where id = p
+$$;
+create function public._prenom_client(p uuid) returns text
+language sql stable security definer set search_path = public as $$
+  select coalesce(nullif(trim(prenom), ''), 'Ton client') from public.clients where id = p
+$$;
+create function public._user_coach(p uuid) returns uuid
+language sql stable security definer set search_path = public as $$
+  select user_id from public.coachs where id = p
+$$;
+create function public._user_client(p uuid) returns uuid
+language sql stable security definer set search_path = public as $$
+  select user_id from public.clients where id = p
+$$;
+-- Fiche du client dans l'espace coach.
+create function public._lien_fiche(p uuid) returns text
+language sql stable security definer set search_path = public as $$
+  select coalesce(
+    (select '/coach?onglet=crm&rubrique=Contacts&contact=' || id from public.contacts where client_id = p order by cree_le desc limit 1),
+    '/coach?onglet=suivis'
+  )
+$$;
+-- « mardi 12/11 à 18h00 », heure de Paris.
+create function public._quand(t timestamptz) returns text
+language sql stable set search_path = public as $$
+  select (array['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'])[extract(dow from t at time zone 'Europe/Paris')::int + 1]
+    || ' ' || to_char(t at time zone 'Europe/Paris', 'DD/MM "à" HH24"h"MI')
+$$;
+create function public._type_rdv(t text) returns text
+language sql immutable as $$
+  select case t when 'visio' then 'Visio' when 'appel' then 'Appel' else 'Séance' end
+$$;
+-- Mêmes mots que src/domain/messagerie.ts (apercu).
+create function public._apercu_message(t text, ty text) returns text
+language sql immutable as $$
+  select case
+    when nullif(trim(regexp_replace(coalesce(t, ''), '\s+', ' ', 'g')), '') is not null then
+      case when length(trim(regexp_replace(t, '\s+', ' ', 'g'))) > 140 then left(trim(regexp_replace(t, '\s+', ' ', 'g')), 139) || '…'
+           else trim(regexp_replace(t, '\s+', ' ', 'g')) end
+    when ty like 'image/%' then '📷 Photo'
+    when ty like 'video/%' then '🎥 Vidéo'
+    when ty like 'audio/%' then '🎤 Message vocal'
+    else 'Nouveau message'
+  end
+$$;
+revoke execute on function public._nom_client(uuid), public._prenom_client(uuid), public._user_coach(uuid), public._user_client(uuid),
+  public._lien_fiche(uuid) from public, anon, authenticated;
+
+-- Prénoms des personnes d'un rendez-vous (« Inès et Paul »).
+create function public._prenoms_rdv(p uuid) returns text
+language sql stable security definer set search_path = public as $$
+  select coalesce(string_agg(c.prenom, ' et ' order by c.prenom), 'Ton client')
+  from public.rendez_vous_participants o join public.clients c on c.id = o.client_id where o.rendez_vous_id = p
+$$;
+revoke execute on function public._prenoms_rdv(uuid) from public, anon, authenticated;
+
+-- Prévient chaque personne d'un rendez-vous.
+create function public._notifier_participants(p uuid, p_genre text, p_titre text, p_corps text) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  u uuid;
+begin
+  for u in select c.user_id from public.rendez_vous_participants o join public.clients c on c.id = o.client_id
+           where o.rendez_vous_id = p and c.user_id is not null loop
+    perform public.notifier(u, p_genre, p_titre, p_corps, '/client');
+  end loop;
+end $$;
+revoke execute on function public._notifier_participants(uuid, text, text, text) from public, anon, authenticated;
+
+-- =====================================================================================================
+-- Messages : le destinataire est prévenu (remplace l'appel de l'appli à « notifier-message »).
+-- =====================================================================================================
+create function public._notif_message() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.auteur = 'client' then
+    perform public.notifier(public._user_coach(new.coach_id), 'message', public._nom_client(new.client_id),
+      public._apercu_message(new.texte, new.piece_type), '/coach/messages/' || new.client_id);
+  else
+    perform public.notifier(public._user_client(new.client_id), 'message', (select nom from public.coachs where id = new.coach_id),
+      public._apercu_message(new.texte, new.piece_type), '/client/messages');
+  end if;
+  return null;
+exception when others then
+  return null;
+end $$;
+create trigger notif_message after insert on public.messages for each row execute function public._notif_message();
+
+-- =====================================================================================================
+-- Questionnaire : nouveau prospect (remplace l'appel à « notifier-questionnaire », que notifie_le rend inerte).
+-- =====================================================================================================
+create or replace function public._prevenir_coach_questionnaire() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  c record;
+  r jsonb := coalesce(new.reponses, '{}'::jsonb);
+  nom text;
+  objectif text;
+begin
+  new.notifie_le := now();
+  select prenom, nom into c from public.contacts where id = new.contact_id;
+  nom := coalesce(nullif(trim(coalesce(c.prenom, r ->> 'prenom', '') || ' ' || coalesce(c.nom, r ->> 'nom', '')), ''), 'Un prospect');
+  objectif := case when r ->> 'objectif' = 'Autre' then r ->> 'objectifAutre' else r ->> 'objectif' end;
+  perform public.notifier(public._user_coach(new.coach_id), 'questionnaire', 'Nouveau prospect : questionnaire rempli',
+    concat_ws(' · ', nom, nullif(objectif, ''), case when coalesce(array_length(new.alertes, 1), 0) > 0 then '⚠️ à vérifier' end),
+    '/coach?onglet=crm&rubrique=Contacts&contact=' || new.contact_id);
+  return new;
+exception when others then
+  return new;
+end $$;
+revoke execute on function public._prevenir_coach_questionnaire() from public, anon, authenticated;
+drop trigger if exists prevenir_coach_questionnaire on public.questionnaires;
+create trigger prevenir_coach_questionnaire before insert on public.questionnaires
+  for each row execute function public._prevenir_coach_questionnaire();
+
+-- =====================================================================================================
+-- Agenda
+-- =====================================================================================================
+-- Coach : séance acceptée, refusée ou annulée par le client. Client : séance annulée par le coach, déplacée, rappel.
+create function public._notif_rendez_vous() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  coach uuid := public._user_coach(new.coach_id);
+  quoi text := public._type_rdv(new.type);
+  quand text := public._quand(new.debut);
+  avec text := (select nom from public.coachs where id = new.coach_id);
+begin
+  if new.statut is distinct from old.statut then
+    if new.statut = 'confirme' and old.statut = 'propose' then
+      perform public.notifier(coach, 'rdv_accepte', quoi || ' acceptée', public._prenoms_rdv(new.id) || ' · ' || quand, '/coach?onglet=agenda');
+    elsif new.statut = 'refuse' then
+      perform public.notifier(coach, 'rdv_refuse', quoi || ' refusée', public._prenoms_rdv(new.id) || ' · ' || quand, '/coach?onglet=agenda');
+    elsif new.statut in ('annule', 'annule_tard') and old.statut not in ('annule', 'annule_tard') then
+      if new.annule_par = 'client' then
+        perform public.notifier(coach, 'rdv_refuse', quoi || ' annulée', public._prenoms_rdv(new.id) || ' · ' || quand, '/coach?onglet=agenda');
+      else
+        perform public._notifier_participants(new.id, 'rdv_change', quoi || ' annulée', 'Ta séance du ' || quand || ' avec ' || avec || ' est annulée.');
+      end if;
+    end if;
+  end if;
+  -- Nouvelle date (le rendez-vous repart « à confirmer »).
+  if new.debut is distinct from old.debut and new.statut not in ('annule', 'annule_tard', 'refuse', 'realise', 'absent') then
+    perform public._notifier_participants(new.id, 'rdv_change', quoi || ' déplacée',
+      'Nouvelle date : ' || quand || '. Confirme-la dans l’appli.');
+  end if;
+  -- Rappel : quand le mail de rappel part (la veille par défaut), le téléphone sonne aussi.
+  if new.rappel_envoye_le is not null and old.rappel_envoye_le is null and new.statut in ('propose', 'confirme') and new.debut > now() then
+    perform public._notifier_participants(new.id, 'rdv_rappel', 'Rappel : ' || lower(quoi) || ' avec ' || avec,
+      initcap(left(quand, 1)) || substr(quand, 2) || case when new.lieu <> '' then ' · ' || new.lieu else '' end);
+  end if;
+  return null;
+exception when others then
+  return null;
+end $$;
+create trigger notif_rendez_vous after update on public.rendez_vous for each row execute function public._notif_rendez_vous();
+
+-- Client : nouvelle séance proposée, à accepter. Une série (« tous les mardis ») ne prévient qu'une fois.
+create function public._notif_rdv_propose() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  r public.rendez_vous;
+  u uuid := public._user_client(new.client_id);
+begin
+  select * into r from public.rendez_vous where id = new.rendez_vous_id;
+  if r.id is null or r.statut <> 'propose' or r.debut < now() or u is null then return null; end if;
+  if r.serie_id is not null then
+    if exists (select 1 from public.notifications where user_id = u and genre = 'rdv_propose' and cree_le > now() - interval '5 minutes') then
+      return null;
+    end if;
+    perform public.notifier(u, 'rdv_propose', 'Nouvelles séances à accepter',
+      'À partir du ' || public._quand(r.debut) || ' avec ' || (select nom from public.coachs where id = r.coach_id) || '.', '/client');
+  else
+    perform public.notifier(u, 'rdv_propose', public._type_rdv(r.type) || ' à accepter',
+      initcap(left(public._quand(r.debut), 1)) || substr(public._quand(r.debut), 2) || ' avec ' || (select nom from public.coachs where id = r.coach_id) || '.', '/client');
+  end if;
+  return null;
+exception when others then
+  return null;
+end $$;
+create trigger notif_rdv_propose after insert on public.rendez_vous_participants for each row execute function public._notif_rdv_propose();
+
+-- Fin de pack : quand l'alerte part par mail, le client et le coach sont prévenus.
+create function public._notif_fin_pack() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  reste int := new.seances_total - new.seances_faites;
+  txt text := case when reste <= 0 then 'Pack terminé' when reste = 1 then 'Plus qu’une séance dans le pack' else 'Plus que ' || reste || ' séances dans le pack' end;
+  u uuid;
+begin
+  if new.alerte_fin_envoyee_le is null or old.alerte_fin_envoyee_le is not null then return null; end if;
+  perform public.notifier(public._user_coach(new.coach_id), 'pack_fin', 'Pack bientôt fini', public._nom_client(new.client_id) || ' · ' || lower(left(txt, 1)) || substr(txt, 2) || '.',
+    public._lien_fiche(new.client_id));
+  for u in select c.user_id from public.clients c where c.id = new.client_id or c.id in (select client_id from public.packs_partages where pack_id = new.id) loop
+    perform public.notifier(u, 'pack_fin', txt, 'Pense à le renouveler avec ton coach pour continuer sur ta lancée.', '/client?onglet=moi');
+  end loop;
+  return null;
+exception when others then
+  return null;
+end $$;
+create trigger notif_fin_pack after update of alerte_fin_envoyee_le on public.packs_seances for each row execute function public._notif_fin_pack();
+
+-- =====================================================================================================
+-- Entraînement et programmes
+-- =====================================================================================================
+-- Coach : un client a fait son entraînement.
+create function public._notif_realisation() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  titre text := (select titre from public.seances where id = new.seance_id);
+  minutes int := greatest(1, round(extract(epoch from (new.fin - new.debut)) / 60)::int);
+begin
+  perform public.notifier(public._user_coach(new.coach_id), 'seance_faite', public._prenom_client(new.client_id) || ' a fait sa séance',
+    concat_ws(' · ', titre, minutes || ' min', nullif(left(trim(coalesce(new.commentaire, '')), 120), '')), public._lien_fiche(new.client_id));
+  return null;
+exception when others then
+  return null;
+end $$;
+create trigger notif_realisation after insert on public.realisations for each row execute function public._notif_realisation();
+
+-- Client : nouveau programme attribué, ou nouveau cycle qui démarre.
+create function public._notif_programme() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.client_id is null then return null; end if;
+  perform public.notifier(public._user_client(new.client_id), 'programme', 'Nouveau programme', new.titre || ' · ton coach vient de te l’envoyer.', '/client?onglet=programme');
+  return null;
+exception when others then
+  return null;
+end $$;
+create trigger notif_programme after insert on public.programmes for each row execute function public._notif_programme();
+
+create function public._notif_cycle() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.statut = 'Actif' and old.statut is distinct from 'Actif' then
+    perform public.notifier(public._user_client(new.client_id), 'programme', 'Nouveau programme', new.nom || ' commence aujourd’hui.', '/client?onglet=programme');
+  end if;
+  return null;
+exception when others then
+  return null;
+end $$;
+create trigger notif_cycle after update of statut on public.cycles for each row execute function public._notif_cycle();
+
+-- Vidéos de mouvement : à corriger (coach), corrigée (client).
+create function public._notif_video() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if tg_op = 'INSERT' then
+    perform public.notifier(public._user_coach(new.coach_id), 'video', 'Vidéo à corriger', public._prenom_client(new.client_id) || ' · ' || new.exercice_nom,
+      public._lien_fiche(new.client_id));
+  elsif new.reponse_le is not null and old.reponse_le is null then
+    perform public.notifier(public._user_client(new.client_id), 'video_corrigee', 'Ton coach a corrigé ta vidéo', new.exercice_nom, '/client?onglet=programme');
+  end if;
+  return null;
+exception when others then
+  return null;
+end $$;
+create trigger notif_video after insert or update of reponse_le on public.videos_mouvement for each row execute function public._notif_video();
+
+-- Bilan de la semaine : rempli (coach), réponse du coach (client).
+create function public._notif_bilan() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if tg_op = 'INSERT' then
+    perform public.notifier(public._user_coach(new.coach_id), 'bilan_semaine', 'Bilan de la semaine rempli', public._nom_client(new.client_id) || ' attend ton retour.',
+      '/coach?onglet=hebdo');
+  elsif new.source_retour = 'Coach' and new.repondu_le is not null and new.repondu_le is distinct from old.repondu_le then
+    perform public.notifier(public._user_client(new.client_id), 'bilan_retour', 'Ton coach a répondu à ton bilan',
+      coalesce(nullif(left(trim(new.priorite), 140), ''), 'Ouvre ton suivi pour lire son retour.'), '/client?onglet=suivi');
+  end if;
+  return null;
+exception when others then
+  return null;
+end $$;
+create trigger notif_bilan after insert or update of repondu_le on public.bilans_hebdo for each row execute function public._notif_bilan();
+
+-- =====================================================================================================
+-- Paiements et factures
+-- =====================================================================================================
+-- Client : sa facture est prête.
+create function public._notif_facture() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.client_id is null then return null; end if;
+  perform public.notifier(public._user_client(new.client_id), 'facture', 'Ta facture est disponible',
+    new.objet || ' · ' || replace(to_char(new.total, 'FM9999990.00'), '.', ',') || ' €', '/client?onglet=moi');
+  return null;
+exception when others then
+  return null;
+end $$;
+create trigger notif_facture after insert on public.factures for each row execute function public._notif_facture();
+
+-- Coach : appelée par les fonctions Stripe (paiement reçu, changement d'offre), avec la clé service.
+create function public.notifier_coach(p_coach uuid, p_genre text, p_titre text, p_corps text, p_url text) returns void
+language sql security definer set search_path = public as $$
+  select public.notifier(public._user_coach(p_coach), p_genre, p_titre, p_corps, p_url)
+$$;
+revoke execute on function public.notifier_coach(uuid, text, text, text, text) from public, anon, authenticated;
+
+-- =====================================================================================================
+-- Client inactif : chaque matin, le coach est prévenu des clients sans séance, rendez-vous, activité ni bilan
+-- depuis le nombre de jours réglé dans l'agenda (21 par défaut). Une seule fois : le jour où le seuil est atteint.
+-- =====================================================================================================
+create function public._prevenir_inactifs() returns int
+language plpgsql security definer set search_path = public as $$
+declare
+  c record;
+  n int := 0;
+  jour date := (now() at time zone 'Europe/Paris')::date;
+begin
+  for c in
+    select cl.id, cl.coach_id, coalesce(ra.inactivite_jours, 21) as seuil,
+      greatest(
+        cl.created_at,
+        (select max(fin) from public.realisations where client_id = cl.id),
+        (select max(r.debut) from public.rendez_vous r join public.rendez_vous_participants o on o.rendez_vous_id = r.id
+          where o.client_id = cl.id and r.statut in ('confirme', 'realise') and r.debut <= now()),
+        (select max(debut) from public.activites_sport where client_id = cl.id and not retiree),
+        (select max(envoye_le) from public.bilans_hebdo where client_id = cl.id)
+      ) as derniere
+    from public.clients cl
+    left join public.reglages_agenda ra on ra.coach_id = cl.coach_id
+    where cl.actif
+  loop
+    if (c.derniere at time zone 'Europe/Paris')::date + c.seuil = jour then
+      perform public.notifier(public._user_coach(c.coach_id), 'inactif', public._prenom_client(c.id) || ' décroche',
+        'Plus rien depuis ' || c.seuil || ' jours. Un petit message pour le relancer ?', '/coach/messages/' || c.id);
+      n := n + 1;
+    end if;
+  end loop;
+  return n;
+end $$;
+revoke execute on function public._prevenir_inactifs() from public, anon, authenticated;
+
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.schedule('notifications-inactifs', '0 8 * * *', 'select public._prevenir_inactifs()');
+  end if;
+end $$;
+
+
+-- ===== 20261111000000_facture_remise_pct.sql =====
+-- Remise affichée sur le prix de la séance : chaque ligne de séances moins chère que le tarif de base montre
+-- le tarif de base, le pourcentage de remise et le prix remisé (ex. 60 €, −16,7 %, 50 €), au lieu d'une ligne
+-- « Remise tarif préférentiel » à part. Le pack suit la même règle : séances payées au prix remisé,
+-- séance offerte à −100 %.
+
+-- Pack : séances payées au prix du pack divisé par leur nombre, puis les séances offertes à 0 €.
+create or replace function public.lignes_seances(p public.paiements) returns jsonb
+language plpgsql stable set search_path = public as $$
+declare
+  n text := btrim(coalesce(p.notes, ''));
+  m text[];
+  seg text;
+  lignes jsonb := '[]'::jsonb;
+  total numeric := 0;
+  qte integer;
+  pk public.packs_seances;
+  tarif numeric;
+  offertes integer;
+  payees integer;
+begin
+  if p.montant is null then return null; end if;
+  if p.reference like 'pack:%' then
+    select * into pk from public.packs_seances where id::text = substr(p.reference, 6);
+    if not found then return null; end if;
+    select facture_tarif_base into tarif from public.coachs where id = pk.coach_id;
+    offertes := coalesce((regexp_match(coalesce(p.titre, ''), '\+\s*([0-9]+)\s+offerte'))[1]::int, 0);
+    payees := pk.seances_total - offertes;
+    if payees <= 0 then return null; end if;
+    lignes := jsonb_build_array(jsonb_build_object('libelle', 'Séances de coaching', 'quantite', payees,
+      'prix_unitaire', round(p.montant / payees, 2), 'montant', p.montant));
+    if offertes > 0 and tarif > 0 then
+      lignes := lignes || jsonb_build_array(jsonb_build_object('libelle',
+        case when offertes = 1 then 'Séance offerte' else offertes || ' séances offertes' end,
+        'quantite', offertes, 'prix_unitaire', 0, 'montant', 0, 'prix_base', tarif, 'remise_pct', 100));
+    end if;
+    return lignes;
+  end if;
+  if n = '' then return null; end if;
+  -- « 06/10, 08/10 · 50 € la séance »
+  m := regexp_match(n, '^([0-9/, ]+) · ([0-9]+(?:[.,][0-9]+)?) € la séance$');
+  if m is not null then
+    qte := array_length(regexp_split_to_array(btrim(m[1]), '\s*,\s*'), 1);
+    lignes := jsonb_build_array(jsonb_build_object('libelle', 'Séances du ' || btrim(m[1]), 'quantite', qte,
+      'prix_unitaire', replace(m[2], ',', '.')::numeric, 'montant', qte * replace(m[2], ',', '.')::numeric));
+    total := qte * replace(m[2], ',', '.')::numeric;
+  else
+    -- « Seul (40 €) : 02/10, 09/10 · Avec Romain (20 €) : 06/10 »
+    foreach seg in array regexp_split_to_array(n, '\s+·\s+') loop
+      m := regexp_match(btrim(seg), '^(.+?) \(([0-9]+(?:[.,][0-9]+)?) €\) : ([0-9/, ]+)$');
+      if m is null then return null; end if;
+      qte := array_length(regexp_split_to_array(btrim(m[3]), '\s*,\s*'), 1);
+      lignes := lignes || jsonb_build_array(jsonb_build_object('libelle', 'Séances ' || lower(left(m[1], 1)) || substr(m[1], 2) || ' : ' || btrim(m[3]),
+        'quantite', qte, 'prix_unitaire', replace(m[2], ',', '.')::numeric, 'montant', qte * replace(m[2], ',', '.')::numeric));
+      total := total + qte * replace(m[2], ',', '.')::numeric;
+    end loop;
+  end if;
+  if total <> p.montant then return null; end if;
+  return lignes;
+end $$;
+
+-- Séance moins chère que le tarif de base : la ligne garde son prix (le prix remisé) et porte le tarif de base
+-- et le pourcentage de remise. Sans effet sur une ligne déjà annotée.
+create or replace function public.lignes_tarif_base(p_coach uuid, l jsonb) returns jsonb
+language plpgsql stable set search_path = public as $$
+declare
+  base numeric;
+  x jsonb;
+  sortie jsonb := '[]'::jsonb;
+  pu numeric;
+  q numeric;
+begin
+  select facture_tarif_base into base from public.coachs where id = p_coach;
+  if base is null or base <= 0 or l is null then return l; end if;
+  for x in select * from jsonb_array_elements(l) loop
+    pu := (x->>'prix_unitaire')::numeric;
+    q := (x->>'quantite')::numeric;
+    if x->>'libelle' ~* '^séance' and x->'prix_base' is null and q > 0 and pu > 0 and pu < base then
+      x := x || jsonb_build_object('prix_base', base, 'remise_pct', round((base - pu) / base * 100, 1));
+    end if;
+    sortie := sortie || jsonb_build_array(x);
+  end loop;
+  return sortie;
+end $$;
+
+-- Factures de séances et de packs déjà émises : refaites d'après leur ligne de paiement, avec la nouvelle présentation.
+update public.factures f set lignes = public.lignes_seances(p)
+  from public.factures_paiements fp
+  join public.paiements p on p.id = fp.paiement_id
+  where fp.facture_id = f.id
+    and (p.reference like 'mois:%' or p.reference like 'pack:%')
+    and (select count(*) from public.factures_paiements x where x.facture_id = f.id) = 1
+    and public.lignes_seances(p) is not null;
+
+-- Factures du mois (séances une par une) : la ligne « Remise tarif préférentiel » disparaît, chaque séance reprend son prix.
+update public.factures f set lignes = (
+    select jsonb_agg(jsonb_build_object('libelle', btrim(regexp_replace(p.titre, ' · [^·]*$', '')), 'quantite', 1,
+      'prix_unitaire', p.montant, 'montant', p.montant) order by p.date)
+    from public.factures_paiements fp join public.paiements p on p.id = fp.paiement_id
+    where fp.facture_id = f.id)
+  where f.lignes::text like '%Remise tarif préférentiel%'
+    and exists (select 1 from public.factures_paiements fp join public.paiements p on p.id = fp.paiement_id
+                where fp.facture_id = f.id and p.reference like 'seance:%');
+
+
+-- ===== 20261112000000_facture_duo.sql =====
+-- Séance en duo (ou à plusieurs) : le tarif de base par personne est le tarif de base divisé par le nombre de
+-- personnes (60 € à deux = 30 € chacun). La remise affichée se calcule sur ce prix-là.
+
+-- Libellé d'une séance facturée au mois : « Séance du 10/12 en duo », « Séance du 10/12 à 3 ».
+create or replace function public.libelle_seance(p_titre text) returns text
+language sql immutable set search_path = public as $$
+  select btrim(regexp_replace(coalesce(p_titre, ''), ' · [^·]*$', ''))
+    || case
+         when p_titre ~ '\(à 2\)$' then ' en duo'
+         when p_titre ~ '\(à [0-9]+\)$' then ' à ' || (regexp_match(p_titre, '\(à ([0-9]+)\)$'))[1]
+         else ''
+       end
+$$;
+
+create or replace function public.lignes_tarif_base(p_coach uuid, l jsonb) returns jsonb
+language plpgsql stable set search_path = public as $$
+declare
+  base numeric;
+  b numeric;
+  x jsonb;
+  sortie jsonb := '[]'::jsonb;
+  pu numeric;
+  q numeric;
+  lib text;
+  nb integer;
+begin
+  select facture_tarif_base into base from public.coachs where id = p_coach;
+  if base is null or base <= 0 or l is null then return l; end if;
+  for x in select * from jsonb_array_elements(l) loop
+    pu := (x->>'prix_unitaire')::numeric;
+    q := (x->>'quantite')::numeric;
+    lib := coalesce(x->>'libelle', '');
+    nb := case
+            when lib ~* '^séances? avec ' or lib ~ ' en duo$' then 2
+            when lib ~ '^Séance du .* à [0-9]+$' then (regexp_match(lib, ' à ([0-9]+)$'))[1]::int
+            else 1
+          end;
+    b := round(base / greatest(nb, 1), 2);
+    if lib ~* '^séance' and x->'prix_base' is null and q > 0 and pu > 0 and pu < b then
+      x := x || jsonb_build_object('prix_base', b, 'remise_pct', round((b - pu) / b * 100, 1));
+    end if;
+    sortie := sortie || jsonb_build_array(x);
+  end loop;
+  return sortie;
+end $$;
+
+create or replace function public.facturer_mois(p_client uuid, p_mois text) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  c public.clients;
+  k public.contacts;
+  co public.coachs;
+  debut date;
+  v_id uuid;
+  v_prefixe text;
+  v_num integer;
+  v_lignes jsonb;
+  v_total numeric;
+  v_tout_paye boolean;
+  v_dernier date;
+  v_moyen text;
+  v_mois text;
+begin
+  if p_mois !~ '^\d{4}-\d{2}$' then raise exception 'Mois invalide.'; end if;
+  debut := (p_mois || '-01')::date;
+  select * into c from public.clients where id = p_client for update;
+  if not found or (auth.uid() is not null and c.coach_id is distinct from public.mon_coach_id()) then
+    raise exception 'Client introuvable.';
+  end if;
+
+  create temp table if not exists _seances_a_facturer (id uuid, date date, titre text, montant numeric, statut text, moyen text) on commit drop;
+  delete from _seances_a_facturer;
+  insert into _seances_a_facturer
+    select p.id, p.date, p.titre, p.montant, p.statut, p.moyen from public.paiements p
+    where p.coach_id = c.coach_id and p.reference like 'seance:%:' || c.id
+      and p.date >= debut and p.date < (debut + interval '1 month')
+      and p.montant is not null and p.statut in ('Payé', 'En attente')
+      and not exists (select 1 from public.factures_paiements fp where fp.paiement_id = p.id);
+  if not exists (select 1 from _seances_a_facturer) then return null; end if;
+
+  select jsonb_agg(jsonb_build_object('libelle', public.libelle_seance(s.titre), 'quantite', 1,
+           'prix_unitaire', s.montant, 'montant', s.montant) order by s.date),
+         sum(s.montant), bool_and(s.statut = 'Payé'), max(s.date),
+         case when count(distinct coalesce(s.moyen, '')) = 1 then max(s.moyen) end
+    into v_lignes, v_total, v_tout_paye, v_dernier, v_moyen
+    from _seances_a_facturer s;
+
+  select * into k from public.contacts where client_id = c.id limit 1;
+  select * into co from public.coachs where id = c.coach_id;
+  v_prefixe := coalesce(c.facture_prefixe,
+    nullif(upper(left(coalesce(nullif(c.prenom, ''), k.prenom, ''), 1) || left(coalesce(nullif(c.nom, ''), k.nom, ''), 1)), ''), 'F');
+  v_num := c.facture_prochain;
+  while exists (select 1 from public.factures where coach_id = c.coach_id and numero = v_prefixe || v_num) loop
+    v_num := v_num + 1;
+  end loop;
+  update public.clients set facture_prochain = v_num + 1 where id = c.id;
+  v_mois := (array['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'])[extract(month from debut)::int]
+            || ' ' || extract(year from debut)::int;
+
+  insert into public.factures (coach_id, client_id, numero, date, objet, emetteur, destinataire, lignes, total, moyen, paye_le)
+  values (
+    c.coach_id, c.id, v_prefixe || v_num, current_date, 'Séances de ' || v_mois,
+    jsonb_build_object('nom', coalesce(nullif(co.facture_nom, ''), co.nom), 'adresse', co.facture_adresse,
+      'telephone', co.facture_telephone, 'siret', co.facture_siret, 'mentions', co.facture_mentions),
+    jsonb_build_object('nom', coalesce(nullif(c.facture_nom, ''), btrim(coalesce(nullif(c.prenom, ''), k.prenom, '') || ' ' || coalesce(nullif(c.nom, ''), k.nom, ''))),
+      'adresse', coalesce(nullif(c.adresse, ''), k.adresse)),
+    v_lignes, v_total,
+    case when v_tout_paye then v_moyen end,
+    case when v_tout_paye then v_dernier end)
+  returning id into v_id;
+  insert into public.factures_paiements (facture_id, paiement_id) select v_id, id from _seances_a_facturer;
+  return v_id;
+end $$;
+revoke execute on function public.facturer_mois(uuid, text) from public;
+grant execute on function public.facturer_mois(uuid, text) to authenticated;
+
+-- Factures déjà émises : refaites pour appliquer le tarif duo.
+update public.factures f set lignes = public.lignes_seances(p)
+  from public.factures_paiements fp
+  join public.paiements p on p.id = fp.paiement_id
+  where fp.facture_id = f.id
+    and p.reference like 'mois:%'
+    and (select count(*) from public.factures_paiements x where x.facture_id = f.id) = 1
+    and public.lignes_seances(p) is not null;
+
+update public.factures f set lignes = (
+    select jsonb_agg(jsonb_build_object('libelle', public.libelle_seance(p.titre), 'quantite', 1,
+      'prix_unitaire', p.montant, 'montant', p.montant) order by p.date)
+    from public.factures_paiements fp join public.paiements p on p.id = fp.paiement_id
+    where fp.facture_id = f.id)
+  where exists (select 1 from public.factures_paiements fp join public.paiements p on p.id = fp.paiement_id
+                where fp.facture_id = f.id and p.reference like 'seance:%');
+
+
+-- ===== 20261113000000_cloche_notifications.sql =====
+-- Cloche de notifications dans l'appli : l'historique « notifications » devient lisible dans l'appli, avec ce qui est lu.
+-- · lue_le : vide tant que la personne ne l'a pas ouverte (pastille de la cloche).
+-- · marquer_notifications_lues(ids) : la personne marque les siennes comme lues (toutes si ids est vide).
+-- · Les activités ajoutées par le client (séance libre, course de la montre) préviennent aussi le coach.
+-- · L'historique est gardé 60 jours.
+
+alter table public.notifications add column if not exists lue_le timestamptz;
+create index if not exists notifications_non_lues on public.notifications (user_id) where lue_le is null;
+
+create function public.marquer_notifications_lues(p_ids uuid[] default null) returns void
+language sql security definer set search_path = public as $$
+  update public.notifications set lue_le = now()
+  where user_id = auth.uid() and lue_le is null and (p_ids is null or id = any (p_ids))
+$$;
+revoke execute on function public.marquer_notifications_lues(uuid[]) from public, anon;
+grant execute on function public.marquer_notifications_lues(uuid[]) to authenticated;
+
+-- Coach : une activité ajoutée par le client. Les imports de la montre ne comptent que s'ils datent de moins de 2 jours
+-- (le premier import d'un historique entier ne déclenche pas une avalanche).
+create function public._notif_activite() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  quoi text := case new.sport
+    when 'course' then 'Course' when 'trail' then 'Trail' when 'velo' then 'Vélo' when 'marche' then 'Marche'
+    when 'randonnee' then 'Randonnée' when 'natation' then 'Natation' when 'musculation' then 'Musculation'
+    when 'cours' then 'Cours collectif' when 'yoga' then 'Yoga' when 'cardio' then 'Cardio' else 'Activité' end;
+begin
+  if new.retiree then return null; end if;
+  if new.source <> 'manuel' and new.debut < now() - interval '2 days' then return null; end if;
+  perform public.notifier(public._user_coach(new.coach_id), 'seance_faite',
+    public._prenom_client(new.client_id) || case when new.source = 'manuel' then ' a ajouté une séance libre' else ' a fait une activité' end,
+    concat_ws(' · ', coalesce(nullif(trim(new.titre), ''), quoi), round(new.duree_s / 60.0) || ' min',
+      case when new.distance_m > 0 then replace(to_char(new.distance_m / 1000.0, 'FM9990.0'), '.', ',') || ' km' end),
+    public._lien_fiche(new.client_id));
+  return null;
+exception when others then
+  return null;
+end $$;
+create trigger notif_activite after insert on public.activites_sport for each row execute function public._notif_activite();
+
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.schedule('notifications-menage', '30 3 * * *', $c$delete from public.notifications where cree_le < now() - interval '60 days'$c$);
+  end if;
+end $$;
+
+
+-- ===== 20261114000000_remplacement_exercice.sql =====
+-- Séance par bloc : le client peut remplacer un exercice (machine prise, matériel absent…). La série garde la ligne
+-- prévue par le coach, mais porte l'exercice réellement fait ; l'exercice prévu reste noté pour le coach.
+alter table public.series_realisees add column if not exists exercice_prevu_id uuid references public.exercices (id) on delete set null;
+
+create or replace function public.enregistrer_realisation(r jsonb) returns text
+language plpgsql security definer set search_path = public as $$
+declare
+  moi uuid := public.mon_client_id();
+  v_id uuid := (r->>'id')::uuid;
+  s public.seances;
+  c public.cycles;
+  prog public.programmes;
+  plan public.planifications;
+  jour date := (now() at time zone 'Europe/Paris')::date;
+  v_fin timestamptz := coalesce(nullif(r->>'fin', '')::timestamptz, now());
+  doublon boolean;
+  serie jsonb;
+begin
+  if moi is null or moi <> (r->>'clientId')::uuid then raise exception 'Séance hors de votre dossier'; end if;
+  select * into s from public.seances where id = (r->>'seanceId')::uuid and supprime_le is null;
+  if not found then raise exception 'Séance introuvable ou retirée par votre coach'; end if;
+  if nullif(r->>'cycleId', '') is not null then
+    select * into c from public.cycles where id = (r->>'cycleId')::uuid and client_id = moi;
+    if not found or c.statut <> 'Actif' or c.programme_id is null then raise exception 'Ce cycle n''est pas en cours'; end if;
+    if jour < c.debut or jour > c.fin then raise exception 'Cette séance est en dehors des dates du cycle actif'; end if;
+    if s.programme_id is distinct from c.programme_id then raise exception 'Séance hors du cycle en cours'; end if;
+    select * into prog from public.programmes where id = c.programme_id;
+  elsif s.client_id is distinct from moi then
+    raise exception 'Séance hors de votre dossier';
+  end if;
+  if nullif(r->>'planificationId', '') is not null then
+    select * into plan from public.planifications where id = (r->>'planificationId')::uuid;
+    if not found or plan.client_id <> moi or plan.cycle_id is distinct from c.id or plan.seance_id <> s.id or plan.statut = 'Annulée' then
+      raise exception 'Créneau hors de cette séance';
+    end if;
+    if plan.statut = 'Réalisée' and plan.realisation_id is distinct from v_id then raise exception 'Ce créneau est déjà réalisé'; end if;
+  end if;
+
+  select exists (select 1 from public.realisations where id = v_id) into doublon;
+  if doublon then
+    if not exists (select 1 from public.realisations where id = v_id and client_id = moi and seance_id = s.id) then
+      raise exception 'Envoi déjà utilisé pour une autre séance';
+    end if;
+    select realisations.fin into v_fin from public.realisations where id = v_id;
+  else
+    if jsonb_array_length(coalesce(r->'series', '[]')) = 0 and nullif(r->>'note', '') is null and coalesce(trim(r->>'commentaire'), '') = '' then
+      raise exception 'Renseignez au moins un résultat ou un ressenti';
+    end if;
+    insert into public.realisations (id, seance_id, client_id, coach_id, debut, fin, commentaire, note, cycle_id, programme_id,
+      planification_id, seance_titre, programme_nom, cycle_nom)
+    values (v_id, s.id, moi, s.coach_id, coalesce(nullif(r->>'debut', '')::timestamptz, v_fin), v_fin, nullif(trim(r->>'commentaire'), ''),
+      nullif(r->>'note', '')::int, c.id, c.programme_id, plan.id, s.titre, prog.titre, c.nom);
+    for serie in select * from jsonb_array_elements(coalesce(r->'series', '[]')) loop
+      if not exists (select 1 from public.lignes l join public.blocs b on b.id = l.bloc_id
+                     where l.id = (serie->>'ligneId')::uuid and b.seance_id = s.id) then
+        raise exception 'Exercice hors de cette séance';
+      end if;
+      -- Exercice remplacé par le client : pris seulement dans le catalogue commun ou celui de son coach.
+      insert into public.series_realisees (id, realisation_id, ligne_id, exercice_id, index, valeurs, suggestion, exercice_nom, exercice_prevu_id)
+      select (serie->>'id')::uuid, v_id, l.id, coalesce(alt.id, l.exercice_id), (serie->>'index')::int, coalesce(serie->'valeurs', '{}'),
+        coalesce(serie->'suggestion', '{}'), coalesce(alt.nom, e.nom), case when alt.id is not null then l.exercice_id end
+      from public.lignes l join public.exercices e on e.id = l.exercice_id
+      left join public.exercices alt on alt.id = nullif(serie->>'exerciceId', '')::uuid and alt.id <> l.exercice_id
+        and (alt.coach_id is null or alt.coach_id = s.coach_id)
+      where l.id = (serie->>'ligneId')::uuid;
+    end loop;
+  end if;
+
+  -- Calendrier (markCompleted) : le créneau choisi, sinon celui prévu ce jour-là, sinon un créneau réalisé créé.
+  if c.id is not null and not exists (select 1 from public.planifications where realisation_id = v_id) then
+    if plan.id is null then
+      select * into plan from public.planifications
+      where client_id = moi and cycle_id = c.id and seance_id = s.id and statut = 'Prévue' and date = (v_fin at time zone 'Europe/Paris')::date
+      order by cree_le limit 1;
+    end if;
+    if plan.id is not null then
+      update public.planifications set statut = 'Réalisée', realisee_le = v_fin, realisation_id = v_id where id = plan.id;
+    else
+      insert into public.planifications (client_id, cycle_id, seance_id, seance_titre, date, statut, realisee_le, realisation_id, envoi_id)
+      values (moi, c.id, s.id, s.titre, (v_fin at time zone 'Europe/Paris')::date, 'Réalisée', v_fin, v_id, 'realisation-' || v_id);
+    end if;
+  end if;
+  return case when doublon then 'doublon' else 'enregistree' end;
+end $$;
+
+
+-- ===== 20261115000000_formats_minuteur.sql =====
+-- Minuteur du client : ses formats enregistrés (« Abdos du mardi », EMOM 12 × 1 min, gong, décompte 5 s…).
+-- Un format appartient au client connecté : lui seul le voit, le renomme ou le supprime. Le coach n'y touche pas.
+-- L'id vient du téléphone : renvoyer le même format le met à jour sans le dupliquer.
+-- Uniquement un ajout : une table et ses règles d'accès.
+
+create table if not exists public.formats_minuteur (
+  id uuid primary key,
+  client_id uuid not null default public.mon_client_id() references public.clients (id) on delete cascade,
+  nom text not null check (length(trim(nom)) between 1 and 60),
+  -- { format, exercices, tours, travailS, reposS, reposEntreToursS, dureeS, minuteS, pasS, sommetS } : vérifié sur le téléphone.
+  reglage jsonb not null check (jsonb_typeof(reglage) = 'object' and length(reglage::text) <= 2000),
+  -- { sonnerie, preparationS, bipsTravail, bipsRepos, vibrer }
+  son jsonb not null check (jsonb_typeof(son) = 'object' and length(son::text) <= 500),
+  cree_le timestamptz not null default now(),
+  maj_le timestamptz not null default now()
+);
+create index if not exists formats_minuteur_client on public.formats_minuteur (client_id, maj_le desc);
+
+alter table public.formats_minuteur enable row level security;
+drop policy if exists formats_minuteur_lire on public.formats_minuteur;
+create policy formats_minuteur_lire on public.formats_minuteur for select to authenticated using (client_id = public.mon_client_id());
+drop policy if exists formats_minuteur_ajouter on public.formats_minuteur;
+create policy formats_minuteur_ajouter on public.formats_minuteur for insert to authenticated with check (client_id = public.mon_client_id());
+drop policy if exists formats_minuteur_modifier on public.formats_minuteur;
+create policy formats_minuteur_modifier on public.formats_minuteur for update to authenticated
+  using (client_id = public.mon_client_id()) with check (client_id = public.mon_client_id());
+drop policy if exists formats_minuteur_supprimer on public.formats_minuteur;
+create policy formats_minuteur_supprimer on public.formats_minuteur for delete to authenticated using (client_id = public.mon_client_id());
+
+-- Au plus 50 formats par client.
+create or replace function public._formats_minuteur_limite() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if (select count(*) from public.formats_minuteur where client_id = new.client_id) >= 50 then
+    raise exception 'Tu as déjà 50 formats enregistrés : supprimes-en un pour en ajouter un nouveau';
+  end if;
+  return new;
+end $$;
+drop trigger if exists formats_minuteur_limite on public.formats_minuteur;
+create trigger formats_minuteur_limite before insert on public.formats_minuteur for each row execute function public._formats_minuteur_limite();
+
+grant select, insert, update, delete on public.formats_minuteur to authenticated;
+
+
+-- ===== 20261116000000_statut_en_veille.sql =====
+-- Après un Booster, le coach range la personne en « Client actif » ou « En veille » (rien pris pour l'instant).
+alter table public.contacts drop constraint contacts_statut_crm_check;
+alter table public.contacts add constraint contacts_statut_crm_check check (statut_crm = any (array[
+  'Nouveau Prospect', 'Booster planifié', 'Booster réalisé', 'En réflexion', 'Client actif', 'Coaching terminé', 'A relancer', 'Perdu', 'En veille'
+]));
+
+-- Le suivi n'a plus de durée : il dure jusqu'à ce que le coach l'arrête. La colonne reste pour les suivis existants.
+alter table public.suivis alter column duree_mois drop not null;
+
+
+-- ===== 20261117000000_rappel_coach_seance.sql =====
+-- Rappel au coach, sur son téléphone et dans sa cloche, une heure avant chaque séance de son agenda
+-- (en plus de Google Agenda). Une fois par rendez-vous, et à nouveau s'il est déplacé.
+create table if not exists public.rappels_coach_envoyes (
+  rendez_vous_id uuid primary key references public.rendez_vous (id) on delete cascade,
+  debut timestamptz not null,
+  envoye_le timestamptz not null default now()
+);
+alter table public.rappels_coach_envoyes enable row level security;
+revoke all on public.rappels_coach_envoyes from anon, authenticated;
+
+create or replace function public._rappeler_coachs() returns int
+language plpgsql security definer set search_path = public as $$
+declare
+  r record;
+  n int := 0;
+begin
+  for r in
+    select v.id, v.coach_id, v.type, v.debut, v.lieu, v.lien_visio
+    from public.rendez_vous v
+    where v.statut in ('propose', 'confirme')
+      and v.debut > now() and v.debut <= now() + interval '1 hour'
+      and not exists (select 1 from public.rappels_coach_envoyes e where e.rendez_vous_id = v.id and e.debut = v.debut)
+  loop
+    insert into public.rappels_coach_envoyes (rendez_vous_id, debut) values (r.id, r.debut)
+      on conflict (rendez_vous_id) do update set debut = excluded.debut, envoye_le = now();
+    perform public.notifier(public._user_coach(r.coach_id), 'rdv_rappel',
+      public._type_rdv(r.type) || ' à ' || to_char(r.debut at time zone 'Europe/Paris', 'HH24"h"MI') || ' avec ' || public._prenoms_rdv(r.id),
+      case when coalesce(r.lieu, '') <> '' then r.lieu when r.lien_visio is not null then 'En visio' else 'Dans moins d’une heure.' end,
+      '/coach?onglet=agenda');
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+revoke execute on function public._rappeler_coachs() from public, anon, authenticated;
+
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.schedule('notifications-rappel-coach', '*/5 * * * *', 'select public._rappeler_coachs()');
+  end if;
+end $$;
+
+
+-- ===== 20261118000000_reglages_brochure.sql =====
+-- « Ma brochure » : le coach règle sa brochure des prix (couleur, textes du haut, blocs d'offres,
+-- couleur de chaque carte, parties affichées). Un seul jeu de réglages par coach, lu et écrit par lui seul.
+create table if not exists public.brochures (
+  coach_id uuid primary key default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  reglages jsonb not null default '{}'::jsonb check (jsonb_typeof(reglages) = 'object' and pg_column_size(reglages) < 20000),
+  maj_le timestamptz not null default now()
+);
+alter table public.brochures enable row level security;
+drop policy if exists "coach : sa brochure" on public.brochures;
+create policy "coach : sa brochure" on public.brochures for all
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+grant select, insert, update on public.brochures to authenticated;
+
+
+-- ===== 20261119000000_reglages_relances.sql =====
+-- « Mes relances » : le coach réécrit le texte des relances prêtes à l'emploi, en coupe certaines et crée les siennes
+-- (déclencheur, public, message). Un seul jeu de réglages par coach, lu et écrit par lui seul. Les relances créées
+-- restent des lignes de public.relances (modèle « libre », titre = nom de la relance, note = message prêt).
+create table if not exists public.reglages_relances (
+  coach_id uuid primary key default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  reglages jsonb not null default '{}'::jsonb check (jsonb_typeof(reglages) = 'object' and pg_column_size(reglages) < 60000),
+  maj_le timestamptz not null default now()
+);
+alter table public.reglages_relances enable row level security;
+drop policy if exists "coach : ses relances" on public.reglages_relances;
+create policy "coach : ses relances" on public.reglages_relances for all
+  using (coach_id = public.mon_coach_id()) with check (coach_id = public.mon_coach_id());
+grant select, insert, update on public.reglages_relances to authenticated;
+
+
+-- ===== 20261120000000_newsletters.sql =====
+-- Newsletters (Mon profil › Mes newsletters) : le coach écrit un article illustré pour ses clients actifs, ses clients
+-- en veille ou les deux, choisit l'envoi par e-mail, par notification ou les deux, et l'heure. La fonction Edge
+-- « envoyer-newsletters », appelée toutes les 15 minutes, l'envoie le moment venu, une seule fois par personne.
+-- Chaque e-mail porte un lien « Ne plus recevoir ces nouvelles » (obligatoire) : le contact est alors écarté des envois.
+
+-- ---------- Désabonnement, contact par contact ----------
+alter table public.contacts add column if not exists newsletter_coupee_le timestamptz;
+alter table public.contacts add column if not exists jeton_newsletter uuid not null default gen_random_uuid();
+create unique index if not exists contacts_jeton_newsletter on public.contacts (jeton_newsletter);
+
+-- ---------- Les newsletters ----------
+create table public.newsletters (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null default public.mon_coach_id() references public.coachs (id) on delete cascade,
+  rubrique text not null default '' check (length(rubrique) <= 60),
+  objet text not null check (length(trim(objet)) between 1 and 150),
+  chapeau text not null default '' check (length(chapeau) <= 400),
+  message text not null check (length(trim(message)) between 1 and 15000),
+  -- Chemin de l'illustration dans le compartiment « newsletters » (<coach>/<fichier>.jpg).
+  image text check (image is null or image ~ '^[0-9a-f-]{36}/[A-Za-z0-9_.-]{1,80}$'),
+  bouton_libelle text check (bouton_libelle is null or length(bouton_libelle) <= 60),
+  bouton_lien text check (bouton_lien is null or bouton_lien ~ '^https://\S+$'),
+  cibles text[] not null check (cardinality(cibles) between 1 and 2 and cibles <@ array['clients', 'veille']),
+  par_email boolean not null default true,
+  par_notif boolean not null default false,
+  envoi_le timestamptz,
+  etat text not null default 'brouillon' check (etat in ('brouillon', 'programmee', 'en_cours', 'envoyee')),
+  envoyee_le timestamptz,
+  nb_emails integer not null default 0,
+  nb_notifs integer not null default 0,
+  cree_le timestamptz not null default now(),
+  maj_le timestamptz not null default now(),
+  check (par_email or par_notif),
+  check (etat = 'brouillon' or envoi_le is not null)
+);
+create index on public.newsletters (coach_id, cree_le desc);
+create index on public.newsletters (envoi_le) where etat in ('programmee', 'en_cours');
+alter table public.newsletters enable row level security;
+-- Le coach lit les siennes ; il ne modifie ou n'efface que ce qui n'est pas encore parti.
+create policy "newsletters : lire les miennes" on public.newsletters for select using (coach_id = public.mon_coach_id());
+create policy "newsletters : écrire" on public.newsletters for insert
+  with check (coach_id = public.mon_coach_id() and etat in ('brouillon', 'programmee'));
+create policy "newsletters : modifier avant l'envoi" on public.newsletters for update
+  using (coach_id = public.mon_coach_id() and etat in ('brouillon', 'programmee'))
+  with check (coach_id = public.mon_coach_id() and etat in ('brouillon', 'programmee'));
+create policy "newsletters : effacer avant l'envoi" on public.newsletters for delete
+  using (coach_id = public.mon_coach_id() and etat in ('brouillon', 'programmee'));
+revoke all on public.newsletters from public, anon, authenticated;
+grant select, delete on public.newsletters to authenticated;
+-- Les compteurs et la date d'envoi sont écrits par le serveur seul.
+grant insert (id, rubrique, objet, chapeau, message, image, bouton_libelle, bouton_lien, cibles, par_email, par_notif, envoi_le, etat)
+  on public.newsletters to authenticated;
+grant update (rubrique, objet, chapeau, message, image, bouton_libelle, bouton_lien, cibles, par_email, par_notif, envoi_le, etat, maj_le)
+  on public.newsletters to authenticated;
+
+-- ---------- Ce qui est parti, personne par personne : jamais deux fois la même newsletter ----------
+create table public.newsletters_envois (
+  newsletter_id uuid not null references public.newsletters (id) on delete cascade,
+  contact_id uuid not null references public.contacts (id) on delete cascade,
+  email_le timestamptz,
+  notif_le timestamptz,
+  primary key (newsletter_id, contact_id)
+);
+alter table public.newsletters_envois enable row level security;
+create policy "envois : ceux de mes newsletters" on public.newsletters_envois for select
+  using (exists (select 1 from public.newsletters n where n.id = newsletter_id and n.coach_id = public.mon_coach_id()));
+revoke all on public.newsletters_envois from public, anon, authenticated;
+grant select on public.newsletters_envois to authenticated;
+
+-- ---------- Qui la reçoit : clients actifs et / ou en veille, jamais un dossier archivé ----------
+create function public.destinataires_newsletter(p_id uuid)
+returns table (contact_id uuid, prenom text, email text, user_id uuid, jeton uuid, desabonne boolean)
+language sql stable security definer set search_path = public as $$
+  select k.id, k.prenom, coalesce(nullif(trim(k.email), ''), nullif(trim(cl.email), '')), cl.user_id, k.jeton_newsletter,
+         k.newsletter_coupee_le is not null
+  from public.newsletters n
+  join public.contacts k on k.coach_id = n.coach_id
+  left join public.clients cl on cl.id = k.client_id
+  where n.id = p_id and k.statut <> 'archive' and (
+    ('veille' = any (n.cibles) and k.statut_crm = 'En veille')
+    or ('clients' = any (n.cibles) and k.statut = 'client' and coalesce(k.statut_crm, '') <> 'En veille')
+  )
+$$;
+revoke execute on function public.destinataires_newsletter(uuid) from public, anon, authenticated;
+
+-- Notification d'une newsletter (genre « newsletter », que le client peut couper dans ses alertes).
+create function public.notifier_newsletter(p_user uuid, p_titre text, p_corps text) returns void
+language sql security definer set search_path = public as $$
+  select public.notifier(p_user, 'newsletter', p_titre, p_corps, '/client')
+$$;
+revoke execute on function public.notifier_newsletter(uuid, text, text) from public, anon, authenticated;
+
+do $$ begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    grant execute on function public.destinataires_newsletter(uuid) to service_role;
+    grant execute on function public.notifier_newsletter(uuid, text, text) to service_role;
+  end if;
+end $$;
+
+-- ---------- Le lien « Ne plus recevoir ces nouvelles », ouvert sans compte ----------
+create function public.desabonner_newsletter(p_jeton uuid) returns text
+language plpgsql security definer set search_path = public as $$
+declare
+  v_coach text;
+begin
+  update public.contacts k set newsletter_coupee_le = coalesce(k.newsletter_coupee_le, now())
+  where k.jeton_newsletter = p_jeton
+  returning (select nom from public.coachs where id = k.coach_id) into v_coach;
+  if v_coach is null then raise exception 'Lien inconnu : vérifie qu’il est complet.'; end if;
+  return v_coach;
+end $$;
+revoke execute on function public.desabonner_newsletter(uuid) from public;
+grant execute on function public.desabonner_newsletter(uuid) to anon, authenticated;
+
+-- Le coach réabonne un contact qui le lui demande (fiche du contact).
+create function public.reabonner_newsletter(p_contact uuid) returns void
+language sql security definer set search_path = public as $$
+  update public.contacts set newsletter_coupee_le = null where id = p_contact and coach_id = public.mon_coach_id()
+$$;
+revoke execute on function public.reabonner_newsletter(uuid) from public, anon;
+grant execute on function public.reabonner_newsletter(uuid) to authenticated;
+
+-- ---------- Illustrations : compartiment public (les e-mails doivent pouvoir les afficher), 5 Mo au plus ----------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('newsletters', 'newsletters', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do nothing;
+create policy "newsletters : le coach dépose ses images" on storage.objects for insert to authenticated
+  with check (bucket_id = 'newsletters' and (storage.foldername(name))[1] = public.mon_coach_id()::text);
+create policy "newsletters : le coach lit ses images" on storage.objects for select to authenticated
+  using (bucket_id = 'newsletters' and (storage.foldername(name))[1] = public.mon_coach_id()::text);
+create policy "newsletters : le coach remplace ses images" on storage.objects for update to authenticated
+  using (bucket_id = 'newsletters' and (storage.foldername(name))[1] = public.mon_coach_id()::text);
+create policy "newsletters : le coach efface ses images" on storage.objects for delete to authenticated
+  using (bucket_id = 'newsletters' and (storage.foldername(name))[1] = public.mon_coach_id()::text);
+
+
+-- ===== 20261121000000_newsletters_clients_choisis.sql =====
+-- Newsletters : en plus des groupes (clients actifs, en veille), le coach peut choisir un ou plusieurs contacts précis.
+-- Une newsletter vise au moins un groupe ou au moins un contact ; un dossier archivé ne reçoit jamais rien.
+alter table public.newsletters add column if not exists contacts_choisis uuid[] not null default '{}';
+alter table public.newsletters drop constraint if exists newsletters_cibles_check;
+alter table public.newsletters add constraint newsletters_cibles_check
+  check (cardinality(cibles) <= 2 and cibles <@ array['clients', 'veille']);
+alter table public.newsletters add constraint newsletters_destinataires_check
+  check (cardinality(cibles) > 0 or cardinality(contacts_choisis) between 1 and 500);
+
+grant insert (contacts_choisis), update (contacts_choisis) on public.newsletters to authenticated;
+
+create or replace function public.destinataires_newsletter(p_id uuid)
+returns table (contact_id uuid, prenom text, email text, user_id uuid, jeton uuid, desabonne boolean)
+language sql stable security definer set search_path = public as $$
+  select k.id, k.prenom, coalesce(nullif(trim(k.email), ''), nullif(trim(cl.email), '')), cl.user_id, k.jeton_newsletter,
+         k.newsletter_coupee_le is not null
+  from public.newsletters n
+  join public.contacts k on k.coach_id = n.coach_id
+  left join public.clients cl on cl.id = k.client_id
+  where n.id = p_id and k.statut <> 'archive' and (
+    ('veille' = any (n.cibles) and k.statut_crm = 'En veille')
+    or ('clients' = any (n.cibles) and k.statut = 'client' and coalesce(k.statut_crm, '') <> 'En veille')
+    or k.id = any (n.contacts_choisis)
+  )
+$$;
+revoke execute on function public.destinataires_newsletter(uuid) from public, anon, authenticated;
+do $$ begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    grant execute on function public.destinataires_newsletter(uuid) to service_role;
+  end if;
+end $$;
+
+
+-- ===== 20261122000000_evaluations_client.sql =====
+-- Tests faits à un client hors Booster (onglet Tests de sa fiche) : tests golf chiffrés et angles mesurés en
+-- vidéo, datés pour suivre l'évolution. Nouveau tableau seulement : rien d'existant n'est modifié.
+-- donnees : { golf: { actif, mesures: { <test>: { <champ>: "42" } } } | null,
+--             posture: { vues: { <vue>: { points: { <repère>: { x, y } }, observations: [] } } } | null,
+--             mesures: { mobilite?: [{ libelle, angle }], posture?: [{ libelle, angle }] } }
+create table if not exists public.evaluations_client (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients (id) on delete cascade,
+  date date not null default current_date,
+  donnees jsonb not null default '{}' check (jsonb_typeof(donnees) = 'object'),
+  notes text,
+  cree_le timestamptz not null default now()
+);
+create index if not exists evaluations_client_client_date on public.evaluations_client (client_id, date desc);
+
+alter table public.evaluations_client enable row level security;
+
+drop policy if exists "client et coach : evaluations" on public.evaluations_client;
+-- Le coach saisit ; le client peut lire ses propres tests.
+create policy "client et coach : evaluations" on public.evaluations_client for all
+  using (client_id = public.mon_client_id() or public.est_mon_client(client_id))
+  with check (public.est_mon_client(client_id));
+
+grant select, insert, update, delete on public.evaluations_client to authenticated;
+
+
+-- ===== 20261123000000_cycle_menstruel.sql =====
+-- Coach OS · assistant de cycle menstruel de la cliente : réglages, règles notées, notes du jour (symptômes).
+-- Données de santé sensibles. Le suivi est éteint tant que la cliente ne l'a pas activé, et la coach ne voit que ce
+-- que la cliente partage, rien par défaut. Le choix (activé, partage) est gardé dans la table des consentements :
+-- chaque changement est une nouvelle ligne datée, qui prouve ce que la cliente a accepté et quand.
+-- L'énergie du jour reste dans les suivis du quotidien (indicateur « energie »), déjà partagés avec la coach.
+-- Uniquement des ajouts : deux colonnes, trois tables, leurs règles d'accès et quatre fonctions. Deux reprises :
+-- la coach ne lit plus les colonnes du cycle dans les consentements, et enregistrer_consentement est reprise pour garder le choix du cycle quand la cliente revoit ses autres accords.
+
+alter table public.consentements
+  add column suivi_cycle boolean not null default false,
+  add column partage_cycle text not null default 'rien' check (partage_cycle in ('rien', 'phase', 'tout'));
+
+-- La coach lit les accords de ses clients, mais pas ces deux colonnes : avec « rien », elle ne sait même pas que la
+-- cliente suit son cycle. La cliente lit son choix par mon_consentement.
+revoke select on public.consentements from authenticated;
+grant select (id, client_id, coach_id, user_id, version, donnees_sante, analyse_ia, accepte_le) on public.consentements to authenticated;
+
+-- Partage du cycle d'une cliente, d'après son dernier choix. « rien » si le suivi est éteint ou jamais activé.
+create function public.partage_cycle_de(p_client uuid) returns text
+language sql stable security definer set search_path = public as $$
+  select coalesce(
+    (select case when suivi_cycle then partage_cycle else 'rien' end
+       from consentements
+      where client_id = p_client and (p_client = mon_client_id() or est_mon_client(p_client))
+      order by accepte_le desc, id desc limit 1),
+    'rien')
+$$;
+
+-- La cliente connectée active, coupe ou change le partage de son suivi. Ses autres accords sont recopiés tels quels.
+create function public.enregistrer_choix_cycle(p_actif boolean, p_partage text) returns public.consentements
+language plpgsql security definer set search_path = public as $$
+declare
+  v_client uuid := mon_client_id();
+  d consentements;
+  c consentements;
+begin
+  if v_client is null then raise exception 'Réservé aux clients connectés'; end if;
+  if p_partage not in ('rien', 'phase', 'tout') then raise exception 'Partage inconnu'; end if;
+  select * into d from consentements where client_id = v_client order by accepte_le desc, id desc limit 1;
+  if d.id is null then raise exception 'Accepte d’abord la politique de confidentialité'; end if;
+  insert into consentements (client_id, coach_id, user_id, version, donnees_sante, analyse_ia, suivi_cycle, partage_cycle)
+  values (v_client, d.coach_id, auth.uid(), d.version, d.donnees_sante, d.analyse_ia, coalesce(p_actif, false),
+          case when coalesce(p_actif, false) then p_partage else 'rien' end)
+  returning * into c;
+  return c;
+end $$;
+
+-- Reprise : revoir ses accords (analyse des photos, nouvelle politique) ne coupe plus le suivi du cycle.
+create or replace function public.enregistrer_consentement(p_version text, p_analyse_ia boolean) returns public.consentements
+language plpgsql security definer set search_path = public as $$
+declare
+  v_client uuid := mon_client_id();
+  d consentements;
+  c consentements;
+begin
+  if v_client is null then raise exception 'Réservé aux clients connectés'; end if;
+  select * into d from consentements where client_id = v_client order by accepte_le desc, id desc limit 1;
+  insert into consentements (client_id, coach_id, user_id, version, donnees_sante, analyse_ia, suivi_cycle, partage_cycle)
+  select v_client, coach_id, auth.uid(), p_version, true, coalesce(p_analyse_ia, false),
+         coalesce(d.suivi_cycle, false), coalesce(d.partage_cycle, 'rien')
+  from clients where id = v_client
+  returning * into c;
+  return c;
+end $$;
+
+create table public.cycle_reglages (
+  client_id uuid primary key references public.clients (id) on delete cascade,
+  duree_cycle int not null default 28 check (duree_cycle between 15 and 60),
+  duree_regles int not null default 5 check (duree_regles between 2 and 10),
+  -- Contraception hormonale, pas de règles : énergie et symptômes seulement, sans prévision.
+  sans_prevision boolean not null default false,
+  modifie_le timestamptz not null default now()
+);
+
+create table public.cycle_regles (
+  client_id uuid not null references public.clients (id) on delete cascade,
+  debut date not null check (debut >= '2000-01-01'),
+  fin date,
+  primary key (client_id, debut),
+  check (fin is null or (fin >= debut and fin <= debut + 15))
+);
+
+create table public.cycle_notes (
+  client_id uuid not null references public.clients (id) on delete cascade,
+  jour date not null,
+  symptomes text[] not null default '{}' check (cardinality(symptomes) <= 12),
+  note text check (length(note) <= 500),
+  primary key (client_id, jour)
+);
+
+alter table public.cycle_reglages enable row level security;
+alter table public.cycle_regles enable row level security;
+alter table public.cycle_notes enable row level security;
+
+-- La cliente : tout sur ses propres lignes (noter, corriger, tout effacer).
+create policy "cliente : ses réglages de cycle" on public.cycle_reglages for all
+  using (client_id = public.mon_client_id()) with check (client_id = public.mon_client_id());
+create policy "cliente : ses règles" on public.cycle_regles for all
+  using (client_id = public.mon_client_id()) with check (client_id = public.mon_client_id() and debut <= current_date + 1);
+create policy "cliente : ses notes de cycle" on public.cycle_notes for all
+  using (client_id = public.mon_client_id()) with check (client_id = public.mon_client_id() and jour <= current_date + 1);
+
+-- La coach : lecture seule, et seulement si la cliente partage. « phase » passe par cycle_vue_coach (dernier début seul).
+create policy "coach : réglages de cycle partagés" on public.cycle_reglages for select
+  using (public.est_mon_client(client_id) and public.partage_cycle_de(client_id) in ('phase', 'tout'));
+create policy "coach : règles partagées" on public.cycle_regles for select
+  using (public.est_mon_client(client_id) and public.partage_cycle_de(client_id) = 'tout');
+create policy "coach : notes de cycle partagées" on public.cycle_notes for select
+  using (public.est_mon_client(client_id) and public.partage_cycle_de(client_id) = 'tout');
+
+revoke all on public.cycle_reglages, public.cycle_regles, public.cycle_notes from anon, authenticated;
+grant select, insert, update, delete on public.cycle_reglages, public.cycle_regles, public.cycle_notes to authenticated;
+
+-- Ce que la coach voit d'une cliente : son partage, et pour « phase » le seul dernier début de règles.
+create function public.cycle_vue_coach(p_client uuid) returns table (partage text, dernier_debut date, dernier_fin date)
+language plpgsql stable security definer set search_path = public as $$
+declare
+  v_partage text;
+begin
+  if not est_mon_client(p_client) then return; end if;
+  v_partage := partage_cycle_de(p_client);
+  if v_partage = 'rien' then return; end if;
+  return query
+    select v_partage, r.debut, r.fin from (select 1) x
+    left join lateral (select debut, fin from cycle_regles where client_id = p_client order by debut desc limit 1) r on true;
+end $$;
+
+-- La cliente efface tout son suivi d'un geste et coupe le partage.
+create function public.effacer_mon_cycle() returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_client uuid := mon_client_id();
+begin
+  if v_client is null then raise exception 'Réservé aux clients connectés'; end if;
+  delete from cycle_notes where client_id = v_client;
+  delete from cycle_regles where client_id = v_client;
+  delete from cycle_reglages where client_id = v_client;
+  perform enregistrer_choix_cycle(false, 'rien');
+end $$;
+
+revoke execute on function public.partage_cycle_de(uuid), public.enregistrer_choix_cycle(boolean, text),
+  public.cycle_vue_coach(uuid), public.effacer_mon_cycle() from public, anon;
+grant execute on function public.partage_cycle_de(uuid), public.enregistrer_choix_cycle(boolean, text),
+  public.cycle_vue_coach(uuid), public.effacer_mon_cycle() to authenticated;
