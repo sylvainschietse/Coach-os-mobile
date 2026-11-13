@@ -120,7 +120,19 @@ export type Bloc =
   | { type: 'liste'; points: string[] }
   /** « ## À retenir » suivi d'une liste : l'encadré noir de fin d'article. « ## Sources » : la liste des sources, en petit. */
   | { type: 'retenir'; points: string[] }
-  | { type: 'sources'; points: string[] };
+  | { type: 'sources'; points: string[] }
+  /** Une ligne seule « ![légende](image) » : une illustration dans le fil de l'article. */
+  | { type: 'image'; src: string; legende: string };
+
+/** Une image dans le texte : ![légende](fichier ou adresse), seule sur sa ligne. */
+const LIGNE_IMAGE = /^!\[([^\]]*)\]\(([^()\s]+)\)$/;
+
+/** Les images citées dans le texte d'un article, dans l'ordre. */
+export const imagesDuTexte = (message: string): string[] =>
+  message.split('\n').flatMap((l) => {
+    const m = LIGNE_IMAGE.exec(l.trim());
+    return m ? [m[2]] : [];
+  });
 
 export function blocsArticle(message: string): Bloc[] {
   const blocs: Bloc[] = [];
@@ -132,7 +144,11 @@ export function blocsArticle(message: string): Bloc[] {
       texte = [];
     };
     for (const l of lignes) {
-      if (/^#{1,3}\s+/.test(l)) {
+      const image = LIGNE_IMAGE.exec(l);
+      if (image) {
+        finirTexte();
+        blocs.push({ type: 'image', src: image[2], legende: image[1].trim() });
+      } else if (/^#{1,3}\s+/.test(l)) {
         finirTexte();
         blocs.push({ type: 'intertitre', texte: l.replace(/^#{1,3}\s+/, '') });
       } else if (/^[-•*]\s+/.test(l)) {
@@ -197,7 +213,18 @@ const publicDe = (cibles?: Cible[]) =>
  * citations sur fond crème, encadré noir « À retenir », sources en petit, signature, et en bas le lien pour ne plus
  * rien recevoir. Tableaux et styles en ligne : c'est ce que Gmail, Outlook et Apple Mail lisent.
  */
-export function mailNewsletter(a: Article, v: { prenom?: string; coach: string; desabonnement: string; quand?: string }): MailNewsletter {
+export function mailNewsletter(
+  a: Article,
+  v: {
+    prenom?: string;
+    coach: string;
+    desabonnement: string;
+    quand?: string;
+    /** L'adresse https d'une image du texte ; sans adresse, l'image est omise. Par défaut, seules les adresses https passent. */
+    urlImage?: (src: string) => string | undefined;
+  },
+): MailNewsletter {
+  const urlImage = v.urlImage ?? ((src: string) => (/^https:\/\//.test(src) ? src : undefined));
   const p = (t?: string) => personnaliser(t ?? '', v).trim();
   const sujet = p(a.objet);
   const rubrique = p(a.rubrique);
@@ -232,6 +259,13 @@ export function mailNewsletter(a: Article, v: { prenom?: string; coach: string; 
           ROUGE,
           '#FFFFFF',
         )}</td></tr></table>`;
+      if (b.type === 'image') {
+        const url = urlImage(b.src);
+        if (!url || !/^https:\/\/\S+$/.test(url)) return '';
+        return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:22px 0 24px"><tr><td><img src="${echapper(url)}" width="576" alt="${echapper(b.legende)}" style="display:block;width:100%;height:auto;border:0;border-radius:10px"></td></tr>${
+          b.legende ? `<tr><td style="padding:8px 2px 0;font-family:${SANS};font-size:12px;line-height:1.45;color:#5B5651"><span style="display:inline-block;width:16px;height:2px;background:${ROUGE};vertical-align:middle;margin-right:8px"></span>${t(b.legende)}</td></tr>` : ''
+        }</table>`;
+      }
       if (b.type === 'sources')
         return `<p style="margin:26px 0 8px;font-family:${SANS};font-weight:800;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:#5B5651">Sources</p>${liste(
           b.points,
@@ -279,6 +313,7 @@ export function mailNewsletter(a: Article, v: { prenom?: string; coach: string; 
     `</table></div>`,
   ].join('');
   const texteCorps = blocs
+    .filter((b) => b.type !== 'image')
     .map((b) =>
       b.type === 'liste'
         ? b.points.map((x) => `• ${x}`).join('\n')
@@ -304,6 +339,7 @@ export function notifNewsletter(a: Article, v: { prenom?: string; coach: string 
   const titre = personnaliser(a.objet, v).trim().slice(0, 200);
   const source = a.chapeau?.trim() ? a.chapeau : a.message.replace(/^\s*(bonjour|salut|coucou|hello)[^\n]*\n+/i, '');
   const sans = personnaliser(source, v)
+    .replace(/^!\[[^\]]*\]\([^)]*\)\s*$/gm, '')
     .replace(/^[#>\-•*]+\s*/gm, '')
     .replace(/\s+/g, ' ')
     .trim();

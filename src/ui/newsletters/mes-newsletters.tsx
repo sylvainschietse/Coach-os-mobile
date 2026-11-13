@@ -9,11 +9,12 @@ import { Eye, ImagePlus, Mail, Send, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
-import { newsletters, ecouterNewsletters, type Comptes, type ImageAEnregistrer } from '@/data/newsletters';
+import { newsletters, ecouterNewsletters, type Comptes, type ImageAEnregistrer, type ImagesDuTexte } from '@/data/newsletters';
 import {
   CIBLES,
   cleThemeImage,
   erreurNewsletter,
+  imagesDuTexte,
   mailNewsletter,
   MAX_CHAPEAU,
   MAX_OBJET,
@@ -35,6 +36,9 @@ import { ApercuHtml } from '../offres/apercu-html';
 import { couleurs, espace, polices } from '../theme';
 import { Bibliotheque, type ArticleBibliotheque } from './bibliotheque';
 import { CLES_ILLUSTRATIONS, imageIllustration, octetsIllustration } from './illustrations';
+
+/** Une image du texte livrée avec l'appli (pas encore rangée en ligne). */
+const estLivree = (src: string) => CLES_ILLUSTRATIONS.includes(src);
 
 /** Les articles complets et sourcés (environ 3 pages chacun), chacun dans sa catégorie. */
 const ARTICLES = ARTICLES_BRUTS as ArticleBibliotheque[];
@@ -264,6 +268,12 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
     return { octets: await octetsIllustration(illustration.cle), type: 'image/jpeg' };
   }
 
+  /** Les images du texte livrées avec l'appli, à ranger en ligne pour que l'e-mail les affiche. */
+  async function imagesTexte(): Promise<ImagesDuTexte> {
+    const cles = [...new Set(imagesDuTexte(n.message).filter(estLivree))];
+    return Promise.all(cles.map(async (cle) => ({ cle, octets: await octetsIllustration(cle) })));
+  }
+
   async function enregistrer(etat: 'brouillon' | 'programmee') {
     setErreur(undefined);
     setInfo(undefined);
@@ -271,7 +281,7 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
     if (probleme) return setErreur(probleme);
     setOccupe(etat);
     try {
-      const enregistree = await newsletters.enregistrer({ ...n, envoiLe, etat }, await imageAEnregistrer());
+      const enregistree = await newsletters.enregistrer({ ...n, envoiLe, etat }, await imageAEnregistrer(), await imagesTexte());
       setN(enregistree);
       setIllustration(illustrationDe(enregistree) ?? illustration);
       if (etat === 'programmee') onFermer();
@@ -292,13 +302,15 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
     try {
       // L'illustration doit être en ligne pour s'afficher dans la boîte : on enregistre d'abord le brouillon.
       let image = n.image;
-      if (illustration && illustration.quoi !== 'rangee') {
-        const enregistree = await newsletters.enregistrer({ ...n, envoiLe, etat: n.etat === 'programmee' ? 'programmee' : 'brouillon' }, await imageAEnregistrer());
+      let message = n.message;
+      if ((illustration && illustration.quoi !== 'rangee') || imagesDuTexte(n.message).some(estLivree)) {
+        const enregistree = await newsletters.enregistrer({ ...n, envoiLe, etat: n.etat === 'programmee' ? 'programmee' : 'brouillon' }, await imageAEnregistrer(), await imagesTexte());
         setN(enregistree);
         setIllustration(illustrationDe(enregistree));
         image = enregistree.image;
+        message = enregistree.message;
       }
-      const a = await newsletters.envoyerTest({ ...n, image });
+      const a = await newsletters.envoyerTest({ ...n, image, message });
       setInfo(`Test envoyé à ${a}. Regarde ta boîte de réception.`);
     } catch (e) {
       setErreur(messageErreur(e));
@@ -364,7 +376,7 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
         <Text style={styles.champ}>Illustration</Text>
         {sourceImage ? (
           <View style={styles.couverture}>
-            <Image source={sourceImage} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityIgnoresInvertColors />
+            <Image source={sourceImage} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} resizeMode="cover" accessibilityIgnoresInvertColors />
           </View>
         ) : (
           <View style={[styles.couverture, { backgroundColor: couleurs.discret, alignItems: 'center', justifyContent: 'center' }]}>
@@ -427,7 +439,7 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
               <Puce libelle="Liste" onPress={() => inserer('- ', true)} />
               <Puce libelle="Citation" onPress={() => inserer('> ', true)} />
             </Puces>
-            <Text style={styles.aide}>« ## » au début d’une ligne en fait un intertitre, « - » un point de liste, « {">"} » une citation en grand.</Text>
+            <Text style={styles.aide}>« ## » au début d’une ligne en fait un intertitre, « - » un point de liste, « {">"} » une citation en grand. Une ligne « ![légende](image) » place une illustration dans le texte.</Text>
           </>
         )}
         <Text style={[styles.champ, { marginTop: espace(2) }]}>Bouton (facultatif)</Text>
@@ -540,9 +552,24 @@ function Champ({
 function Apercu({ visible, onFermer, n, illustration, coach, quand }: { visible: boolean; onFermer: () => void; n: Newsletter; illustration: Illustration; coach: string; quand?: string }) {
   const { width, height } = useWindowDimensions();
   const [image, setImage] = useState<string>();
+  const [imagesTexte, setImagesTexte] = useState<Record<string, string>>({});
   useEffect(() => {
     if (!visible) return;
     let fini = false;
+    (async () => {
+      // Les images du texte : livrées (en data:) ou déjà rangées (adresse publique).
+      const table: Record<string, string> = {};
+      for (const src of new Set(imagesDuTexte(n.message))) {
+        if (estLivree(src)) {
+          const o = await octetsIllustration(src).catch(() => null);
+          if (o) table[src] = `data:image/jpeg;base64,${encode(o)}`;
+        } else {
+          const u = newsletters.urlImage(src);
+          if (u) table[src] = u;
+        }
+      }
+      if (!fini) setImagesTexte(table);
+    })();
     (async () => {
       if (!illustration) return setImage(undefined);
       if (illustration.quoi === 'photo') return setImage(`data:image/jpeg;base64,${illustration.base64}`);
@@ -553,13 +580,18 @@ function Apercu({ visible, onFermer, n, illustration, coach, quand }: { visible:
     return () => {
       fini = true;
     };
-  }, [visible, illustration]);
+  }, [visible, illustration, n.message]);
   const html = useMemo(() => {
-    const m = mailNewsletter({ ...n, image: image?.replace(/^data:/, 'https://data/') }, { prenom: 'Léa', coach, desabonnement: 'https://exemple', quand });
-    // Les images en data: ne sont pas des liens https : on les remet après la mise en page.
-    const corps = image?.startsWith('data:') ? m.html.replace(image.replace(/^data:/, 'https://data/'), image) : m.html;
+    // Les images en data: ne sont pas des liens https : un repère https à la mise en page, remplacé ensuite.
+    const repere = (u: string) => u.replace(/^data:/, 'https://data/');
+    const m = mailNewsletter(
+      { ...n, image: image && repere(image) },
+      { prenom: 'Léa', coach, desabonnement: 'https://exemple', quand, urlImage: (src) => (imagesTexte[src] ? repere(imagesTexte[src]) : undefined) },
+    );
+    let corps = m.html;
+    for (const u of [image, ...Object.values(imagesTexte)]) if (u?.startsWith('data:')) corps = corps.split(repere(u)).join(u);
     return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0">${corps}</body></html>`;
-  }, [n, image, coach, quand]);
+  }, [n, image, imagesTexte, coach, quand]);
   const largeur = Math.min(width - 24, 640);
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onFermer} transparent>

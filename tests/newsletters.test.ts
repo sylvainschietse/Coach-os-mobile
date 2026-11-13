@@ -11,6 +11,7 @@ import {
   compterDestinataires,
   corpsBrevoNewsletter,
   erreurNewsletter,
+  imagesDuTexte,
   mailNewsletter,
   MAX_MESSAGE,
   notifNewsletter,
@@ -107,6 +108,32 @@ describe('newsletters', () => {
   });
 });
 
+describe('images dans le texte', () => {
+  const message = 'Premier paragraphe.\n\n![Le bon placement <des> pieds](illus-01)\n\nSuite.';
+  it('une ligne image devient un bloc image', () => {
+    expect(blocsArticle(message)).toEqual([
+      { type: 'paragraphe', texte: 'Premier paragraphe.' },
+      { type: 'image', src: 'illus-01', legende: 'Le bon placement <des> pieds' },
+      { type: 'paragraphe', texte: 'Suite.' },
+    ]);
+    expect(imagesDuTexte(message)).toEqual(['illus-01']);
+  });
+  it('l’e-mail montre l’image avec sa légende, seulement si elle a une adresse https', () => {
+    const sans = mailNewsletter({ objet: 'T', message }, { coach: 'S', desabonnement: 'https://d' });
+    expect(sans.html).not.toContain('<img');
+    expect(sans.html).not.toContain('illus-01');
+    const avec = mailNewsletter({ objet: 'T', message }, { coach: 'S', desabonnement: 'https://d', urlImage: (s) => `https://cdn.test/${s}.jpg` });
+    expect(avec.html).toContain('<img src="https://cdn.test/illus-01.jpg"');
+    expect(avec.html).toContain('Le bon placement &lt;des&gt; pieds');
+    expect(avec.texte).not.toContain('![');
+    const piege = mailNewsletter({ objet: 'T', message }, { coach: 'S', desabonnement: 'https://d', urlImage: () => 'javascript:alert(1)' });
+    expect(piege.html).not.toContain('<img');
+  });
+  it('la notification ne cite pas la ligne image', () => {
+    expect(notifNewsletter({ objet: 'T', message: '![x](illus-01)\n\nBonjour à tous.' }, { coach: 'S' }).corps).toBe('Bonjour à tous.');
+  });
+});
+
 describe('articles complets', () => {
   it('les 49 articles ont chacun leur photo, jamais la même, et leur catégorie', async () => {
     const articles = (await import('@/domain/articles-newsletters.json')).default as { cle: string; illustration: string; categorie: string }[];
@@ -114,6 +141,11 @@ describe('articles complets', () => {
     expect(new Set(articles.map((a) => a.illustration)).size).toBe(articles.length);
     const octets = articles.map((a) => readFileSync(join(__dirname, '../assets/newsletters', `${a.illustration}.jpg`)).toString('base64'));
     expect(new Set(octets).size).toBe(articles.length);
+    // Et une illustration dans le texte, propre à chaque article, livrée avec l'appli.
+    const illus = articles.map((a) => imagesDuTexte((a as unknown as { message: string }).message));
+    expect(illus.every((l) => l.length >= 1 && l.every((c) => /^illus-\d{2}(-\d)?$/.test(c)))).toBe(true);
+    const fichiers = illus.flat().map((c) => readFileSync(join(__dirname, '../assets/newsletters', `${c}.jpg`)).toString('base64'));
+    expect(new Set([...fichiers, ...octets]).size).toBe(fichiers.length + octets.length);
     expect(articles.every((a) => estCategorie(a.categorie))).toBe(true);
     const groupes = parCategorie(articles);
     expect(groupes.reduce((n, g) => n + g.articles.length, 0)).toBe(articles.length);

@@ -25,8 +25,10 @@ Deno.serve(async (req) => {
   const db = createClient(urlBase, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const imagePublique = (chemin?: string | null) => (chemin ? `${urlBase}/storage/v1/object/public/newsletters/${chemin}` : undefined);
 
-  async function envoyerMail(a: string, prenom: string | undefined, coach: string, repondreA: string | undefined, article: Article, desabonnement: string, id: string, quand?: string) {
-    const m = mailNewsletter(article, { prenom, coach, desabonnement, quand });
+  async function envoyerMail(a: string, prenom: string | undefined, coach: string, repondreA: string | undefined, article: Article, desabonnement: string, id: string, coachId: string, quand?: string) {
+    // Les images du texte : seulement celles rangées dans le dossier du coach.
+    const urlImage = (src: string) => (src.startsWith(`${coachId}/`) && /^[0-9a-f-]{36}\/[A-Za-z0-9_.-]{1,80}$/.test(src) ? imagePublique(src) : undefined);
+    const m = mailNewsletter(article, { prenom, coach, desabonnement, quand, urlImage });
     const r = await fetch(API_BREVO, {
       method: 'POST',
       signal: AbortSignal.timeout(20000),
@@ -55,7 +57,7 @@ Deno.serve(async (req) => {
     const erreur = t ? erreurNewsletter({ ...t, cibles: ['clients'], parEmail: true, parNotif: false }) : 'Article manquant.';
     if (erreur || !t) return repondre({ erreur }, 400);
     const image = t.image && t.image.startsWith(`${coach.id}/`) ? imagePublique(t.image) : undefined;
-    const lu = await envoyerMail(moi.user.email, coach.nom?.split(' ')[0], coach.nom, undefined, { ...t, image }, `${site}/desabonnement/exemple`, 'test');
+    const lu = await envoyerMail(moi.user.email, coach.nom?.split(' ')[0], coach.nom, undefined, { ...t, image }, `${site}/desabonnement/exemple`, 'test', coach.id);
     if (lu.etat !== 'envoye' && lu.etat !== 'transmis') return repondre({ erreur: lu.detail }, 502);
     return repondre({ envoye: moi.user.email });
   }
@@ -104,7 +106,7 @@ Deno.serve(async (req) => {
       if (deja) continue;
       const fait: { email_le?: string; notif_le?: string } = {};
       if (parMail) {
-        const lu = await envoyerMail(d.email!.trim(), d.prenom || undefined, coach, u?.user?.email ?? undefined, article, `${site}/desabonnement/${d.jeton}`, n.id, n.envoi_le);
+        const lu = await envoyerMail(d.email!.trim(), d.prenom || undefined, coach, u?.user?.email ?? undefined, article, `${site}/desabonnement/${d.jeton}`, n.id, n.coach_id, n.envoi_le);
         if (lu.etat === 'envoye' || lu.etat === 'transmis') {
           fait.email_le = new Date().toISOString();
           compter('emails');

@@ -1,7 +1,7 @@
 // Mes newsletters : lecture et écriture des newsletters du coach (table newsletters), illustration rangée dans le
 // compartiment public « newsletters », destinataires comptés pour l'écran et envoi d'un test à soi-même (fonction Edge
 // envoyer-newsletters). En démo, tout reste en mémoire et rien ne part.
-import { compterDestinataires, type Article, type ContactNewsletter, type Newsletter } from '@/domain/newsletters';
+import { compterDestinataires, imagesDuTexte, type Article, type ContactNewsletter, type Newsletter } from '@/domain/newsletters';
 import { nouvelId } from '@/lib/identifiant';
 
 import { crm } from './crm';
@@ -11,6 +11,11 @@ export type Comptes = ReturnType<typeof compterDestinataires>;
 
 /** Une illustration à ranger : ses octets, ou déjà rangée (chemin du stockage). */
 export type ImageAEnregistrer = { octets: ArrayBuffer; type: string } | { chemin: string } | null;
+/** Les images du texte livrées avec l'appli (« ![légende](illus-07) ») : rangées à l'enregistrement, le texte pointe alors vers elles. */
+export type ImagesDuTexte = { cle: string; octets: ArrayBuffer }[];
+
+const estRangee = (src: string) => /^[0-9a-f-]{36}\/[A-Za-z0-9_.-]{1,80}$/.test(src);
+const remplacerImage = (message: string, avant: string, apres: string) => message.split(`](${avant})`).join(`](${apres})`);
 
 const abonnes = new Set<() => void>();
 export function ecouterNewsletters(fn: () => void) {
@@ -119,7 +124,7 @@ export const newsletters = {
   },
 
   /** Enregistre (brouillon ou programmée). L'illustration est rangée d'abord : sans elle, rien n'est enregistré. */
-  async enregistrer(n: Newsletter, image: ImageAEnregistrer): Promise<Newsletter> {
+  async enregistrer(n: Newsletter, image: ImageAEnregistrer, imagesTexte: ImagesDuTexte = []): Promise<Newsletter> {
     const id = n.id || nouvelId();
     if (!supabase) {
       let chemin: string | undefined;
@@ -140,7 +145,18 @@ export const newsletters = {
       const envoi = await db.storage.from('newsletters').upload(chemin, image.octets, { contentType: image.type, upsert: true });
       if (envoi.error) throw new Error('L’illustration n’a pas pu être envoyée. Vérifie ta connexion et réessaie.');
     } else if (image) chemin = image.chemin;
-    const ligne = ecrire({ ...n, id }, chemin);
+    let message = n.message;
+    if (imagesTexte.length) {
+      const { data: coach } = await db.rpc('mon_coach_id');
+      for (const it of imagesTexte) {
+        if (!message.includes(`](${it.cle})`)) continue;
+        const dest = `${coach}/${id}-${it.cle.replace(/[^A-Za-z0-9_-]/g, '')}.jpg`;
+        const envoi = await db.storage.from('newsletters').upload(dest, it.octets, { contentType: 'image/jpeg', upsert: true });
+        if (envoi.error) throw new Error('Une image de l’article n’a pas pu être envoyée. Vérifie ta connexion et réessaie.');
+        message = remplacerImage(message, it.cle, dest);
+      }
+    }
+    const ligne = ecrire({ ...n, id, message }, chemin);
     const r = n.id
       ? await db.from('newsletters').update({ ...ligne, maj_le: new Date().toISOString() }).eq('id', id).select(COLONNES).single()
       : await db.from('newsletters').insert(ligne).select(COLONNES).single();
@@ -163,7 +179,8 @@ export const newsletters = {
     }
     const { error } = await supabase.from('newsletters').delete().eq('id', n.id);
     if (error) throw new Error('Suppression impossible. Réessaie.');
-    if (n.image && !n.image.startsWith('theme:')) await supabase.storage.from('newsletters').remove([n.image]).catch(() => undefined);
+    const fichiers = [...(n.image && !n.image.startsWith('theme:') ? [n.image] : []), ...imagesDuTexte(n.message).filter(estRangee)];
+    if (fichiers.length) await supabase.storage.from('newsletters').remove(fichiers).catch(() => undefined);
     prevenir();
   },
 

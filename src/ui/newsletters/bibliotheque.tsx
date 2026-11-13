@@ -11,9 +11,9 @@ import { Puce, Puces } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { imageIllustration } from './illustrations';
 
-export type ArticleBibliotheque = Theme & { categorie?: string };
+export type ArticleBibliotheque = Theme & { categorie?: string; /** Temps de lecture, en minutes. */ lecture?: number };
 
-const pages = (a: ArticleBibliotheque) => Math.max(1, Math.round(a.message.length / 2600));
+const lecture = (a: ArticleBibliotheque) => a.lecture ?? Math.max(3, Math.round(a.message.length / 1300));
 const pourQui = (c: Cible) => (c === 'clients' ? 'Clients actifs' : 'Clients en veille');
 
 export function Bibliotheque({ articles, onOuvrir }: { articles: readonly ArticleBibliotheque[]; onOuvrir: (a: ArticleBibliotheque) => void }) {
@@ -104,7 +104,7 @@ function TuileCategorie({
       onPress={onPress}
       style={({ pressed }) => [styles.tuile, { width: largeur, aspectRatio: large ? 2.4 : 1.3, opacity: estompee ? 0.45 : pressed ? 0.85 : 1 }, active && { borderWidth: 3, borderColor: c.couleur }]}
     >
-      <Image source={imageIllustration(image)} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <Image source={imageIllustration(image)} style={styles.plein} resizeMode="cover" />
       <View style={[StyleSheet.absoluteFill, styles.voile]} />
       <View style={styles.tuileTexte}>
         <View style={[styles.pastille, { backgroundColor: c.couleur }]} />
@@ -128,7 +128,7 @@ function CarteArticle({ a, couleur, onPress }: { a: ArticleBibliotheque; couleur
       style={({ pressed }) => [styles.carte, pressed && { opacity: 0.85 }]}
     >
       <View style={styles.couverture}>
-        <Image source={imageIllustration(a.illustration ?? a.cle)} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <Image source={imageIllustration(a.illustration ?? a.cle)} style={styles.plein} resizeMode="cover" />
       </View>
       <View style={{ gap: 5, paddingTop: 10 }}>
         <Text style={[styles.rubrique, { color: couleur }]} numberOfLines={1}>
@@ -138,7 +138,7 @@ function CarteArticle({ a, couleur, onPress }: { a: ArticleBibliotheque; couleur
           {a.objet.replace(/,?\s*\{prenom\}/g, '')}
         </Text>
         <Text style={styles.meta}>
-          {pages(a)} pages · {pourQui(a.pour)}
+          {lecture(a)} min de lecture · {pourQui(a.pour)}
         </Text>
       </View>
     </Pressable>
@@ -146,6 +146,8 @@ function CarteArticle({ a, couleur, onPress }: { a: ArticleBibliotheque; couleur
 }
 
 const styles = StyleSheet.create({
+  // Sur le web, une image prend sa taille d'origine si on ne lui en donne pas : elle remplit son cadre.
+  plein: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   surTitre: { fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase', color: couleurs.texteDoux, marginLeft: 4 },
   grandTitre: { fontFamily: polices.titre, fontSize: 32, lineHeight: 34, color: couleurs.texte, marginLeft: 4 },
   detail: { fontFamily: polices.texte, fontSize: 13, lineHeight: 18, color: couleurs.texteDoux },
