@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { crm } from '@/data/crm';
+import { appliquerOffreVendue } from '@/data/vente-booster';
 import type { Contact, IssueBooster } from '@/domain/crm';
 
 import { Bouton } from '../composants';
@@ -26,10 +27,13 @@ const OPTIONS: { issue: IssueBooster; titre: string; texte: (prenom: string) => 
 export function ConclusionBooster({
   boosterId,
   contact,
+  offre,
   onFermer,
 }: {
   boosterId: string;
-  contact: Pick<Contact, 'prenom' | 'statut'>;
+  contact: Pick<Contact, 'id' | 'prenom' | 'statut'>;
+  /** Offre recommandée dans la conclusion : appliquée à la fiche client s'il devient client actif. */
+  offre?: string;
   onFermer: () => void;
 }) {
   const [issue, setIssue] = useState<IssueBooster>();
@@ -43,6 +47,7 @@ export function ConclusionBooster({
     setErreur(undefined);
     try {
       await crm.conclureBooster(boosterId, issue);
+      if (issue === 'client') await appliquerOffreVendue(contact.id, offre);
       onFermer();
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Choix non enregistré');

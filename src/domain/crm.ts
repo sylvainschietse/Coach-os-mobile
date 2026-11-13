@@ -533,7 +533,10 @@ export type SaisieFicheBooster = SaisieBooster & { statutCrm?: StatutBooster };
 export function modifierBooster(c: Carnet, boosterId: string, saisie: SaisieFicheBooster, ctx: Contexte): Carnet {
   const booster = c.boosters.find((b) => b.id === boosterId);
   if (!booster) return c;
-  const { statutCrm, ...champs } = saisie;
+  const { statutCrm: demande, ...champs } = saisie;
+  // Vendu ou En veille dans la conclusion : le Booster a eu lieu.
+  const conclu = booster.statut === 'prevu' && (champs.resultatCommercial === 'Vendu' || champs.resultatCommercial === 'En veille');
+  const statutCrm = demande ?? (conclu ? 'Terminée' : undefined);
   if (champs.priorites) champs.priorites = troisPriorites(champs.priorites.map((p) => p.trim()));
   let carnet = enregistrerBooster(c, boosterId, champs);
   if (!statutCrm || statutCrm === statutBooster(booster)) return carnet;

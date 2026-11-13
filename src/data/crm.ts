@@ -183,7 +183,12 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
       await ecrire(avant, r.carnet);
       return r.id;
     },
-    modifierBooster: (id, saisie) => appliquer((c, ctx) => regles.modifierBooster(c, id, saisie, ctx)),
+    async modifierBooster(id, saisie) {
+      await appliquer((c, ctx) => regles.modifierBooster(c, id, saisie, ctx));
+      // « Vendu » ou « En veille » dans la conclusion range le contact comme le choix « Et après le Booster ? ».
+      if (saisie.resultatCommercial === 'Vendu') await this.conclureBooster(id, 'client');
+      else if (saisie.resultatCommercial === 'En veille') await this.conclureBooster(id, 'veille');
+    },
     supprimerBooster: (id) => appliquer((c, ctx) => regles.supprimerBooster(c, id, ctx)),
     enregistrerBooster: (id, saisie) => appliquer((c) => regles.enregistrerBooster(c, id, saisie)),
     terminerBooster: (id, cr) => appliquer((c, ctx) => regles.terminerBooster(c, id, cr, ctx)),

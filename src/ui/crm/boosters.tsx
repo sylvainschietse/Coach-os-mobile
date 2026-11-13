@@ -136,7 +136,7 @@ export function Boosters({
           </View>
         );
       })()}
-      {conclure && <ConclusionBooster boosterId={conclure.id} contact={conclure.contact} onFermer={() => setConclure(undefined)} />}
+      {conclure && <ConclusionBooster boosterId={conclure.id} contact={conclure.contact} offre={conclure.offreRecommandee} onFermer={() => setConclure(undefined)} />}
     </View>
   );
 }

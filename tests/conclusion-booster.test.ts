@@ -79,3 +79,14 @@ describe('après le Booster', () => {
     expect(apres.contacts.find((c) => c.id === julie)).toMatchObject({ statut: 'booster_fait', statutCrm: 'En veille', clientId: 'client-julie' });
   });
 });
+
+describe('« Vendu » dans la conclusion', () => {
+  it('termine un Booster encore prévu', async () => {
+    const { modifierBooster } = await import('../src/domain/crm');
+    const { carnet, ctx, karim } = depart();
+    const b = carnet.boosters.find((x) => x.contactId === karim)!;
+    const apres = modifierBooster(carnet, b.id, { resultatCommercial: 'Vendu' }, ctx);
+    expect(apres.boosters.find((x) => x.id === b.id)?.statut).toBe('fait');
+    expect(apres.boosters.find((x) => x.id === b.id)?.resultatCommercial).toBe('Vendu');
+  });
+});
