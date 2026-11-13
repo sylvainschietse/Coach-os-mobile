@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { depot } from '@/data';
 import { jourLocal } from '@/domain/crm';
-import { golfAvant, mesureAvant, resumeTest, testClientVide, testVide, type TestClient } from '@/domain/tests-client';
+import { golfAvant, mesureAvant, postureAvant, resumeTest, testClientVide, testVide, type TestClient } from '@/domain/tests-client';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
 
@@ -13,6 +13,7 @@ import { MesuresVideoTest } from '../crm/mesures-video-test';
 import { Grille, Cellule, Saisie } from '../crm/dossier';
 import { TestsGolf } from '../crm/tests-golf';
 import { ChampDate } from '../date-heure';
+import { BilanPosturalSection } from './bilan-postural';
 import { couleurs, espace, polices } from '../theme';
 
 const dateLisible = (jour: string) => new Date(`${jour}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -63,6 +64,7 @@ function EditeurTest({ test, tests, existant, onFermer }: { test: TestClient; te
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string>();
   const precedent = golfAvant(tests, t);
+  const avantPosture = postureAvant(tests, t);
   const maj = (patch: Partial<TestClient>) => setT((x) => ({ ...x, ...patch }));
 
   const agir = async (action: () => Promise<void>) => {
@@ -82,6 +84,14 @@ function EditeurTest({ test, tests, existant, onFermer }: { test: TestClient; te
       <Grille>
         <Cellule>
           <ChampDate libelle="Date du test" jour={t.date} onChange={(date) => maj({ date })} />
+        </Cellule>
+        <Cellule pleine>
+          <BilanPosturalSection
+            bilan={t.posture}
+            avant={avantPosture?.posture}
+            dateAvant={avantPosture ? dateLisible(avantPosture.date) : undefined}
+            onChange={(posture) => maj({ posture })}
+          />
         </Cellule>
         {(['mobilite', 'posture'] as const).map((f) => (
           <Cellule key={f} pleine>

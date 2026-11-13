@@ -5571,6 +5571,7 @@ end $$;
 -- Tests faits à un client hors Booster (onglet Tests de sa fiche) : tests golf chiffrés et angles mesurés en
 -- vidéo, datés pour suivre l'évolution. Nouveau tableau seulement : rien d'existant n'est modifié.
 -- donnees : { golf: { actif, mesures: { <test>: { <champ>: "42" } } } | null,
+--             posture: { vues: { <vue>: { points: { <repère>: { x, y } }, observations: [] } } } | null,
 --             mesures: { mobilite?: [{ libelle, angle }], posture?: [{ libelle, angle }] } }
 create table if not exists public.evaluations_client (
   id uuid primary key default gen_random_uuid(),
