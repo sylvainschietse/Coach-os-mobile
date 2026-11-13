@@ -3,6 +3,7 @@
 // l'enregistrement : c'est l'adresse publique que les e-mails affichent.
 import { Asset } from 'expo-asset';
 import { File } from 'expo-file-system';
+import { requireNativeModule } from 'expo-modules-core';
 import { Platform } from 'react-native';
 
 import { FICHIERS_ILLUSTRATIONS, fichierIllustration } from '@/domain/illustrations-newsletters';
@@ -38,7 +39,12 @@ export const CLES_ILLUSTRATIONS: string[] = [...Object.keys(PHOTOS_ARTICLES), ..
 export async function octetsIllustration(cle: string): Promise<ArrayBuffer> {
   const a = Asset.fromModule(FICHIERS[fichierIllustration(cle)]);
   await a.downloadAsync();
-  const uri = a.localUri ?? a.uri;
+  let uri = a.localUri ?? a.uri;
   if (Platform.OS === 'web' || /^https?:/.test(uri)) return (await fetch(uri)).arrayBuffer();
+  // APK Android : l'image est une ressource de l'appli (« assets_newsletters_photo01 », sans chemin). Le module natif la
+  // copie dans le cache et rend un vrai chemin file:// que l'on peut lire.
+  if (!/^file:\/\/\//.test(uri) || uri.startsWith('file:///android_res/')) {
+    uri = String(await requireNativeModule<{ downloadAsync(u: string, h: string | null, t: string): Promise<string> }>('ExpoAsset').downloadAsync(uri, a.hash ?? null, a.type || 'jpg'));
+  }
   return new File(uri).arrayBuffer();
 }

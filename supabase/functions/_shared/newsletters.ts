@@ -26,6 +26,8 @@ export interface Newsletter {
   boutonLibelle?: string;
   boutonLien?: string;
   cibles: Cible[];
+  /** Contacts choisis un par un (identifiants), en plus des groupes ou à leur place. */
+  contacts?: string[];
   parEmail: boolean;
   parNotif: boolean;
   /** Heure d'envoi (ISO) ; absente : brouillon sans date. */
@@ -56,10 +58,10 @@ export function personnaliser(texte: string, v: { prenom?: string; coach: string
 
 /** Ce qui empêche de programmer, en clair ; null si tout est bon. `maintenant` : pour refuser une heure passée. */
 export function erreurNewsletter(
-  n: Pick<Newsletter, 'objet' | 'message' | 'cibles' | 'parEmail' | 'parNotif'> & Partial<Pick<Newsletter, 'rubrique' | 'chapeau' | 'boutonLibelle' | 'boutonLien'>> & { envoiLe?: string },
+  n: Pick<Newsletter, 'objet' | 'message' | 'cibles' | 'parEmail' | 'parNotif'> & Partial<Pick<Newsletter, 'rubrique' | 'chapeau' | 'boutonLibelle' | 'boutonLien' | 'contacts'>> & { envoiLe?: string },
   maintenant?: number,
 ): string | null {
-  if (!n.cibles.length) return 'Choisis pour qui : clients actifs, en veille, ou les deux.';
+  if (!n.cibles.length && !n.contacts?.length) return 'Choisis pour qui : clients actifs, en veille, ou des clients précis.';
   if (!n.objet.trim()) return 'Écris l’objet.';
   if (n.objet.length > MAX_OBJET) return `L’objet : ${MAX_OBJET} caractères au plus.`;
   if (n.rubrique && n.rubrique.length > MAX_RUBRIQUE) return `La rubrique : ${MAX_RUBRIQUE} caractères au plus.`;
