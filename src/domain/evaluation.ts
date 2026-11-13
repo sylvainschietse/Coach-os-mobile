@@ -2,6 +2,7 @@
 // Champs repris tels quels de la base Airtable de Sylvain : évaluation qualitative par le coach,
 // sans protocole (exercices, durées, charges) ni score global.
 
+import type { MesureAngle } from './mesure-angle';
 import { syntheseGolf, type EvaluationGolf } from './tests-golf';
 
 export type IdTest = 'poussee' | 'tirage' | 'jambes' | 'cardio' | 'mobilite' | 'posture';
@@ -62,6 +63,8 @@ export interface ResultatTest {
   resultat?: string;
   observations: string[];
   rpe?: number;
+  /** Angles mesurés en vidéo (Mobilité, Posture). */
+  mesures?: MesureAngle[];
 }
 
 export interface Evaluation {
@@ -118,6 +121,7 @@ export function syntheseEvaluation(e: Evaluation): string {
     const morceaux = [r?.resultat ?? 'non renseigné'];
     if (t.rpe) morceaux.push(r?.rpe ? `RPE ${r.rpe}/10` : 'RPE non renseigné');
     if (r?.observations.length) morceaux.push(r.observations.join(', '));
+    if (r?.mesures?.length) morceaux.push(`mesures vidéo : ${r.mesures.map((m) => `${m.libelle} ${m.angle}°`).join(', ')}`);
     return `${t.libelle.toUpperCase()} — ${morceaux.join(' | ')}`;
   });
   lignes.push(...syntheseGolf(e.golf));
