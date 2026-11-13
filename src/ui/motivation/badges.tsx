@@ -12,6 +12,7 @@ import { quotidien } from '@/data/quotidien';
 import { BADGE, BADGES, FAMILLES, GRADES, nouveaux, progression, type CleBadge, type DefinitionBadge, type FamilleBadge, type Progression } from '@/domain/badges';
 import { aujourdhuiParis, jourParis } from '@/domain/entrainement';
 import { decalerJour } from '@/domain/quotidien';
+import { seanceDetaillee } from '@/domain/saisie-apres';
 import { useCharger } from '@/lib/useCharger';
 
 import { couleurs, polices } from '../theme';
@@ -49,6 +50,10 @@ async function charger(clientId: string): Promise<Progression> {
     cycle: espace.cycle ? { semaine: espace.cycle.semaine, nbSemaines: espace.cycle.nbSemaines } : undefined,
     cycleTermine: espace.planning.some((c) => c.statut === 'Terminé'),
     joursNotes: [...new Set(releves.map((r) => r.jour))],
+    seancesDetaillees: espace.realisations.filter((r) => {
+      const s = espace.seances.find((x) => x.id === r.seanceId);
+      return !!s && seanceDetaillee(s.blocs.flatMap((b) => b.lignes.map((l) => l.id)), r.series);
+    }).length,
   });
 }
 

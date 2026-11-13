@@ -18,7 +18,8 @@ export type CleBadge =
   | 'mi_parcours'
   | 'cycle'
   | 'journee7'
-  | 'journee30';
+  | 'journee30'
+  | 'carnet';
 
 export type FamilleBadge = 'regularite' | 'progres' | 'programme' | 'habitudes';
 
@@ -50,6 +51,7 @@ export const BADGES: DefinitionBadge[] = [
   { cle: 'mi_parcours', nom: 'Mi-parcours', sigle: '½', famille: 'programme', comment: 'Arrive à la moitié de ton cycle.', bravo: 'La moitié du cycle est faite, le plus dur aussi.' },
   { cle: 'cycle', nom: 'Cycle bouclé', sigle: 'OK', famille: 'programme', comment: 'Termine un cycle d’entraînement.', bravo: 'Cycle bouclé ! Ton coach prépare la suite.' },
   { cle: 'journee7', nom: 'Une semaine notée', sigle: '7 j', famille: 'habitudes', comment: 'Note ta journée (sommeil, eau, stress…) 7 jours de suite.', bravo: 'Une semaine de suivi : ton coach voit tout, il peut mieux t’aider.' },
+  { cle: 'carnet', nom: 'Carnet tenu', sigle: '5/5', famille: 'habitudes', comment: 'Note 5 séances en entier : chaque exercice avec ses charges et répétitions (à la main ou à voix haute).', bravo: '5 séances notées en entier : ton coach peut ajuster ton programme au kilo près.' },
   { cle: 'journee30', nom: 'Un mois noté', sigle: '30 j', famille: 'habitudes', comment: 'Note ta journée 30 jours de suite.', bravo: '30 jours notés, c’est devenu un réflexe.' },
 ];
 
@@ -87,6 +89,8 @@ export interface EntreeBadges {
   cycleTermine: boolean;
   /** Jours où au moins un suivi du quotidien a été noté. */
   joursNotes: string[];
+  /** Séances du programme notées en entier (chaque exercice a au moins une série). */
+  seancesDetaillees?: number;
 }
 
 export interface Progression {
@@ -174,6 +178,7 @@ export function progression(e: EntreeBadges): Progression {
     bonus: { fait: Math.min(e.activites.length, 1), but: 1 },
     journee7: { fait: Math.min(notes, 7), but: 7 },
     journee30: { fait: Math.min(notes, 30), but: 30 },
+    carnet: { fait: Math.min(e.seancesDetaillees ?? 0, 5), but: 5 },
     ...(miCycle ? { mi_parcours: { fait: Math.min(e.cycle?.semaine ?? 0, miCycle), but: miCycle } } : {}),
   };
   const gagnes = BADGES.filter((b) => {

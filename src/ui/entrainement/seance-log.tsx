@@ -37,6 +37,22 @@ export type Brouillon = {
   remplacements?: Record<string, Remplacement>;
   bloc?: number;
   valides?: string[];
+  /** Séance faite sans téléphone, notée après coup (seance-libre). */
+  libre?: SaisieLibre;
+};
+
+export type EtapeLibre = 'pendant' | 'raconter' | 'dictee' | 'valider';
+export type SaisieLibre = {
+  etape: EtapeLibre;
+  /** Fin de la séance (« J'ai fini »), pour la durée enregistrée. */
+  finLe?: string;
+  /** Notification de rappel programmée sur le téléphone. */
+  rappel?: string | null;
+  texte?: string;
+  /** Exercices dont le client a parlé, séries où il manque un chiffre (`ligneId:n`). */
+  dictees?: string[];
+  manques?: string[];
+  mention?: 'dictee' | 'prevu' | 'faite';
 };
 
 export const CHARGE: Champ = { m: 'charge', titre: 'Charge (kg)', unite: 'kg', decimal: true, max: 1000 };

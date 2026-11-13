@@ -80,3 +80,12 @@ describe('badges', () => {
     expect(nouveaux(['premiere', 'record'], ['premiere'])).toEqual(['record']);
   });
 });
+
+describe('badge carnet tenu', () => {
+  it('se gagne avec 5 séances notées en entier', () => {
+    expect(progression(base({ seancesDetaillees: 4 })).gagnes).not.toContain('carnet');
+    const p = progression(base({ seancesDetaillees: 5 }));
+    expect(p.gagnes).toContain('carnet');
+    expect(progression(base({ seancesDetaillees: 3 })).avancement.carnet).toEqual({ fait: 3, but: 5 });
+  });
+});

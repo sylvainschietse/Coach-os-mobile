@@ -389,7 +389,7 @@ export function SeanceParBloc({
 }
 
 /** La lueur en haut de l'écran : rouge pendant la séance, verte au bilan. */
-function Lueur({ couleur }: { couleur: string }) {
+export function Lueur({ couleur }: { couleur: string }) {
   return (
     <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 340 }}>
       <Svg width="100%" height="100%">
@@ -441,7 +441,7 @@ function Bouton({ icone: Icone, libelle, onPress, contour }: { icone: typeof X; 
   );
 }
 
-function Principal({ libelle, onPress, desactive, couleur = nuit.rouge, fleche }: { libelle: string; onPress: () => void; desactive?: boolean; couleur?: string; fleche?: boolean }) {
+export function Principal({ libelle, onPress, desactive, couleur = nuit.rouge, fleche }: { libelle: string; onPress: () => void; desactive?: boolean; couleur?: string; fleche?: boolean }) {
   return (
     <Pressable
       accessibilityRole="button"
