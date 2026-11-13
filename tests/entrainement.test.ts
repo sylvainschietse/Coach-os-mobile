@@ -168,6 +168,7 @@ describe('collections et recherche', () => {
     expect(titreClient('MOD-SAL-13-4-S3 · Dos · Triceps')).toBe('Dos · Triceps');
     expect(titreClient('Copie · Léa · Cycle 1 · MOD-SAL-13-4 · Débutant')).toBe('Léa · Cycle 1 · Débutant');
     expect(titreClient('CAL-TRACTIONS-2 · Vers les premières tractions · 2 séances · Adaptation CoachGo')).toBe('Vers les premières tractions · 2 séances');
+    expect(titreClient('MOD-SAL-V3-PM4-4-S3 · Haut du corps')).toBe('Haut du corps');
     expect(titreClient('REF-AX-2-S1 · Full body haltères A')).toBe('Full body haltères A');
     expect(codeModele('MOD-SAL-23-3 · Intermédiaire')).toBe('MOD-SAL-23-3');
     expect(codeModele('Perte de poids · Affiner et tonifier')).toBeUndefined();

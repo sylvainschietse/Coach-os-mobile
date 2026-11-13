@@ -1,6 +1,7 @@
 // Bilan.tsx et BilanComparaison.tsx d'origine (C15 « Séances réalisées ») : résultats d'un client en lecture seule,
 // filtres (profil, cycle, séance, exercice), cycles liés, comparaison brute des deux derniers résultats d'une même
 // ligne dans un même cycle, puis les dernières séances. Les séries cardio et statiques s'écrivent avec leurs unités.
+import { titreClient } from '@/domain/entrainement';
 import { AlertTriangle, ExternalLink, RotateCw } from 'lucide-react-native';
 import { useMemo, useState, type ReactNode } from 'react';
 import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
@@ -80,7 +81,7 @@ export function SeancesRealisees({
 
   const optionsSeances = useMemo(() => {
     const m = new Map<string, string>();
-    (donnee ?? []).forEach((s) => m.set(s.r.seanceId, s.r.seanceTitre || 'Séance sans nom'));
+    (donnee ?? []).forEach((s) => m.set(s.r.seanceId, titreClient(s.r.seanceTitre || 'Séance sans nom')));
     return [...m];
   }, [donnee]);
   const optionsCycles = useMemo(() => {
@@ -360,7 +361,7 @@ function CarteSeance({ s, onOuvrirProgramme }: { s: SeanceBilan; onOuvrirProgram
   return (
     <View style={[ts.carte, { padding: 16, gap: 4 }]}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-        <Text style={[ts.texte, { fontFamily: polices.texteMoyen, flexShrink: 1 }]}>{r.seanceTitre || 'Séance non identifiée'}</Text>
+        <Text style={[ts.texte, { fontFamily: polices.texteMoyen, flexShrink: 1 }]}>{titreClient(r.seanceTitre || 'Séance non identifiée')}</Text>
         <Text style={ts.doux}>{dateParis(r.fin)}</Text>
       </View>
       <Ligne style={{ gap: 8 }}>
