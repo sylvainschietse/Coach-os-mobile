@@ -27,6 +27,7 @@ import {
 } from '@/domain/crm';
 import { ENTRETIEN, TESTS } from '@/domain/evaluation';
 import { formaterMesure, lireMesure, TESTS_GOLF } from '@/domain/tests-golf';
+import { TestsClient } from '../suivi/tests-client';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { NutritionDuClient } from '../alimentation/nutrition-coach';
@@ -46,14 +47,15 @@ import { ParcoursContact } from './parcours';
 import { ReponsesQuestionnaire } from './reponses-questionnaire';
 import { Cellule, Choix, Grille, Initiales, Modale, PiedEditeur, Repliable, Saisie, Valeur } from './dossier';
 
-export type VoletFiche = 'fiche' | 'paiements' | 'messages' | 'boosters' | 'programme' | 'suivi' | 'nutrition' | 'documents';
-export const VOLETS_FICHE: VoletFiche[] = ['fiche', 'paiements', 'messages', 'boosters', 'programme', 'suivi', 'nutrition', 'documents'];
+export type VoletFiche = 'fiche' | 'paiements' | 'messages' | 'boosters' | 'programme' | 'suivi' | 'tests' | 'nutrition' | 'documents';
+export const VOLETS_FICHE: VoletFiche[] = ['fiche', 'paiements', 'messages', 'boosters', 'programme', 'suivi', 'tests', 'nutrition', 'documents'];
 /**
  * Un client : son suivi d'abord, puis programme, nutrition, échanges (messages, bilans et documents), abonnement, et
  * ses coordonnées (avec ses Boosters) en dernier. Un prospect n'a pas encore d'espace client : coordonnées, Boosters, documents.
  */
 const VOLETS_CLIENT: OngletDef<VoletFiche>[] = [
   { cle: 'suivi', libelle: 'Suivi' },
+  { cle: 'tests', libelle: 'Tests' },
   { cle: 'programme', libelle: 'Programme' },
   { cle: 'nutrition', libelle: 'Nutrition' },
   { cle: 'messages', libelle: 'Échanges' },
@@ -358,6 +360,7 @@ function Editeur({
       )}
       {volet === 'programme' && contact?.clientId && <ProgrammeClient key={contact.clientId} clientId={contact.clientId} coachId={coachId} />}
       {volet === 'suivi' && contact?.clientId && <SuiviCoach key={contact.clientId} clientId={contact.clientId} prenom={contact.prenom} />}
+      {volet === 'tests' && contact?.clientId && <TestsClient key={contact.clientId} clientId={contact.clientId} prenom={contact.prenom} />}
       {volet === 'messages' && contact?.clientId && (
         <View style={{ marginTop: espace(4) }}>
           <Conversation key={contact.clientId} clientId={contact.clientId} moi="coach" nomAutre={contact.prenom} />

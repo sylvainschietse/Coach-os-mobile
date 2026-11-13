@@ -12,6 +12,7 @@ import type {
   Seance,
   SeanceResume,
 } from '@/domain/types';
+import type { TestClient } from '@/domain/tests-client';
 
 /** Tout ce dont les écrans ont besoin, quelle que soit la source (démo locale ou Supabase). */
 export interface Depot {
@@ -44,6 +45,10 @@ export interface Depot {
   mensurations(clientId: string): Promise<Mensuration[]>;
   ajouterMensuration(m: Mensuration): Promise<void>;
   supprimerMensuration(id: string): Promise<void>;
+  /** Tests golf et mesures vidéo faits hors Booster, du plus récent au plus ancien. */
+  testsClient(clientId: string): Promise<TestClient[]>;
+  enregistrerTestClient(t: TestClient): Promise<void>;
+  supprimerTestClient(id: string): Promise<void>;
   records(clientId: string): Promise<RecordPerso[]>;
   ajouterRecord(r: RecordPerso): Promise<void>;
   supprimerRecord(id: string): Promise<void>;
