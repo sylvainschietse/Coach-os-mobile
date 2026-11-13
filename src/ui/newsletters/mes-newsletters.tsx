@@ -95,6 +95,9 @@ export function MesNewsletters() {
   useRechargerSur(charge.recharger, ecouterNewsletters);
   const comptes = useCharger(() => newsletters.destinataires(), 'newsletters-destinataires');
   const [ouverte, setOuverte] = useState<Newsletter | null>(null);
+  // Article de la bibliothèque ouvert en lecture, mis en page comme l'e-mail (photos comprises).
+  const [lu, setLu] = useState<Newsletter | null>(null);
+  const coach = useCoachNom();
 
   if (ouverte)
     return (
@@ -143,7 +146,24 @@ export function MesNewsletters() {
           ),
       )}
 
-      <Bibliotheque articles={ARTICLES} onOuvrir={(t) => setOuverte(depuisTheme(t))} />
+      <Bibliotheque articles={ARTICLES} onOuvrir={(t) => setLu(depuisTheme(t))} />
+      {lu && (
+        <Apercu
+          visible
+          onFermer={() => setLu(null)}
+          n={lu}
+          illustration={illustrationDe(lu)}
+          coach={coach}
+          titre={lu.rubrique || 'Article'}
+          action={{
+            libelle: 'Adapter et programmer',
+            onPress: () => {
+              setOuverte(lu);
+              setLu(null);
+            },
+          }}
+        />
+      )}
 
       <View style={{ gap: espace(2) }}>
         <Text style={styles.groupe}>Idées courtes</Text>
@@ -177,7 +197,55 @@ export function MesNewsletters() {
   );
 }
 
-function Pastilles({ n }: { n: Pick<Newsletter, 'cibles' | 'parEmail' | 'parNotif'> }) {
+/** Choisir un ou plusieurs contacts précis : recherche par nom, une case par personne. */
+function ChoixContacts({ choisis, onChanger }: { choisis: string[]; onChanger: (ids: string[]) => void }) {
+  const liste = useCharger(() => newsletters.choisissables(), 'newsletters-choisissables');
+  const [cherche, setCherche] = useState('');
+  if (liste.erreur) return <Erreur message={liste.erreur} onReessayer={liste.recharger} />;
+  if (!liste.donnee) return <Chargement />;
+  const sans = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const visibles = liste.donnee.filter((c) => sans(c.nom).includes(sans(cherche.trim())));
+  // Les personnes cochées d'abord, pour les retrouver.
+  visibles.sort((a, b) => Number(choisis.includes(b.id)) - Number(choisis.includes(a.id)));
+  return (
+    <View style={{ gap: espace(2) }}>
+      <TextInput value={cherche} onChangeText={setCherche} placeholder="Chercher un client" placeholderTextColor={couleurs.texteDoux} style={styles.saisie} accessibilityLabel="Chercher un client" />
+      <ScrollView style={{ maxHeight: 300 }} nestedScrollEnabled>
+        {visibles.length === 0 && <Text style={styles.detail}>Personne à ce nom.</Text>}
+        {visibles.map((c) => {
+          const coche = choisis.includes(c.id);
+          return (
+            <Pressable
+              key={c.id}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: coche }}
+              onPress={() => onChanger(coche ? choisis.filter((x) => x !== c.id) : [...choisis, c.id])}
+              style={({ pressed }) => [styles.ligneChoix, pressed && { backgroundColor: couleurs.discret }]}
+            >
+              <View style={[styles.caseChoix, coche && styles.caseCochee]}>{coche && <Text style={styles.coche}>✓</Text>}</View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.nomChoix} numberOfLines={1}>
+                  {c.nom}
+                </Text>
+                <Text style={styles.detail} numberOfLines={1}>
+                  {c.groupe} · {c.email ? 'e-mail' : 'pas d’e-mail'}
+                  {c.appli ? ' · appli' : ''}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      {choisis.length > 0 && (
+        <Pressable accessibilityRole="button" onPress={() => onChanger([])}>
+          <Text style={[styles.detail, { textDecorationLine: 'underline' }]}>Tout décocher ({choisis.length})</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+function Pastilles({ n }: { n: Pick<Newsletter, 'cibles' | 'parEmail' | 'parNotif' | 'contacts'> }) {
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
       {n.cibles.map((c) => (
@@ -185,6 +253,11 @@ function Pastilles({ n }: { n: Pick<Newsletter, 'cibles' | 'parEmail' | 'parNoti
           {CIBLES.find((x) => x.cle === c)!.libelle}
         </Text>
       ))}
+      {!!n.contacts?.length && (
+        <Text style={[styles.pastille, styles.pastilleCanal]}>
+          {n.contacts.length} client{n.contacts.length > 1 ? 's' : ''} choisi{n.contacts.length > 1 ? 's' : ''}
+        </Text>
+      )}
       <Text style={[styles.pastille, styles.pastilleCanal]}>{n.parEmail && n.parNotif ? 'E-mail + notif' : n.parEmail ? 'E-mail' : 'Notification'}</Text>
     </View>
   );
@@ -227,6 +300,7 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
   const [erreur, setErreur] = useState<string>();
   const [info, setInfo] = useState<string>();
   const [apercu, setApercu] = useState(false);
+  const [choixOuvert, setChoixOuvert] = useState(!!initiale.contacts?.length);
   const [selection, setSelection] = useState({ start: initiale.message.length, end: initiale.message.length });
   const partie = initiale.etat === 'envoyee' || initiale.etat === 'en_cours';
   const maj = (m: Partial<Newsletter>) => {
@@ -364,12 +438,19 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
               />
             );
           })}
+          <Puce
+            libelle={`Clients précis${n.contacts?.length ? ` · ${n.contacts.length}` : ''}`}
+            actif={choixOuvert || !!n.contacts?.length}
+            onPress={() => !partie && setChoixOuvert(!choixOuvert)}
+          />
         </Puces>
         {comptes && n.cibles.length > 0 && (
           <Text style={styles.detail}>
             {n.cibles.reduce((s, c) => s + comptes[c].emails, 0)} recevront l’e-mail · {n.cibles.reduce((s, c) => s + comptes[c].notifs, 0)} ont l’appli pour la notification
+            {n.contacts?.length ? `, plus ${n.contacts.length} choisi${n.contacts.length > 1 ? 's' : ''} un par un` : ''}
           </Text>
         )}
+        {choixOuvert && !partie && <ChoixContacts choisis={n.contacts ?? []} onChanger={(contacts) => maj({ contacts })} />}
       </Carte>
 
       <Carte style={styles.carte}>
@@ -549,7 +630,28 @@ function Champ({
 }
 
 /** L'e-mail exact, avec le prénom d'un client d'exemple. */
-function Apercu({ visible, onFermer, n, illustration, coach, quand }: { visible: boolean; onFermer: () => void; n: Newsletter; illustration: Illustration; coach: string; quand?: string }) {
+function Apercu({
+  visible,
+  onFermer,
+  n,
+  illustration,
+  coach,
+  quand,
+  titre,
+  action,
+}: {
+  visible: boolean;
+  onFermer: () => void;
+  n: Newsletter;
+  illustration: Illustration;
+  coach: string;
+  quand?: string;
+  /** Titre du bandeau ; par défaut « Aperçu de l'e-mail · objet ». */
+  titre?: string;
+  /** Bouton principal en haut (lecture d'un article de la bibliothèque : l'adapter). */
+  action?: { libelle: string; onPress: () => void };
+}) {
+  const [hauteurPage, setHauteurPage] = useState(0);
   const { width, height } = useWindowDimensions();
   const [image, setImage] = useState<string>();
   const [imagesTexte, setImagesTexte] = useState<Record<string, string>>({});
@@ -598,10 +700,13 @@ function Apercu({ visible, onFermer, n, illustration, coach, quand }: { visible:
       <View style={styles.fondModal}>
         <View style={[styles.modal, { width: largeur + 16, height: height - 80 }]}>
           <View style={[styles.boutons, { justifyContent: 'space-between', padding: 8 }]}>
-            <Text style={styles.champ}>Aperçu de l’e-mail · {n.objet ? mailNewsletter(n, { prenom: 'Léa', coach, desabonnement: '' }).sujet : 'sans titre'}</Text>
+            <Text style={[styles.champ, { flex: 1 }]} numberOfLines={2}>
+              {titre ?? `Aperçu de l’e-mail · ${n.objet ? mailNewsletter(n, { prenom: 'Léa', coach, desabonnement: '' }).sujet : 'sans titre'}`}
+            </Text>
+            {action && <Bouton libelle={action.libelle} onPress={action.onPress} />}
             <BoutonContour libelle="Fermer" onPress={onFermer} />
           </View>
-          {n.parNotif && (
+          {!action && n.parNotif && (
             <View style={styles.notif}>
               <Send size={14} color={couleurs.texteDoux} />
               <Text style={styles.detail} numberOfLines={2}>
@@ -609,9 +714,10 @@ function Apercu({ visible, onFermer, n, illustration, coach, quand }: { visible:
               </Text>
             </View>
           )}
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ alignItems: 'center' }}>
-            <ApercuHtml html={html} largeur={largeur} hauteur={Math.max(1400, 900 + n.message.length / 2)} />
-          </ScrollView>
+          {/* La page défile dans son cadre : un article de 3 pages se lit en entier, images comprises. */}
+          <View style={{ flex: 1, alignItems: 'center' }} onLayout={(e) => setHauteurPage(Math.floor(e.nativeEvent.layout.height))}>
+            {hauteurPage > 0 && <ApercuHtml html={html} largeur={largeur} hauteur={hauteurPage} defile />}
+          </View>
         </View>
       </View>
     </Modal>
@@ -633,6 +739,11 @@ const styles = StyleSheet.create({
   pastilleActifs: { backgroundColor: couleurs.vertClair, color: '#0F4D2A' },
   pastilleVeille: { backgroundColor: '#F1ECFF', color: '#4A3699' },
   pastilleCanal: { backgroundColor: couleurs.discret, color: couleurs.secondaire },
+  ligneChoix: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, paddingHorizontal: 4, borderRadius: 10 },
+  caseChoix: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: couleurs.saisie, alignItems: 'center', justifyContent: 'center' },
+  caseCochee: { backgroundColor: couleurs.texte, borderColor: couleurs.texte },
+  coche: { color: '#FFFFFF', fontSize: 14, lineHeight: 16, fontFamily: polices.texteGras },
+  nomChoix: { fontFamily: polices.texteGras, fontSize: 15, color: couleurs.texte },
   grille: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   idee: { width: 160, flexGrow: 1, maxWidth: 220, backgroundColor: couleurs.carte, borderRadius: 14, borderWidth: 1, borderColor: couleurs.bordure, overflow: 'hidden' },
   ideeImage: { width: '100%', height: 80 },

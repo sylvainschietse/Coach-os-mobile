@@ -89,6 +89,9 @@ describe('newsletters', () => {
     const ok = { objet: 'T', message: 'M', cibles: ['clients' as const], parEmail: true, parNotif: false };
     expect(erreurNewsletter(ok)).toBeNull();
     expect(erreurNewsletter({ ...ok, cibles: [] })).toMatch(/pour qui/);
+    // Des clients choisis un par un suffisent, sans groupe.
+    expect(erreurNewsletter({ ...ok, cibles: [], contacts: ['c1'] })).toBeNull();
+    expect(erreurNewsletter({ ...ok, cibles: [], contacts: [] })).toMatch(/pour qui/);
     expect(erreurNewsletter({ ...ok, parEmail: false })).toMatch(/l’envoi/);
     expect(erreurNewsletter({ ...ok, message: '{nom}' })).toMatch(/pas reconnu/);
     expect(erreurNewsletter({ ...ok, boutonLibelle: 'Go', boutonLien: 'www.x' })).toMatch(/https/);

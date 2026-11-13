@@ -1,7 +1,7 @@
 // Mes newsletters : lecture et écriture des newsletters du coach (table newsletters), illustration rangée dans le
 // compartiment public « newsletters », destinataires comptés pour l'écran et envoi d'un test à soi-même (fonction Edge
 // envoyer-newsletters). En démo, tout reste en mémoire et rien ne part.
-import { compterDestinataires, imagesDuTexte, type Article, type ContactNewsletter, type Newsletter } from '@/domain/newsletters';
+import { cibleDe, compterDestinataires, emailValide, imagesDuTexte, type Article, type ContactNewsletter, type Newsletter } from '@/domain/newsletters';
 import { nouvelId } from '@/lib/identifiant';
 
 import { crm } from './crm';
@@ -36,6 +36,7 @@ type Ligne = {
   bouton_libelle: string | null;
   bouton_lien: string | null;
   cibles: Newsletter['cibles'];
+  contacts_choisis?: string[] | null;
   par_email: boolean;
   par_notif: boolean;
   envoi_le: string | null;
@@ -45,7 +46,7 @@ type Ligne = {
   nb_notifs: number;
   cree_le: string;
 };
-const COLONNES = 'id, rubrique, objet, chapeau, message, image, bouton_libelle, bouton_lien, cibles, par_email, par_notif, envoi_le, etat, envoyee_le, nb_emails, nb_notifs, cree_le';
+const COLONNES = 'id, rubrique, objet, chapeau, message, image, bouton_libelle, bouton_lien, cibles, contacts_choisis, par_email, par_notif, envoi_le, etat, envoyee_le, nb_emails, nb_notifs, cree_le';
 
 const lire = (l: Ligne): Newsletter => ({
   id: l.id,
@@ -57,6 +58,7 @@ const lire = (l: Ligne): Newsletter => ({
   boutonLibelle: l.bouton_libelle ?? undefined,
   boutonLien: l.bouton_lien ?? undefined,
   cibles: l.cibles,
+  contacts: l.contacts_choisis ?? [],
   parEmail: l.par_email,
   parNotif: l.par_notif,
   envoiLe: l.envoi_le ?? undefined,
@@ -77,6 +79,7 @@ const ecrire = (n: Newsletter, image: string | null) => ({
   bouton_libelle: n.boutonLibelle?.trim() || null,
   bouton_lien: n.boutonLibelle?.trim() ? n.boutonLien?.trim() || null : null,
   cibles: n.cibles,
+  contacts_choisis: n.contacts ?? [],
   par_email: n.parEmail,
   par_notif: n.parNotif,
   envoi_le: n.envoiLe ?? null,
@@ -115,12 +118,15 @@ const imagesDemo = new Map<string, string>();
 export const newsletters = {
   async liste(): Promise<Newsletter[]> {
     if (!supabase) return [...memoire].sort((a, b) => b.creeLe.localeCompare(a.creeLe));
-    const { data, error } = await supabase.from('newsletters').select(COLONNES).order('cree_le', { ascending: false }).limit(200);
+    const lireTout = (colonnes: string) => supabase!.from('newsletters').select(colonnes).order('cree_le', { ascending: false }).limit(200);
+    let { data, error } = await lireTout(COLONNES);
+    // Base pas encore à jour (pas de clients choisis un par un) : on lit sans.
+    if (error && /contacts_choisis/.test(error.message)) ({ data, error } = await lireTout(COLONNES.replace(' contacts_choisis,', '')));
     if (error) {
       if (error.code === '42P01' || /newsletters/.test(error.message)) throw new Error('Les newsletters ne sont pas encore activées sur le serveur : la base doit d’abord être mise à jour.');
       throw new Error('Impossible de charger tes newsletters pour le moment.');
     }
-    return (data as Ligne[]).map(lire);
+    return (data as unknown as Ligne[]).map(lire);
   },
 
   /** Enregistre (brouillon ou programmée). L'illustration est rangée d'abord : sans elle, rien n'est enregistré. */
@@ -214,6 +220,18 @@ export const newsletters = {
         }),
       ),
     );
+  },
+
+  /** Les contacts qu'on peut choisir un par un : tout le carnet, sauf les dossiers archivés. */
+  async choisissables(): Promise<{ id: string; nom: string; email: boolean; appli: boolean; groupe: string }[]> {
+    const carnet = await crm.carnet();
+    return carnet.contacts
+      .filter((c) => c.statut !== 'archive')
+      .map((c) => {
+        const g = cibleDe(c);
+        return { id: c.id, nom: `${c.prenom} ${c.nom}`.trim(), email: emailValide(c.email), appli: !!c.clientId, groupe: g === 'clients' ? 'Client actif' : g === 'veille' ? 'En veille' : 'Prospect' };
+      })
+      .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
   },
 
   /** Envoie l'article, tel qu'il est à l'écran, à l'adresse du coach. Rend l'adresse. */
