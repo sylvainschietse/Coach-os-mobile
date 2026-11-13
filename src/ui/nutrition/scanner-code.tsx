@@ -28,7 +28,7 @@ export function ScannerCode({ onCode }: { onCode: (code: string) => void }) {
             setErreur('');
             if (active) return setActive(false);
             const p = permission?.granted ? permission : await demander();
-            if (!p.granted) return setErreur('Caméra indisponible ou accès refusé. Vous pouvez saisir les chiffres du code-barres.');
+            if (!p.granted) return setErreur('Caméra indisponible ou accès refusé. Tu peux saisir les chiffres du code-barres.');
             lu.current = false;
             setActive(true);
           }}
@@ -51,7 +51,7 @@ export function ScannerCode({ onCode }: { onCode: (code: string) => void }) {
         </View>
       )}
       <Etat erreur={erreur || undefined} />
-      <Text style={doux}>Cadrez le code-barres du produit. L’image est lue sur votre téléphone et n’est pas enregistrée.</Text>
+      <Text style={doux}>Cadre le code-barres du produit. L’image est lue sur ton téléphone et n’est pas enregistrée.</Text>
     </View>
   );
 }

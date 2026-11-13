@@ -322,7 +322,7 @@ export function CreationEntrainement({
 
       {etape2 ? (
         <>
-          <Text style={ts.doux}>Votre brouillon est enregistré au fur et à mesure. Ajoutez vos blocs puis leurs exercices. Sans consignes de votre part, un descriptif est écrit d’après la séance quand vous la terminez.</Text>
+          <Text style={ts.doux}>Ton brouillon est enregistré au fur et à mesure. Ajoute tes blocs puis leurs exercices. Sans consignes de ta part, un descriptif est écrit d’après la séance quand tu la termines.</Text>
           <EditeurSeance
             key={`${cree.id}:${enregistre.nom}:${enregistre.consignes}`}
             coachId={coachId}
@@ -338,7 +338,7 @@ export function CreationEntrainement({
             <Repliable resume="Décrire la séance à l’assistant">
               <View style={{ gap: 8 }}>
                 <Saisie
-                  libelle="Ce que vous voulez dans la séance"
+                  libelle="Ce que tu veux dans la séance"
                   long
                   dictee
                   valeur={demande}
@@ -362,7 +362,7 @@ export function CreationEntrainement({
             <Repliable resume="Décrire le programme à l’assistant" ouvert>
               <View style={{ gap: 8 }}>
                 <Saisie
-                  libelle="Ce que vous voulez dans le programme"
+                  libelle="Ce que tu veux dans le programme"
                   long
                   dictee
                   valeur={demande}
@@ -475,7 +475,7 @@ function ApercuProgramme({ p }: { p: ProgrammePropose }) {
   const { plan } = p;
   return (
     <View accessibilityLabel="Programme proposé par l’assistant" style={{ gap: 10, borderRadius: 8, padding: 12, backgroundColor: couleurs.discret }}>
-      <Text style={ts.doux}>Proposition, pas encore enregistrée. Vous pourrez tout modifier ensuite.</Text>
+      <Text style={ts.doux}>Proposition, pas encore enregistrée. Tu pourras tout modifier ensuite.</Text>
       <Text style={ts.titreChamp}>{plan.titre}</Text>
       <Text style={ts.doux}>
         {[plan.niveau, plan.objectif, `${plan.seancesParSemaine} séance${plan.seancesParSemaine > 1 ? 's' : ''}/sem.`, `${plan.dureeSemaines} sem.`, plan.materiel].filter(Boolean).join(' · ')}
@@ -486,7 +486,7 @@ function ApercuProgramme({ p }: { p: ProgrammePropose }) {
           <Text style={{ fontSize: 15, fontFamily: polices.texteGras, color: couleurs.texte }}>
             {i + 1}. {s.titre}
           </Text>
-          {s.blocs.length === 0 && <Text style={[ts.doux, { color: couleurs.rouge }]}>Séance non composée : vous pourrez la remplir dans l’éditeur.</Text>}
+          {s.blocs.length === 0 && <Text style={[ts.doux, { color: couleurs.rouge }]}>Séance non composée : tu pourras la remplir dans l’éditeur.</Text>}
           {s.blocs.map((b) => (
             <Text key={b.id} style={{ fontSize: 14, fontFamily: polices.texte, color: couleurs.texte }}>
               <Text style={{ fontFamily: polices.texteMoyen }}>{b.titre} : </Text>
@@ -513,7 +513,7 @@ const prescription = (l: Bloc['lignes'][number]) =>
 function ApercuProposition({ p, blocs }: { p: PropositionSeance; blocs: Bloc[] }) {
   return (
     <View accessibilityLabel="Proposition de l’assistant" style={{ gap: 8, borderRadius: 8, padding: 12, backgroundColor: couleurs.discret }}>
-      <Text style={ts.doux}>Proposition, pas encore enregistrée. Vous pourrez tout modifier ensuite.</Text>
+      <Text style={ts.doux}>Proposition, pas encore enregistrée. Tu pourras tout modifier ensuite.</Text>
       {p.titre ? <Text style={ts.titreChamp}>{p.titre}</Text> : null}
       {p.consignes ? <Text style={ts.doux}>{p.consignes}</Text> : null}
       {!blocs.length && <Text style={ts.doux}>Séance d’activité : pas d’exercices, le client indique simplement s’il l’a faite.</Text>}

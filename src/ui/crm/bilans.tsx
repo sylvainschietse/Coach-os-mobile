@@ -267,7 +267,7 @@ export function EditeurBilan({ id, contactId, onFermer }: { id?: string; contact
   if (id && !bilan)
     return (
       <Modale titre="Modifier le bilan" onFermer={onFermer}>
-        <Vide titre="Bilan introuvable" texte="Il a peut-être été supprimé. Actualisez la liste." />
+        <Vide titre="Bilan introuvable" texte="Il a peut-être été supprimé. Actualise la liste." />
       </Modale>
     );
   return (
@@ -312,7 +312,7 @@ function FormulaireBilan({
   const date = lireJour(b.date);
   const mesures = { poids: lireMesure(b.poids), taille: lireMesure(b.taille), tourTaille: lireMesure(b.tourTaille), tourHanches: lireMesure(b.tourHanches) };
   const erreurs: Record<string, string | undefined> = {
-    date: !date ? 'Écrivez la date comme 30/10/2026' : undefined,
+    date: !date ? 'Écris la date comme 30/10/2026' : undefined,
     ...Object.fromEntries(Object.entries(mesures).map(([k, v]) => [k, v === null ? 'Valeur entre 0 et 500' : undefined])),
   };
   const invalide = !b.contactId || Object.values(erreurs).some(Boolean);
@@ -359,7 +359,7 @@ function FormulaireBilan({
       return;
     }
     if (Platform.OS === 'web') {
-      setRetour('Bilan enregistré. Imprimez-le en PDF puis déposez ce PDF dans Documents.');
+      setRetour('Bilan enregistré. Imprime-le en PDF puis dépose ce PDF dans Documents.');
       setOccupe(false);
       return;
     }
@@ -406,7 +406,7 @@ function FormulaireBilan({
     try {
       const fichier = await choisirFichier();
       if (!fichier) return;
-      if (fichier.type !== 'application/pdf') throw new Error('Déposez le bilan au format PDF.');
+      if (fichier.type !== 'application/pdf') throw new Error('Dépose le bilan au format PDF.');
       const d = await enregistrerPdf(id, fichier);
       setRetour(`PDF enregistré (version ${d.version} dans Documents).`);
     } catch (e) {
@@ -459,7 +459,7 @@ function FormulaireBilan({
         </View>
       }
     >
-      {envoye && <Text style={styles.alerte}>Ce bilan a déjà été envoyé : créez un nouveau bilan pour conserver l’historique.</Text>}
+      {envoye && <Text style={styles.alerte}>Ce bilan a déjà été envoyé : crée un nouveau bilan pour conserver l’historique.</Text>}
       <Grille>
         <Cellule>
           <View style={{ gap: espace(2) }}>
@@ -490,7 +490,7 @@ function FormulaireBilan({
         ))}
       </Grille>
       <Text style={styles.sousTitre}>Les dix piliers</Text>
-      <Text style={styles.raison}>Score de coaching sur 10. Laissez « Non évalué » si vous n’avez pas évalué ce pilier.</Text>
+      <Text style={styles.raison}>Score de coaching sur 10. Laisse « Non évalué » si tu n’as pas évalué ce pilier.</Text>
       <Grille>
         {PILIERS.map((p) => (
           <Cellule key={p}>

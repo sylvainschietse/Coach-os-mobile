@@ -56,7 +56,7 @@ export interface FichierChoisi {
 }
 
 export function verifierFichier(f: FichierChoisi, max = TAILLE_MAX): string | undefined {
-  if (!(FORMATS as readonly string[]).includes(f.type)) return 'Format refusé : déposez un PDF ou une image (JPEG, PNG, WebP, HEIC).';
+  if (!(FORMATS as readonly string[]).includes(f.type)) return 'Format refusé : dépose un PDF ou une image (JPEG, PNG, WebP, HEIC).';
   if (f.taille > max) return `Fichier trop lourd : ${Math.ceil(f.taille / 1024 / 1024)} Mo pour ${Math.round(max / 1024 / 1024)} Mo au plus.`;
   if (f.taille === 0) return 'Ce fichier est vide.';
   return undefined;
@@ -87,8 +87,8 @@ export const versionSuivante = (d: Pick<Document, 'version' | 'chemin'>) => (d.c
 
 export function nouveauDocument(id: string, saisie: SaisieDocument, maintenant: Date): Document {
   const nom = saisie.nom?.trim();
-  if (!nom) throw new Error('Donnez un nom au document.');
-  if (!saisie.contactId) throw new Error('Choisissez un contact');
+  if (!nom) throw new Error('Donne un nom au document.');
+  if (!saisie.contactId) throw new Error('Choisis un contact');
   const iso = maintenant.toISOString();
   return {
     id,
@@ -109,8 +109,8 @@ export function nouveauDocument(id: string, saisie: SaisieDocument, maintenant: 
 
 export function modifierDocument(d: Document, saisie: SaisieDocument, maintenant: Date): Document {
   const nom = saisie.nom === undefined ? d.nom : saisie.nom.trim();
-  if (!nom) throw new Error('Donnez un nom au document.');
-  if (saisie.contactId === null) throw new Error('Choisissez un contact');
+  if (!nom) throw new Error('Donne un nom au document.');
+  if (saisie.contactId === null) throw new Error('Choisis un contact');
   const suivant = { ...d, nom, modifieLe: maintenant.toISOString() };
   if (saisie.contactId !== undefined) suivant.contactId = saisie.contactId;
   if (saisie.boosterId !== undefined) suivant.boosterId = saisie.boosterId ?? undefined;

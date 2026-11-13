@@ -85,7 +85,7 @@ export function Corbeille({ coachId, onRestaure }: { coachId: string; onRestaure
       </View>
       {ouverte && (
         <View style={[ts.carte, { padding: 16, gap: 8 }]}>
-          <Text style={ts.doux}>Pour retrouver une séance dont le programme est supprimé, restaurez aussi ce programme.</Text>
+          <Text style={ts.doux}>Pour retrouver une séance dont le programme est supprimé, restaure aussi ce programme.</Text>
           {erreur ? (
             <Text accessibilityRole="alert" style={ts.erreur}>
               {erreur}

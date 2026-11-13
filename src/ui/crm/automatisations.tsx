@@ -41,7 +41,7 @@ const CONTRAT = {
   coachingId: null,
   to: 'client@example.com',
   firstName: 'Prénom',
-  subject: 'Votre compte rendu',
+  subject: 'Ton compte rendu',
   pdfUrl: 'https://… (lien signé, valable 1 heure)',
   filename: 'compte-rendu.pdf',
 };
@@ -134,7 +134,7 @@ export function Automatisations() {
           />
         </View>
         <Text style={styles.texte}>
-          Générez le PDF dans le Booster ou le bilan, puis envoyez-le depuis Documents. Le compte rendu n’est marqué envoyé que si le service
+          Génère le PDF dans le Booster ou le bilan, puis envoie-le depuis Documents. Le compte rendu n’est marqué envoyé que si le service
           d’envoi confirme l’e-mail.
         </Text>
         {etat.make !== 'configure' && (

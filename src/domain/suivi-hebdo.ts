@@ -53,7 +53,7 @@ export function semaineValide(d: string, jour = aujourdhuiParis()) {
 /** Message d'erreur, ou null si les réponses sont complètes (mêmes bornes que le schéma d'origine). */
 export function erreurReponses(r: ReponsesBilan): string | null {
   const entier = (n: number, min: number, max: number) => Number.isInteger(n) && n >= min && n <= max;
-  if (SCORES.some(([k]) => !entier(r[k], 1, 10)) || !entier(r.seances, 0, 30)) return 'Complétez les quatre scores et le nombre de séances réalisées.';
+  if (SCORES.some(([k]) => !entier(r[k], 1, 10)) || !entier(r.seances, 0, 30)) return 'Complète les quatre scores et le nombre de séances réalisées.';
   if (TEXTES.some(([k, , , max]) => typeof r[k] !== 'string' || r[k].length > max)) return 'Réponse trop longue.';
   return null;
 }
@@ -157,9 +157,9 @@ const quantiteValide = (n: number) => Number.isFinite(n) && n >= 0 && n <= 10000
 
 export function erreurObjectif(o: NouvelObjectif, jour = aujourdhuiParis()): string | null {
   const t = o.titre.trim();
-  if (t.length < 3 || t.length > 120) return 'Nommez votre objectif (3 à 120 caractères)';
+  if (t.length < 3 || t.length > 120) return 'Nomme ton objectif (3 à 120 caractères)';
   if (!UNITES_OBJECTIF.includes(o.unite)) return 'Unité invalide';
-  if (!quantiteValide(o.depart) || !quantiteValide(o.cible)) return 'Renseignez le départ et la cible';
+  if (!quantiteValide(o.depart) || !quantiteValide(o.cible)) return 'Renseigne le départ et la cible';
   if (o.depart === o.cible) return 'La cible doit être différente du point de départ';
   if (o.echeance && (!/^\d{4}-\d{2}-\d{2}$/.test(o.echeance) || o.echeance < jour || o.echeance > '2100-12-31')) return 'Échéance invalide';
   return null;
@@ -190,14 +190,14 @@ export function appliquerObjectif(liste: Objectif[], clientId: string, envoiId: 
     return [...liste, o];
   }
   const o = liste.find((x) => x.id === id && x.clientId === clientId);
-  if (!o) throw new Error('Objectif hors de votre dossier');
+  if (!o) throw new Error('Objectif hors de ton dossier');
   if (o.historique.some((h) => h.envoiId === envoiId) || o.dernierEnvoi === envoiId) return liste;
-  if (a.version !== o.modifieLe) throw new Error('Cet objectif a changé. Actualisez avant de réessayer.');
+  if (a.version !== o.modifieLe) throw new Error('Cet objectif a changé. Actualise avant de réessayer.');
   let suite: Objectif;
   if (a.action === 'progresser') {
     if (o.archive) throw new Error('Cet objectif est archivé');
     if (!quantiteValide(a.valeur)) throw new Error('Valeur actuelle invalide');
-    if (o.historique.length >= 500) throw new Error('Historique complet : créez un nouvel objectif');
+    if (o.historique.length >= 500) throw new Error('Historique complet : crée un nouvel objectif');
     suite = {
       ...o,
       historique: [...o.historique, { date: maintenant, valeur: a.valeur, envoiId }],

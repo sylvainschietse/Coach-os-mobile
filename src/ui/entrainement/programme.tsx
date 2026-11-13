@@ -87,7 +87,7 @@ export function DetailProgramme({
       p.dureeSemaines ? `Durée : ${p.dureeSemaines} semaines.` : '',
     ]
       .filter(Boolean)
-      .join(' ') || 'Complétez les critères depuis Modifier pour préciser le profil et l’objectif.';
+      .join(' ') || 'Complète les critères depuis Modifier pour préciser le profil et l’objectif.';
   const modifier = () =>
     setDialogue({
       action: 'editProgramme',
@@ -180,7 +180,7 @@ export function DetailProgramme({
         <View style={{ marginTop: 8 }}>
           <TexteLong texte={p.consignes} libelle="Déroulement et consignes" />
         </View>
-        {!p.consignes && <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Ajoutez le déroulement, la progression et les adaptations depuis Modifier → Descriptif et consignes.</Text>}
+        {!p.consignes && <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Ajoute le déroulement, la progression et les adaptations depuis Modifier → Descriptif et consignes.</Text>}
         <View style={{ alignSelf: 'flex-start', marginTop: 8 }}>
           <Action petit variante="contour" libelle="Modifier le descriptif" onPress={modifier} />
         </View>
@@ -264,7 +264,7 @@ export function DetailProgramme({
           programmeId={id}
           onFermer={() => setReprise(false)}
           onReprise={() => {
-            setMessage('Séance copiée dans ce programme. Vous pouvez la modifier sans toucher à l’originale.');
+            setMessage('Séance copiée dans ce programme. Tu peux la modifier sans toucher à l’originale.');
             charger();
           }}
         />

@@ -240,7 +240,7 @@ export function EnregistreurVocal({ valeur, desactive, onChange }: { valeur: Voc
     setErreur('');
     try {
       const p = await requestRecordingPermissionsAsync();
-      if (!p.granted) throw new Error('Autorisez le micro pour enregistrer un vocal.');
+      if (!p.granted) throw new Error('Autorise le micro pour enregistrer un vocal.');
       if (Platform.OS !== 'web') await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await recorder.prepareToRecordAsync();
       recorder.record();
@@ -287,7 +287,7 @@ export function EnregistreurVocal({ valeur, desactive, onChange }: { valeur: Voc
     <View style={{ gap: 6 }}>
       {valeur ? (
         <Ligne>
-          <LecteurVocal uri={valeur.uri} dureeS={valeur.fichier.dureeS} libelle="Votre vocal" />
+          <LecteurVocal uri={valeur.uri} dureeS={valeur.fichier.dureeS} libelle="Ton vocal" />
           <Action petit variante="fantome" icone={Trash2} libelle="Effacer" desactive={desactive} onPress={() => onChange(null)} />
         </Ligne>
       ) : (
@@ -366,7 +366,7 @@ export function Camera({ visible, onFermer, onFilmee }: { visible: boolean; onFe
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 }}>
             <Text style={[ts.texte, { color: '#FFFFFF', textAlign: 'center' }]}>
-              {refuse ? 'L’appareil photo est refusé pour CoachGo. Autorisez-le dans les réglages du téléphone.' : 'Autorisez l’appareil photo pour filmer votre mouvement.'}
+              {refuse ? 'L’appareil photo est refusé pour CoachGo. Autorise-le dans les réglages du téléphone.' : 'Autorise l’appareil photo pour filmer ton mouvement.'}
             </Text>
             {!refuse && <Action libelle="Autoriser" onPress={() => void demanderCam()} />}
           </View>
@@ -486,7 +486,7 @@ export function VideosExercice({ contexte, videos: liste, onChange }: { contexte
             <Action petit icone={Video} libelle={etat === 'envoi' ? 'Envoi…' : 'Envoyer au coach'} chargement={etat === 'envoi'} onPress={envoyer} />
             <Action petit variante="fantome" libelle="Annuler" desactive={etat === 'envoi'} onPress={() => setPret(null)} />
           </Ligne>
-          <Text style={ts.doux}>Seul votre coach la voit. Elle est effacée automatiquement au bout de 30 jours.</Text>
+          <Text style={ts.doux}>Seul ton coach la voit. Elle est effacée automatiquement au bout de 30 jours.</Text>
         </View>
       ) : (
         <Ligne>
@@ -539,7 +539,7 @@ function VideoEnvoyee({ v, maintenant, onChange }: { v: VideoMouvement; maintena
         <Text style={ts.titreChamp}>Vidéo du {jourMois(v.creeLe)}</Text>
         <Statut statut={statut} />
       </View>
-      {!!v.commentaire && <Text style={ts.doux}>Votre question : {v.commentaire}</Text>}
+      {!!v.commentaire && <Text style={ts.doux}>Ta question : {v.commentaire}</Text>}
       {aReponse(v) && (
         <View style={{ gap: 6, borderLeftWidth: 3, borderLeftColor: couleurs.vert, paddingLeft: 10 }}>
           <Text style={[ts.titreChamp, { color: couleurs.vert }]}>Réponse du coach</Text>
@@ -710,7 +710,7 @@ function CarteVideoCoach({ v, realisations, maintenant, onChange }: { v: VideoMo
 
           {edition ? (
             <View style={{ gap: 8 }}>
-              <Text style={ts.titreChamp}>Votre réponse</Text>
+              <Text style={ts.titreChamp}>Ta réponse</Text>
               <TextInput
                 multiline
                 maxLength={MAX_REPONSE}
@@ -750,9 +750,9 @@ function CarteVideoCoach({ v, realisations, maintenant, onChange }: { v: VideoMo
             </View>
           ) : (
             <View style={{ gap: 6, borderLeftWidth: 3, borderLeftColor: couleurs.vert, paddingLeft: 10 }}>
-              <Text style={[ts.titreChamp, { color: couleurs.vert }]}>Votre réponse{v.reponseLe ? ` du ${jourMois(v.reponseLe)}` : ''}</Text>
+              <Text style={[ts.titreChamp, { color: couleurs.vert }]}>Ta réponse{v.reponseLe ? ` du ${jourMois(v.reponseLe)}` : ''}</Text>
               {!!v.reponseTexte && <Text style={ts.texte}>{v.reponseTexte}</Text>}
-              {!!v.reponseAudio && <LecteurVocal chemin={v.reponseAudio} dureeS={v.reponseAudioDureeS} libelle="Votre vocal" />}
+              {!!v.reponseAudio && <LecteurVocal chemin={v.reponseAudio} dureeS={v.reponseAudioDureeS} libelle="Ton vocal" />}
               <View style={{ alignSelf: 'flex-start', marginLeft: -12 }}>
                 <Action petit variante="fantome" libelle="Modifier" onPress={() => setEdition(true)} />
               </View>

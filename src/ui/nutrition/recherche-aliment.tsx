@@ -87,7 +87,7 @@ export function RechercheAliment({
       return;
     }
     if (text.length < 2) {
-      setError('Saisissez au moins deux caractères.');
+      setError('Saisis au moins deux caractères.');
       return;
     }
     const token = ++request.current;
@@ -119,7 +119,7 @@ export function RechercheAliment({
         <Action libelle={busy ? 'Recherche…' : 'Rechercher'} desactive={disabled || busy} onPress={search} />
       </View>
       <Text style={doux}>
-        Ciqual apparaît pendant la saisie. Appuyez sur Rechercher pour les produits de marque ; sélectionner un produit récupère sa fiche par code-barres.
+        Ciqual apparaît pendant la saisie. Appuie sur Rechercher pour les produits de marque ; sélectionner un produit récupère sa fiche par code-barres.
       </Text>
       <CaseACocher
         petite
@@ -153,9 +153,9 @@ export function RechercheAliment({
                 />
               ))}
               {done && !products.length && (
-                <Text style={doux}>Aucun produit de marque trouvé. Essayez sans le filtre France, précisez le nom ou scannez le code-barres.</Text>
+                <Text style={doux}>Aucun produit de marque trouvé. Essaie sans le filtre France, précise le nom ou scanne le code-barres.</Text>
               )}
-              {products.length === 12 && <Text style={doux}>12 premiers produits : précisez la marque, le nom ou le format.</Text>}
+              {products.length === 12 && <Text style={doux}>12 premiers produits : précise la marque, le nom ou le format.</Text>}
             </View>
           )}
         </View>
@@ -179,8 +179,8 @@ export function RechercheAliment({
                   }}
                 />
               ))}
-              {!results.length && <Text style={[doux, { padding: 8 }]}>Aucun aliment générique pour cette recherche. Essayez la recherche de marques au-dessus.</Text>}
-              {results.length === 30 && <Text style={doux}>30 premiers résultats : précisez le nom ou la catégorie.</Text>}
+              {!results.length && <Text style={[doux, { padding: 8 }]}>Aucun aliment générique pour cette recherche. Essaie la recherche de marques au-dessus.</Text>}
+              {results.length === 30 && <Text style={doux}>30 premiers résultats : précise le nom ou la catégorie.</Text>}
             </View>
           )}
         </View>
@@ -188,7 +188,7 @@ export function RechercheAliment({
       <View style={{ gap: 2 }}>
         <Text style={[doux, { fontSize: 11 }]}>
           {ciqualFoods.length.toLocaleString('fr-FR')} aliments · Anses · Ciqual 2025. Quantités en grammes de partie comestible, y compris les liquides.
-          Choisissez le bon état cru/cuit ; les poids ne sont pas convertis automatiquement. Marques : Open Food Facts (ODbL).
+          Choisis le bon état cru/cuit ; les poids ne sont pas convertis automatiquement. Marques : Open Food Facts (ODbL).
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 12 }}>
           <Lien petit url="https://doi.org/10.57745/RDMHWY">Anses · Ciqual 2025</Lien>

@@ -31,8 +31,8 @@ describe('bilan de la semaine', () => {
 
   it('les quatre scores et les séances sont obligatoires', () => {
     expect(erreurReponses(r())).toBeNull();
-    expect(erreurReponses(r({ sommeil: 0 }))).toMatch('Complétez');
-    expect(erreurReponses(r({ seances: 31 }))).toMatch('Complétez');
+    expect(erreurReponses(r({ sommeil: 0 }))).toMatch('Complète');
+    expect(erreurReponses(r({ seances: 31 }))).toMatch('Complète');
     expect(erreurReponses(r({ victoire: 'x'.repeat(1001) }))).toMatch('trop longue');
   });
 
@@ -75,7 +75,7 @@ describe('objectifs', () => {
     expect(() => appliquerObjectif(l, 'c', 'v2', { action: 'progresser', valeur: 4, version: '2026-10-24T10:00:00Z' }, id)).toThrow('a changé');
     l = appliquerObjectif(l, 'c', 'v3', { action: 'progresser', valeur: 4, version: l[0].modifieLe }, id, '2026-10-24T12:00:00Z');
     expect(l[0].atteintLe).toBe('');
-    expect(() => appliquerObjectif(l, 'autre', 'v4', { action: 'archiver', version: l[0].modifieLe }, id)).toThrow('hors de votre dossier');
+    expect(() => appliquerObjectif(l, 'autre', 'v4', { action: 'archiver', version: l[0].modifieLe }, id)).toThrow('hors de ton dossier');
   });
 });
 

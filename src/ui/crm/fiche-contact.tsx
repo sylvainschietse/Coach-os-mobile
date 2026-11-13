@@ -534,7 +534,7 @@ function BoostersDuContact({
     <View style={styles.encadre}>
       <Text style={styles.encadreTitre}>Questionnaire et Boosters</Text>
       <Text style={styles.aide}>
-        Retrouvez ici les informations enregistrées dans les Boosters de ce client : briefing issu du questionnaire, entretien, tests et conclusion.
+        Retrouve ici les informations enregistrées dans les Boosters de ce client : briefing issu du questionnaire, entretien, tests et conclusion.
       </Text>
       {questionnaires.map((q, i) => (
         <View key={q.id} style={styles.bloc}>

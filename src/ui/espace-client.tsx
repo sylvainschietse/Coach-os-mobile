@@ -322,7 +322,7 @@ function EnAttente({ clientId, apercu }: { clientId: string; apercu: boolean }) 
   return (
     <Carte style={{ borderColor: couleurs.rouge }}>
       <Texte>
-        {attente.donnee === 1 ? '1 séance attend' : `${attente.donnee} séances attendent`} le réseau. Elle sera envoyée à votre coach automatiquement, rien
+        {attente.donnee === 1 ? '1 séance attend' : `${attente.donnee} séances attendent`} le réseau. Elle sera envoyée à ton coach automatiquement, rien
         n’est perdu.
       </Texte>
     </Carte>

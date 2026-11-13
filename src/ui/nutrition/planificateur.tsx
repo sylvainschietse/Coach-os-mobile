@@ -219,7 +219,7 @@ export function Planificateur({
           envoi.current = draft.envoiId;
           setDirty(true);
           ecrireBrouillon(key, draft);
-          setNotice('Brouillon récupéré : enregistrez votre semaine.');
+          setNotice('Brouillon récupéré : enregistre ta semaine.');
         }
         setReady(true);
       } catch (e) {
@@ -326,7 +326,7 @@ export function Planificateur({
     const item: Meal = { recipeId: selected.id, variantId: v.id, portions: portion, slot, ...(swaps.length ? { swaps } : {}) };
     const next = plan.map((d, i) => (i === day ? (editing === null ? [...d, item] : d.map((m, j) => (j === editing ? item : m))) : d));
     change(next);
-    setNotice((editing === null ? 'Ajouté au ' : 'Repas mis à jour pour le ') + dateAt(week, day) + '. Enregistrez la semaine.');
+    setNotice((editing === null ? 'Ajouté au ' : 'Repas mis à jour pour le ') + dateAt(week, day) + '. Enregistre la semaine.');
     setSelected(null);
     onVue('semaine');
   };
@@ -383,7 +383,7 @@ export function Planificateur({
               <ChefHat size={20} color={couleurs.rouge} />
               <View style={{ flexShrink: 1 }}>
                 <Text style={ts.titre}>200 recettes · cuisines du monde</Text>
-                <Text style={doux}>Des idées notées par les lecteurs, à adapter à vos objectifs.</Text>
+                <Text style={doux}>Des idées notées par les lecteurs, à adapter à tes objectifs.</Text>
               </View>
             </View>
             <Saisie libelle="Rechercher une recette ou un ingrédient" placeholder="Poulet, porridge, lentilles…" valeur={search} onChange={setSearch} />
@@ -419,7 +419,7 @@ export function Planificateur({
                   variante.
                 </Text>
                 <Text style={[doux, { color: couleurs.texte }]}>
-                  Les exclusions textuelles sont des filtres par mots clés, pas une vérification exhaustive des allergies. Vérifiez les ingrédients, les
+                  Les exclusions textuelles sont des filtres par mots clés, pas une vérification exhaustive des allergies. Vérifie les ingrédients, les
                   produits composés, leurs étiquettes et les traces. La saison est indicative pour la France métropolitaine ; le budget est une estimation
                   par type d’ingrédient, sans relevé de prix.
                 </Text>
@@ -476,7 +476,7 @@ export function Planificateur({
           {!list.length && (
             <Bloc>
               <Text style={ts.texte}>
-                Aucune recette avec ces filtres. Changez les catégories ou consultez le catalogue complet en décochant « Mes préférences enregistrées ».
+                Aucune recette avec ces filtres. Change les catégories ou consulte le catalogue complet en décochant « Mes préférences enregistrées ».
               </Text>
             </Bloc>
           )}
@@ -497,7 +497,7 @@ export function Planificateur({
             </View>
             {coachPlan ? (
               <Text style={ts.texte}>
-                Votre coach a composé cette semaine : elle s’affiche telle qu’il l’a enregistrée, en lecture seule. La liste de courses en est tirée.
+                Ton coach a composé cette semaine : elle s’affiche telle qu’il l’a enregistrée, en lecture seule. La liste de courses en est tirée.
               </Text>
             ) : (
               <>
@@ -513,7 +513,7 @@ export function Planificateur({
                 </View>
                 {!cible && (
                   <Text style={doux}>
-                    Enregistrez votre profil ou demandez des objectifs au coach pour activer la proposition automatique. Vous pouvez choisir vos recettes
+                    Enregistre ton profil ou demande des objectifs au coach pour activer la proposition automatique. Tu peux choisir tes recettes
                     manuellement.
                   </Text>
                 )}
@@ -578,7 +578,7 @@ export function Planificateur({
                         <Miniature source={photoPlan(r)} />
                         <Text style={[ts.kicker, { fontSize: 12 }]}>{slotLabels[MOMENT_SLOT[r.moment]]}</Text>
                         <Text style={ts.titre}>{r.titre}</Text>
-                        <Text style={doux}>{r.portions.toLocaleString('fr-FR')} portion(s) · choisie par votre coach</Text>
+                        <Text style={doux}>{r.portions.toLocaleString('fr-FR')} portion(s) · choisie par ton coach</Text>
                         <Valeurs n={versNutrition(r.macros)} />
                       </Bloc>
                     ))
@@ -604,7 +604,7 @@ export function Planificateur({
                             <View style={{ minWidth: 120 }}>
                               <Selecteur libelle="Portions" options={choixPortions(m.portions)} valeur={String(m.portions)} onChange={(p) => update(index, Number(p))} />
                             </View>
-                            {!compatible(r, mv, prefs, mois) && <Text style={[doux, { color: couleurs.rouge }]}>À revoir avec vos préférences actuelles.</Text>}
+                            {!compatible(r, mv, prefs, mois) && <Text style={[doux, { color: couleurs.rouge }]}>À revoir avec tes préférences actuelles.</Text>}
                           </View>
                           <Valeurs n={multiply(mv.macros, m.portions)} />
                         </Bloc>
@@ -690,7 +690,7 @@ export function Planificateur({
             {baseV && baseV.ingredients.some((i) => replacementOptions(i, selected).length) ? (
               <>
                 <Text style={doux}>
-                  Choisissez une alternative : sa quantité est calculée automatiquement pour conserver le même apport en protéines. Ingrédients, macros et
+                  Choisis une alternative : sa quantité est calculée automatiquement pour conserver le même apport en protéines. Ingrédients, macros et
                   courses se recalculent. Les quantités ci-dessous correspondent à une portion.
                 </Text>
                 {baseV.ingredients.map((i, index) => {
@@ -750,7 +750,7 @@ export function Planificateur({
             {swaps.length > 0 && !swapError && (
               <Text style={[doux, { color: couleurs.texte }]}>
                 Version obtenue : {v.diet === 'vegan' ? 'végétalienne' : v.diet === 'vegetarien' ? 'végétarienne' : 'contient encore un ingrédient animal'}. Les
-                valeurs sont estimées à partir des références Ciqual ; vérifiez la composition des produits.
+                valeurs sont estimées à partir des références Ciqual ; vérifie la composition des produits.
               </Text>
             )}
           </View>
@@ -803,9 +803,9 @@ export function Planificateur({
             Allergènes repérés : {Array.from(new Set(v.ingredients.flatMap((i) => i.allergens))).join(', ') || 'aucun repéré'}. Vérifier les produits et les
             traces ; cette liste n’est pas une certification.
           </Text>
-          {!compatible(selected, v, prefs, mois) && <Text style={[doux, { color: couleurs.rouge }]}>Cette version ne correspond pas à toutes vos préférences enregistrées.</Text>}
+          {!compatible(selected, v, prefs, mois) && <Text style={[doux, { color: couleurs.rouge }]}>Cette version ne correspond pas à toutes tes préférences enregistrées.</Text>}
           {coachPlan ? (
-            <Text style={doux}>Votre coach a composé cette semaine : elle ne se modifie pas ici.</Text>
+            <Text style={doux}>Ton coach a composé cette semaine : elle ne se modifie pas ici.</Text>
           ) : (
             <>
               {editing === null ? (
@@ -828,7 +828,7 @@ export function Planificateur({
                 desactive={!ready || busy || !!swapError || excluded(v, prefs.allergies, true)}
                 onPress={add}
               />
-              {excluded(v, prefs.allergies, true) && <Text style={[doux, { color: couleurs.rouge }]}>Un allergène indiqué dans votre profil est repéré dans cette version.</Text>}
+              {excluded(v, prefs.allergies, true) && <Text style={[doux, { color: couleurs.rouge }]}>Un allergène indiqué dans ton profil est repéré dans cette version.</Text>}
               {loading && <Text style={doux}>Chargement du planning…</Text>}
             </>
           )}
@@ -884,7 +884,7 @@ function Courses({
       <Text style={ts.titre}>Courses · toute la semaine</Text>
       <Text style={doux}>
         Achats regroupés pour toute la semaine, avec formats indicatifs modifiables. Les besoins restent distincts selon le produit : cru ou cuit, frais ou
-        conserve. Les poids moyens des pièces et les conversions estimées sont signalés ; vérifiez le format de votre paquet.
+        conserve. Les poids moyens des pièces et les conversions estimées sont signalés ; vérifie le format de ton paquet.
       </Text>
       {horsCatalogue.length > 0 && (
         <Text style={[doux, { color: couleurs.rouge }]}>

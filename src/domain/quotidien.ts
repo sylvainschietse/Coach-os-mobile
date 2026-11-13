@@ -182,7 +182,7 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     pas: 1,
     cibleDefaut: 5,
     actifDefaut: false,
-    aide: 'Le nombre fumé aujourd’hui. Baissez la cible petit à petit avec votre coach.',
+    aide: 'Le nombre fumé aujourd’hui. Baisse la cible petit à petit avec ton coach.',
   },
   {
     cle: 'dernier_ecran',
@@ -196,7 +196,7 @@ export const INDICATEURS: DefinitionIndicateur[] = [
     pas: 0.25,
     cibleDefaut: 22.5,
     actifDefaut: false,
-    aide: 'L’heure à laquelle vous avez posé téléphone, tablette ou télévision.',
+    aide: 'L’heure à laquelle tu as posé téléphone, tablette ou télévision.',
   },
 ];
 
@@ -276,7 +276,7 @@ export function lireValeur(def: DefinitionIndicateur, saisie: string): number | 
 
 export function erreurValeur(def: DefinitionIndicateur, v: number | undefined): string | undefined {
   if (v === undefined) return undefined;
-  if (Number.isNaN(v)) return def.saisie === 'heure' ? `${def.libelle} : écrivez l’heure comme 22:30.` : `${def.libelle} : un nombre.`;
+  if (Number.isNaN(v)) return def.saisie === 'heure' ? `${def.libelle} : écris l’heure comme 22:30.` : `${def.libelle} : un nombre.`;
   if (def.saisie === 'heure') return v < def.min || v > def.max ? `${def.libelle} : entre 18:00 et 06:00.` : undefined;
   if (v < def.min || v > def.max) return `${def.libelle} : entre ${nombreFr(def.min)} et ${nombreFr(def.max)}.`;
   if (def.saisie === 'note' && !Number.isInteger(v)) return `${def.libelle} : une note de 1 à 5.`;
@@ -285,7 +285,7 @@ export function erreurValeur(def: DefinitionIndicateur, v: number | undefined): 
 
 export function erreurCible(def: DefinitionIndicateur, v: number | undefined): string | undefined {
   if (v === undefined) return undefined;
-  if (Number.isNaN(v)) return `Cible : ${def.saisie === 'heure' ? 'écrivez l’heure comme 22:30' : 'un nombre'}.`;
+  if (Number.isNaN(v)) return `Cible : ${def.saisie === 'heure' ? 'écris l’heure comme 22:30' : 'un nombre'}.`;
   const max = def.hebdo ? def.max * 7 : def.max;
   if (v < def.min || v > max) return def.saisie === 'heure' ? 'Cible : entre 18:00 et 06:00.' : `Cible : entre ${nombreFr(def.min)} et ${nombreFr(max)}.`;
   return undefined;

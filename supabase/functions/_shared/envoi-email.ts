@@ -25,7 +25,7 @@ export function corpsBrevo(d: DemandeEnvoi) {
   const signature = d.expediteur.nom?.trim();
   const lignes = [
     prenom ? `Bonjour ${prenom},` : 'Bonjour,',
-    'Vous trouverez ci-joint votre compte rendu.',
+    'Tu trouveras ci-joint ton compte rendu.',
     signature ? `À bientôt,<br>${echapper(signature)}` : 'À bientôt,',
   ];
   return {
@@ -33,7 +33,7 @@ export function corpsBrevo(d: DemandeEnvoi) {
     to: [{ email: d.destinataire.email, ...(prenom ? { name: prenom } : {}) }],
     subject: d.sujet,
     htmlContent: lignes.map((l, i) => `<p>${i === 0 ? echapper(l) : l}</p>`).join(''),
-    textContent: [prenom ? `Bonjour ${prenom},` : 'Bonjour,', 'Vous trouverez ci-joint votre compte rendu.', `À bientôt,${signature ? `\n${signature}` : ''}`].join('\n\n'),
+    textContent: [prenom ? `Bonjour ${prenom},` : 'Bonjour,', 'Tu trouveras ci-joint ton compte rendu.', `À bientôt,${signature ? `\n${signature}` : ''}`].join('\n\n'),
     attachment: [{ url: d.pdfUrl, name: d.nomFichier }],
     headers: { 'X-Coach-OS-Document': d.documentId, 'X-Coach-OS-Cle': d.cle },
     tags: ['compte-rendu'],

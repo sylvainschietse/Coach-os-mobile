@@ -82,7 +82,7 @@ export function DialogueLigne({
   const verrou = useRef(false);
 
   const erreurs: Partial<Record<keyof typeof f | 'exercice', string>> = {
-    ...(!exercice && { exercice: 'Choisissez un exercice' }),
+    ...(!exercice && { exercice: 'Choisis un exercice' }),
     ...(!entier(f.series, 50) && { series: 'Entier 0–50' }),
     ...(f.repetitions.length > 40 && { repetitions: '40 caractères au plus' }),
     ...(!entier(f.dureeS, 36000) && { dureeS: 'Secondes (entier)' }),
@@ -212,7 +212,7 @@ export function DialogueLigne({
         {format === 'temps' && champ('dureeS', 'Temps de travail (secondes)', '30')}
         {champ('recuperationS', 'Repos entre séries (secondes)', '90')}
       </View>
-      {format === 'temps' && !tempsOk && <Text style={[ts.erreur, { fontSize: 12 }]}>Renseignez un temps de travail supérieur à zéro.</Text>}
+      {format === 'temps' && !tempsOk && <Text style={[ts.erreur, { fontSize: 12 }]}>Renseigne un temps de travail supérieur à zéro.</Text>}
       {format === 'objectif' && (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           <View style={{ flexBasis: '45%', flexGrow: 1, minWidth: 0 }}>

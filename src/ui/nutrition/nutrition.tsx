@@ -1,13 +1,14 @@
 // NutritionProfile.tsx d'origine (N01) : « Ma nutrition », sous-rubriques Mon profil / Recettes / Ma semaine / Journal /
 // Mes recettes, estimation Mifflin–St Jeor, profil alimentaire et, pour le coach, ajustement des objectifs.
 // Le brouillon du formulaire reste sur l'appareil ; Recettes et Ma semaine utilisent le dernier profil enregistré.
-import { Lock, RefreshCw, SlidersHorizontal } from 'lucide-react-native';
+import { FileText, Lock, RefreshCw, SlidersHorizontal } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Text, View } from 'react-native';
 
 import { nutrition, type ActionProfil, type DonneesNutrition } from '@/data/nutrition';
 import { blankPreferences, calculate, macros, preferences, target, type Preferences, type Target } from '@/domain/nutrition/calcul';
 import { brouillonsOuverts, demanderSortie, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
+import { LIEN_GUIDE_MACROS } from '@/lib/guides';
 import { nouvelId } from '@/lib/identifiant';
 
 import { BoutonContour, Hero, Selecteur, SousNav, type OngletDef } from '../coque';
@@ -220,7 +221,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
       setModifie(false);
       setMessage(
         action === 'preferences'
-          ? 'Enregistré. Vos données et mensurations sont synchronisées ; les objectifs sont à jour.'
+          ? 'Enregistré. Tes données et mensurations sont synchronisées ; les objectifs sont à jour.'
           : 'Enregistré. Les objectifs sont à jour.',
       );
     } catch (e) {
@@ -258,9 +259,9 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
   return (
     <View style={{ gap: 16 }}>
       <Hero
-        kicker="Votre équilibre au quotidien"
+        kicker="Ton équilibre au quotidien"
         titre={coach ? `Nutrition · ${data?.nom || 'Client'}` : 'Ma nutrition'}
-        sousTitre="Vos objectifs, vos repas et vos recettes réunis au même endroit."
+        sousTitre="Tes objectifs, tes repas et tes recettes réunis au même endroit."
         droite={
           <View style={{ flexDirection: 'row', gap: 8 }}>
           {!coach && (
@@ -320,7 +321,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
           )}
           {modifie && section !== 'profil' && (
             <Text style={[doux, { color: couleurs.rouge }]}>
-              Votre profil contient des modifications non enregistrées. Les recettes et la proposition de semaine utilisent vos dernières préférences
+              Ton profil contient des modifications non enregistrées. Les recettes et la proposition de semaine utilisent tes dernières préférences
               enregistrées.
             </Text>
           )}
@@ -334,7 +335,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
             <>
               <View style={{ borderRadius: 16, borderWidth: 1, borderColor: 'rgba(195,24,30,0.2)', backgroundColor: 'rgba(195,24,30,0.05)', padding: 16, gap: 12 }}>
                 <Text style={[ts.kicker, { fontSize: 12 }]}>
-                  {data.objectifCoach ? 'Objectifs définis par votre coach' : 'Objectifs estimés automatiquement'}
+                  {data.objectifCoach ? 'Objectifs définis par ton coach' : 'Objectifs estimés automatiquement'}
                   {modifie && !coach ? ' · aperçu non enregistré' : ''}
                 </Text>
                 {choisi && grammes ? (
@@ -360,10 +361,10 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
                     {!!choisi.note && <Text style={ts.texte}>{choisi.note}</Text>}
                   </>
                 ) : (
-                  <Text style={ts.texte}>{calc?.raison || 'Complétez votre profil pour obtenir une estimation.'}</Text>
+                  <Text style={ts.texte}>{calc?.raison || 'Complète ton profil pour obtenir une estimation.'}</Text>
                 )}
                 <Text style={doux}>
-                  Point de départ estimé, à ajuster selon votre évolution. Répartition initiale 20 / 30 / 50, modifiable par le coach ; les grammes sont
+                  Point de départ estimé, à ajuster selon ton évolution. Répartition initiale 20 / 30 / 50, modifiable par le coach ; les grammes sont
                   arrondis.
                 </Text>
                 <Repliable resume="Comprendre le calcul">
@@ -373,7 +374,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
                       {calc?.coefficient ?? '—'} = maintien à {calc?.entretien ?? '—'} kcal.
                     </Text>
                     <Text style={[doux, { color: couleurs.texte }]}>
-                      Perte : −10 % ; maintien : sans ajustement ; prise de muscle : +5 %. Ce sont des réglages de départ, pas une mesure de votre dépense
+                      Perte : −10 % ; maintien : sans ajustement ; prise de muscle : +5 %. Ce sont des réglages de départ, pas une mesure de ta dépense
                       réelle.
                     </Text>
                     <Text style={[doux, { color: couleurs.texte }]}>
@@ -382,6 +383,8 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
                     <Lien url="https://pubmed.ncbi.nlm.nih.gov/2305711/">Source de la formule</Lien>
                   </View>
                 </Repliable>
+                {/* Le guide PDF offert explique calories et macros ; il est publié avec le site web (public/). */}
+                <BoutonContour libelle="Lire le guide : tes macros, mode d’emploi" icone={FileText} iconeAGauche onPress={() => Linking.openURL(LIEN_GUIDE_MACROS)} />
               </View>
 
               {!coach && !optionNutrition && <InvitationOptionNutrition compacte onDecouvrir={() => setSection('semaine')} />}
@@ -423,7 +426,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
                       <Cellule>{champ('taille', 'Taille (cm)')}</Cellule>
                     </Grille>
                     <Text style={doux}>
-                      Le poids est partagé avec vos mensurations : sa modification est enregistrée dans Mon suivi. Votre âge déclaré est conservé avec sa
+                      Le poids est partagé avec tes mensurations : sa modification est enregistrée dans Mon suivi. Ton âge déclaré est conservé avec sa
                       date de saisie.
                     </Text>
                     {choix('activite', 'Activité globale, entraînements inclus', ACTIVITES)}
@@ -464,7 +467,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
                       onPress={() => enregistrer('preferences')}
                     />
                     <Text style={doux}>
-                      Ces préférences sont utilisées dans Recettes et Ma semaine. Enregistrez-les avant de proposer votre planning alimentaire.
+                      Ces préférences sont utilisées dans Recettes et Ma semaine. Enregistre-les avant de proposer ton planning alimentaire.
                     </Text>
                   </View>
                 </Repliable>

@@ -265,7 +265,7 @@ export function MenuRubriques<T extends string>({
     );
   return (
     <View style={[styles.sidebar, { width: 220, position: 'sticky' as never, top: 130, gap: 4 }]}>
-      <Text style={[styles.libelleSection, { paddingHorizontal: 12, paddingVertical: 8 }]}>Vos dossiers</Text>
+      <Text style={[styles.libelleSection, { paddingHorizontal: 12, paddingVertical: 8 }]}>Tes dossiers</Text>
       {rubriques.map((r) => {
         const actif = r.cle === valeur;
         const Icone = r.icone;

@@ -416,7 +416,7 @@ export function SeanceLog({
               maxLength={1000}
               editable={!apercu}
               accessibilityLabel="Commentaire pour le coach"
-              placeholder="Commentaire pour le coach (facultatif). En cas de difficulté, précisez l’exercice."
+              placeholder="Commentaire pour le coach (facultatif). En cas de difficulté, précise l’exercice."
               placeholderTextColor={couleurs.suggestion}
               value={d.com}
               onChangeText={(v) => {
@@ -442,7 +442,7 @@ export function SeanceLog({
               {apercu && <Text style={ts.doux}>Aperçu : seul le client peut noter une séance.</Text>}
               {etat === 'ok' && <Statut ok texte="Enregistrée" />}
               {etat === 'doublon' && <Statut ok texte="Déjà enregistrée" />}
-              {etat === 'erreur' && <Statut texte={`${erreur} — votre brouillon est conservé.`} />}
+              {etat === 'erreur' && <Statut texte={`${erreur} — ton brouillon est conservé.`} />}
               {etat === 'repos' && brouillon && !apercu && <Text style={ts.doux}>Brouillon gardé sur cet appareil</Text>}
             </View>
           </View>
@@ -556,7 +556,7 @@ function LigneSaisie({
               {suggestion.chargeMin !== null ? (
                 <>
                   <Text style={[ts.texte, { fontSize: 12 }]}>
-                    Suggestion : {fourchette(suggestion.chargeMin, suggestion.chargeMax)} kg · arrondi inférieur par {String(suggestion.pas).replace('.', ',')} kg. Ajustez selon le
+                    Suggestion : {fourchette(suggestion.chargeMin, suggestion.chargeMax)} kg · arrondi inférieur par {String(suggestion.pas).replace('.', ',')} kg. Ajuste selon le
                     matériel et les consignes du coach.
                   </Text>
                   <View style={{ alignSelf: 'flex-start' }}>
@@ -564,19 +564,19 @@ function LigneSaisie({
                   </View>
                 </>
               ) : (
-                <Text style={[ts.texte, { fontSize: 12 }]}>Charge calculée trop faible pour un arrondi par 2,5 kg. Saisissez la charge adaptée à votre matériel.</Text>
+                <Text style={[ts.texte, { fontSize: 12 }]}>Charge calculée trop faible pour un arrondi par 2,5 kg. Saisis la charge adaptée à ton matériel.</Text>
               )}
             </>
           ) : (
             <Text style={[ts.texte, { fontSize: 12 }]}>
-              Ajoutez une référence pour cet exercice dans Mon suivi → Performances & PR pour calculer {fourchette(suggestion.pourcentMin, suggestion.pourcentMax)} % du 1RM.
+              Ajoute une référence pour cet exercice dans Mon suivi → Performances & PR pour calculer {fourchette(suggestion.pourcentMin, suggestion.pourcentMax)} % du 1RM.
             </Text>
           )}
         </View>
       )}
       {aProposition && (
         <Text style={[ts.doux, { marginTop: 6 }]}>
-          En gris : {aPrecedent && premier === CHARGE ? 'votre charge précédente' : 'ce que votre coach a prévu'}. Validez avec ✓, ou saisissez ce que vous avez fait.
+          En gris : {aPrecedent && premier === CHARGE ? 'ta charge précédente' : 'ce que ton coach a prévu'}. Valide avec ✓, ou saisis ce que tu as fait.
         </Text>
       )}
 

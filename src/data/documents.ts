@@ -81,7 +81,7 @@ async function deposerDemo(d: Document, f: Fichier) {
   try {
     await AsyncStorage.setItem(cleFichier(chemin), `data:${f.type};base64,${encode(await octets(f.donnees))}`);
   } catch {
-    throw new Error('Le stockage de ce navigateur est plein : supprimez un document de démonstration.');
+    throw new Error('Le stockage de ce navigateur est plein : supprime un document de démonstration.');
   }
   return remplacerDemo(d.id, (x) => regles.deposerVersion(x, chemin, f, new Date()));
 }
@@ -110,7 +110,7 @@ export const documentsDemo: DepotDocuments = {
   },
   async partager(id, partage) {
     await remplacerDemo(id, (d) => {
-      if (partage && !d.chemin) throw new Error('Déposez d’abord un fichier.');
+      if (partage && !d.chemin) throw new Error('Dépose d’abord un fichier.');
       return { ...d, partageClient: partage, modifieLe: new Date().toISOString() };
     });
   },
@@ -168,7 +168,7 @@ export function creerDocumentsSupabase(db: SupabaseClient): DepotDocuments {
   async function remplacer(avant: Document, apres: Document) {
     const { data, error } = await db.from('documents').update(versLigne(apres)).eq('id', avant.id).eq('modifie_le', avant.modifieLe).select('*');
     if (error) throw new Error(error.message);
-    if (!data?.length) throw new Error('Ce document a changé entre-temps : rechargez la page puis recommencez.');
+    if (!data?.length) throw new Error('Ce document a changé entre-temps : recharge la page puis recommence.');
     prevenir();
     return depuisLigne(data[0]);
   }
@@ -176,7 +176,7 @@ export function creerDocumentsSupabase(db: SupabaseClient): DepotDocuments {
   async function deposer(d: Document, f: Fichier) {
     controler(f);
     const coach = await db.rpc('mon_coach_id');
-    if (coach.error || !coach.data) throw new Error('Session coach introuvable : reconnectez-vous.');
+    if (coach.error || !coach.data) throw new Error('Session coach introuvable : reconnecte-toi.');
     const chemin = regles.cheminFichier(coach.data as string, d.id, regles.versionSuivante(d), f.nom);
     const envoi = await db.storage.from('documents').upload(chemin, await octets(f.donnees), { contentType: f.type, upsert: false });
     if (envoi.error) throw new Error(`Fichier non enregistré : ${envoi.error.message}`);
@@ -212,7 +212,7 @@ export function creerDocumentsSupabase(db: SupabaseClient): DepotDocuments {
     },
     async partager(id, partage) {
       const d = await un(id);
-      if (partage && !d.chemin) throw new Error('Déposez d’abord un fichier.');
+      if (partage && !d.chemin) throw new Error('Dépose d’abord un fichier.');
       await remplacer(d, { ...d, partageClient: partage, modifieLe: new Date().toISOString() });
     },
     async marquerEnvoye(id, version) {

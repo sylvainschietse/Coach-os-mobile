@@ -96,13 +96,13 @@ export function BilanSemaine({ clientId, apercu }: { clientId: string; apercu?: 
         victoire: form.victoire,
       };
       const manque = SCORES.some(([k]) => !form[k]) || !form.seances.trim();
-      const probleme = manque ? 'Complétez les quatre scores et le nombre de séances réalisées.' : erreurReponses(reponses);
+      const probleme = manque ? 'Complète les quatre scores et le nombre de séances réalisées.' : erreurReponses(reponses);
       if (probleme) throw new Error(probleme);
       await suiviHebdo.enregistrerBilan(clientId, semaine, envoi, reponses);
       ecrireBrouillon(cle, null);
       setEnvoi(nouvelId());
       recharger();
-      setMessage('Bilan enregistré. Votre synthèse automatique et votre priorité sont disponibles.');
+      setMessage('Bilan enregistré. Ta synthèse automatique et ta priorité sont disponibles.');
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Envoi impossible');
     } finally {
@@ -114,21 +114,21 @@ export function BilanSemaine({ clientId, apercu }: { clientId: string; apercu?: 
   const victoire = existant?.reponses.victoire.trim().replace(/\s+/g, ' ') || '';
   const victoireCourte = victoire.length > 75 ? victoire.slice(0, 72).replace(/\s+\S*$/, '') + '…' : victoire;
   const enBref = victoireCourte
-    ? `Votre réussite : « ${victoireCourte} »`
+    ? `Ta réussite : « ${victoireCourte} »`
     : existant?.reponses.seances
-      ? 'Chaque séance compte : continuez à votre rythme.'
-      : 'Votre bilan est un premier pas pour préparer la suite.';
+      ? 'Chaque séance compte : continue à ton rythme.'
+      : 'Ton bilan est un premier pas pour préparer la suite.';
 
   return (
     <View style={{ gap: 20 }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <View style={{ flexShrink: 1, minWidth: 0 }}>
-          <Text style={ts.kicker}>Votre rendez-vous de suivi</Text>
+          <Text style={ts.kicker}>Ton rendez-vous de suivi</Text>
           <TitreDisplay taille={30} style={{ marginTop: 4 }}>
             Mon bilan de la semaine
           </TitreDisplay>
           <Text style={[ts.texte, { marginTop: 8, color: couleurs.texteDoux }]}>
-            Deux minutes pour partager votre semaine : votre synthèse et votre priorité sont générées automatiquement.
+            Deux minutes pour partager ta semaine : ta synthèse et ta priorité sont générées automatiquement.
           </Text>
         </View>
         <BoutonContour icone={RefreshCw} nom="Actualiser les bilans" desactive={occupe} onPress={() => demanderSortie(recharger, [cle])} />
@@ -155,7 +155,7 @@ export function BilanSemaine({ clientId, apercu }: { clientId: string; apercu?: 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <CheckCircle2 size={16} color={couleurs.texteDoux} />
               <Text style={[ts.texte, { color: couleurs.texteDoux, flexShrink: 1 }]}>
-                {repondu ? 'Votre coach a répondu.' : aRetour ? 'Synthèse automatique disponible.' : 'Bilan transmis · en attente du retour.'}
+                {repondu ? 'Ton coach a répondu.' : aRetour ? 'Synthèse automatique disponible.' : 'Bilan transmis · en attente du retour.'}
               </Text>
             </View>
           )}
@@ -164,16 +164,16 @@ export function BilanSemaine({ clientId, apercu }: { clientId: string; apercu?: 
             <View style={{ borderRadius: 16, borderWidth: 1, borderColor: 'rgba(195,24,30,0.25)', backgroundColor: 'rgba(195,24,30,0.05)', padding: 20, gap: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <MessageCircle size={20} color={couleurs.rouge} />
-                <Text style={[ts.titre, { flexShrink: 1 }]}>{existant.sourceRetour === 'Automatique' ? 'Votre synthèse automatique' : 'Le retour de votre coach'}</Text>
+                <Text style={[ts.titre, { flexShrink: 1 }]}>{existant.sourceRetour === 'Automatique' ? 'Ta synthèse automatique' : 'Le retour de ton coach'}</Text>
               </View>
               {existant.sourceRetour === 'Automatique' && (
-                <Text style={ts.doux}>Générée à partir de vos réponses et de règles de suivi. Votre coach peut la compléter.</Text>
+                <Text style={ts.doux}>Générée à partir de tes réponses et de règles de suivi. Ton coach peut la compléter.</Text>
               )}
               <Text selectable style={ts.texte}>
                 {existant.retourCoach}
               </Text>
               <View style={{ borderRadius: 12, backgroundColor: couleurs.carte, padding: 16, gap: 8 }}>
-                <Text style={ts.kicker}>Votre priorité pour la semaine suivante</Text>
+                <Text style={ts.kicker}>Ta priorité pour la semaine suivante</Text>
                 <Text selectable style={ts.texte}>
                   {existant.priorite}
                 </Text>
@@ -208,13 +208,13 @@ export function BilanSemaine({ clientId, apercu }: { clientId: string; apercu?: 
                 chargement={occupe}
                 onPress={enregistrer}
               />
-              <Text style={ts.doux}>Modifier vos réponses met à jour la synthèse automatique. Le bilan est conservé après un retour publié par votre coach.</Text>
+              <Text style={ts.doux}>Modifier tes réponses met à jour la synthèse automatique. Le bilan est conservé après un retour publié par ton coach.</Text>
             </View>
           )}
 
           {existant && (
             <View
-              accessibilityLabel="Votre semaine en bref"
+              accessibilityLabel="Ta semaine en bref"
               style={{ borderLeftWidth: 2, borderLeftColor: couleurs.rouge, backgroundColor: 'rgba(195,24,30,0.05)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, gap: 4 }}
             >
               <Text numberOfLines={1} style={[ts.texte, { fontFamily: polices.texteGras }]}>
@@ -255,7 +255,7 @@ export function BilanSemaine({ clientId, apercu }: { clientId: string; apercu?: 
                   {!!b.reponduLe && (
                     <View style={{ borderRadius: 8, backgroundColor: 'rgba(195,24,30,0.05)', padding: 12, gap: 12 }}>
                       <Text selectable style={ts.texte}>
-                        <Text style={{ fontFamily: polices.texteGras }}>{b.sourceRetour === 'Automatique' ? 'Synthèse automatique : ' : 'Votre coach : '}</Text>
+                        <Text style={{ fontFamily: polices.texteGras }}>{b.sourceRetour === 'Automatique' ? 'Synthèse automatique : ' : 'Ton coach : '}</Text>
                         {b.retourCoach}
                       </Text>
                       <Text selectable style={ts.texte}>
@@ -266,7 +266,7 @@ export function BilanSemaine({ clientId, apercu }: { clientId: string; apercu?: 
                   )}
                 </View>
               ))}
-              {!bilans.length && <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Votre premier bilan apparaîtra ici après son envoi.</Text>}
+              {!bilans.length && <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Ton premier bilan apparaîtra ici après son envoi.</Text>}
             </View>
           </Repliable>
         </>

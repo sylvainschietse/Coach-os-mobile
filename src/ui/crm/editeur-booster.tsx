@@ -233,9 +233,9 @@ function Editeur({
 
   const date = dateBooster(b);
   const erreurs = {
-    date: !b.jour ? 'Choisissez la date.' : !heureValide(b.heure) ? 'Choisissez l’heure.' : undefined,
+    date: !b.jour ? 'Choisis la date.' : !heureValide(b.heure) ? 'Choisis l’heure.' : undefined,
     relance: undefined as string | undefined,
-    contact: !b.contactId ? 'Choisissez le contact de ce Booster.' : undefined,
+    contact: !b.contactId ? 'Choisis le contact de ce Booster.' : undefined,
   };
   const invalide = Object.values(erreurs).some(Boolean);
 
@@ -355,7 +355,7 @@ function Editeur({
               libelle="Date de la Booster"
               jour={b.jour}
               onChange={(jour) => maj({ jour })}
-              erreur={(booster || b.heure) && !b.jour ? 'Choisissez la date.' : undefined}
+              erreur={(booster || b.heure) && !b.jour ? 'Choisis la date.' : undefined}
             />
           </Cellule>
           <Cellule>
@@ -363,8 +363,8 @@ function Editeur({
               libelle="Heure"
               heure={b.heure}
               onChange={(heure) => maj({ heure })}
-              erreur={(booster || b.jour) && !heureValide(b.heure) ? 'Choisissez l’heure.' : undefined}
-              aide={date ? 'Le Booster apparaîtra dans votre agenda à cette heure-là.' : undefined}
+              erreur={(booster || b.jour) && !heureValide(b.heure) ? 'Choisis l’heure.' : undefined}
+              aide={date ? 'Le Booster apparaîtra dans ton agenda à cette heure-là.' : undefined}
             />
           </Cellule>
           <Cellule>

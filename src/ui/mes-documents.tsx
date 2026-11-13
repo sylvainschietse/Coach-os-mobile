@@ -24,7 +24,7 @@ export function MesDocuments({ clientId }: { clientId: string }) {
       <EnTeteRubrique
         kicker="Mon suivi"
         titre="Mes documents"
-        sousTitre="Vos bilans et comptes rendus partagés par votre coach."
+        sousTitre="Tes bilans et comptes rendus partagés par ton coach."
         action={
           <Pressable accessibilityRole="button" accessibilityLabel="Actualiser les documents" onPress={charge.recharger} style={styles.actualiser}>
             <RefreshCw size={16} color={couleurs.texte} />
@@ -33,7 +33,7 @@ export function MesDocuments({ clientId }: { clientId: string }) {
       />
       {charge.erreur && !charge.donnee ? (
         <View accessibilityRole="alert" style={styles.carte}>
-          <Text style={styles.texte}>Vos documents n’ont pas pu être chargés. Réessayez.</Text>
+          <Text style={styles.texte}>Tes documents n’ont pas pu être chargés. Réessaie.</Text>
           <View style={{ alignSelf: 'flex-start' }}>
             <Bouton libelle="Réessayer" onPress={charge.recharger} />
           </View>
@@ -47,7 +47,7 @@ export function MesDocuments({ clientId }: { clientId: string }) {
           ))}
         </View>
       ) : (
-        <Vide icone={FileText} titre="Vos documents arriveront ici" texte="Votre coach vous partagera vos bilans et comptes rendus dans cet espace." />
+        <Vide icone={FileText} titre="Tes documents arriveront ici" texte="Ton coach te partagera tes bilans et comptes rendus dans cet espace." />
       )}
     </View>
   );
@@ -74,7 +74,7 @@ function CarteDocument({ doc: d }: { doc: DocumentClient }) {
             onPress={() => {
               setErreur(undefined);
               ouvrirFichier(() => documents.lien(d.chemin!), d.nomFichier || 'document.pdf').catch(() =>
-                setErreur('Ce document n’est plus accessible. Actualisez la liste ou demandez-le à votre coach.'),
+                setErreur('Ce document n’est plus accessible. Actualise la liste ou demande-le à ton coach.'),
               );
             }}
           />

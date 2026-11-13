@@ -81,7 +81,7 @@ export function RepriseSeance({
       )}
       {trouvees && trouvees.length > MAX_AFFICHEES && (
         <Text style={ts.doux}>
-          {MAX_AFFICHEES} premières sur {trouvees.length}. Précisez la recherche pour trouver la bonne.
+          {MAX_AFFICHEES} premières sur {trouvees.length}. Précise la recherche pour trouver la bonne.
         </Text>
       )}
       <Etat erreur={erreur} />

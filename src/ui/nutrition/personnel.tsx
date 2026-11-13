@@ -227,7 +227,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
     setSourceInfo(null);
     majF({ ...blank(), barcode: normalized });
     if (!/^(?:\d{8}|\d{12}|\d{13}|\d{14})$/.test(normalized)) {
-      setError('Saisissez les 8, 12, 13 ou 14 chiffres du code-barres.');
+      setError('Saisis les 8, 12, 13 ou 14 chiffres du code-barres.');
       return;
     }
     const token = ++lookup.current;
@@ -236,7 +236,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
       const p = await produitParCode(normalized);
       if (token !== lookup.current) return;
       if (!p) {
-        setNotice('Produit absent de la base : renseignez son nom et les valeurs de son étiquette.');
+        setNotice('Produit absent de la base : renseigne son nom et les valeurs de son étiquette.');
         return;
       }
       majF({
@@ -251,7 +251,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
       });
       setSourceInfo({ url: p.sourceUrl, ingredients: p.ingredients, allergens: p.allergens });
       setAmount('100');
-      setNotice('Produit trouvé. Vérifiez les valeurs et l’unité sur l’étiquette avant de l’ajouter.');
+      setNotice('Produit trouvé. Vérifie les valeurs et l’unité sur l’étiquette avant de l’ajouter.');
     } catch (e) {
       if (token === lookup.current) setError(e instanceof Error ? e.message : 'Recherche indisponible');
     } finally {
@@ -261,13 +261,13 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
 
   const makeEntry = (): Entry => {
     if ((['kcal', 'protein', 'carbs', 'fat'] as const).some((k) => !f[k].trim()))
-      throw Error('Renseignez les quatre valeurs nutritionnelles : une valeur manquante ne vaut pas zéro.');
+      throw Error('Renseigne les quatre valeurs nutritionnelles : une valeur manquante ne vaut pas zéro.');
     const n = num(amount);
     if (!Number.isFinite(n) || n <= 0 || n > 10000) throw Error('Quantité invalide');
     const parsed = food.safeParse({ ...f, kcal: num(f.kcal), protein: num(f.protein), carbs: num(f.carbs), fat: num(f.fat) });
     if (!parsed.success)
       throw Error(
-        parsed.error.issues.some((i) => i.path[0] === 'name') ? 'Indiquez le nom de l’aliment.' : 'Chaque valeur nutritionnelle est comprise entre 0 et 2 000.',
+        parsed.error.issues.some((i) => i.path[0] === 'name') ? 'Indique le nom de l’aliment.' : 'Chaque valeur nutritionnelle est comprise entre 0 et 2 000.',
       );
     return {
       id: nouvelId(),
@@ -357,8 +357,8 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
           <TitreDisplay taille={24}>{vue === 'journal' ? 'Mon journal alimentaire' : 'Mes recettes personnelles'}</TitreDisplay>
           <Text style={[ts.texte, { marginTop: 4, color: couleurs.texteDoux }]}>
             {vue === 'journal'
-              ? 'Notez ce que vous avez mangé et comparez votre journée à vos objectifs.'
-              : 'Ajoutez vos ingrédients et le nombre de portions : les macros se calculent automatiquement.'}
+              ? 'Note ce que tu as mangé et compare ta journée à tes objectifs.'
+              : 'Ajoute tes ingrédients et le nombre de portions : les macros se calculent automatiquement.'}
           </Text>
         </View>
         <BoutonContour icone={RefreshCw} nom="Actualiser" desactive={loading || busy} onPress={load} />
@@ -434,7 +434,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
       )}
       {vue === 'personnelles' && dictee && (
         <Bloc>
-          <Text style={ts.texte}>Recette remplie : relisez chaque champ et corrigez si besoin avant d’enregistrer.</Text>
+          <Text style={ts.texte}>Recette remplie : relis chaque champ et corrige si besoin avant d’enregistrer.</Text>
           {dictee.remarque ? <Text style={doux}>{dictee.remarque}</Text> : null}
           {dictee.aVerifier.length > 0 && <Text style={doux}>Pas trouvé dans la table Ciqual, valeurs moyennes à vérifier : {dictee.aVerifier.join(', ')}.</Text>}
         </Bloc>
@@ -476,7 +476,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
               garder({ steps: t });
             }}
           />
-          <Text style={doux}>Saisissez les quantités utilisées pour toute la recette, en précisant cru ou cuit dans le nom de l’aliment.</Text>
+          <Text style={doux}>Saisis les quantités utilisées pour toute la recette, en précisant cru ou cuit dans le nom de l’aliment.</Text>
           {ingredients.map((e) => (
             <LigneAliment
               key={e.id}
@@ -498,7 +498,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
         </Bloc>
       )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderRadius: 14, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.carte, padding: 12 }}>
-        <Text style={doux}>{vue === 'journal' ? 'Aliments enregistrés pour cette journée' : 'Composition de votre recette'}</Text>
+        <Text style={doux}>{vue === 'journal' ? 'Aliments enregistrés pour cette journée' : 'Composition de ta recette'}</Text>
         <Action icone={Plus} libelle={vue === 'journal' ? 'Ajouter un aliment' : 'Ajouter un ingrédient'} desactive={busy || loading} onPress={() => setFoodOpen(true)} />
       </View>
       {foodOpen && (
@@ -508,7 +508,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
             if (!busy) setFoodOpen(false);
           }}
         >
-          <Text style={doux}>Choisissez l’aliment, vérifiez sa quantité, puis validez.</Text>
+          <Text style={doux}>Choisis l’aliment, vérifie sa quantité, puis valide.</Text>
           <Etat erreur={error || undefined} message={notice || undefined} />
           <RechercheAliment onBarcode={(code) => find(code)} disabled={busy || loading} onSelect={pickCiqual} />
           <ScannerCode
@@ -523,7 +523,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
             <Action libelle="Rechercher" desactive={busy || loading} onPress={() => !busy && find()} />
           </View>
           <Text style={doux}>
-            Vous pouvez aussi saisir directement un aliment et ses valeurs ci-dessous. Pour les aliments frais, utilisez une référence nutritionnelle
+            Tu peux aussi saisir directement un aliment et ses valeurs ci-dessous. Pour les aliments frais, utilise une référence nutritionnelle
             correspondant à leur état cru ou cuit.
           </Text>
           {f.source === 'ciqual' && (
@@ -578,7 +578,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
             <Repliable resume={<Text style={doux}>Informations du produit</Text>}>
               <View style={{ gap: 8 }}>
                 <Text style={[doux, { color: couleurs.texte }]}>{sourceInfo.ingredients || 'Ingrédients non renseignés dans la base.'}</Text>
-                <Text style={[doux, { color: couleurs.texte }]}>Allergènes déclarés : {sourceInfo.allergens || 'non renseignés ; vérifiez l’étiquette'}</Text>
+                <Text style={[doux, { color: couleurs.texte }]}>Allergènes déclarés : {sourceInfo.allergens || 'non renseignés ; vérifie l’étiquette'}</Text>
                 <Lien url={sourceInfo.url}>Voir la fiche Open Food Facts</Lien>
               </View>
             </Repliable>
@@ -609,7 +609,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
                 }}
               />
               <Text style={doux}>
-                {f.basis} par unité. Adaptez au format réel, à votre cuillère ou au poids mesuré.{' '}
+                {f.basis} par unité. Adapte au format réel, à ta cuillère ou au poids mesuré.{' '}
                 {selectedMeasure.approx ? 'Le calcul sera une estimation tant que ce poids n’est pas vérifié.' : ''}
               </Text>
               <Text style={ts.texte}>
@@ -752,12 +752,12 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
             </Bloc>
           );
         })}
-        {!recipes.length && <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Créez votre première recette dans « Mes recettes ».</Text>}
+        {!recipes.length && <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Crée ta première recette dans « Mes recettes ».</Text>}
       </View>
       <View style={{ gap: 2 }}>
         <Text style={doux}>
-          Valeurs estimées selon les quantités et les étiquettes. Vérifiez les données et les allergènes. Produits : Open Food Facts · base sous licence ODbL.
-          Aliments courants : Anses, Ciqual 2025 (Licence Ouverte Etalab 2.0). Vos recettes personnelles sont visibles par votre coach, pas par ses autres clients : s’il en aime une, il peut en faire une copie pour sa banque de recettes.
+          Valeurs estimées selon les quantités et les étiquettes. Vérifie les données et les allergènes. Produits : Open Food Facts · base sous licence ODbL.
+          Aliments courants : Anses, Ciqual 2025 (Licence Ouverte Etalab 2.0). Tes recettes personnelles sont visibles par ton coach, pas par ses autres clients : s’il en aime une, il peut en faire une copie pour sa banque de recettes.
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 12 }}>
           <Lien petit url="https://world.openfoodfacts.org">Open Food Facts</Lien>

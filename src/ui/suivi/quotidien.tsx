@@ -132,7 +132,7 @@ export function Quotidien({
         </View>
         <Text style={[ts.texte, { color: couleurs.texteDoux }]}>
           {saisie
-            ? 'Notez chaque jour vos pas, votre eau, votre sommeil… en quelques secondes. Chaque suivi a sa cible et sa courbe sur 30 jours.'
+            ? 'Note chaque jour tes pas, ton eau, ton sommeil… en quelques secondes. Chaque suivi a sa cible et sa courbe sur 30 jours.'
             : 'Les petits objectifs du quotidien notés par le client, avec leur cible et leur évolution sur 30 jours.'}
         </Text>
       </View>
@@ -164,7 +164,7 @@ export function Quotidien({
 
       {donnee && actifs.length === 0 && (
         <View style={{ borderWidth: 1, borderStyle: 'dashed', borderColor: couleurs.bordure, borderRadius: 12, padding: 20 }}>
-          <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Aucun suivi choisi. {cibles ? 'Choisissez-en ci-dessous.' : ''}</Text>
+          <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Aucun suivi choisi. {cibles ? 'Choisis-en ci-dessous.' : ''}</Text>
         </View>
       )}
 
@@ -282,13 +282,13 @@ function Telephone({
         <Text style={ts.titre}>Montre et téléphone</Text>
       </View>
       {etat === 'a_installer' ? (
-        <Text style={ts.texte}>Installez ou mettez à jour l’application Health Connect pour importer vos pas et votre sommeil automatiquement.</Text>
+        <Text style={ts.texte}>Installe ou mets à jour l’application Health Connect pour importer tes pas et ton sommeil automatiquement.</Text>
       ) : (
         <>
           <Text style={ts.doux}>
             {relie
-              ? 'Vos pas et votre sommeil des 7 derniers jours sont importés à chaque ouverture. Une valeur que vous avez saisie vous-même n’est jamais remplacée.'
-              : 'Importez vos pas et votre sommeil depuis Health Connect, où Samsung Health, Google Fit, Garmin, Fitbit ou votre montre déposent leurs données.'}
+              ? 'Tes pas et ton sommeil des 7 derniers jours sont importés à chaque ouverture. Une valeur que tu as saisie toi-même n’est jamais remplacée.'
+              : 'Importe tes pas et ton sommeil depuis Health Connect, où Samsung Health, Google Fit, Garmin, Fitbit ou ta montre déposent leurs données.'}
           </Text>
           <Etat erreur={erreur || undefined} message={message} />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -302,7 +302,7 @@ function Telephone({
                 if (!relie) {
                   const ok = await demanderAcces().catch(() => []);
                   if (!ok.some((t) => t === 'Steps' || t === 'SleepSession')) {
-                    setErreur('Accès refusé : autorisez les pas et le sommeil dans Health Connect.');
+                    setErreur('Accès refusé : autorise les pas et le sommeil dans Health Connect.');
                     return;
                   }
                   setRelie(true);
@@ -352,7 +352,7 @@ function CarteIndicateur({
       </View>
 
       {saisie && <Champ def={def} texte={texte} occupe={occupe} onTexte={onTexte} />}
-      {saisie && source === 'telephone' && <Text style={ts.doux}>Valeur lue sur le téléphone ; vous pouvez la corriger.</Text>}
+      {saisie && source === 'telephone' && <Text style={ts.doux}>Valeur lue sur le téléphone ; tu peux la corriger.</Text>}
 
       <Text style={ts.doux}>
         {def.hebdo && resume.totalSemaine !== undefined

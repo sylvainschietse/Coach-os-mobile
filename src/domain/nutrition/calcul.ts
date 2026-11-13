@@ -69,7 +69,7 @@ export function calculate(p: Preferences) {
       entretien: null,
       coefficient: null,
       cible: null,
-      raison: 'Complétez sexe, âge, poids, taille et activité pour calculer vos objectifs.',
+      raison: 'Complète sexe, âge, poids, taille et activité pour calculer tes objectifs.',
     };
   if (p.age < 18 || p.age > 78 || p.specifique)
     return {
@@ -80,7 +80,7 @@ export function calculate(p: Preferences) {
       raison: 'Ce profil nécessite des objectifs définis avec un professionnel de la nutrition ; le calcul standard est désactivé.',
     };
   if (p.taille < 100 || p.poids < 20)
-    return { repos: null, entretien: null, coefficient: null, cible: null, raison: 'Vérifiez le poids et la taille renseignés.' };
+    return { repos: null, entretien: null, coefficient: null, cible: null, raison: 'Vérifie le poids et la taille renseignés.' };
   const repos = 10 * p.poids + 6.25 * p.taille - 5 * p.age + (p.sexe === 'homme' ? 5 : -161),
     coefficient = coefficients[p.activite],
     entretien = Math.round(repos * coefficient);

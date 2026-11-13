@@ -90,7 +90,7 @@ export const quotidienDemo: DepotQuotidien = {
 // ---------- Supabase ----------
 
 /** Table absente : la mise à jour de la base n'a pas encore été passée. */
-const PAS_ACTIVE = 'Les suivis du quotidien ne sont pas encore activés sur le serveur. Votre coach doit passer la mise à jour de la base.';
+const PAS_ACTIVE = 'Les suivis du quotidien ne sont pas encore activés sur le serveur. Ton coach doit passer la mise à jour de la base.';
 function verifier<T>({ data, error }: { data: T; error: { message: string; code?: string } | null }): T {
   if (error) throw new Error(error.code === 'PGRST205' || error.code === '42P01' || /could not find the table/i.test(error.message) ? PAS_ACTIVE : error.message);
   return data;

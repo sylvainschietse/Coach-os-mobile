@@ -107,7 +107,7 @@ function creerSupabase(db: SupabaseClient): DepotAutomatisations {
     async envoyerCompteRendu(documentId, relancer) {
       const { data, error } = await db.functions.invoke<ResultatEnvoi>('envoyer-compte-rendu', { body: { documentId, relancer } });
       if (error) {
-        const { corps, message } = await messageErreur(error, 'Envoi non confirmé. Vérifiez le service d’envoi avant de relancer.');
+        const { corps, message } = await messageErreur(error, 'Envoi non confirmé. Vérifie le service d’envoi avant de relancer.');
         // Refus motivé (déjà envoyé, déjà transmis, bloqué…) : un état, pas une réussite.
         if (corps?.etat) return { etat: corps.etat, message };
         throw new Error(message);

@@ -93,7 +93,7 @@ export function applySwaps(r: Recipe, base: Variant, swaps: Swap[] = []): Varian
     changes.push({ from: i.original, to: food.name, cook: food.cook });
   }
   if (Object.values(nutrition).some((n) => !Number.isFinite(n) || n < -0.5))
-    throw Error('Les valeurs de la source ne permettent pas ce remplacement avec ces quantités. Choisissez une autre quantité ou alternative.');
+    throw Error('Les valeurs de la source ne permettent pas ce remplacement avec ces quantités. Choisis une autre quantité ou alternative.');
   for (const k of Object.keys(nutrition) as (keyof Nutrition)[]) nutrition[k] = Math.max(0, nutrition[k]);
   const diet = ingredients.some((i) => i.animal === 'meat')
     ? 'omnivore'
