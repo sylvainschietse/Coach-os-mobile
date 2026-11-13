@@ -209,7 +209,7 @@ export function BilanMois({
         />
         <Text style={doux}>
           Total {annee} : {lisible(parMois.reduce((s, p) => s + valeurDe(p, mesure), 0), mesure)}
-          {mesure === 'clients' ? ' (un client vu plusieurs mois compte chaque mois)' : ''}. Touchez un mois pour voir son bilan.
+          {mesure === 'clients' ? ' (un client vu plusieurs mois compte chaque mois)' : ''}. Touche un mois pour voir son bilan.
         </Text>
       </Carte>
 
@@ -335,7 +335,7 @@ function DetailTuile({
       ))}
       {paiements && paiements.length > 0 && (
         <Text style={[doux, { marginTop: 4 }]}>
-          Total : {montantLisible(Math.round(paiements.reduce((s, p) => s + (p.montant ?? 0), 0) * 100) / 100)}. Touchez un paiement pour l’ouvrir.
+          Total : {montantLisible(Math.round(paiements.reduce((s, p) => s + (p.montant ?? 0), 0) * 100) / 100)}. Touche un paiement pour l’ouvrir.
         </Text>
       )}
 

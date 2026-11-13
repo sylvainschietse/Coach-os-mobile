@@ -17,8 +17,8 @@ const pdf = { nom: 'Compte rendu.pdf', type: 'application/pdf', taille: 1200 };
 
 describe('documents (lot 2)', () => {
   it('exige un nom et un contact', () => {
-    expect(() => nouveauDocument('d1', { nom: ' ', contactId: 'c1' }, t0)).toThrow('Donnez un nom');
-    expect(() => nouveauDocument('d1', { nom: 'Contrat' }, t0)).toThrow('Choisissez un contact');
+    expect(() => nouveauDocument('d1', { nom: ' ', contactId: 'c1' }, t0)).toThrow('Donne un nom');
+    expect(() => nouveauDocument('d1', { nom: 'Contrat' }, t0)).toThrow('Choisis un contact');
     const d = nouveauDocument('d1', { nom: ' Contrat ', contactId: 'c1' }, t0);
     expect(d).toMatchObject({ nom: 'Contrat', type: 'Autre', version: 1, partageClient: false, envoye: false, date: '2026-10-24' });
   });
@@ -63,7 +63,7 @@ describe('documents (lot 2)', () => {
 
   it('modifier ne retire pas le contact et garde le reste', () => {
     const d = nouveauDocument('d1', { nom: 'CR', contactId: 'c1', type: 'Contrat' }, t0);
-    expect(() => modifierDocument(d, { contactId: null }, t0)).toThrow('Choisissez un contact');
+    expect(() => modifierDocument(d, { contactId: null }, t0)).toThrow('Choisis un contact');
     expect(modifierDocument(d, { commentaires: '  ' }, t0)).toMatchObject({ type: 'Contrat', commentaires: undefined });
   });
 

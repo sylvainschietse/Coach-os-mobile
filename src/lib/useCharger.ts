@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 /** Message lisible : une coupure réseau ne doit pas s'afficher comme « TypeError: Failed to fetch ». */
 export function messageErreur(e: unknown) {
   const m = e instanceof Error ? e.message : typeof e === 'string' ? e : '';
-  if (/failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(m)) return 'Connexion impossible : vérifiez le réseau, puis réessayez.';
+  if (/failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(m)) return 'Connexion impossible : vérifie le réseau, puis réessaie.';
   return m || 'Erreur inconnue';
 }
 

@@ -393,7 +393,7 @@ export function EditeurGestion({
   if (id && !lignes(charge.donnee, module).some((l) => l.id === id))
     return (
       <Modale titre={NOUVEAU[module]} onFermer={onFermer}>
-        <Vide titre="Élément introuvable" texte="Il a peut-être été supprimé. Actualisez la liste." />
+        <Vide titre="Élément introuvable" texte="Il a peut-être été supprimé. Actualise la liste." />
       </Modale>
     );
   return <Formulaire module={module} id={id} carnet={charge.donnee} contactId={contactId} onFermer={onFermer} onSupprimer={onSupprimer} />;
@@ -426,7 +426,7 @@ function Formulaire({
   const maj = (patch: Brouillon) => setB((x) => ({ ...x, ...patch }));
 
   const erreurs: Record<string, string | undefined> = {};
-  for (const k of DATES) if (k in b && b[k].trim() && !lireJour(b[k])) erreurs[k] = 'Écrivez la date comme 30/10/2026';
+  for (const k of DATES) if (k in b && b[k].trim() && !lireJour(b[k])) erreurs[k] = 'Écris la date comme 30/10/2026';
   if (module === 'Paiements' && lireMontant(b.montant) === null) erreurs.montant = 'Montant en euros, par exemple 150 ou 49,90';
   if (module === 'Taches' && !b.echeance.trim()) erreurs.echeance = 'L’échéance est nécessaire.';
   const invalide = Object.values(erreurs).some(Boolean);
@@ -509,7 +509,7 @@ function Formulaire({
           })
         }
       />
-      {requis && !b.contactId && <Text style={styles.aide}>Choisissez le contact.</Text>}
+      {requis && !b.contactId && <Text style={styles.aide}>Choisis le contact.</Text>}
     </View>
   );
   const lien = (cle: 'boosterId' | 'coachingId', libelle: string, options: { id: string; nom?: string; date?: string }[]) => (

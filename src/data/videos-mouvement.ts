@@ -210,7 +210,7 @@ export function creerVideosSupabase(db: SupabaseClient): DepotVideos {
     },
     async lien(chemin) {
       const { data, error } = await stock().createSignedUrl(chemin, 600);
-      if (error || !data) throw new Error('Ce fichier n’est plus accessible (effacé ou hors de votre compte).');
+      if (error || !data) throw new Error('Ce fichier n’est plus accessible (effacé ou hors de ton compte).');
       return data.signedUrl;
     },
     async purger() {

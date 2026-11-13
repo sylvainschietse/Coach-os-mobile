@@ -238,7 +238,7 @@ describe('calendrier et réalisation', () => {
   it('un autre client ne peut pas planifier dans ce cycle ni écrire directement', async () => {
     await expect(
       en(ids.userThomas, 'select public.planifier_seance($1::jsonb)', [JSON.stringify({ cycleId: ids.cycle1, seanceId: ids.seanceCopie, date: jour(1), envoiId: 'envoi-9999' })]),
-    ).rejects.toThrow(/hors de votre dossier/);
+    ).rejects.toThrow(/hors de ton dossier/);
     await expect(en(ids.userLea, `update public.planifications set statut = 'Réalisée'`)).rejects.toThrow();
   });
 
@@ -292,7 +292,7 @@ describe('calendrier et réalisation', () => {
       en(ids.userThomas, 'select public.enregistrer_realisation($1::jsonb)', [
         JSON.stringify({ id: 'a0000000-0000-4000-8000-000000000004', seanceId: ids.seanceCopie, clientId: ids.lea, note: 3, series: [] }),
       ]),
-    ).rejects.toThrow(/hors de votre dossier/);
+    ).rejects.toThrow(/hors de ton dossier/);
   });
 
   it('garde l’exercice remplacé par le client, seulement s’il vient du catalogue de son coach', async () => {

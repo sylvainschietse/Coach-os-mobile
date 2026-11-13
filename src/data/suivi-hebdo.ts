@@ -102,7 +102,7 @@ export const suiviHebdoDemo: SuiviHebdo = {
     const miens = e.bilans.filter((b) => b.clientId === clientId);
     if (miens.some((b) => b.envoiId === envoiId)) return 'doublon';
     const ancien = miens.find((b) => b.semaine === semaine);
-    if (ancien?.reponduLe && ancien.sourceRetour === 'Coach') throw new Error('Votre coach a déjà répondu à ce bilan. Il reste conservé dans votre historique.');
+    if (ancien?.reponduLe && ancien.sourceRetour === 'Coach') throw new Error('Ton coach a déjà répondu à ce bilan. Il reste conservé dans ton historique.');
     const prec = miens.filter((b) => b.semaine < semaine).sort((a, b) => b.semaine.localeCompare(a.semaine))[0];
     const auto = syntheseAutomatique(reponses, prec ? { semaine: prec.semaine, reponses: prec.reponses } : null, await cibleDemo(clientId, semaine));
     const maintenant = new Date().toISOString();
@@ -129,8 +129,8 @@ export const suiviHebdoDemo: SuiviHebdo = {
     const e = await lire();
     const b = e.bilans.find((x) => x.id === id);
     if (!b) throw new Error('Bilan introuvable');
-    if (b.envoyeLe !== envoyeLe) throw new Error('Le client a modifié son bilan. Actualisez avant de répondre.');
-    if (!message.trim() || message.trim().length > 4000 || !priorite.trim() || priorite.trim().length > 1000) throw new Error('Renseignez le message et la priorité');
+    if (b.envoyeLe !== envoyeLe) throw new Error('Le client a modifié son bilan. Actualise avant de répondre.');
+    if (!message.trim() || message.trim().length > 4000 || !priorite.trim() || priorite.trim().length > 1000) throw new Error('Renseigne le message et la priorité');
     const suite = { ...b, retourCoach: message.trim(), priorite: priorite.trim(), sourceRetour: 'Coach' as const, aRevoir: false, reponduLe: new Date().toISOString() };
     await sauver({ ...e, bilans: e.bilans.map((x) => (x.id === id ? suite : x)) });
   },
@@ -164,19 +164,19 @@ export const suiviHebdoDemo: SuiviHebdo = {
     try {
       await sauver({ ...e, photos: [...e.photos, { id: p.envoiId, clientId, date: p.date, vue: p.vue, partage: p.partage, image: p.image, envoiId: p.envoiId }] });
     } catch {
-      throw new Error('Stockage de démonstration plein : supprimez une photo avant d’en ajouter une autre.');
+      throw new Error('Stockage de démonstration plein : supprime une photo avant d’en ajouter une autre.');
     }
   },
 
   async partagerPhoto(clientId, id, partage) {
     const e = await lire();
-    if (!e.photos.some((p) => p.id === id && p.clientId === clientId)) throw new Error('Photo hors de votre dossier');
+    if (!e.photos.some((p) => p.id === id && p.clientId === clientId)) throw new Error('Photo hors de ton dossier');
     await sauver({ ...e, photos: e.photos.map((p) => (p.id === id ? { ...p, partage } : p)) });
   },
 
   async supprimerPhoto(clientId, id) {
     const e = await lire();
-    if (!e.photos.some((p) => p.id === id && p.clientId === clientId)) throw new Error('Photo hors de votre dossier');
+    if (!e.photos.some((p) => p.id === id && p.clientId === clientId)) throw new Error('Photo hors de ton dossier');
     await sauver({ ...e, photos: e.photos.filter((p) => p.id !== id) });
   },
 };

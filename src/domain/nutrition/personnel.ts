@@ -92,7 +92,7 @@ export function foodSearchQuery(value: string, france: boolean) {
     .trim()
     .split(/\s+/)
     .filter(Boolean);
-  if (!words.length) throw Error('Saisissez un nom de produit ou de marque.');
+  if (!words.length) throw Error('Saisis un nom de produit ou de marque.');
   return words.map((word) => word.toLowerCase()).join(' ') + (france ? ' AND countries_tags:"en:france"' : '');
 }
 export function namedProducts(payload: any): NamedProduct[] {

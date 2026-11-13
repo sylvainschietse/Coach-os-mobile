@@ -79,7 +79,7 @@ export function AttributionClient({
         </Ligne>
       }
     >
-      <Text style={ts.doux}>Le client reçoit une copie à son nom. Vous pouvez la modifier pour lui sans toucher au modèle de la bibliothèque.</Text>
+      <Text style={ts.doux}>Le client reçoit une copie à son nom. Tu peux la modifier pour lui sans toucher au modèle de la bibliothèque.</Text>
       {!clientFixe && <Text style={ts.titreChamp}>Client</Text>}
       {!clientFixe && (
         <View style={{ flexDirection: 'row' }}>

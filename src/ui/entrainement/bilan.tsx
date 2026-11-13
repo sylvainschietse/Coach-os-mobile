@@ -129,7 +129,7 @@ export function SeancesRealisees({
       {!clientFixe && (
         <View>
           <TitreDisplay taille={26}>Bilan</TitreDisplay>
-          <Text style={[ts.doux, { fontSize: 14 }]}>Lecture seule des résultats saisis par vos clients. Dates en heure de Paris.</Text>
+          <Text style={[ts.doux, { fontSize: 14 }]}>Lecture seule des résultats saisis par tes clients. Dates en heure de Paris.</Text>
         </View>
       )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

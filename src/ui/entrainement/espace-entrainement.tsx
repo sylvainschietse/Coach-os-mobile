@@ -40,7 +40,7 @@ export function GardeBrouillon() {
   return (
     <Confirmation
       titre="Saisie non enregistrée"
-      texte="Vos modifications ne sont pas enregistrées. Continuer peut les perdre. Les brouillons sauvegardés sur cet appareil restent disponibles. Souhaitez-vous continuer ?"
+      texte="Tes modifications ne sont pas enregistrées. Continuer peut les perdre. Les brouillons sauvegardés sur cet appareil restent disponibles. Tu veux continuer ?"
       action="Continuer"
       onFermer={() => setSuite(null)}
       onConfirmer={() => {
@@ -214,7 +214,7 @@ export function EntrainementClient({
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
               <Lock size={12} color={couleurs.texteDoux} />
-              <Text style={ts.doux}>{apercu ? 'Aperçu : seul le client peut noter une séance.' : 'Touchez une séance pour la démarrer : un bloc par page, avec les vidéos.'}</Text>
+              <Text style={ts.doux}>{apercu ? 'Aperçu : seul le client peut noter une séance.' : 'Touche une séance pour la démarrer : un bloc par page, avec les vidéos.'}</Text>
             </View>
           </View>
           {espace.seances.map((s) => (
@@ -323,7 +323,7 @@ export function EntrainementClient({
       ) : (
         <>
           <Hero
-            kicker="Votre entraînement"
+            kicker="Ton entraînement"
             titre={`Bonjour, ${prenom.trim().split(/\s+/)[0]}`}
             droite={
               <BoutonContour
@@ -340,8 +340,8 @@ export function EntrainementClient({
           />
           {!espace.cycle ? (
             <View style={[ts.carte, { borderRadius: 16, padding: 24 }]}>
-              <Text style={ts.titre}>Votre programme se prépare</Text>
-              <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Votre coach activera votre prochain programme ici. Vous pourrez alors consulter vos séances.</Text>
+              <Text style={ts.titre}>Ton programme se prépare</Text>
+              <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Ton coach activera ton prochain programme ici. Tu pourras alors consulter tes séances.</Text>
             </View>
           ) : null}
           {!espace.cycle && milieu}
@@ -484,8 +484,8 @@ function CarteCycle({ espace }: { espace: EspaceEntrainement }) {
   if (!c)
     return (
       <View style={[ts.carte, { borderRadius: 16, padding: 24 }]}>
-        <Text style={ts.titre}>Votre programme se prépare</Text>
-        <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Votre coach activera votre prochain programme ici. Vous pourrez alors consulter vos séances.</Text>
+        <Text style={ts.titre}>Ton programme se prépare</Text>
+        <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Ton coach activera ton prochain programme ici. Tu pourras alors consulter tes séances.</Text>
       </View>
     );
   return (

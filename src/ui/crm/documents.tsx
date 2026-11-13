@@ -264,7 +264,7 @@ function CarteDocument({
             <BoutonContour libelle="Confirmer l’envoi" desactive={occupe || !email} onPress={() => envoyer(aConfirmer.relancer)} />
             <BoutonContour libelle="Annuler" desactive={occupe} onPress={() => setAConfirmer(undefined)} />
           </View>
-          {!email && <Text style={[styles.detail, { color: couleurs.rouge }]}>Ajoutez d’abord l’e-mail du contact.</Text>}
+          {!email && <Text style={[styles.detail, { color: couleurs.rouge }]}>Ajoute d’abord l’e-mail du contact.</Text>}
         </View>
       )}
       {retour && <Text style={[styles.retour, !retour.ok && { color: couleurs.rouge }]}>{retour.texte}</Text>}
@@ -357,9 +357,9 @@ function Editeur({
 
   const date = lireJour(b.date);
   const erreurs = {
-    nom: !b.nom.trim() ? 'Donnez un nom au document.' : undefined,
-    contact: !b.contactId ? 'Choisissez un contact' : undefined,
-    date: !date ? 'Écrivez la date comme 24/10/2026' : undefined,
+    nom: !b.nom.trim() ? 'Donne un nom au document.' : undefined,
+    contact: !b.contactId ? 'Choisis un contact' : undefined,
+    date: !date ? 'Écris la date comme 24/10/2026' : undefined,
   };
   const invalide = Object.values(erreurs).some(Boolean);
   const boostersDuContact = boosters.filter((x) => x.contactId === b.contactId);

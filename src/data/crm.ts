@@ -223,8 +223,8 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
       const avant = await lire();
       const contact = avant.contacts.find((x) => x.id === contactId);
       if (!contact) throw new Error('Contact introuvable');
-      if (contact.statut === 'archive') throw new Error('Réactivez d’abord ce dossier.');
-      if (!contact.email) throw new Error('Ajoutez d’abord l’e-mail du client dans Coordonnées : il se connectera avec cette adresse.');
+      if (contact.statut === 'archive') throw new Error('Réactive d’abord ce dossier.');
+      if (!contact.email) throw new Error('Ajoute d’abord l’e-mail du client dans Coordonnées : il se connectera avec cette adresse.');
       if (contact.clientId) {
         await extra.actualiserEspaceClient(contact);
         prevenir();

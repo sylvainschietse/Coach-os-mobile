@@ -23,7 +23,7 @@ import { CreationEntrainement, type DemandeCreation } from './creation';
 import { DialogueLigne, type ModeLigne } from './ligne';
 
 const PROPOSITIONS_BLOCS = ['Échauffement', 'Mobilité', 'Renforcement', 'Cardio', 'Abdos / gainage', 'Retour au calme'];
-const MESSAGE_CYCLE = 'Revenez au cycle 1 pour modifier le modèle, ou dupliquez-le avec le cycle souhaité.';
+const MESSAGE_CYCLE = 'Reviens au cycle 1 pour modifier le modèle, ou duplique-le avec le cycle souhaité.';
 
 export function EditeurSeance({
   coachId,
@@ -178,7 +178,7 @@ export function EditeurSeance({
             valeur={LIBELLES_CYCLES[cycle - 1]}
             onChange={(v) => !occupe && setCycle(LIBELLES_CYCLES.indexOf(v ?? '') + 1 || 1)}
           />
-          <Text style={ts.doux}>Aperçu uniquement. Choisissez ce cycle lors de la duplication ou de l’attribution en copie pour enregistrer ses réglages.</Text>
+          <Text style={ts.doux}>Aperçu uniquement. Choisis ce cycle lors de la duplication ou de l’attribution en copie pour enregistrer ses réglages.</Text>
           {verrouCycle && (
             <Text {...roleWeb('status')} style={[ts.doux, { color: couleurs.orange }]}>
               {MESSAGE_CYCLE}
@@ -234,7 +234,7 @@ export function EditeurSeance({
       <View style={{ marginTop: 16, gap: 12 }}>
         {blocs.length === 0 && (
           <View style={{ borderWidth: 1, borderStyle: 'dashed', borderColor: couleurs.bordure, borderRadius: 12, padding: 24, alignItems: 'center', gap: 8 }}>
-            <Text style={[ts.doux, { fontSize: 14 }]}>Commencez par ajouter un bloc, puis ses exercices.</Text>
+            <Text style={[ts.doux, { fontSize: 14 }]}>Commence par ajouter un bloc, puis ses exercices.</Text>
             <Action petit variante="fantome" libelle="Ajouter un exercice sans bloc" onPress={() => ouvrir({ mode: 'add', bloc: 'sans-bloc' })} />
           </View>
         )}
@@ -257,7 +257,7 @@ export function EditeurSeance({
               </Ligne>
             </View>
             <DetailsBloc bloc={bloc} />
-            {!bloc.lignes.length && <Text style={[ts.doux, { fontSize: 14, paddingBottom: 12 }]}>Ajoutez le premier exercice de ce bloc.</Text>}
+            {!bloc.lignes.length && <Text style={[ts.doux, { fontSize: 14, paddingBottom: 12 }]}>Ajoute le premier exercice de ce bloc.</Text>}
             <View style={{ gap: 12 }}>
               {bloc.lignes.map((brute, i) => {
                 const l = appliquerCycle(brute, cycle);
@@ -389,7 +389,7 @@ export function EditeurSeance({
       {remplacerDescriptif && (
         <Confirmation
           titre="Remplacer le descriptif ?"
-          texte="Le descriptif actuel sera remplacé par un texte écrit d’après les blocs et les exercices de la séance. Vous pourrez le retoucher ensuite depuis Modifier la séance."
+          texte="Le descriptif actuel sera remplacé par un texte écrit d’après les blocs et les exercices de la séance. Tu pourras le retoucher ensuite depuis Modifier la séance."
           action="Remplacer"
           onFermer={() => setRemplacerDescriptif(false)}
           onConfirmer={() => {
@@ -499,7 +499,7 @@ function DialogueBloc({
           <Action key={b} petit libelle={b} variante={f.titre === b ? 'plein' : 'contour'} desactive={autres.includes(b) || occupe} onPress={() => setF({ ...f, titre: b })} />
         ))}
       </Ligne>
-      <Saisie libelle="Nom du bloc" valeur={f.titre} placeholder="Ou choisissez votre propre nom" erreur={doublon ? 'Un autre bloc porte déjà ce nom' : undefined} onChange={(v) => !occupe && setF({ ...f, titre: v.slice(0, 100) })} />
+      <Saisie libelle="Nom du bloc" valeur={f.titre} placeholder="Ou choisis ton propre nom" erreur={doublon ? 'Un autre bloc porte déjà ce nom' : undefined} onChange={(v) => !occupe && setF({ ...f, titre: v.slice(0, 100) })} />
       <Choix libelle="Format" vide="Classique" choix={FORMATS_BLOC.filter((x) => x !== 'Classique')} valeur={f.format === 'Classique' ? undefined : f.format} onChange={(v) => setF({ ...f, format: v as FormatBloc | undefined })} />
       <Saisie libelle="Tempo (facultatif)" valeur={f.tempo} placeholder="3-1-1-0" aide="Secondes pour descendre, pause en bas, remonter, pause en haut." onChange={(v) => !occupe && setF({ ...f, tempo: v.slice(0, 30) })} />
       <Choix libelle="Mode de contraction" vide="Classique" choix={CONTRACTIONS.filter((x) => x !== 'Classique')} valeur={f.contraction === 'Classique' ? undefined : f.contraction} onChange={(v) => setF({ ...f, contraction: v })} />

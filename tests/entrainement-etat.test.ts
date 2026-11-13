@@ -140,7 +140,7 @@ describe('côté client', () => {
     expect(() => planifier({ ...e, planifications: p1 }, 'lea', { ...d, envoiId: 'envoi-0002' }, JOUR)).toThrow(/déjà prévue/);
     expect(() => planifier(e, 'lea', { ...d, date: '2026-10-20' }, JOUR)).toThrow(/date à venir/);
     expect(() => planifier(e, 'lea', { ...d, cycleId: 'c3' }, JOUR)).toThrow(/activer ce cycle/);
-    expect(() => planifier(e, 'paul', d, JOUR)).toThrow(/hors de votre dossier/);
+    expect(() => planifier(e, 'paul', d, JOUR)).toThrow(/hors de ton dossier/);
     expect(annuler({ ...e, planifications: p1 }, 'lea', p1[0].id)[0].statut).toBe('Annulée');
   });
 

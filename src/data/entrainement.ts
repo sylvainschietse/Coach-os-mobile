@@ -182,7 +182,7 @@ export async function attribuerAuClient(
 ): Promise<{ cycle: string; active: boolean }> {
   let suivi = client.suivi;
   if (!suivi) {
-    if (!nouveauSuivi) throw new Error('Créez d’abord le suivi du client');
+    if (!nouveauSuivi) throw new Error('Crée d’abord le suivi du client');
     suivi = { id: nouvelId(), clientId: client.clientId, ...nouveauSuivi };
     await entrainement.enregistrerSuivi(coachId, suivi);
   }

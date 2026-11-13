@@ -129,18 +129,18 @@ function CarteBilan({ b, onEnregistre }: { b: BilanHebdo; onEnregistre: () => vo
       {b.sourceRetour === 'Automatique' && (
         <View style={{ borderRadius: 8, backgroundColor: 'rgba(195,24,30,0.05)', padding: 12 }}>
           <Text style={[ts.texte, { fontSize: 12 }]}>
-            Synthèse et priorité générées automatiquement, déjà visibles par le client. Vous pouvez les compléter ou les remplacer.
+            Synthèse et priorité générées automatiquement, déjà visibles par le client. Tu peux les compléter ou les remplacer.
           </Text>
         </View>
       )}
       <View style={{ borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: 16, gap: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <MessageCircle size={16} color={couleurs.rouge} />
-          <Text style={[ts.titreChamp, { fontFamily: polices.texteGras }]}>Votre retour au client</Text>
+          <Text style={[ts.titreChamp, { fontFamily: polices.texteGras }]}>Ton retour au client</Text>
         </View>
         {version !== b.envoyeLe && (
           <View style={{ borderRadius: 8, borderWidth: 1, borderColor: couleurs.bordure, padding: 12, gap: 8 }}>
-            <Text style={ts.texte}>Le client a modifié ses réponses depuis la préparation de votre retour. Relisez-les avant de publier.</Text>
+            <Text style={ts.texte}>Le client a modifié ses réponses depuis la préparation de ton retour. Relis-les avant de publier.</Text>
             <View style={{ alignSelf: 'flex-start' }}>
               <Action
                 petit
@@ -158,7 +158,7 @@ function CarteBilan({ b, onEnregistre }: { b: BilanHebdo; onEnregistre: () => vo
           long
           libelle="Message"
           max={4000}
-          placeholder="Votre retour sur sa semaine et ce que vous souhaitez lui transmettre…"
+          placeholder="Ton retour sur sa semaine et ce que tu souhaites lui transmettre…"
           valeur={message}
           desactive={occupe}
           onChange={(m) => brouillon(m, priorite)}
@@ -172,7 +172,7 @@ function CarteBilan({ b, onEnregistre }: { b: BilanHebdo; onEnregistre: () => vo
           desactive={occupe}
           onChange={(p) => brouillon(message, p)}
         />
-        <Text style={ts.doux}>Vos modifications restent en brouillon sur cet appareil. Elles seront visibles par le client après publication.</Text>
+        <Text style={ts.doux}>Tes modifications restent en brouillon sur cet appareil. Elles seront visibles par le client après publication.</Text>
         <Etat erreur={erreur || undefined} message={publie ? 'Retour publié dans l’espace du client.' : undefined} />
         <View style={{ alignSelf: 'flex-start' }}>
           <Action

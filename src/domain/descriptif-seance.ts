@@ -23,7 +23,7 @@ const DEFINITIONS_CONTRACTION: Record<string, string> = {
 };
 
 const TEMPO = 'Tempo : la vitesse du mouvement en secondes. Par exemple 3-1-1-0 veut dire 3 s pour descendre, 1 s de pause en bas, 1 s pour remonter, 0 s en haut.';
-const RIR = 'RIR (répétitions en réserve) : le nombre de répétitions que vous pourriez encore faire en fin de série. RIR 2 veut dire s’arrêter à environ 2 répétitions de l’échec.';
+const RIR = 'RIR (répétitions en réserve) : le nombre de répétitions que tu pourrais encore faire en fin de série. RIR 2 veut dire s’arrêter à environ 2 répétitions de l’échec.';
 
 const liste = (mots: string[]) => (mots.length < 2 ? mots.join('') : `${mots.slice(0, -1).join(', ')} et ${mots.at(-1)}`);
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
@@ -67,7 +67,7 @@ export function descriptifSeance(s: Seance): string {
   const parties: string[] = [];
 
   const intro = [`Cette séance se déroule en ${pluriel(blocs.length, 'partie')} : ${liste(blocs.map((b) => (b.titre || 'Bloc').toLowerCase()))}.`];
-  if (s.dureeMin) intro.push(`Comptez environ ${s.dureeMin} minutes.`);
+  if (s.dureeMin) intro.push(`Compte environ ${s.dureeMin} minutes.`);
   parties.push(intro.join(' '));
 
   const objectif = s.objectif ? `Objectif : ${s.objectif.replace(/\.$/, '')}.` : objectifDesReps(lignes.filter((l) => l.phase !== 'Échauffement' && l.phase !== 'Retour au calme'));

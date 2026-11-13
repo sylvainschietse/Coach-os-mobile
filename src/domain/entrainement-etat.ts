@@ -300,7 +300,7 @@ export function verifierCycle(avant: CycleStocke | undefined, c: CycleStocke) {
   if (!c.nom.trim()) refus('Nom requis');
   if (!c.debut || !c.fin) refus('Dates requises');
   if (c.fin < c.debut) refus('La fin doit suivre le début');
-  if (c.statut === 'Actif' && avant?.statut !== 'Actif') refus('Utilisez « Activer » pour rendre un cycle actif');
+  if (c.statut === 'Actif' && avant?.statut !== 'Actif') refus('Utilise « Activer » pour rendre un cycle actif');
   if (c.statut === 'Actif' && !c.programmeId) refus('Un cycle actif doit garder un programme');
   if (avant?.statut === 'Terminé' && avant.programmeId !== c.programmeId) refus('Cycle terminé : programme figé');
 }
@@ -309,10 +309,10 @@ export function verifierCycle(avant: CycleStocke | undefined, c: CycleStocke) {
 export function activer(e: Etat, id: string, jour = aujourdhuiParis()): CycleStocke[] {
   const c = e.cycles.find((x) => x.id === id) ?? refus('Cycle introuvable');
   if (c.statut === 'Actif') return e.cycles;
-  if (c.statut !== 'Prêt') refus(`Activation refusée : le cycle est « ${c.statut} ». Passez-le d'abord en « Prêt ».`);
+  if (c.statut !== 'Prêt') refus(`Activation refusée : le cycle est « ${c.statut} ». Passe-le d'abord en « Prêt ».`);
   if (jour < c.debut || jour > c.fin) {
     const f = (d: string) => d.split('-').reverse().join('/');
-    refus(`Activation refusée : aujourd'hui (${f(jour)}, Paris) est hors du cycle (${f(c.debut)} → ${f(c.fin)}). Replanifiez les dates ou attendez le début.`);
+    refus(`Activation refusée : aujourd'hui (${f(jour)}, Paris) est hors du cycle (${f(c.debut)} → ${f(c.fin)}). Replanifie les dates ou attends le début.`);
   }
   if (!c.programmeId) refus('Activation refusée : aucun programme lié.');
   return e.cycles.map((x) =>
@@ -353,14 +353,14 @@ const HEURE = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 export function planifier(e: Etat, clientId: string, d: DemandeCreneau, jour = aujourdhuiParis()): Planification[] {
   const deja = e.planifications.find((x) => x.envoiId === d.envoiId && x.clientId === clientId);
   if (deja) return e.planifications;
-  const c = e.cycles.find((x) => x.id === d.cycleId && x.clientId === clientId) ?? refus('Cycle hors de votre dossier');
-  const ancien = d.id ? e.planifications.find((x) => x.id === d.id && x.clientId === clientId && x.cycleId === c.id) ?? refus('Créneau hors de votre dossier') : undefined;
-  if (ancien?.statut === 'Réalisée') refus('Une séance réalisée reste conservée dans votre historique');
+  const c = e.cycles.find((x) => x.id === d.cycleId && x.clientId === clientId) ?? refus('Cycle hors de ton dossier');
+  const ancien = d.id ? e.planifications.find((x) => x.id === d.id && x.clientId === clientId && x.cycleId === c.id) ?? refus('Créneau hors de ton dossier') : undefined;
+  if (ancien?.statut === 'Réalisée') refus('Une séance réalisée reste conservée dans ton historique');
   if (c.statut !== 'Actif' || !c.programmeId) refus('Le coach doit activer ce cycle avant de planifier');
-  if (!d.date || d.date < jour || d.date < c.debut || d.date > c.fin || !d.envoiId) refus('Choisissez une date à venir dans les dates du cycle actif');
+  if (!d.date || d.date < jour || d.date < c.debut || d.date > c.fin || !d.envoiId) refus('Choisis une date à venir dans les dates du cycle actif');
   if (d.heure && !HEURE.test(d.heure)) refus('Heure invalide');
   const s = e.seances.find((x) => x.id === d.seanceId && !x.supprimeLe);
-  if (!s || s.programmeId !== c.programmeId) refus('Séance hors de votre programme actif');
+  if (!s || s.programmeId !== c.programmeId) refus('Séance hors de ton programme actif');
   const doublon = e.planifications.some(
     (x) => x.clientId === clientId && x.cycleId === c.id && x.statut === 'Prévue' && x.seanceId === d.seanceId && x.date === d.date && x.id !== d.id,
   );
@@ -377,7 +377,7 @@ export function planifier(e: Etat, clientId: string, d: DemandeCreneau, jour = a
 
 export function annuler(e: Etat, clientId: string, id: string): Planification[] {
   const p = e.planifications.find((x) => x.id === id && x.clientId === clientId) ?? refus('Créneau introuvable');
-  if (p.statut === 'Réalisée') refus('Une séance réalisée reste conservée dans votre historique');
+  if (p.statut === 'Réalisée') refus('Une séance réalisée reste conservée dans ton historique');
   return e.planifications.map((x) => (x.id === id ? { ...x, statut: 'Annulée' } : x));
 }
 
@@ -386,13 +386,13 @@ export function annuler(e: Etat, clientId: string, id: string): Planification[] 
  * jour-là, sinon un créneau « Réalisée » créé). Renvoyer le même id ne crée rien de plus.
  */
 export function enregistrer(e: Etat, r: RealisationCycle, jour = aujourdhuiParis()): { etat: Pick<Etat, 'realisations' | 'planifications'>; resultat: 'enregistree' | 'doublon' } {
-  const s = e.seances.find((x) => x.id === r.seanceId && !x.supprimeLe) ?? refus('Séance introuvable ou retirée par votre coach');
+  const s = e.seances.find((x) => x.id === r.seanceId && !x.supprimeLe) ?? refus('Séance introuvable ou retirée par ton coach');
   const c = r.cycleId ? e.cycles.find((x) => x.id === r.cycleId && x.clientId === r.clientId) : undefined;
   if (r.cycleId) {
     if (!c || c.statut !== 'Actif' || !c.programmeId) refus("Ce cycle n'est pas en cours");
     if (jour < c!.debut || jour > c!.fin) refus('Cette séance est en dehors des dates du cycle actif');
     if (s.programmeId !== c!.programmeId) refus('Séance hors du cycle en cours');
-  } else if (s.clientId !== r.clientId) refus('Séance hors de votre dossier');
+  } else if (s.clientId !== r.clientId) refus('Séance hors de ton dossier');
   let plan = r.planificationId ? e.planifications.find((x) => x.id === r.planificationId) : undefined;
   if (r.planificationId) {
     if (!plan || plan.clientId !== r.clientId || plan.cycleId !== c?.id || plan.seanceId !== s.id || plan.statut === 'Annulée') refus('Créneau hors de cette séance');
@@ -403,7 +403,7 @@ export function enregistrer(e: Etat, r: RealisationCycle, jour = aujourdhuiParis
   if (existante) {
     if (existante.clientId !== r.clientId || existante.seanceId !== s.id) refus('Envoi déjà utilisé pour une autre séance');
   } else {
-    if (r.series.length === 0 && r.note === undefined && !r.commentaire?.trim()) refus('Renseignez au moins un résultat ou un ressenti');
+    if (r.series.length === 0 && r.note === undefined && !r.commentaire?.trim()) refus('Renseigne au moins un résultat ou un ressenti');
     const lignes = new Map(s.blocs.flatMap((b) => b.lignes.map((l) => [l.id, l] as const)));
     if (r.series.some((x) => !lignes.has(x.ligneId))) refus('Exercice hors de cette séance');
     const prog = c ? e.programmes.find((x) => x.id === c.programmeId) : undefined;

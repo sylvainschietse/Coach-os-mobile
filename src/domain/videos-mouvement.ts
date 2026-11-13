@@ -83,11 +83,11 @@ export function typeVideo(type: string | undefined | null, nom?: string | null):
 /** Message de refus, ou null si la vidéo peut partir. */
 export function verifierVideo(f: FichierVideo): string | null {
   if (!EXTENSIONS[typeSimple(f.type)] || !typeSimple(f.type).startsWith('video/')) return 'Ce format de vidéo n’est pas pris en charge (MP4, MOV ou WebM).';
-  if (f.dureeS !== undefined && f.dureeS > DUREE_MAX_S + MARGE_DUREE_S) return `La vidéo dure ${Math.round(f.dureeS)} s : ${DUREE_MAX_S} s au plus. Coupez-la ou filmez une seule série.`;
+  if (f.dureeS !== undefined && f.dureeS > DUREE_MAX_S + MARGE_DUREE_S) return `La vidéo dure ${Math.round(f.dureeS)} s : ${DUREE_MAX_S} s au plus. Coupe-la ou filme une seule série.`;
   if (f.taille <= 0) return 'La vidéo est vide.';
   if (f.taille > TAILLE_MAX) {
     const mo = (f.taille / 1024 / 1024).toFixed(0);
-    return `La vidéo pèse ${mo} Mo : 25 Mo au plus. Filmez-la depuis l’appli (« Filmer »), elle sera compressée.`;
+    return `La vidéo pèse ${mo} Mo : 25 Mo au plus. Filme-la depuis l’appli (« Filmer »), elle sera compressée.`;
   }
   return null;
 }

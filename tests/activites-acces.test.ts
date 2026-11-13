@@ -99,7 +99,7 @@ describe('activités sportives', () => {
     await expect(en(ids.userClientA, `update public.activites_sport set distance_m = 0`)).rejects.toThrow();
     await expect(envoyer(ids.userClientA, [course({ idExterne: 'x', fcMoy: 400 })])).rejects.toThrow();
     await expect(envoyer(ids.userClientA, [course({ idExterne: 'y', debut: '2099-01-01T00:00:00Z' })])).rejects.toThrow('Date de début invalide');
-    await expect(envoyer(ids.userCoach1, [course()])).rejects.toThrow('hors de votre dossier');
+    await expect(envoyer(ids.userCoach1, [course()])).rejects.toThrow('hors de ton dossier');
   });
 
   it('une activité retirée disparaît et ne revient pas au prochain envoi', async () => {
@@ -159,7 +159,7 @@ describe('activités libres', () => {
     await expect(ajouter(ids.userClientB, libre({ titre: 'piratée' }))).rejects.toThrow('introuvable');
     const hc = (await en(ids.userClientA, `select id from public.activites_sport where id_externe = 'hc-1'`)).rows[0].id;
     await expect(ajouter(ids.userClientA, libre({ id: hc }))).rejects.toThrow('introuvable');
-    await expect(ajouter(ids.userCoach1, libre({ id: '40000000-0000-4000-8000-000000000999' }))).rejects.toThrow('hors de votre dossier');
+    await expect(ajouter(ids.userCoach1, libre({ id: '40000000-0000-4000-8000-000000000999' }))).rejects.toThrow('hors de ton dossier');
   });
 
   it('valeurs invalides refusées', async () => {

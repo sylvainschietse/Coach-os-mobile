@@ -270,7 +270,7 @@ export default function EspaceCoach() {
         {!clients.donnee && !clients.erreur && <Chargement />}
         {clients.donnee && !choisi && (
           <View style={{ padding: espace(4) }}>
-            <Vide titre="Aucun dossier client à prévisualiser" texte="Préparez d’abord l’accès d’un client depuis sa fiche contact." />
+            <Vide titre="Aucun dossier client à prévisualiser" texte="Prépare d’abord l’accès d’un client depuis sa fiche contact." />
           </View>
         )}
         {choisi && (

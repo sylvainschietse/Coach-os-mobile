@@ -75,13 +75,13 @@ export function MonCalendrier({
 
   const enregistrer = async () => {
     if (!f || apercu) return;
-    if (!f.seanceId) throw new Error('Choisissez une séance');
-    if (!f.date) throw new Error('Choisissez un jour');
+    if (!f.seanceId) throw new Error('Choisis une séance');
+    if (!f.date) throw new Error('Choisis un jour');
     const heure = f.heure.trim().replace(/[h.]/i, ':');
-    if (heure && !HEURE.test(heure)) throw new Error('Heure invalide : écrivez-la comme 18:30');
+    if (heure && !HEURE.test(heure)) throw new Error('Heure invalide : écris-la comme 18:30');
     await entrainement.planifier(clientId, { id: f.id, cycleId: c.id, seanceId: f.seanceId, date: f.date, heure: heure || undefined, envoiId: f.envoiId });
     setSemaine(lundiDe(f.date));
-    setMessage(f.id ? 'Séance déplacée.' : 'Séance ajoutée à votre calendrier.');
+    setMessage(f.id ? 'Séance déplacée.' : 'Séance ajoutée à ton calendrier.');
     onChange();
   };
 

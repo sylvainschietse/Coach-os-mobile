@@ -34,7 +34,7 @@ export function AnalyseAssiette() {
   return (
     <Carte>
       <SousTitre>Ce que contient l’assiette</SousTitre>
-      <Texte doux style={{ fontSize: 13 }}>Estimation à partir de la photo, corrigée par vous. Rien n’est enregistré.</Texte>
+      <Texte doux style={{ fontSize: 13 }}>Estimation à partir de la photo, corrigée par toi. Rien n’est enregistré.</Texte>
       <View style={{ gap: espace(2) }}>
         {[...aliments]
           .sort((a, b) => b.quantiteG - a.quantiteG)

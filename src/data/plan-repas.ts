@@ -17,7 +17,7 @@ export interface DepotPlanRepas {
   enregistrer(p: PlanRepas): Promise<PlanRepas>;
 }
 
-export const CONFLIT = 'Le plan a été modifié entre-temps. Actualisez avant de réessayer.';
+export const CONFLIT = 'Le plan a été modifié entre-temps. Actualise avant de réessayer.';
 
 function valider(p: PlanRepas) {
   const erreurs = erreursPlan(p);

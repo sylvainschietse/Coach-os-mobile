@@ -284,7 +284,7 @@ function Semaines({
           </Text>
         </View>
       ) : (
-        <Text style={ts.doux}>Touchez une séance verte ou une activité bleue pour voir ce que le client a fait.</Text>
+        <Text style={ts.doux}>Touche une séance verte ou une activité bleue pour voir ce que le client a fait.</Text>
       )}
     </View>
   );

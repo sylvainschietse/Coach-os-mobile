@@ -114,7 +114,7 @@ export function PlanSemaine({ clientId, modifiable }: { clientId: string; modifi
         </View>
       </View>
       {modifie && (
-        <Texte style={{ fontSize: 13, color: couleurs.orange }}>Modifications non enregistrées : enregistrez ou annulez avant de changer de semaine.</Texte>
+        <Texte style={{ fontSize: 13, color: couleurs.orange }}>Modifications non enregistrées : enregistre ou annule avant de changer de semaine.</Texte>
       )}
       {objectifs && (
         <Texte doux style={{ fontSize: 13 }}>
@@ -130,7 +130,7 @@ export function PlanSemaine({ clientId, modifiable }: { clientId: string; modifi
       )}
       {!brouillon && !charge.erreur && <Chargement />}
       {brouillon && !modifiable && !lu?.plan && (
-        <Texte doux>Votre coach n’a pas encore préparé de plan pour cette semaine.</Texte>
+        <Texte doux>Ton coach n’a pas encore préparé de plan pour cette semaine.</Texte>
       )}
       {brouillon &&
         (modifiable || lu?.plan) &&

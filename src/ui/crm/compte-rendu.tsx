@@ -111,7 +111,7 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
       if (Platform.OS === 'web') {
         const f = await choisirFichier();
         if (!f) return;
-        if (f.type !== 'application/pdf') throw new Error('Déposez le compte rendu au format PDF.');
+        if (f.type !== 'application/pdf') throw new Error('Dépose le compte rendu au format PDF.');
         await deposer(f);
       } else {
         // A4 en points (72 par pouce).
@@ -158,7 +158,7 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
           await documents.marquerEnvoye(doc.id, doc.version);
           recharger();
         } else if (r.status !== MailComposer.MailComposerStatus.CANCELLED) {
-          setRetour('Le téléphone ne confirme pas l’envoi : vérifiez dans votre messagerie, puis cochez « Envoyé » sur le document si besoin.');
+          setRetour('Le téléphone ne confirme pas l’envoi : vérifie dans ta messagerie, puis coche « Envoyé » sur le document si besoin.');
         }
       } else {
         // Gmail, Outlook, WhatsApp… : l'app choisie ne dit pas si le message est parti, rien n'est marqué.
@@ -295,7 +295,7 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
       <Carte>
         <Texte doux style={{ fontSize: 14 }}>
           {Platform.OS === 'web'
-            ? 'Enregistrez le compte rendu en PDF depuis la fenêtre d’impression, puis déposez ce PDF : il devient la version servie dans l’espace client et par e-mail.'
+            ? 'Enregistre le compte rendu en PDF depuis la fenêtre d’impression, puis dépose ce PDF : il devient la version servie dans l’espace client et par e-mail.'
             : 'Le PDF est créé à partir de l’aperçu ci-dessus. Chaque enregistrement ajoute une version ; c’est la dernière qui est servie au client et jointe à l’e-mail.'}
         </Texte>
         {docs.erreur && !docs.donnee && <Erreur message={docs.erreur} />}
@@ -341,7 +341,7 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
             rien ne part avant ta confirmation.
           </Texte>
         ) : !doc?.chemin ? (
-          <Texte style={{ fontSize: 14, color: couleurs.orange }}>Enregistrez d’abord le PDF dans Documents : c’est cette version qui sera envoyée.</Texte>
+          <Texte style={{ fontSize: 14, color: couleurs.orange }}>Enregistre d’abord le PDF dans Documents : c’est cette version qui sera envoyée.</Texte>
         ) : contact.email ? (
           <Bouton
             libelle={`${booster.planEnvoyeLe ? 'Renvoyer' : 'Envoyer'} la version ${doc.version} à ${contact.email}`}

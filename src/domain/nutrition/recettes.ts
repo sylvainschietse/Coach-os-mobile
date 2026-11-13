@@ -292,7 +292,7 @@ export function generateWeek(p: Preferences, t: Target, week: string): { plan: P
     pool.filter((x) => (s === 'breakfast' ? x.recipe.meals.some((m) => ['sucre', 'sale'].includes(m)) : x.recipe.meals.includes(s))),
   );
   if (groups.some((g) => !g.length))
-    throw Error('Pas assez de recettes compatibles pour chaque repas. Ajoutez des recettes manuellement ou ajustez les préférences.');
+    throw Error('Pas assez de recettes compatibles pour chaque repas. Ajoute des recettes manuellement ou ajuste les préférences.');
   const target = targetNutrition(t);
   let state = Date.now() % 2147483647;
   const random = () => {
@@ -363,7 +363,7 @@ export function generateWeek(p: Preferences, t: Target, week: string): { plan: P
     plan,
     note:
       'Proposition automatique à relire. Les portions cherchent à rapprocher calories et macros ; aucune égalité exacte n’est garantie.' +
-      (gap > 0.15 ? ' Certains jours restent à plus de 15 % de l’objectif calorique : ajustez les repas.' : ''),
+      (gap > 0.15 ? ' Certains jours restent à plus de 15 % de l’objectif calorique : ajuste les repas.' : ''),
   };
 }
 export function preparationFor(r: Recipe, v: Variant, portions = 1): string[] {
@@ -406,7 +406,7 @@ export function preparationFor(r: Recipe, v: Variant, portions = 1): string[] {
     }
     if (v.id.endsWith('-protein'))
       steps.push(
-        'Après cuisson éventuelle et tiédissement, incorporer la poudre protéinée indiquée dans les ingrédients. Ajouter un peu d’eau progressivement si nécessaire et ajuster l’arôme à votre goût.',
+        'Après cuisson éventuelle et tiédissement, incorporer la poudre protéinée indiquée dans les ingrédients. Ajouter un peu d’eau progressivement si nécessaire et ajuster l’arôme à ton goût.',
       );
   }
   return steps.map((s) =>

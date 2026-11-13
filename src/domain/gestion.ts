@@ -101,7 +101,7 @@ function jourValide(j: string | undefined, nom: string) {
 }
 function contactExiste(c: Carnet, id: string | undefined, requis: boolean) {
   if (!id) {
-    if (requis) throw new Error('Choisissez le contact.');
+    if (requis) throw new Error('Choisis le contact.');
     return;
   }
   if (!c.contacts.some((x) => x.id === id)) throw new Error('Contact introuvable');
@@ -117,7 +117,7 @@ const sans = <T extends object>(o: T) => Object.fromEntries(Object.entries(o).fi
 export type SaisieCoaching = Omit<Coaching, 'id' | 'creeLe'>;
 
 function verifierCoaching(c: Carnet, s: SaisieCoaching) {
-  if (!s.nom.trim()) throw new Error('Donnez un nom au coaching.');
+  if (!s.nom.trim()) throw new Error('Donne un nom au coaching.');
   contactExiste(c, s.contactId, true);
   jourValide(s.dateDebut, 'Date de début');
   jourValide(s.dateFinPrevue, 'Date de fin prévue');
@@ -165,7 +165,7 @@ export function coachingDepuisBooster(c: Carnet, boosterId: string, ctx: Context
   if (!b) throw new Error('Booster introuvable');
   const existant = c.coachings.find((x) => x.boosterId === boosterId);
   if (existant) return { carnet: c, id: existant.id, existant: true };
-  if (!b.offreRecommandee || b.offreRecommandee === 'Aucune') throw new Error('Choisissez une offre dans le Booster');
+  if (!b.offreRecommandee || b.offreRecommandee === 'Aucune') throw new Error('Choisis une offre dans le Booster');
   const contact = c.contacts.find((x) => x.id === b.contactId);
   if (!contact) throw new Error('Contact introuvable');
   const r = creerCoaching(
@@ -210,9 +210,9 @@ export function statutTache(r: Pick<Relance, 'faiteLe' | 'statutTache'>): Statut
 export const tacheOuverte = (r: Pick<Relance, 'faiteLe' | 'statutTache'>) => !['Terminée', 'Annulée'].includes(statutTache(r));
 
 function verifierTache(c: Carnet, s: SaisieTache) {
-  if (!s.titre.trim()) throw new Error('Donnez un titre à la tâche.');
+  if (!s.titre.trim()) throw new Error('Donne un titre à la tâche.');
   contactExiste(c, s.contactId, true);
-  if (!s.echeance) throw new Error('Indiquez l’échéance.');
+  if (!s.echeance) throw new Error('Indique l’échéance.');
   jourValide(s.echeance, 'Échéance');
   coachingExiste(c, s.coachingId);
   if (s.boosterId && !c.boosters.some((b) => b.id === s.boosterId && b.contactId === s.contactId)) throw new Error('Booster hors de ce contact');
@@ -276,7 +276,7 @@ export function tachesEchues(c: Carnet, maintenant: Date): Tache[] {
 export type SaisiePaiement = Omit<Paiement, 'id' | 'creeLe' | 'devise'>;
 
 function verifierPaiement(c: Carnet, s: SaisiePaiement) {
-  if (!s.titre.trim()) throw new Error('Donnez un titre au paiement.');
+  if (!s.titre.trim()) throw new Error('Donne un titre au paiement.');
   contactExiste(c, s.contactId, false);
   coachingExiste(c, s.coachingId);
   if (s.coachingId && s.contactId && c.coachings.find((x) => x.id === s.coachingId)?.contactId !== s.contactId) throw new Error('Coaching hors de ce contact');
@@ -311,11 +311,11 @@ export function supprimerPaiement(c: Carnet, id: string): Carnet {
  */
 export function reglerPaiements(c: Carnet, ids: string[], moyen: MoyenPaiement): Carnet {
   const choisis = new Set(ids);
-  if (!choisis.size) throw new Error('Choisissez au moins une ligne.');
+  if (!choisis.size) throw new Error('Choisis au moins une ligne.');
   if (!MOYENS_PAIEMENT.includes(moyen)) throw new Error('Moyen de paiement inconnu.');
   const lignes = c.paiements.filter((x) => choisis.has(x.id));
   if (lignes.length !== choisis.size) throw new Error('Paiement introuvable');
-  if (lignes.some((x) => x.statut !== 'En attente')) throw new Error('Une des lignes n’est plus en attente. Actualisez la liste.');
+  if (lignes.some((x) => x.statut !== 'En attente')) throw new Error('Une des lignes n’est plus en attente. Actualise la liste.');
   if (new Set(lignes.map((x) => x.contactId ?? '')).size > 1) throw new Error('Les lignes doivent être du même client.');
   return { ...c, paiements: c.paiements.map((x) => (choisis.has(x.id) ? { ...x, statut: 'Payé', moyen } : x)) };
 }
@@ -390,7 +390,7 @@ export function creerBilan(c: Carnet, s: SaisieBilan, ctx: Contexte): { carnet: 
 export function modifierBilan(c: Carnet, id: string, s: SaisieBilan, ctx: Contexte, envoye = false): Carnet {
   const avant = c.bilans.find((x) => x.id === id);
   if (!avant) throw new Error('Bilan introuvable');
-  if (envoye) throw new Error('Ce bilan a déjà été envoyé : créez un nouveau bilan pour conserver l’historique');
+  if (envoye) throw new Error('Ce bilan a déjà été envoyé : crée un nouveau bilan pour conserver l’historique');
   if (avant.contactId !== s.contactId) throw new Error('Bilan hors de ce contact');
   verifierBilan(c, s);
   return {

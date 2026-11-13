@@ -74,13 +74,13 @@ export function Photos({ clientId, proprietaire }: { clientId: string; proprieta
       <View style={{ borderRadius: 12, backgroundColor: couleurs.discret, padding: 16 }}>
         <Text style={ts.texte}>
           Pour comparer : même endroit, même éclairage, mêmes vêtements ou sous-vêtements, même distance et hauteur du téléphone, et posture relâchée identique.
-          Prenez face, profil et dos, idéalement au même moment de la journée avant l’entraînement.
+          Prends face, profil et dos, idéalement au même moment de la journée avant l’entraînement.
         </Text>
       </View>
       {proprietaire ? (
         <AjoutPhoto clientId={clientId} onEnregistre={recharger} />
       ) : (
-        <Text style={ts.doux}>Vue coach : les photos s’ajoutent depuis le compte du client. Vous voyez ici celles qu’il choisit de partager.</Text>
+        <Text style={ts.doux}>Vue coach : les photos s’ajoutent depuis le compte du client. Tu vois ici celles qu’il choisit de partager.</Text>
       )}
       <Etat erreur={erreur || erreurChargement || undefined} />
       {!photos && !erreurChargement ? (
@@ -90,7 +90,7 @@ export function Photos({ clientId, proprietaire }: { clientId: string; proprieta
           <>
             <Text style={[ts.texte, { color: couleurs.texteDoux }]}>
               {proprietaire
-                ? 'Vos photos sont privées, sauf celles que vous partagez volontairement avec votre coach.'
+                ? 'Tes photos sont privées, sauf celles que tu partages volontairement avec ton coach.'
                 : 'Seules les photos partagées par le client apparaissent ici.'}
             </Text>
             {photos.length > 0 && (
@@ -216,7 +216,7 @@ function AjoutPhoto({ clientId, onEnregistre }: { clientId: string; onEnregistre
     try {
       if (source === 'camera') {
         const p = await ImagePicker.requestCameraPermissionsAsync();
-        if (!p.granted) throw new Error('Autorisez l’appareil photo dans les réglages du téléphone, ou choisissez une photo.');
+        if (!p.granted) throw new Error('Autorise l’appareil photo dans les réglages du téléphone, ou choisis une photo.');
       }
       const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 1 };
       const choisi = source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
@@ -224,7 +224,7 @@ function AjoutPhoto({ clientId, onEnregistre }: { clientId: string; onEnregistre
       if (!fichier) return;
       setOccupe(true);
       setImage('');
-      if (fichier.fileSize && fichier.fileSize > 20000000) throw new Error('Choisissez une photo JPEG, PNG ou WebP de moins de 20 Mo.');
+      if (fichier.fileSize && fichier.fileSize > 20000000) throw new Error('Choisis une photo JPEG, PNG ou WebP de moins de 20 Mo.');
       const cote = Math.max(fichier.width, fichier.height);
       const ratio = cote ? Math.min(1, 1200 / cote) : 1;
       let travail = ImageManipulator.manipulate(fichier.uri);
@@ -236,7 +236,7 @@ function AjoutPhoto({ clientId, onEnregistre }: { clientId: string; onEnregistre
         valeur = `data:image/jpeg;base64,${r.base64 ?? ''}`;
         if (valeur.length <= 350000) break;
       }
-      if (valeur.length > 350000) throw new Error('Photo trop volumineuse : essayez une image plus petite.');
+      if (valeur.length > 350000) throw new Error('Photo trop volumineuse : essaie une image plus petite.');
       if (!imageValide(valeur)) throw new Error('Photo illisible');
       setImage(valeur);
       setJeton(nouvelId());
@@ -254,7 +254,7 @@ function AjoutPhoto({ clientId, onEnregistre }: { clientId: string; onEnregistre
     setErreur('');
     try {
       const jour = lireJour(date);
-      if (!jour || jour > aujourdhuiParis()) throw new Error('Date invalide : écrivez-la au format jj/mm/aaaa, au plus tard aujourd’hui');
+      if (!jour || jour > aujourdhuiParis()) throw new Error('Date invalide : écris-la au format jj/mm/aaaa, au plus tard aujourd’hui');
       await suiviHebdo.ajouterPhoto(clientId, { date: jour, vue, partage, image, envoiId: jeton });
       setImage('');
       setPartage(false);
@@ -289,7 +289,7 @@ function AjoutPhoto({ clientId, onEnregistre }: { clientId: string; onEnregistre
         <Image source={{ uri: image }} accessibilityLabel="Photo sélectionnée avant enregistrement" style={{ width: '100%', height: 256 }} resizeMode="contain" />
       )}
       <CaseACocher libelle="Partager cette photo avec mon coach" valeur={partage} onChange={setPartage} />
-      <Text style={ts.doux}>Laissez décoché pour garder la photo privée dans votre espace. Vous pourrez modifier ce choix ensuite.</Text>
+      <Text style={ts.doux}>Laisse décoché pour garder la photo privée dans ton espace. Tu pourras modifier ce choix ensuite.</Text>
       <Etat erreur={erreur || undefined} />
       <Action libelle={occupe ? 'Traitement…' : 'Enregistrer la photo'} desactive={occupe || !image || !date.trim()} onPress={enregistrer} />
     </View>

@@ -50,9 +50,9 @@ export interface DepotNutrition {
   ): Promise<{ recipes: PersonalRecipe[]; entries: Entry[]; version: number }>;
 }
 
-export const SEMAINE_MODIFIEE = 'Le planning a été modifié. Actualisez avant de réessayer.';
-export const PROFIL_MODIFIE = 'Le profil a changé. Actualisez avant de réessayer.';
-export const PERSONNEL_MODIFIE = 'Ces données ont changé. Actualisez avant de réessayer.';
+export const SEMAINE_MODIFIEE = 'Le planning a été modifié. Actualise avant de réessayer.';
+export const PROFIL_MODIFIE = 'Le profil a changé. Actualise avant de réessayer.';
+export const PERSONNEL_MODIFIE = 'Ces données ont changé. Actualise avant de réessayer.';
 
 const planVide = (): Plan => Array.from({ length: 7 }, () => []);
 
@@ -298,7 +298,7 @@ function delai(ms: number) {
 
 /** lookupFood d'origine : fiche produit par code-barres ; `null` si le produit est absent de la base. */
 export async function produitParCode(barcode: string): Promise<ProduitOff | null> {
-  if (!/^(?:\d{8}|\d{12}|\d{13}|\d{14})$/.test(barcode)) throw new Error('Saisissez les 8, 12, 13 ou 14 chiffres du code-barres.');
+  if (!/^(?:\d{8}|\d{12}|\d{13}|\d{14})$/.test(barcode)) throw new Error('Saisis les 8, 12, 13 ou 14 chiffres du code-barres.');
   const cache = produits.get(barcode);
   if (cache && Date.now() - cache.time < HEURE) return cache.value;
   let r: Response;
@@ -308,11 +308,11 @@ export async function produitParCode(barcode: string): Promise<ProduitOff | null
       { signal: delai(12000) },
     );
   } catch {
-    throw new Error('Base produits indisponible. Vous pouvez saisir cet aliment manuellement.');
+    throw new Error('Base produits indisponible. Tu peux saisir cet aliment manuellement.');
   }
   if (r.status === 404) return null;
-  if (r.status === 429) throw new Error('La base produits est momentanément très sollicitée. Réessayez plus tard ou saisissez les valeurs de l’étiquette.');
-  if (!r.ok) throw new Error('Base produits indisponible. Vous pouvez saisir cet aliment manuellement.');
+  if (r.status === 429) throw new Error('La base produits est momentanément très sollicitée. Réessaie plus tard ou saisis les valeurs de l’étiquette.');
+  if (!r.ok) throw new Error('Base produits indisponible. Tu peux saisir cet aliment manuellement.');
   const value = parseProduct(await r.json(), barcode);
   if (produits.size > 500) produits.clear();
   produits.set(barcode, { time: Date.now(), value });
@@ -333,12 +333,12 @@ export async function rechercherProduits(query: string, france: boolean): Promis
       signal: delai(15000),
     });
   } catch {
-    throw new Error('Recherche de marques indisponible. Utilisez Ciqual ou le code-barres.');
+    throw new Error('Recherche de marques indisponible. Utilise Ciqual ou le code-barres.');
   }
-  if (r.status === 429) throw new Error('La recherche de marques est momentanément limitée. Réessayez plus tard ; Ciqual et la saisie manuelle restent disponibles.');
-  if (!r.ok) throw new Error('Recherche de marques indisponible. Utilisez Ciqual ou le code-barres.');
+  if (r.status === 429) throw new Error('La recherche de marques est momentanément limitée. Réessaie plus tard ; Ciqual et la saisie manuelle restent disponibles.');
+  if (!r.ok) throw new Error('Recherche de marques indisponible. Utilise Ciqual ou le code-barres.');
   const payload = await r.json();
-  if (payload.errors?.length) throw new Error('La recherche n’a pas abouti. Précisez le nom du produit.');
+  if (payload.errors?.length) throw new Error('La recherche n’a pas abouti. Précise le nom du produit.');
   const products = namedProducts(payload);
   if (recherches.size > 200) recherches.clear();
   recherches.set(q, { time: Date.now(), products });

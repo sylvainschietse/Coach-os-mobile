@@ -189,8 +189,8 @@ function LigneCycle({ c, i, n, occupe, agir }: { c: CycleClient; i: number; n: n
         {c.statut !== 'Terminé' && <Action petit variante="contour" icone={Library} libelle={c.programmeId ? 'Changer de programme' : 'Lier un programme'} onPress={() => agir('prog')} />}
         {c.programmeId && <Action petit variante="fantome" icone={ExternalLink} libelle="Éditer le programme" onPress={() => agir('open')} />}
         {c.statut === 'Prêt' && <Action petit icone={Play} libelle="Activer" desactive={!c.programmeId || occupe || !dansDates(c, jour)} onPress={() => agir('activer')} />}
-        {c.statut === 'Brouillon' && <Text style={ts.doux}>Passez en « Prêt » pour activer</Text>}
-        {c.statut === 'Prêt' && !dansDates(c, jour) && <Text style={ts.doux}>{jour < c.debut ? `À venir · activable le ${jourCourt(c.debut)}` : 'Dates dépassées · replanifiez'}</Text>}
+        {c.statut === 'Brouillon' && <Text style={ts.doux}>Passe en « Prêt » pour activer</Text>}
+        {c.statut === 'Prêt' && !dansDates(c, jour) && <Text style={ts.doux}>{jour < c.debut ? `À venir · activable le ${jourCourt(c.debut)}` : 'Dates dépassées · replanifie'}</Text>}
       </Ligne>
     </View>
   );
@@ -240,7 +240,7 @@ function DialogueCycle({
     : !f.debut.trim() || !f.fin.trim()
       ? 'Dates requises'
       : !debut || !fin
-        ? 'Écrivez les dates comme 24/10/2026'
+        ? 'Écris les dates comme 24/10/2026'
         : fin < debut
           ? 'La fin doit suivre le début'
           : '';
@@ -319,7 +319,7 @@ function DialogueCycle({
       </View>
       <View style={{ gap: 8 }}>
         <Text style={ts.titreChamp}>Statut</Text>
-        {actif && <Text style={ts.texte}>Actif — pour le clore, choisissez Terminé (les résultats sont conservés).</Text>}
+        {actif && <Text style={ts.texte}>Actif — pour le clore, choisis Terminé (les résultats sont conservés).</Text>}
         <Ligne style={{ gap: 8 }}>
           {(actif ? (['Actif', 'Terminé'] as StatutCycle[]) : STATUTS).map((s) => (
             <Action key={s} petit libelle={s} variante={f.statut === s ? 'plein' : 'contour'} onPress={() => setF({ ...f, statut: s })} />
@@ -427,7 +427,7 @@ function DialogueProgrammeCycle({
       )}
       {copie && modele && (
         <Text style={[ts.texte, { borderWidth: 1, borderColor: 'rgba(194,65,12,0.4)', backgroundColor: couleurs.orangeClair, color: '#7C2D12', borderRadius: 10, padding: 12 }]}>
-          Une copie de « {titreClient(modele.titre)} » (programme, séances, lignes) sera créée pour {client}, indépendante du modèle. Vous la réviserez ensuite.
+          Une copie de « {titreClient(modele.titre)} » (programme, séances, lignes) sera créée pour {client}, indépendante du modèle. Tu la réviseras ensuite.
         </Text>
       )}
       {erreur ? (

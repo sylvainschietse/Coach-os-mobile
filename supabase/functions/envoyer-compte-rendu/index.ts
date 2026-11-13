@@ -19,9 +19,9 @@ const repondre = (corps: unknown, status = 200) =>
 const MESSAGES: Record<string, string> = {
   envoye: 'Envoi déjà confirmé : le compte rendu ne sera pas renvoyé.',
   en_cours: 'Une transmission est déjà en cours pour cette version.',
-  transmis: 'Make a déjà reçu cette version. Vérifiez son résultat dans Make avant tout nouvel envoi.',
-  echec: 'La dernière transmission n’a pas abouti. Vérifiez le service d’envoi, puis relancez si aucun e-mail n’est parti.',
-  bloque: 'Le service d’envoi a refusé la demande (crédits ou quota épuisés). Relancez une fois rétabli.',
+  transmis: 'Make a déjà reçu cette version. Vérifie son résultat dans Make avant tout nouvel envoi.',
+  echec: 'La dernière transmission n’a pas abouti. Vérifie le service d’envoi, puis relance si aucun e-mail n’est parti.',
+  bloque: 'Le service d’envoi a refusé la demande (crédits ou quota épuisés). Relance une fois rétabli.',
 };
 
 /** Brevo est pris dès que sa clé et l'adresse d'expédition sont renseignées. */
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
   const { data: d } = await db.from('documents').select('id, nom, version, chemin, nom_fichier, contact_id, booster_id, coaching_id').eq('id', corps.documentId).maybeSingle();
   if (!d) return repondre({ erreur: 'Document introuvable.' }, 404);
   const { data: c } = d.contact_id ? await db.from('contacts').select('id, prenom, email').eq('id', d.contact_id).maybeSingle() : { data: null };
-  if (!c?.email) return repondre({ erreur: 'Ajoutez d’abord l’e-mail du contact.' }, 400);
+  if (!c?.email) return repondre({ erreur: 'Ajoute d’abord l’e-mail du contact.' }, 400);
 
   const { data: reserve, error: refus } = await db.rpc('reserver_envoi_compte_rendu', {
     p_document: d.id, p_version: d.version, p_relancer: corps.relancer === true,
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
   if (service) {
     const demande = corpsBrevo({
       expediteur: { email: service.email, nom: service.nom }, destinataire: { email: c.email, prenom: c.prenom ?? '' },
-      sujet: d.nom || 'Votre compte rendu', pdfUrl: signe.signedUrl, nomFichier: d.nom_fichier || 'compte-rendu.pdf', documentId: d.id, cle,
+      sujet: d.nom || 'Ton compte rendu', pdfUrl: signe.signedUrl, nomFichier: d.nom_fichier || 'compte-rendu.pdf', documentId: d.id, cle,
     });
     let r: Response;
     try {
@@ -96,8 +96,8 @@ Deno.serve(async (req) => {
         body: JSON.stringify(demande),
       });
     } catch {
-      await noter('echec', 'Résultat incertain : pas de réponse de Brevo. Vérifiez ses journaux avant de relancer.');
-      return repondre({ etat: 'echec', message: 'Envoi non confirmé. Vérifiez les journaux Brevo pour éviter un doublon.' }, 502);
+      await noter('echec', 'Résultat incertain : pas de réponse de Brevo. Vérifie ses journaux avant de relancer.');
+      return repondre({ etat: 'echec', message: 'Envoi non confirmé. Vérifie les journaux Brevo pour éviter un doublon.' }, 502);
     }
     const lu = lireReponseBrevo(r.status, await r.text());
     await noter(lu.etat, lu.detail);
@@ -116,12 +116,12 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         event: 'coachos.report.send', schemaVersion: 1, idempotencyKey: cle, documentId: d.id, contactId: c.id,
         boosterId: d.booster_id ?? null, coachingId: d.coaching_id ?? null, to: c.email, firstName: c.prenom ?? '',
-        subject: d.nom || 'Votre compte rendu', pdfUrl: signe.signedUrl, filename: d.nom_fichier || 'compte-rendu.pdf',
+        subject: d.nom || 'Ton compte rendu', pdfUrl: signe.signedUrl, filename: d.nom_fichier || 'compte-rendu.pdf',
       }),
     });
   } catch {
-    await noter('echec', 'Résultat incertain : pas de réponse de Make. Vérifiez son journal avant de relancer.');
-    return repondre({ etat: 'echec', message: 'Transmission non confirmée. Vérifiez Make pour éviter un doublon.' }, 502);
+    await noter('echec', 'Résultat incertain : pas de réponse de Make. Vérifie son journal avant de relancer.');
+    return repondre({ etat: 'echec', message: 'Transmission non confirmée. Vérifie Make pour éviter un doublon.' }, 502);
   }
 
   const texte = await reponse.text();

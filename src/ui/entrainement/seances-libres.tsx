@@ -97,8 +97,8 @@ export function SeancesLibresClients({ coachId, onOuvrirModele }: { coachId: str
     <View style={{ gap: 12 }}>
       <Text style={ts.titreSection}>Séances libres des clients</Text>
       <Text style={ts.doux}>
-        Ce que vos clients ont fait en plus de leur programme : cours collectifs, sports, séances de musculation à eux. Une séance détaillée peut devenir un
-        modèle de votre bibliothèque.
+        Ce que tes clients ont fait en plus de leur programme : cours collectifs, sports, séances de musculation à eux. Une séance détaillée peut devenir un
+        modèle de ta bibliothèque.
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
         <View style={{ flexGrow: 1, flexBasis: 200, minWidth: 0 }}>

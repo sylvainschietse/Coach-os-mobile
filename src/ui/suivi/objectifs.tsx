@@ -84,7 +84,7 @@ export function Objectifs({ clientId, apercu }: { clientId: string; apercu?: boo
     setMessage('');
     try {
       if (action === 'creer') {
-        if (!form.depart.trim() || !form.cible.trim()) throw new Error('Renseignez le départ et la cible');
+        if (!form.depart.trim() || !form.cible.trim()) throw new Error('Renseigne le départ et la cible');
         const echeance = form.echeance.trim() ? lireJour(form.echeance) : '';
         if (echeance === undefined) throw new Error('Échéance invalide');
         await suiviHebdo.enregistrerObjectif(clientId, form.envoiId, {
@@ -97,7 +97,7 @@ export function Objectifs({ clientId, apercu }: { clientId: string; apercu?: boo
       } else if (g) {
         const d = brouillons[g.id];
         if (action === 'progresser') {
-          if (!d || !d.valeur.trim()) throw new Error('Renseignez votre valeur actuelle');
+          if (!d || !d.valeur.trim()) throw new Error('Renseigne ta valeur actuelle');
           await suiviHebdo.enregistrerObjectif(clientId, d.envoiId, { action, valeur: nombre(d.valeur), version: d.version }, g.id);
         } else await suiviHebdo.enregistrerObjectif(clientId, nouvelId(), { action, version: g.modifieLe }, g.id);
         const suite = { ...brouillons };
@@ -147,7 +147,7 @@ export function Objectifs({ clientId, apercu }: { clientId: string; apercu?: boo
           <BoutonContour icone={RefreshCw} nom="Actualiser les objectifs" desactive={occupe} onPress={recharger} />
         </View>
         <Text style={[ts.texte, { color: couleurs.texteDoux }]}>
-          Fixez une cible qui vous motive, puis renseignez vos progrès. La barre et le statut « Atteint » se calculent automatiquement à partir de vos valeurs.
+          Fixe-toi une cible qui te motive, puis renseigne tes progrès. La barre et le statut « Atteint » se calculent automatiquement à partir de tes valeurs.
         </Text>
       </View>
 
@@ -161,7 +161,7 @@ export function Objectifs({ clientId, apercu }: { clientId: string; apercu?: boo
               actifs.map(carte)
             ) : (
               <View style={{ borderWidth: 1, borderStyle: 'dashed', borderColor: couleurs.bordure, borderRadius: 12, padding: 20 }}>
-                <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Aucun objectif en cours. Ajoutez votre prochaine cible ci-dessous.</Text>
+                <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Aucun objectif en cours. Ajoute ta prochaine cible ci-dessous.</Text>
               </View>
             )}
           </View>
@@ -231,7 +231,7 @@ export function Objectifs({ clientId, apercu }: { clientId: string; apercu?: boo
             Mes petites victoires
           </Text>
         </View>
-        <Text style={ts.doux}>Retrouvez ici les réussites que vous racontez dans « Bilan semaine ».</Text>
+        <Text style={ts.doux}>Retrouve ici les réussites que tu racontes dans « Bilan semaine ».</Text>
         {donnee?.victoires.length ? (
           <View style={{ gap: 16 }}>
             {donnee.victoires.map((v) => (
@@ -244,7 +244,7 @@ export function Objectifs({ clientId, apercu }: { clientId: string; apercu?: boo
             ))}
           </View>
         ) : (
-          <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Votre prochaine victoire mérite sa place ici.</Text>
+          <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Ta prochaine victoire mérite sa place ici.</Text>
         )}
       </View>
     </View>
@@ -304,7 +304,7 @@ function CarteObjectif({
       <Text style={[ts.doux, { textAlign: 'right' }]}>{pourcent} %</Text>
       {!!g.atteintLe && <Text style={[ts.doux, { color: couleurs.rouge }]}>Objectif atteint le {fmt(g.atteintLe)}</Text>}
       {!g.atteint && !g.archive && !!g.echeance && g.echeance < aujourdhuiParis() && (
-        <Text style={ts.doux}>Échéance passée · vous pouvez continuer à suivre votre progression.</Text>
+        <Text style={ts.doux}>Échéance passée · tu peux continuer à suivre ta progression.</Text>
       )}
       {!g.archive && !apercu && (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 8, marginTop: 8 }}>
