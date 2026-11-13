@@ -25,6 +25,7 @@ import { MonCalendrier } from './calendrier';
 import { Action, Confirmation, TexteLong, jourCourt, ts, PhotoProgramme } from './commun';
 import { Historique, nbSeries } from './historique';
 import { BoutonPanneauMinuteurs, useMinuteurs } from './minuteurs';
+import { useModeSeance } from './seance-libre';
 import { SeanceLog } from './seance-log';
 import { MesSeances } from '../suivi/mes-seances';
 
@@ -155,6 +156,9 @@ export function EntrainementClient({
       router.push({ pathname: '/client/seance-bloc', params: { seance: seanceId, plan: planificationId ?? '' } });
     else aller({ nom: 'seance', seanceId, planificationId, jeton: Date.now() });
   };
+  // Sans téléphone : chrono et liste des blocs pendant l'effort, la séance se note après coup.
+  const demarrerLibre = (seanceId: string, planificationId?: string) =>
+    router.push({ pathname: '/client/seance-libre', params: { seance: seanceId, plan: planificationId ?? '' } });
   // Liste du programme : une séance d'exercices s'ouvre en séance guidée, comme celle de l'accueil.
   const demarrerDepuisListe = (seanceId: string) => () =>
     demanderSortie(() => router.push({ pathname: '/client/seance-bloc', params: { seance: seanceId, plan: '' } }));
@@ -343,7 +347,15 @@ export function EntrainementClient({
           {!espace.cycle && milieu}
           {espace.cycle && (
             <>
-              <ProchaineSeance espace={espace} creneaux={calendrier.donnee} apercu={apercu} onDemarrer={demarrer} onProgramme={voirProgramme} />
+              <ProchaineSeance
+                clientId={clientId}
+                espace={espace}
+                creneaux={calendrier.donnee}
+                apercu={apercu}
+                onDemarrer={demarrer}
+                onDemarrerLibre={demarrerLibre}
+                onProgramme={voirProgramme}
+              />
               {milieu}
               <MonCalendrier
                 key={`${clientId}:${espace.cycle.id}`}
@@ -385,40 +397,82 @@ function Retour({ libelle, onPress }: { libelle: string; onPress: () => void }) 
 
 /** « Ma prochaine séance » : un seul gros bouton pour démarrer, sans chercher dans le programme. */
 function ProchaineSeance({
+  clientId,
   espace,
   creneaux,
   apercu,
   onDemarrer,
+  onDemarrerLibre,
   onProgramme,
 }: {
+  clientId: string;
   espace: EspaceEntrainement;
   creneaux: Planification[] | null;
   apercu?: boolean;
   onDemarrer: (seanceId: string, planificationId?: string) => void;
+  onDemarrerLibre: (seanceId: string, planificationId?: string) => void;
   onProgramme: () => void;
 }) {
+  const [mode, choisirMode] = useModeSeance(clientId);
   const p = prochaineSeance(espace, creneaux ?? []);
   if (!p) return null;
   const c = espace.cycle!;
   const ouvert = c.statut === 'Actif' && c.etat !== 'depasse';
   const nbExercices = p.seance.blocs.reduce((n, b) => n + b.lignes.length, 0);
+  const libre = !!nbExercices && ouvert && !apercu;
+  const guideeEnPremier = !(libre && mode === 'libre');
+  const propsGuidee = {
+    libelle: apercu ? 'Seul le client peut démarrer' : !ouvert ? 'Programme terminé' : nbExercices ? 'Démarrer, je note au fur et à mesure' : 'Valider la séance',
+    icone: PlayCircle,
+    desactive: apercu || !ouvert,
+    onPress: () => {
+      if (libre) choisirMode('guidee');
+      onDemarrer(p.seance.id, p.creneau?.id);
+    },
+  };
+  const propsLibre = {
+    libelle: 'Démarrer sans téléphone',
+    icone: Timer,
+    onPress: () => {
+      choisirMode('libre');
+      onDemarrerLibre(p.seance.id, p.creneau?.id);
+    },
+  };
+  // Le mode choisi la dernière fois passe en premier, en bouton blanc ; l'autre reste en contour.
+  const guidee = guideeEnPremier ? <Action key="guidee" variante="contour" {...propsGuidee} /> : <ActionSurSombre key="guidee" {...propsGuidee} />;
+  const sansTelephone = !libre ? null : guideeEnPremier ? <ActionSurSombre key="libre" {...propsLibre} /> : <Action key="libre" variante="contour" {...propsLibre} />;
   return (
     // Carte forte de l'accueil : sombre avec une lueur rouge, un avant-goût de la séance plein écran.
     <View style={[ts.carte, styles.prochaine]}>
       <Text style={[ts.kicker, { color: '#FF7A7E' }]}>{p.creneau ? `Prévue aujourd’hui${p.creneau.heure ? ` à ${p.creneau.heure}` : ''}` : 'Ma prochaine séance'}</Text>
       <Text style={{ fontFamily: polices.titre, fontSize: 30, letterSpacing: 0.6, color: '#FFFFFF' }}>{titreClient(p.seance.titre)}</Text>
       <Text style={[ts.doux, { color: 'rgba(255,255,255,0.85)' }]}>{nbExercices ? `${nbExercices} exercice${nbExercices > 1 ? 's' : ''}` : 'Activité · à valider une fois faite'}</Text>
-      <Action
-        libelle={apercu ? 'Seul le client peut démarrer' : !ouvert ? 'Programme terminé' : nbExercices ? 'Démarrer la séance' : 'Valider la séance'}
-        icone={PlayCircle}
-        variante="contour"
-        desactive={apercu || !ouvert}
-        onPress={() => onDemarrer(p.seance.id, p.creneau?.id)}
-      />
+      {guideeEnPremier ? [guidee, sansTelephone] : [sansTelephone, guidee]}
+      {libre && (
+        <Text style={[ts.doux, { color: 'rgba(255,255,255,0.75)' }]}>
+          Sans téléphone : tu t’entraînes tranquille et tu racontes ta séance à la fin, en 30 secondes.
+        </Text>
+      )}
       <Text accessibilityRole="button" onPress={onProgramme} style={{ alignSelf: 'center', paddingVertical: 6, fontFamily: polices.texte, fontSize: 13, color: 'rgba(255,255,255,0.9)', textDecorationLine: 'underline' }}>
         Choisir une autre séance
       </Text>
     </View>
+  );
+}
+
+/** Bouton secondaire sur la carte sombre de la prochaine séance : contour blanc, texte blanc. */
+function ActionSurSombre({ libelle, icone: Icone, onPress, desactive }: { libelle: string; icone: typeof Timer; onPress: () => void; desactive?: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!desactive }}
+      disabled={desactive}
+      onPress={onPress}
+      style={({ pressed }) => [styles.surSombre, { opacity: desactive ? 0.45 : pressed ? 0.7 : 1 }]}
+    >
+      <Icone size={16} color="#FFFFFF" />
+      <Text style={{ fontFamily: polices.texteMoyen, fontSize: 15, color: '#FFFFFF' }}>{libelle}</Text>
+    </Pressable>
   );
 }
 
@@ -481,6 +535,17 @@ function CarteCycle({ espace }: { espace: EspaceEntrainement }) {
 }
 
 const styles = StyleSheet.create({
+  surSombre: {
+    minHeight: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.45)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+  },
   prochaine: {
     borderRadius: 22,
     borderWidth: 0,

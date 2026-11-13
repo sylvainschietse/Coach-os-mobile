@@ -26,8 +26,12 @@ const MESSAGES: Record<string, string> = {
   'language-not-supported': 'Le français n’est pas disponible pour la dictée sur cet appareil.',
 };
 
-export function BoutonDictee({ valeur, onChange, desactive }: { valeur: string; onChange: (v: string) => void; desactive?: boolean }) {
-  const id = useRef(++compteur).current;
+/**
+ * La dictée sans son bouton : `basculer` démarre ou arrête l'écoute, le texte dicté s'ajoute à `valeur` par `onChange`.
+ * `disponible` est faux quand l'appareil ne sait pas dicter (le bouton ne s'affiche pas).
+ */
+export function useDictee(valeur: string, onChange: (v: string) => void) {
+  const [id] = useState(() => ++compteur);
   const [ecoute, setEcoute] = useState(false);
   const [erreur, setErreur] = useState('');
   const base = useRef('');
@@ -50,8 +54,6 @@ export function BoutonDictee({ valeur, onChange, desactive }: { valeur: string; 
     setErreur(MESSAGES[e.error] ?? 'La dictée s’est arrêtée. Réessaie.');
   });
 
-  if (!disponible()) return null;
-
   async function basculer() {
     setErreur('');
     if (ecoute) return ExpoSpeechRecognitionModule.stop();
@@ -63,6 +65,13 @@ export function BoutonDictee({ valeur, onChange, desactive }: { valeur: string; 
     setEcoute(true);
     ExpoSpeechRecognitionModule.start({ lang: 'fr-FR', interimResults: true, continuous: true, addsPunctuation: true });
   }
+
+  return { disponible: disponible(), ecoute, erreur, basculer };
+}
+
+export function BoutonDictee({ valeur, onChange, desactive }: { valeur: string; onChange: (v: string) => void; desactive?: boolean }) {
+  const { disponible: possible, ecoute, erreur, basculer } = useDictee(valeur, onChange);
+  if (!possible) return null;
 
   const Icone = ecoute ? Square : Mic;
   return (

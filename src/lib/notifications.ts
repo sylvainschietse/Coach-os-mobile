@@ -73,11 +73,12 @@ export async function autoriserNotifications(): Promise<boolean> {
 }
 
 /** Alerte locale dans N secondes : elle sonne même téléphone verrouillé. */
-export async function programmerAlerte(secondes: number, titre: string, corps: string): Promise<string | null> {
+export async function programmerAlerte(secondes: number, titre: string, corps: string, url?: string): Promise<string | null> {
   if (!actif || secondes < 1) return null;
   try {
     return await Notifications.scheduleNotificationAsync({
-      content: { title: titre, body: corps, sound: true },
+      // url : l'écran ouvert quand on touche l'alerte (voir OuvertureNotifications).
+      content: { title: titre, body: corps, sound: true, ...(url ? { data: { url } } : {}) },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: Math.round(secondes), channelId: CANAL },
     });
   } catch {
