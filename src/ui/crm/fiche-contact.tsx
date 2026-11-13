@@ -26,6 +26,7 @@ import {
   type StatutContact,
 } from '@/domain/crm';
 import { ENTRETIEN, TESTS } from '@/domain/evaluation';
+import { formaterMesure, lireMesure, TESTS_GOLF } from '@/domain/tests-golf';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { NutritionDuClient } from '../alimentation/nutrition-coach';
@@ -629,6 +630,18 @@ export function LectureBooster({ booster: b }: { booster: Booster }) {
         { libelle: 'Douleur pendant les tests', valeur: e?.douleur },
         { libelle: 'Douleur / gêne — précision', valeur: e?.douleurPrecision },
         { libelle: 'Observations tests', valeur: e?.notes, long: true },
+        ...(e?.golf?.actif
+          ? TESTS_GOLF.map((t) => ({
+              libelle: `Golf · ${t.libelle}`,
+              valeur:
+                t.champs
+                  .flatMap((c) => {
+                    const n = lireMesure(e.golf!.mesures[t.id]?.[c.cle]);
+                    return n === undefined ? [] : [`${c.libelle} ${formaterMesure(n, c.unite)}`];
+                  })
+                  .join(' · ') || undefined,
+            }))
+          : []),
       ],
     },
     {
