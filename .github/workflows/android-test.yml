@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
   push:
     branches: [prototype]
-    paths: ['src/**', 'assets/**', 'app.json', 'package.json', 'package-lock.json', 'eas.json', '.github/workflows/android-test.yml']
+    paths: ['src/**', 'assets/**', 'modules/**', 'app.json', 'package.json', 'package-lock.json', 'eas.json', '.github/workflows/android-test.yml']
 
 concurrency:
   group: android-test

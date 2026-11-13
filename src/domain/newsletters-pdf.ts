@@ -30,13 +30,13 @@ export function introPdf(minutes?: number) {
   return `Je t’ai préparé un article complet, illustré et sourcé${duree}. Ouvre le PDF avec le bouton ci-dessous : tu peux le garder et le relire quand tu veux.\n\nBonne lecture !`;
 }
 
-/** Le message WhatsApp, prêt à partir : le titre, le chapeau, le lien vers le PDF et la signature. */
-export function messageWhatsAppPdf(a: { objet: string; chapeau?: string }, v: { prenom?: string; coach: string; lien: string }) {
+/** Le message WhatsApp, prêt à partir : le titre, le chapeau, le lien vers le PDF (sauf s'il est joint) et la signature. */
+export function messageWhatsAppPdf(a: { objet: string; chapeau?: string }, v: { prenom?: string; coach: string; lien?: string }) {
   const p = (t?: string) => personnaliser(t ?? '', v).trim();
   const bonjour = v.prenom?.trim() ? `Bonjour ${v.prenom.trim()} !` : 'Bonjour !';
   const titre = p(a.objet).replace(/^\s*,\s*/, '');
   // Le chapeau commence souvent par « {prenom}, » : déjà salué, on enlève ce prénom pour ne pas le répéter.
   const chapeau = personnaliser((a.chapeau ?? '').replace(/^\s*\{prenom\}\s*,\s*/, ''), v).trim();
   const debut = chapeau ? chapeau.charAt(0).toUpperCase() + chapeau.slice(1) : '';
-  return [`${bonjour} Voici ma nouvelle newsletter : « ${titre} »`, debut, `Le PDF à lire ici :\n${v.lien}`, `Bonne lecture ! ${v.coach}`].filter(Boolean).join('\n\n');
+  return [`${bonjour} Voici ma nouvelle newsletter : « ${titre} »`, debut, v.lien ? `Le PDF à lire ici :\n${v.lien}` : 'Le PDF est juste au-dessus.', `Bonne lecture ! ${v.coach}`].filter(Boolean).join('\n\n');
 }

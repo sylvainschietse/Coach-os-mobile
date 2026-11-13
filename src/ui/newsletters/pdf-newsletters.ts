@@ -8,6 +8,9 @@ import { PDF_ARTICLES } from './pdf-articles';
 
 export const aUnPdf = (article?: string): article is string => !!article && Object.prototype.hasOwnProperty.call(PDF_ARTICLES, article);
 
+/** Le fichier du PDF sur le téléphone (une adresse sur le web). */
+export const uriPdf = (article: string) => uriLivree(PDF_ARTICLES[article], 'pdf');
+
 export const octetsPdf = (article: string) => octetsLivres(PDF_ARTICLES[article], 'pdf');
 
 /** Ouvre le PDF pour le lire : celui livré avec l'appli, ou à défaut celui rangé en ligne (lien signé). */

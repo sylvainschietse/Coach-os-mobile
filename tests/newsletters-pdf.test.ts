@@ -26,6 +26,8 @@ describe('newsletters en PDF', () => {
     );
     expect(m).toBe('Bonjour Léa ! Voici ma nouvelle newsletter : « Protéines : combien en faut-il ? »\n\nLes protéines sont partout.\n\nLe PDF à lire ici :\nhttps://lien/pdf\n\nBonne lecture ! Camille');
     expect(messageWhatsAppPdf({ objet: 'Titre' }, { coach: 'C', lien: 'https://l' })).toMatch(/^Bonjour ! Voici/);
+    // PDF joint au message : pas de lien.
+    expect(messageWhatsAppPdf({ objet: 'Titre' }, { coach: 'C' })).not.toMatch(/https/);
   });
 
   it('chaque article de la bibliothèque a son PDF et peut partir tel quel', () => {

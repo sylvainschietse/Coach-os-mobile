@@ -28,6 +28,7 @@ import ARTICLES_BRUTS from '@/domain/articles-newsletters.json';
 import { lienEnvoi } from '@/domain/crm';
 import { articleDuLien, BOUTON_PDF, cheminDuLien, introPdf, messageWhatsAppPdf } from '@/domain/newsletters-pdf';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
+import { envoyerFichierWhatsApp, whatsAppAvecFichier } from '@/lib/whatsapp-fichier';
 import { maintenantMs } from '@/lib/temps';
 import { messageErreur, useCharger, useRechargerSur } from '@/lib/useCharger';
 
@@ -39,7 +40,7 @@ import { ApercuHtml } from '../offres/apercu-html';
 import { couleurs, espace, polices } from '../theme';
 import { Bibliotheque, type ArticleBibliotheque } from './bibliotheque';
 import { CLES_ILLUSTRATIONS, imageIllustration, octetsIllustration } from './illustrations';
-import { aUnPdf, octetsPdf, voirPdfArticle } from './pdf-newsletters';
+import { aUnPdf, octetsPdf, uriPdf, voirPdfArticle } from './pdf-newsletters';
 
 /** Une image du texte livrée avec l'appli (pas encore rangée en ligne). */
 const estLivree = (src: string) => CLES_ILLUSTRATIONS.includes(src);
@@ -151,7 +152,29 @@ function FicheArticle({ a, onFermer, onEnvoyer }: { a: ArticleBibliotheque; onFe
 }
 
 /** Envoyer le PDF par WhatsApp, personne par personne : la conversation s'ouvre sur son numéro, le message est déjà écrit. */
-function EnvoiWhatsApp({ n, lien, coach, onFermer }: { n: Newsletter; lien: string; coach: string; onFermer: () => void }) {
+function EnvoiWhatsApp({ n, lien, coach, article, onFermer }: { n: Newsletter; lien: string; coach: string; article?: string; onFermer: () => void }) {
+  // Sur Android, le PDF part joint au message ; sinon (web, ancienne appli), le message porte le lien du PDF.
+  const joint = aUnPdf(article) && whatsAppAvecFichier();
+  const [erreur, setErreur] = useState<string>();
+  async function envoyer(c: { id: string; prenom: string; telephone?: string }) {
+    setErreur(undefined);
+    const url = lienEnvoi('whatsapp', c, 'x');
+    const tel = url?.match(/wa\.me\/(\d+)/)?.[1];
+    if (!tel) return;
+    try {
+      if (joint) {
+        const source = await uriPdf(article);
+        const nom = `${article.replace(/^article-\d+-/, '')}.pdf`;
+        if (await envoyerFichierWhatsApp(source, nom, tel, messageWhatsAppPdf(n, { prenom: c.prenom, coach }))) return marquer(c.id);
+      }
+      const lienMsg = lienEnvoi('whatsapp', c, messageWhatsAppPdf(n, { prenom: c.prenom, coach, lien }));
+      if (lienMsg) await ouvrirLien(lienMsg);
+      marquer(c.id);
+    } catch (e) {
+      setErreur(messageErreur(e));
+    }
+  }
+  const marquer = (id: string) => setFaits((f) => (f.includes(id) ? f : [...f, id]));
   const { width, height } = useWindowDimensions();
   const liste = useCharger(() => newsletters.destinatairesDe(n), `newsletters-whatsapp-${n.cibles.join()}-${(n.contacts ?? []).join()}`);
   const [faits, setFaits] = useState<string[]>([]);
@@ -163,7 +186,10 @@ function EnvoiWhatsApp({ n, lien, coach, onFermer }: { n: Newsletter; lien: stri
         <View style={[styles.modal, { width: Math.min(width - 24, 560), maxHeight: height - 60 }]}>
           <View style={{ padding: espace(4), gap: espace(2) }}>
             <Text style={styles.champ}>Envoyer par WhatsApp</Text>
-            <Text style={styles.detail}>Touche « Envoyer » : WhatsApp s’ouvre sur la conversation de la personne, avec le message et le lien du PDF déjà écrits. Il ne te reste qu’à appuyer sur la flèche.</Text>
+            <Text style={styles.detail}>
+              Touche « Envoyer » : WhatsApp s’ouvre sur la conversation de la personne, avec {joint ? 'le PDF joint et le message de présentation' : 'le message et le lien du PDF'} déjà écrits. Il ne te reste qu’à appuyer sur la flèche.
+            </Text>
+            {erreur && <Text style={styles.erreur}>{erreur}</Text>}
           </View>
           <ScrollView contentContainerStyle={{ paddingHorizontal: espace(4), paddingBottom: espace(3) }}>
             {liste.erreur && <Erreur message={liste.erreur} onReessayer={liste.recharger} />}
@@ -183,11 +209,7 @@ function EnvoiWhatsApp({ n, lien, coach, onFermer }: { n: Newsletter; lien: stri
                     libelle={fait ? 'Renvoyer' : 'Envoyer'}
                     icone={MessageCircle}
                     iconeAGauche
-                    onPress={() => {
-                      const url = lienEnvoi('whatsapp', c, messageWhatsAppPdf(n, { prenom: c.prenom, coach, lien }));
-                      if (url) void ouvrirLien(url).catch(() => undefined);
-                      setFaits((f) => (f.includes(c.id) ? f : [...f, c.id]));
-                    }}
+                    onPress={() => void envoyer(c)}
                   />
                 </View>
               );
@@ -617,7 +639,7 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
           </View>
         </Carte>
       )}
-      {whatsapp && <EnvoiWhatsApp n={n} lien={whatsapp} coach={coach} onFermer={() => setWhatsapp(undefined)} />}
+      {whatsapp && <EnvoiWhatsApp n={n} lien={whatsapp} coach={coach} article={article} onFermer={() => setWhatsapp(undefined)} />}
 
       <Carte style={styles.carte}>
         <Text style={styles.champ}>Pour qui ?</Text>
