@@ -2,6 +2,8 @@
 // Champs repris tels quels de la base Airtable de Sylvain : évaluation qualitative par le coach,
 // sans protocole (exercices, durées, charges) ni score global.
 
+import { syntheseGolf, type EvaluationGolf } from './tests-golf';
+
 export type IdTest = 'poussee' | 'tirage' | 'jambes' | 'cardio' | 'mobilite' | 'posture';
 
 export interface DefinitionTest {
@@ -68,6 +70,8 @@ export interface Evaluation {
   /** Zone, mouvement concerné et gêne observée. */
   douleurPrecision?: string;
   notes?: string;
+  /** Tests golf chiffrés, pour un client golfeur (voir tests-golf.ts). */
+  golf?: EvaluationGolf;
 }
 
 export const ENTRETIEN: { id: string; libelle: string }[] = [
@@ -116,6 +120,7 @@ export function syntheseEvaluation(e: Evaluation): string {
     if (r?.observations.length) morceaux.push(r.observations.join(', '));
     return `${t.libelle.toUpperCase()} — ${morceaux.join(' | ')}`;
   });
+  lignes.push(...syntheseGolf(e.golf));
   const douleur = e.douleur ? [e.douleur.toLowerCase(), e.douleurPrecision?.trim()].filter(Boolean).join(' | ') : 'non renseigné';
   lignes.push(`DOULEUR / GÊNE — ${douleur}`);
   if (e.notes?.trim()) lignes.push(`NOTES — ${e.notes.trim()}`);

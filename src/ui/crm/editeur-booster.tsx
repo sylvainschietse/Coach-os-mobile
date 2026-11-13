@@ -24,6 +24,7 @@ import { iaDisponible, rangerEntretien } from '@/data/redaction';
 import { ajouterDicteeBooster, LIBELLES_DICTEE, type RangementDictee, type RubriqueDictee } from '@/domain/dictee-booster';
 import { ENTRETIEN, evaluationVide, TESTS, type Evaluation, type IdTest } from '@/domain/evaluation';
 import { prioritesAuto } from '@/domain/redaction';
+import { testsGolfRenseignes } from '@/domain/tests-golf';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Selecteur, SousNav, type OngletDef } from '../coque';
@@ -33,6 +34,7 @@ import { BoutonDictee } from '../dictee';
 import { couleurs, espace, polices } from '../theme';
 import { BoutonPied, CaseACocher, Cellule, Choix, ChoixMultiple, Grille, Libelle, Modale, PiedEditeur, Saisie } from './dossier';
 import { ConclusionBooster } from './conclusion-booster';
+import { TestsGolf, type GolfPrecedent } from './tests-golf';
 import { BoutonEtape } from './acces';
 import { EnvoiMessage, nomComplet, useMessageQuestionnaire } from './commun';
 
@@ -150,6 +152,7 @@ export function EditeurBoosterModale({
   return (
     <Editeur
       booster={booster}
+      golfPrecedent={golfPrecedent(fiche?.boosters ?? [], booster)}
       contact={fiche?.contact}
       questionnaire={fiche?.questionnaires[0]}
       contacts={contacts}
@@ -159,8 +162,17 @@ export function EditeurBoosterModale({
   );
 }
 
+/** Le dernier Booster du client avant celui-ci où des tests golf ont été mesurés. */
+function golfPrecedent(boosters: Booster[], booster: Booster | undefined): GolfPrecedent | undefined {
+  const avant = boosters
+    .filter((x) => x.id !== booster?.id && (!booster || x.date < booster.date) && testsGolfRenseignes(x.evaluation?.golf) > 0)
+    .sort((a, b) => b.date.localeCompare(a.date))[0];
+  return avant?.evaluation?.golf ? { date: avant.date, golf: avant.evaluation.golf } : undefined;
+}
+
 function Editeur({
   booster,
+  golfPrecedent,
   contact,
   questionnaire,
   contacts,
@@ -168,6 +180,7 @@ function Editeur({
   onSupprimer,
 }: {
   booster?: Booster;
+  golfPrecedent?: GolfPrecedent;
   contact?: Contact;
   questionnaire?: Questionnaire;
   contacts: ContactResume[];
@@ -352,7 +365,7 @@ function Editeur({
         </>
       )}
 
-      {rubrique === 'Tests' && <Tests evaluation={b.evaluation} onChange={(evaluation) => maj({ evaluation })} />}
+      {rubrique === 'Tests' && <Tests evaluation={b.evaluation} golfPrecedent={golfPrecedent} onChange={(evaluation) => maj({ evaluation })} />}
 
       {rubrique === 'Conclusion' && (
         <Grille>
@@ -522,7 +535,15 @@ function depuisQuestionnaire(q: Questionnaire): Partial<Brouillon> {
 }
 
 /** Évaluations qualitatives d'origine : un résultat non choisi reste « Non renseigné », jamais « Non réalisé ». */
-function Tests({ evaluation: e, onChange }: { evaluation: Evaluation; onChange: (e: Evaluation) => void }) {
+function Tests({
+  evaluation: e,
+  golfPrecedent,
+  onChange,
+}: {
+  evaluation: Evaluation;
+  golfPrecedent?: GolfPrecedent;
+  onChange: (e: Evaluation) => void;
+}) {
   const test = (id: IdTest) => e.tests[id] ?? { observations: [] };
   const majTest = (id: IdTest, patch: Partial<NonNullable<Evaluation['tests'][IdTest]>>) =>
     onChange({ ...e, tests: { ...e.tests, [id]: { ...test(id), ...patch } } });
@@ -571,6 +592,7 @@ function Tests({ evaluation: e, onChange }: { evaluation: Evaluation; onChange: 
       <Cellule pleine>
         <Saisie libelle="Observations tests" long dictee valeur={e.notes ?? ''} onChange={(notes) => onChange({ ...e, notes })} />
       </Cellule>
+      <TestsGolf golf={e.golf} precedent={golfPrecedent} onChange={(golf) => onChange({ ...e, golf })} />
     </Grille>
   );
 }
