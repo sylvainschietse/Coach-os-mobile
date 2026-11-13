@@ -1,6 +1,7 @@
 // Tests d'un client suivi depuis longtemps (hors Booster) : tests golf chiffrés et angles mesurés en vidéo,
 // datés, pour suivre l'évolution d'une fois sur l'autre.
 import { syntheseBilan, vuesCompletes, type BilanPostural } from './bilan-postural';
+import { CATEGORIES_EXERCICE, exercicesRenseignes, resumeExercices, type ExerciceTest } from './exercices-test';
 import type { MesureAngle } from './mesure-angle';
 import { syntheseGolf, testsGolfRenseignes, type EvaluationGolf } from './tests-golf';
 
@@ -15,6 +16,8 @@ export interface TestClient {
   /** Bilan postural par photos et vidéos. */
   posture?: BilanPostural;
   mesures: Partial<Record<FamilleMesure, MesureAngle[]>>;
+  /** Exercices testés (Poussée, Tirage, Jambes, Centre du corps, au choix), chacun avec sa mesure. */
+  exercices?: ExerciceTest[];
   notes?: string;
 }
 
@@ -22,12 +25,19 @@ export const testVide = (id: string, clientId: string, date: string): TestClient
 
 /** Rien de saisi : inutile d'enregistrer. */
 export const testClientVide = (t: TestClient) =>
-  testsGolfRenseignes(t.golf) === 0 && vuesCompletes(t.posture) === 0 && !t.mesures.mobilite?.length && !t.mesures.posture?.length && !t.notes?.trim();
+  testsGolfRenseignes(t.golf) === 0 && exercicesRenseignes(t.exercices) === 0 && vuesCompletes(t.posture) === 0 && !t.mesures.mobilite?.length && !t.mesures.posture?.length && !t.notes?.trim();
 
 /** Le dernier test du client avant celui-ci, avec des tests golf mesurés. */
 export function golfAvant(tests: TestClient[], t: Pick<TestClient, 'id' | 'date'>): TestClient | undefined {
   return tests
     .filter((x) => x.id !== t.id && x.date <= t.date && testsGolfRenseignes(x.golf) > 0)
+    .sort((a, b) => b.date.localeCompare(a.date))[0];
+}
+
+/** Le dernier test du client avant celui-ci avec des exercices. */
+export function exercicesAvant(tests: TestClient[], t: Pick<TestClient, 'id' | 'date'>): TestClient | undefined {
+  return tests
+    .filter((x) => x.id !== t.id && x.date <= t.date && exercicesRenseignes(x.exercices) > 0)
     .sort((a, b) => b.date.localeCompare(a.date))[0];
 }
 
@@ -53,6 +63,8 @@ export function resumeTest(t: TestClient): string {
   const morceaux: string[] = [];
   const vues = vuesCompletes(t.posture);
   if (vues) morceaux.push(`bilan postural (${vues} vue${vues > 1 ? 's' : ''})`);
+  const ex = exercicesRenseignes(t.exercices);
+  if (ex) morceaux.push(`${ex} exercice${ex > 1 ? 's' : ''}`);
   const golf = testsGolfRenseignes(t.golf);
   if (golf) morceaux.push(`${golf} test${golf > 1 ? 's' : ''} golf`);
   const n = (t.mesures.mobilite?.length ?? 0) + (t.mesures.posture?.length ?? 0);
@@ -62,7 +74,12 @@ export function resumeTest(t: TestClient): string {
 
 /** Texte complet, au format des tests du Booster. */
 export function syntheseTest(t: TestClient): string {
-  const lignes = [...syntheseBilan(t.posture), ...syntheseGolf(t.golf)];
+  const lignes = [...syntheseBilan(t.posture)];
+  for (const c of CATEGORIES_EXERCICE) {
+    const r = resumeExercices(t.exercices, c.id);
+    if (r) lignes.push(`${c.libelle.toUpperCase()} — ${r}`);
+  }
+  lignes.push(...syntheseGolf(t.golf));
   for (const [f, titre] of [['mobilite', 'MOBILITÉ'], ['posture', 'POSTURE']] as const) {
     const m = t.mesures[f];
     if (m?.length) lignes.push(`${titre} — ${m.map((x) => `${x.libelle} ${x.angle}°`).join(', ')}`);

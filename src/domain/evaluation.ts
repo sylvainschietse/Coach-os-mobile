@@ -2,10 +2,11 @@
 // Champs repris tels quels de la base Airtable de Sylvain : évaluation qualitative par le coach,
 // sans protocole (exercices, durées, charges) ni score global.
 
+import { resumeExercices, type ExerciceTest } from './exercices-test';
 import type { MesureAngle } from './mesure-angle';
 import { syntheseGolf, type EvaluationGolf } from './tests-golf';
 
-export type IdTest = 'poussee' | 'tirage' | 'jambes' | 'cardio' | 'mobilite' | 'posture';
+export type IdTest = 'poussee' | 'tirage' | 'jambes' | 'core' | 'cardio' | 'mobilite' | 'posture';
 
 export interface DefinitionTest {
   id: IdTest;
@@ -36,6 +37,12 @@ export const TESTS: DefinitionTest[] = [
     libelle: 'Jambes',
     resultats: RESULTATS_FORCE,
     observations: ['Genoux instables', 'Équilibre limité', 'Amplitude limitée', 'Compensation du dos', 'Asymétrie', 'Douleur / gêne'],
+  },
+  {
+    id: 'core',
+    libelle: 'Centre du corps',
+    resultats: RESULTATS_FORCE,
+    observations: ['Gainage perdu', 'Bas du dos creusé', 'Bassin qui bascule', 'Respiration bloquée', 'Asymétrie', 'Douleur / gêne'],
   },
   {
     id: 'cardio',
@@ -73,6 +80,8 @@ export interface Evaluation {
   /** Zone, mouvement concerné et gêne observée. */
   douleurPrecision?: string;
   notes?: string;
+  /** Exercices choisis par le coach : dans Poussée, Tirage, Jambes, Centre du corps, ou au choix (voir exercices-test.ts). */
+  exercices?: ExerciceTest[];
   /** Tests golf chiffrés, pour un client golfeur (voir tests-golf.ts). */
   golf?: EvaluationGolf;
 }
@@ -121,9 +130,13 @@ export function syntheseEvaluation(e: Evaluation): string {
     const morceaux = [r?.resultat ?? 'non renseigné'];
     if (t.rpe) morceaux.push(r?.rpe ? `RPE ${r.rpe}/10` : 'RPE non renseigné');
     if (r?.observations.length) morceaux.push(r.observations.join(', '));
+    const ex = resumeExercices(e.exercices, t.id);
+    if (ex) morceaux.push(`exercices : ${ex}`);
     if (r?.mesures?.length) morceaux.push(`mesures vidéo : ${r.mesures.map((m) => `${m.libelle} ${m.angle}°`).join(', ')}`);
     return `${t.libelle.toUpperCase()} — ${morceaux.join(' | ')}`;
   });
+  const libres = resumeExercices(e.exercices, 'libre');
+  if (libres) lignes.push(`EXERCICES AU CHOIX — ${libres}`);
   lignes.push(...syntheseGolf(e.golf));
   const douleur = e.douleur ? [e.douleur.toLowerCase(), e.douleurPrecision?.trim()].filter(Boolean).join(' | ') : 'non renseigné';
   lignes.push(`DOULEUR / GÊNE — ${douleur}`);

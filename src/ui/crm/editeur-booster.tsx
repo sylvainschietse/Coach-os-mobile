@@ -25,6 +25,7 @@ import {
 import { iaDisponible, rangerEntretien } from '@/data/redaction';
 import { ajouterDicteeBooster, LIBELLES_DICTEE, type RangementDictee, type RubriqueDictee } from '@/domain/dictee-booster';
 import { ENTRETIEN, evaluationVide, TESTS, type Evaluation, type IdTest } from '@/domain/evaluation';
+import { exercicesRenseignes, type ExerciceTest } from '@/domain/exercices-test';
 import { prioritesAuto } from '@/domain/redaction';
 import { testsGolfRenseignes } from '@/domain/tests-golf';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
@@ -36,6 +37,7 @@ import { BoutonDictee } from '../dictee';
 import { couleurs, espace, polices } from '../theme';
 import { BoutonPied, CaseACocher, Cellule, Choix, ChoixMultiple, Grille, Libelle, Modale, PiedEditeur, Saisie } from './dossier';
 import { ConclusionBooster } from './conclusion-booster';
+import { ExercicesTest } from './exercices-test';
 import { MesuresVideoTest } from './mesures-video-test';
 import { TestsGolf, type GolfPrecedent } from './tests-golf';
 import { BoutonEtape } from './acces';
@@ -156,6 +158,7 @@ export function EditeurBoosterModale({
     <Editeur
       booster={booster}
       golfPrecedent={golfPrecedent(fiche?.boosters ?? [], booster)}
+      exercicesAvant={exercicesPrecedents(fiche?.boosters ?? [], booster)}
       contact={fiche?.contact}
       questionnaire={fiche?.questionnaires[0]}
       contacts={contacts}
@@ -173,9 +176,22 @@ function golfPrecedent(boosters: Booster[], booster: Booster | undefined): GolfP
   return avant?.evaluation?.golf ? { date: avant.date, golf: avant.evaluation.golf } : undefined;
 }
 
+/** Le dernier Booster du client avant celui-ci où des exercices ont été testés. */
+function exercicesPrecedents(boosters: Booster[], booster: Booster | undefined): ExercicesAvant | undefined {
+  const avant = boosters
+    .filter((x) => x.id !== booster?.id && (!booster || x.date < booster.date) && exercicesRenseignes(x.evaluation?.exercices) > 0)
+    .sort((a, b) => b.date.localeCompare(a.date))[0];
+  return avant?.evaluation?.exercices
+    ? { date: `Booster du ${new Date(avant.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`, exercices: avant.evaluation.exercices }
+    : undefined;
+}
+
+type ExercicesAvant = { date: string; exercices: ExerciceTest[] };
+
 function Editeur({
   booster,
   golfPrecedent,
+  exercicesAvant,
   contact,
   questionnaire,
   contacts,
@@ -184,6 +200,7 @@ function Editeur({
 }: {
   booster?: Booster;
   golfPrecedent?: GolfPrecedent;
+  exercicesAvant?: ExercicesAvant;
   contact?: Contact;
   questionnaire?: Questionnaire;
   contacts: ContactResume[];
@@ -384,7 +401,7 @@ function Editeur({
         </>
       )}
 
-      {rubrique === 'Tests' && <Tests evaluation={b.evaluation} golfPrecedent={golfPrecedent} onChange={(evaluation) => maj({ evaluation })} />}
+      {rubrique === 'Tests' && <Tests evaluation={b.evaluation} golfPrecedent={golfPrecedent} exercicesAvant={exercicesAvant} onChange={(evaluation) => maj({ evaluation })} />}
 
       {rubrique === 'Conclusion' && (
         <Grille>
@@ -560,10 +577,12 @@ function depuisQuestionnaire(q: Questionnaire): Partial<Brouillon> {
 function Tests({
   evaluation: e,
   golfPrecedent,
+  exercicesAvant,
   onChange,
 }: {
   evaluation: Evaluation;
   golfPrecedent?: GolfPrecedent;
+  exercicesAvant?: ExercicesAvant;
   onChange: (e: Evaluation) => void;
 }) {
   const test = (id: IdTest) => e.tests[id] ?? { observations: [] };
@@ -595,6 +614,13 @@ function Tests({
             onChange={(observations) => majTest(t.id, { observations })}
           />
         </Cellule>,
+        ...(t.id === 'poussee' || t.id === 'tirage' || t.id === 'jambes' || t.id === 'core'
+          ? [
+              <Cellule key={`${t.id}-exercices`} pleine>
+                <ExercicesTest categorie={t.id} exercices={e.exercices} avant={exercicesAvant} onChange={(exercices) => onChange({ ...e, exercices })} />
+              </Cellule>,
+            ]
+          : []),
         ...(t.id === 'mobilite' || t.id === 'posture'
           ? [
               <Cellule key={`${t.id}-video`} pleine>
@@ -603,6 +629,9 @@ function Tests({
             ]
           : []),
       ])}
+      <Cellule pleine>
+        <ExercicesTest categorie="libre" exercices={e.exercices} avant={exercicesAvant} onChange={(exercices) => onChange({ ...e, exercices })} />
+      </Cellule>
       <Cellule>
         <Choix
           libelle="Douleur pendant les tests"

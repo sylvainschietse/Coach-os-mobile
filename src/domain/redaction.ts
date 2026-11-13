@@ -28,13 +28,14 @@ const minuscule = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 const liste = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} et ${xs.at(-1)}`);
 
 const ARTICLE: Record<IdTest, string> = {
-  poussee: 'la poussée', tirage: 'le tirage', jambes: 'les jambes', cardio: 'le cardio', mobilite: 'la mobilité', posture: 'la posture',
+  poussee: 'la poussée', tirage: 'le tirage', jambes: 'les jambes', core: 'le centre du corps', cardio: 'le cardio', mobilite: 'la mobilité', posture: 'la posture',
 };
 
-const ZONE: Record<'poussee' | 'tirage' | 'jambes', string> = {
+const ZONE: Record<'poussee' | 'tirage' | 'jambes' | 'core', string> = {
   poussee: 'le haut du corps en poussée',
   tirage: 'le dos et les bras en tirage',
   jambes: 'les jambes',
+  core: 'le centre du corps (gainage, abdos)',
 };
 
 const FORCE: Record<string, [string, string]> = {
@@ -81,6 +82,9 @@ const OBSERVATION: Record<string, string> = {
   'Genoux instables': 'les genoux ont tendance à rentrer ou à bouger',
   'Équilibre limité': 'l’équilibre est encore fragile',
   'Compensation du dos': 'le dos compense',
+  'Bas du dos creusé': 'le bas du dos se creuse',
+  'Bassin qui bascule': 'le bassin bascule',
+  'Respiration bloquée': 'la respiration se bloque pendant l’effort',
   'Rythme stable': 'tu as su garder un rythme régulier',
   'Récupération rapide': 'tu récupères vite',
   'Récupération lente': 'la récupération prend du temps',
@@ -100,6 +104,7 @@ const SUITE_OBSERVATION: Record<string, string> = {
   Asymétrie: 'On travaillera aussi chaque côté séparément pour rééquilibrer.',
   'Douleur / gêne': 'On adaptera les mouvements pour qu’ils restent confortables.',
   'Contrôle scapulaire limité': 'On apprendra à placer et contrôler tes épaules.',
+  'Bas du dos creusé': 'On apprendra à garder le bas du dos protégé pendant le gainage.',
   'Genoux instables': 'On soignera l’alignement des genoux à chaque mouvement.',
   'Équilibre limité': 'On ajoutera du travail d’équilibre et de stabilité.',
   Douleur: 'On adaptera l’intensité et on surveillera cette gêne.',
@@ -192,7 +197,7 @@ const TITRE_PRIORITE: Record<Theme, string> = {
   regularite: 'Installer la régularité',
 };
 
-const ZONE_FORCE: Record<'poussee' | 'tirage' | 'jambes', string> = { poussee: 'le haut du corps', tirage: 'le dos', jambes: 'les jambes' };
+const ZONE_FORCE: Record<'poussee' | 'tirage' | 'jambes' | 'core', string> = { poussee: 'le haut du corps', tirage: 'le dos', jambes: 'les jambes', core: 'le centre du corps' };
 
 /** Poids donné par l'objectif du bilan à chaque thème. */
 const OBJECTIF_THEMES: [RegExp, Partial<Record<Theme, number>>][] = [
@@ -226,7 +231,7 @@ export function prioritesAuto(booster: Pick<Booster, 'evaluation' | 'entretien'>
     const rang = t.resultats.indexOf(res);
     if (rang < 2) continue;
     const poids = 2 + (rang - 2) * 1.5;
-    if (t.id === 'poussee' || t.id === 'tirage' || t.id === 'jambes') {
+    if (t.id === 'poussee' || t.id === 'tirage' || t.id === 'jambes' || t.id === 'core') {
       ajouter('force', poids);
       if (!zoneForce || poids > zoneForce.poids) zoneForce = { zone: ZONE_FORCE[t.id], poids };
     } else ajouter(t.id === 'cardio' ? 'cardio' : t.id === 'mobilite' ? 'mobilite' : 'posture', poids);

@@ -448,13 +448,13 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
       ) as Record<string, unknown>[];
       return lignes.map((l) => {
         const d = (l.donnees ?? {}) as Partial<TestClient>;
-        return { id: l.id as string, clientId: l.client_id as string, date: l.date as string, golf: d.golf, posture: d.posture, mesures: d.mesures ?? {}, notes: sansNull(l.notes as string | null) };
+        return { id: l.id as string, clientId: l.client_id as string, date: l.date as string, golf: d.golf, posture: d.posture, mesures: d.mesures ?? {}, exercices: d.exercices ?? undefined, notes: sansNull(l.notes as string | null) };
       });
     },
 
     async enregistrerTestClient(t) {
       echec(
-        await db.from('evaluations_client').upsert({ id: t.id, client_id: t.clientId, date: t.date, donnees: { golf: t.golf ?? null, posture: t.posture ?? null, mesures: t.mesures }, notes: t.notes?.trim() || null }),
+        await db.from('evaluations_client').upsert({ id: t.id, client_id: t.clientId, date: t.date, donnees: { golf: t.golf ?? null, posture: t.posture ?? null, mesures: t.mesures, exercices: t.exercices?.filter((x) => x.nom.trim()) ?? [] }, notes: t.notes?.trim() || null }),
       );
     },
 

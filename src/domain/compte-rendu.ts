@@ -5,6 +5,7 @@
 import { preparerSeance } from './briefing';
 import type { Booster, Contact } from './crm';
 import { TESTS } from './evaluation';
+import { exercicesDe, resumeExercices, texteExercice } from './exercices-test';
 import { redactionModele } from './redaction';
 
 /** Résultats qui ne se placent pas sur l'échelle d'un test. */
@@ -94,10 +95,11 @@ export function construireCompteRendu(contact: Contact, booster: Booster, repons
       ? [
           ...TESTS.filter((t) => e.tests[t.id]?.resultat).map((t) => {
             const r = e.tests[t.id]!;
-            const details = [t.rpe && r.rpe ? `effort ressenti ${r.rpe}/10` : '', r.observations.join(', ')].filter(Boolean).join(' · ');
+            const details = [t.rpe && r.rpe ? `effort ressenti ${r.rpe}/10` : '', r.observations.join(', '), resumeExercices(e.exercices, t.id)].filter(Boolean).join(' · ');
             const explication = explications[t.id];
             return `${t.libelle} : ${r.resultat}${details ? ` (${details})` : ''}${explication ? `\n${explication}` : ''}`;
           }),
+          resumeExercices(e.exercices, 'libre') && `Exercices au choix : ${resumeExercices(e.exercices, 'libre')}`,
           e.douleur === 'Oui' && `Douleur ou gêne pendant les tests${e.douleurPrecision ? ` : ${e.douleurPrecision}` : ''}`,
           e.notes,
         ]
@@ -119,7 +121,7 @@ export function construireCompteRendu(contact: Contact, booster: Booster, repons
           resultat: r.resultat!,
           niveau: position >= 0 ? position + 1 : undefined,
           echelle: echelle.length,
-          details: [t.rpe && r.rpe ? `Effort ressenti ${r.rpe}/10` : '', ...r.observations].filter(Boolean),
+          details: [t.rpe && r.rpe ? `Effort ressenti ${r.rpe}/10` : '', ...r.observations, ...exercicesDe(e.exercices, t.id).filter((x) => x.nom.trim()).map(texteExercice)].filter(Boolean),
           explication: propre(explications[t.id]),
         };
       })
