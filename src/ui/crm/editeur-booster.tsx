@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { crm, ecouterCrm } from '@/data/crm';
+import { offres } from '@/data/offres';
+import { appliquerOffreVendue, libelleOffre } from '@/data/vente-booster';
 import { preparerSeance } from '@/domain/briefing';
 import { cleJour, heureDe, heureValide, versIso } from '@/domain/agenda';
 import {
@@ -199,6 +201,14 @@ function Editeur({
   const [erreur, setErreur] = useState<string>();
   const [sortie, setSortie] = useState<(() => void) | null>(null);
   const [conclure, setConclure] = useState(false);
+  const [vente, setVente] = useState<string>();
+  // Les offres du coach (Mes offres) ; sans offre créée, la liste d'origine.
+  const mesOffres = useCharger(() => offres.lister(), 'offres-booster');
+  const choixOffres = (() => {
+    const liste = (mesOffres.donnee ?? []).filter((o) => o.active).map(libelleOffre);
+    const base = liste.length ? [...liste, 'Aucune'] : OFFRES_RECOMMANDEES;
+    return b.offreRecommandee && !base.includes(b.offreRecommandee) ? [b.offreRecommandee, ...base] : base;
+  })();
   const saisie = saisieDe(b, initial, booster);
   const modifie = Object.keys(saisie).length > 0 || (!booster && !!b.contactId);
   const demanderSortie = (suite: () => void) => (modifie ? setSortie(() => suite) : suite());
@@ -231,8 +241,15 @@ function Editeur({
       const priorites = JSON.stringify(b.priorites) !== JSON.stringify(troisPriorites(booster.priorites)) ? { priorites: b.priorites } : {};
       await crm.modifierBooster(booster.id, { ...saisie, ...priorites });
       setInitial(b);
-      // Booster passé à « Terminée » : on demande tout de suite où ranger la personne.
-      if (saisie.statutCrm === 'Terminée' && contact && contact.statut !== 'client' && contact.statut !== 'archive') setConclure(true);
+      setVente(undefined);
+      // « Vendu » : client actif (fait par le dépôt) avec l'offre recommandée sur sa fiche client.
+      if (contact && b.resultatCommercial === 'Vendu' && (saisie.resultatCommercial || saisie.offreRecommandee)) {
+        const nom = await appliquerOffreVendue(contact.id, b.offreRecommandee);
+        setVente(`${contact.prenom || 'Le contact'} est client actif${nom ? ` avec l’offre « ${nom} »` : ''}.`);
+      }
+      // Booster passé à « Terminée » sans suite choisie : on demande tout de suite où ranger la personne.
+      const decide = b.resultatCommercial === 'Vendu' || b.resultatCommercial === 'En veille';
+      if (saisie.statutCrm === 'Terminée' && !decide && contact && contact.statut !== 'client' && contact.statut !== 'archive') setConclure(true);
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Enregistrement non confirmé');
     } finally {
@@ -253,6 +270,7 @@ function Editeur({
               {erreur}
             </Text>
           )}
+          {vente && !modifie && <Text style={styles.vente}>{vente}</Text>}
           {/* Un champ invalide d'une autre rubrique bloque Enregistrer : on dit lequel, où qu'on soit. */}
           {modifie && invalide && !erreur && (
             <Text accessibilityRole="alert" style={styles.erreur}>
@@ -385,7 +403,7 @@ function Editeur({
           <Cellule>
             <Choix
               libelle="Offre recommandée"
-              choix={OFFRES_RECOMMANDEES}
+              choix={choixOffres}
               valeur={b.offreRecommandee || undefined}
               onChange={(v) => maj({ offreRecommandee: v ?? '' })}
             />
@@ -395,7 +413,10 @@ function Editeur({
               libelle="Résultat commercial"
               choix={RESULTATS_COMMERCIAUX}
               valeur={b.resultatCommercial || undefined}
-              onChange={(v) => maj({ resultatCommercial: v ?? '' })}
+              onChange={(v) =>
+                // Vendu ou En veille : le Booster a eu lieu, il passe à « Terminée » (le compte rendu devient disponible).
+                maj({ resultatCommercial: v ?? '', ...((v === 'Vendu' || v === 'En veille') && b.statut !== 'Annulée' ? { statut: 'Terminée' as StatutBooster } : {}) })
+              }
             />
           </Cellule>
           <Cellule>
@@ -412,7 +433,7 @@ function Editeur({
       )}
 
       {booster && contact && <ResumeLecture booster={booster} />}
-      {conclure && booster && contact && <ConclusionBooster boosterId={booster.id} contact={contact} onFermer={() => setConclure(false)} />}
+      {conclure && booster && contact && <ConclusionBooster boosterId={booster.id} contact={contact} offre={b.offreRecommandee || undefined} onFermer={() => setConclure(false)} />}
     </Modale>
   );
 }
@@ -624,4 +645,5 @@ const styles = StyleSheet.create({
     color: couleurs.texteDoux,
   },
   erreur: { fontFamily: polices.texte, fontSize: 13, color: couleurs.rouge },
+  vente: { fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.vert },
 });
