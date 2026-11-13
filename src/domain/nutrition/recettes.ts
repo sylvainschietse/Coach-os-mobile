@@ -168,10 +168,31 @@ const allergyTag: Record<string, string> = {
   moutarde: 'Moutarde',
   sulfite: 'Sulfites',
 };
-const word = (text: string, term: string) => new RegExp('(^|[^a-z])' + term.replace(/[^a-z ]/g, '') + 's?($|[^a-z])').test(text);
+// Ces filtres tournent sur les 200 recettes à chaque affichage : on garde les expressions et les textes déjà préparés.
+const motifs = new Map<string, RegExp>();
+const word = (text: string, term: string) => {
+  let m = motifs.get(term);
+  if (!m) motifs.set(term, (m = new RegExp('(^|[^a-z])' + term.replace(/[^a-z ]/g, '') + 's?($|[^a-z])')));
+  return m.test(text);
+};
+const textesNormes = new Map<string, string>();
+const normeMemo = (s: string) => {
+  let n = textesNormes.get(s);
+  if (n === undefined) {
+    if (textesNormes.size > 5000) textesNormes.clear();
+    textesNormes.set(s, (n = norm(s)));
+  }
+  return n;
+};
+const ingredientsNormes = new WeakMap<Variant, string>();
+const ingredientsDe = (v: Variant) => {
+  let h = ingredientsNormes.get(v);
+  if (h === undefined) ingredientsNormes.set(v, (h = norm(v.ingredients.map((i) => i.label + ' ' + i.original).join(' '))));
+  return h;
+};
 export function excluded(v: Variant, text: string, isAllergy = false): boolean {
-  const t = norm(text),
-    hay = norm(v.ingredients.map((i) => i.label + ' ' + i.original).join(' '));
+  const t = normeMemo(text),
+    hay = ingredientsDe(v);
   for (const [key, terms] of Object.entries(aliases)) {
     if (!terms.some((s) => word(t, s))) continue;
     if (isAllergy && allergyTag[key]) {
@@ -200,7 +221,7 @@ const seasonal: Record<string, number[]> = {
 };
 export function inSeason(v: Variant, month: number) {
   return v.ingredients.every((i) => {
-    const t = norm(i.original);
+    const t = normeMemo(i.original);
     if (/frozen|canned|tin|dried|puree|passata|juice/.test(t)) return true;
     return Object.entries(seasonal).every(([k, months]) => !word(t, k) || months.includes(month));
   });
@@ -225,8 +246,8 @@ export function compatible(r: Recipe, v: Variant, p: Preferences, month = new Da
   );
 }
 export function preferred(v: Variant, p: Preferences) {
-  const h = norm(v.ingredients.map((i) => i.label + ' ' + i.original).join(' ')),
-    t = norm(p.aime);
+  const h = ingredientsDe(v),
+    t = normeMemo(p.aime);
   return Object.values(aliases).reduce((n, terms) => n + (terms.some((s) => word(t, s)) && terms.some((s) => word(h, s)) ? 1 : 0), 0);
 }
 export function monday(date = new Date()) {

@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { usePression } from '@/lib/usePression';
+
 import { DefilementClavier } from './clavier';
 import { arrondi, couleurs, espace, espacementTitre, polices } from './theme';
 import { useUnivers } from './univers';
@@ -62,19 +64,22 @@ export function Bouton({
   const fond = variante === 'primaire' ? (u.cle === 'rouge' ? couleurs.rouge : u.uni) : variante === 'secondaire' ? couleurs.secondaire : variante === 'discret' ? couleurs.carte : 'transparent';
   const texte = variante === 'discret' ? couleurs.texte : '#FFFFFF';
   const bordure = variante === 'contour' ? '#FFFFFF' : couleurs.bordure;
+  const { enCours, presser } = usePression(onPress);
+  const attente = chargement || enCours;
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={onPress}
-      disabled={desactive || chargement}
+      accessibilityState={{ disabled: !!(desactive || attente), busy: attente }}
+      onPress={presser}
+      disabled={desactive || attente}
       style={({ pressed }) => [
         styles.bouton,
-        { backgroundColor: fond, opacity: desactive ? 0.4 : pressed ? 0.85 : 1 },
+        { backgroundColor: fond, opacity: desactive ? 0.4 : pressed ? 0.7 : 1 },
         variante === 'primaire' && { backgroundImage: u.degrade },
         (variante === 'discret' || variante === 'contour') && { borderWidth: 1, borderColor: bordure },
       ]}
     >
-      {chargement ? <ActivityIndicator color={texte} /> : <Text style={[styles.boutonTexte, { color: texte }]}>{libelle}</Text>}
+      {attente ? <ActivityIndicator color={texte} /> : <Text style={[styles.boutonTexte, { color: texte }]}>{libelle}</Text>}
     </Pressable>
   );
 }

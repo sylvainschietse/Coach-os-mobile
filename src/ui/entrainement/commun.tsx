@@ -23,6 +23,7 @@ import { useUnivers } from '../univers';
 
 import { photoProgramme, type ProgrammeIllustre } from '@/data/photos-programmes';
 import { roleWeb } from '@/lib/role-web';
+import { usePression } from '@/lib/usePression';
 
 const survol = (e: PressableStateCallbackType) => !!(e as { hovered?: boolean }).hovered;
 
@@ -51,13 +52,15 @@ export function Action({
   const u = useUnivers();
   const fond = variante === 'plein' ? (u.cle === 'rouge' ? couleurs.rouge : u.uni) : variante === 'danger' ? '#DC2626' : variante === 'contour' ? couleurs.carte : 'transparent';
   const texte = variante === 'plein' || variante === 'danger' ? '#FFFFFF' : couleurs.texte;
+  const { enCours, presser } = usePression(onPress);
+  const attente = chargement || enCours;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={nom ?? libelle}
-      accessibilityState={{ disabled: !!(desactive || chargement) }}
-      disabled={desactive || chargement}
-      onPress={onPress}
+      accessibilityState={{ disabled: !!(desactive || attente), busy: attente }}
+      disabled={desactive || attente}
+      onPress={presser}
       style={(e) => [
         styles.action,
         petit && styles.actionPetite,
@@ -66,10 +69,10 @@ export function Action({
         variante === 'plein' && { backgroundImage: u.degrade },
         variante === 'contour' && { borderWidth: 1, borderColor: couleurs.saisie },
         (survol(e) || e.pressed) && variante !== 'plein' && variante !== 'danger' && { backgroundColor: couleurs.discret },
-        { opacity: desactive ? 0.45 : e.pressed ? 0.85 : 1 },
+        { opacity: desactive ? 0.45 : e.pressed ? 0.7 : 1 },
       ]}
     >
-      {chargement ? <ActivityIndicator size="small" color={texte} /> : Icone && <Icone size={petit ? 14 : 16} color={texte} />}
+      {attente ? <ActivityIndicator size="small" color={texte} /> : Icone && <Icone size={petit ? 14 : 16} color={texte} />}
       {libelle && <Text style={[styles.actionTexte, petit && { fontSize: 13 }, { color: texte }]}>{libelle}</Text>}
     </Pressable>
   );

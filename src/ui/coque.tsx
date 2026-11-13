@@ -3,8 +3,10 @@
 // barre du bas client (`client-bottom-nav`), hero, statistiques et états vides.
 import { ChevronDown, ChevronRight, Eye, type LucideIcon } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
-import { Image, Modal, Pressable, type PressableStateCallbackType, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, Modal, Pressable, type PressableStateCallbackType, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { usePression } from '@/lib/usePression';
 
 import { useHauteurClavier } from './clavier';
 import { arrondi, couleurs, espace, espacementTitre, polices, type Univers } from './theme';
@@ -76,14 +78,17 @@ export function EnTete({
 
 /** Bouton icône de l'en-tête (minuteur, déconnexion) : toujours un nom accessible. */
 export function BoutonIcone({ icone: Icone, nom, onPress }: { icone: LucideIcon; nom: string; onPress: () => void }) {
+  const { enCours, presser } = usePression(onPress);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={nom}
-      onPress={onPress}
+      accessibilityState={{ busy: enCours }}
+      disabled={enCours}
+      onPress={presser}
       style={(e) => [styles.boutonIcone, (e.pressed || survol(e)) && { backgroundColor: '#3a3a3a' }]}
     >
-      <Icone size={20} color="#FFFFFF" />
+      {enCours ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Icone size={20} color="#FFFFFF" />}
     </Pressable>
   );
 }
@@ -396,22 +401,26 @@ export function BoutonContour({
   nom?: string;
   desactive?: boolean;
 }) {
+  const { enCours, presser } = usePression(onPress);
+  // Pendant l'action, la roue remplace l'icône (ou s'ajoute au libellé) : l'appui est visiblement pris en compte.
+  const roue = enCours && <ActivityIndicator size="small" color={couleurs.texte} />;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={nom ?? libelle}
-      disabled={desactive}
-      onPress={onPress}
+      accessibilityState={{ disabled: !!(desactive || enCours), busy: enCours }}
+      disabled={desactive || enCours}
+      onPress={presser}
       style={(e) => [
         styles.contour,
         !libelle && { width: 44, paddingHorizontal: 0 },
-        survol(e) && { backgroundColor: couleurs.discret },
+        (survol(e) || e.pressed) && { backgroundColor: couleurs.discret },
         desactive && { opacity: 0.5 },
       ]}
     >
-      {Icone && iconeAGauche && <Icone size={16} color={couleurs.texte} />}
+      {Icone && iconeAGauche && (roue || <Icone size={16} color={couleurs.texte} />)}
       {libelle && <Text style={styles.contourTexte}>{libelle}</Text>}
-      {Icone && !iconeAGauche && <Icone size={libelle ? 14 : 16} color={couleurs.texte} />}
+      {Icone && !iconeAGauche ? roue || <Icone size={libelle ? 14 : 16} color={couleurs.texte} /> : !Icone && roue}
     </Pressable>
   );
 }
