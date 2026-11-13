@@ -1,7 +1,7 @@
 // Suivi de l'entraînement d'un client par le coach : les semaines du cycle (séances faites, manquées, prévues),
 // le détail d'une séance faite comparé à la fois précédente, et les évolutions par exercice et par semaine.
 // Tout est calculé ici à partir des réalisations, des créneaux du calendrier et de la fréquence du programme.
-import { ajouterJours, jourParis, unRm } from './entrainement';
+import { ajouterJours, jourParis, titreClient, unRm } from './entrainement';
 import type { Planification, RealisationLue } from './entrainement-etat';
 import type { SerieRealisee, Valeurs } from './types';
 
@@ -52,11 +52,11 @@ export function semainesDuCycle(p: {
     const dans = (d: string) => d >= debut && d <= fin;
     const pastilles: Pastille[] = p.realisations
       .filter((r) => dans(jourParis(r.fin || r.debut)))
-      .map((r) => ({ statut: 'faite' as const, titre: r.seanceTitre || 'Séance', date: jourParis(r.fin || r.debut), realisationId: r.id }));
+      .map((r) => ({ statut: 'faite' as const, titre: titreClient(r.seanceTitre || 'Séance'), date: jourParis(r.fin || r.debut), realisationId: r.id }));
     for (const c of p.planifications) {
       if (!dans(c.date) || c.statut === 'Annulée' || utilises.has(c.id) || (c.realisationId && p.realisations.some((r) => r.id === c.realisationId))) continue;
-      if (c.statut === 'Réalisée') pastilles.push({ statut: 'faite', titre: c.seanceTitre, date: c.date, realisationId: c.realisationId });
-      else pastilles.push({ statut: c.date < jour ? 'manquee' : 'prevue', titre: c.seanceTitre, date: c.date });
+      if (c.statut === 'Réalisée') pastilles.push({ statut: 'faite', titre: titreClient(c.seanceTitre), date: c.date, realisationId: c.realisationId });
+      else pastilles.push({ statut: c.date < jour ? 'manquee' : 'prevue', titre: titreClient(c.seanceTitre), date: c.date });
     }
     const manque = (p.seancesParSemaine ?? 0) - pastilles.length;
     for (const a of p.libres ?? []) if (dans(a.date)) pastilles.push({ statut: 'libre', titre: a.titre, date: a.date, activiteId: a.id });

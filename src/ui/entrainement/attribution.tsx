@@ -106,11 +106,11 @@ export function AttributionClient({
 
       {client && (
         <View style={{ gap: 8 }}>
-          <Text style={ts.titreChamp}>Cycle</Text>
+          <Text style={ts.titreChamp}>Quand</Text>
           <ListeChoix
             elements={[
               ...vides.map((c) => ({ id: c.id, libelle: `Remplir « ${c.nom} »`, detail: `${jourCourt(c.debut)} → ${jourCourt(c.fin)} · ${c.statut}` })),
-              { id: NOUVEAU, libelle: 'Nouveau cycle de 4 semaines', detail: actif ? `Après « ${actif.nom} », à activer ensuite` : 'À la suite des cycles existants' },
+              { id: NOUVEAU, libelle: 'Nouveau programme de 4 semaines', detail: actif ? `Après « ${actif.nom} », à activer ensuite` : 'À la suite des programmes prévus' },
             ]}
             cle={(c) => c.id}
             libelle={(c) => c.libelle}
@@ -120,11 +120,11 @@ export function AttributionClient({
           />
           {cycleId === NOUVEAU && !actif && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <CaseSelection nom="Activer le cycle tout de suite" valeur={activer} onChange={setActiver} />
+              <CaseSelection nom="Le démarrer tout de suite" valeur={activer} onChange={setActiver} />
               <Text style={[ts.texte, { flex: 1, fontFamily: polices.texteMoyen }]}>Activer tout de suite (le client le voit dans son espace)</Text>
             </View>
           )}
-          {actif && cycleId === NOUVEAU && <Text style={[ts.doux, { color: couleurs.texteDoux }]}>Le cycle en cours « {actif.nom} » n’est pas modifié.</Text>}
+          {actif && cycleId === NOUVEAU && <Text style={[ts.doux, { color: couleurs.texteDoux }]}>Le programme en cours « {actif.nom} » n’est pas modifié.</Text>}
         </View>
       )}
       <Etat {...etat} />

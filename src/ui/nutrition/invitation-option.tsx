@@ -1,7 +1,8 @@
 // Client sans l'option nutrition : un aperçu de ce qu'elle apporte (une semaine de repas en photos), et un mot à son
 // coach. Aucun prix ni achat dans l'appli (règles Apple et Google) : le coach en parle de vive voix.
+import { Image } from 'expo-image';
 import { Lock, MessageCircle } from 'lucide-react-native';
-import { Image, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 import { monCoach } from '@/data/acces-client';
 import { IDS_PAR_TITRE, PHOTOS_RECETTES } from '@/data/nutrition/photos-recettes';
@@ -48,7 +49,7 @@ export function InvitationOptionNutrition({ compacte, onDecouvrir }: { compacte?
           {APERCU.flatMap((j) => j.repas.map(([, titre]) => titre))
             .slice(0, 4)
             .map((titre) => (
-              <Image key={titre} source={photo(titre)!} style={{ flex: 1, height: 70, borderRadius: 10 }} resizeMode="cover" accessibilityIgnoresInvertColors />
+              <Image key={titre} source={photo(titre)!} style={{ flex: 1, height: 70, borderRadius: 10 }} contentFit="cover" transition={120} accessibilityIgnoresInvertColors />
             ))}
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
@@ -77,7 +78,7 @@ export function InvitationOptionNutrition({ compacte, onDecouvrir }: { compacte?
             <Text style={{ fontFamily: polices.texteGras, fontSize: 13, color: couleurs.texte }}>{jour}</Text>
             {repas.map(([moment, titre]) => (
               <View key={titre} style={{ borderRadius: 12, overflow: 'hidden', backgroundColor: couleurs.discret }}>
-                {photo(titre) !== undefined && <Image source={photo(titre)!} style={{ width: '100%', height: 92 }} resizeMode="cover" accessibilityIgnoresInvertColors />}
+                {photo(titre) !== undefined && <Image source={photo(titre)!} style={{ width: '100%', height: 92 }} contentFit="cover" transition={120} accessibilityIgnoresInvertColors />}
                 <View style={{ padding: 8, gap: 2 }}>
                   <Text style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.rouge, textTransform: 'uppercase', letterSpacing: 0.5 }}>{moment}</Text>
                   <Text numberOfLines={2} style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.texte }}>

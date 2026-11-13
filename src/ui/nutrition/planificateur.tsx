@@ -5,7 +5,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChefHat, ChevronLeft, ChevronRight, Flame, Leaf, Plus, RefreshCw, ShoppingBasket, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
+import { ActivityIndicator, Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';
 
 import { nutrition, type DonneesNutrition } from '@/data/nutrition';
 import { IDS_PAR_TITRE, PHOTOS_RECETTES } from '@/data/nutrition/photos-recettes';
@@ -87,7 +88,7 @@ function Miniature({ source }: { source?: number }) {
   if (!source) return null;
   return (
     <View style={{ width: '100%', aspectRatio: 16 / 7, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(195,24,30,0.05)' }}>
-      <Image source={source} accessible={false} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+      <Image source={source} accessible={false} contentFit="cover" transition={120} style={{ width: '100%', height: '100%' }} />
     </View>
   );
 }
@@ -108,6 +109,17 @@ function planDuCoach(p: PlanRepas) {
   );
   return { plan, horsCatalogue: [...horsCatalogue] };
 }
+// Dernière version lue de chaque semaine, pour la réafficher sans attente quand on revient sur « Ma semaine ».
+const cleSemaine = (profilId: string, semaine: string) => `coachos-mealplan:${profilId}:${semaine}`;
+const semainesVues = new Map<string, { plan: Plan; coach: PlanRepas | null }>();
+
+// Texte de recherche d'une recette (nom et ingrédients), préparé une fois.
+const textesRecherche = new Map<string, string>();
+const texteRecherche = (r: Recipe) => {
+  let t = textesRecherche.get(r.id);
+  if (t === undefined) textesRecherche.set(r.id, (t = norm(r.name + ' ' + r.variants[0].ingredients.map((i) => i.label).join(' '))));
+  return t;
+};
 const versNutrition = (m: { kcal: number; proteines: number; glucides: number; lipides: number }): Nutrition => ({
   kcal: m.kcal,
   protein: m.proteines,
@@ -143,9 +155,10 @@ export function Planificateur({
   const [portion, setPortion] = useState(1);
   const [week, setWeek] = useState(() => monday());
   const [day, setDay] = useState(0);
-  const [plan, setPlan] = useState<Plan>(blank);
-  const [coachPlan, setCoachPlan] = useState<PlanRepas | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Semaine déjà vue : elle s'affiche tout de suite, en lecture, pendant que la version à jour arrive.
+  const [plan, setPlan] = useState<Plan>(() => semainesVues.get(cleSemaine(data.profilId, monday()))?.plan ?? blank());
+  const [coachPlan, setCoachPlan] = useState<PlanRepas | null>(() => semainesVues.get(cleSemaine(data.profilId, monday()))?.coach ?? null);
+  const [loading, setLoading] = useState(() => !semainesVues.has(cleSemaine(data.profilId, monday())));
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState('');
@@ -157,7 +170,7 @@ export function Planificateur({
   const version = useRef('');
   const envoi = useRef(nouvelId());
   const sending = useRef(false);
-  const key = `coachos-mealplan:${data.profilId}:${week}`;
+  const key = cleSemaine(data.profilId, week);
   const cleFormats = `coachos-shopping-formats:${data.profilId}`;
 
   // Filtres changés : on repart des 24 premières recettes.
@@ -190,6 +203,7 @@ export function Planificateur({
     (async () => {
       try {
         const [r, c] = await Promise.all([nutrition.semaine(data.profilId, week), plansRepas.plan(data.profilId, week)]);
+        semainesVues.set(key, { plan: r.plan, coach: c && c.jours.some((j) => j.length) ? c : null });
         const draft = jeton.restaurer ? await lireBrouillon<{ plan: Plan; version: string; envoiId: string }>(key) : null;
         if (!actif) return;
         version.current = r.version;
@@ -229,6 +243,8 @@ export function Planificateur({
     }, [key]);
 
   const change = (next: Plan) => {
+    // Tant que la semaine à jour n'est pas arrivée, on n'écrit rien par-dessus.
+    if (!ready) return;
     setPlan(next);
     setDirty(true);
     setError('');
@@ -242,6 +258,7 @@ export function Planificateur({
     try {
       const r = await nutrition.enregistrerSemaine(data.profilId, week, plan, version.current, envoi.current);
       setPlan(r.plan);
+      semainesVues.set(key, { plan: r.plan, coach: coachPlan });
       version.current = r.version;
       envoi.current = nouvelId();
       setDirty(false);
@@ -257,19 +274,20 @@ export function Planificateur({
 
   const mois = new Date(`${week}T12:00:00Z`).getUTCMonth() + 1;
   const options = (r: Recipe) => recipeOptions(r).filter((v) => (!diet || dietFits(v, diet)) && (!rich || proteinRich(v)) && (!personal || compatible(r, v, prefs, mois)));
+  // Le tri des 200 recettes ne sert qu'à l'onglet Recettes : « Ma semaine » s'ouvre sans l'attendre. Chaque recette est
+  // évaluée une seule fois (et non à chaque comparaison du tri), ce qui coûtait plusieurs secondes sur téléphone.
+  const enRecettes = vue === 'recettes';
   const list = useMemo(() => {
-    const opts = (r: Recipe) => recipeOptions(r).filter((v) => (!diet || dietFits(v, diet)) && (!rich || proteinRich(v)) && (!personal || compatible(r, v, prefs, mois)));
+    if (!enRecettes) return [];
     const s = norm(search);
-    return recipes
-      .filter(
-        (r) =>
-          (!category || r.meals.includes(category)) &&
-          (!cuisine || r.cuisineGroup === cuisine) &&
-          norm(r.name + ' ' + r.variants[0].ingredients.map((i) => i.label).join(' ')).includes(s) &&
-          opts(r).length,
-      )
-      .sort((a, b) => (personal ? Math.max(...opts(b).map((v) => preferred(v, prefs))) - Math.max(...opts(a).map((v) => preferred(v, prefs))) : 0));
-  }, [search, category, cuisine, diet, rich, personal, prefs, mois]);
+    const lignes: { r: Recipe; score: number }[] = [];
+    for (const r of recipes) {
+      if ((category && !r.meals.includes(category)) || (cuisine && r.cuisineGroup !== cuisine) || (s && !texteRecherche(r).includes(s))) continue;
+      const o = recipeOptions(r).filter((v) => (!diet || dietFits(v, diet)) && (!rich || proteinRich(v)) && (!personal || compatible(r, v, prefs, mois)));
+      if (o.length) lignes.push({ r, score: personal ? Math.max(...o.map((v) => preferred(v, prefs))) : 0 });
+    }
+    return lignes.sort((a, b) => b.score - a.score).map((l) => l.r);
+  }, [enRecettes, search, category, cuisine, diet, rich, personal, prefs, mois]);
 
   const open = (r: Recipe, v?: string, p = 1, index: number | null = null) => {
     setSwaps(index !== null ? plan[day][index].swaps || [] : !v ? options(r)[0]?.presetSwaps || [] : []);
@@ -326,10 +344,16 @@ export function Planificateur({
   const remove = (index: number) => change(plan.map((d, i) => (i === day ? d.filter((_, j) => j !== index) : d)));
   const shift = (n: number) =>
     demanderSortie(() => {
-      setLoading(true);
+      const suivante = weekShift(week, n);
+      const dejaVue = semainesVues.get(cleSemaine(data.profilId, suivante));
+      if (dejaVue) {
+        setPlan(dejaVue.plan);
+        setCoachPlan(dejaVue.coach);
+      }
+      setLoading(!dejaVue);
       setReady(false);
       setJeton((j) => ({ n: j.n + 1, restaurer: true }));
-      setWeek(weekShift(week, n));
+      setWeek(suivante);
     }, [key]);
   const targetN = cible ? targetNutrition(cible) : null;
   const colonnes = width >= 1024 ? 3 : width >= 640 ? 2 : 1;
@@ -420,7 +444,7 @@ export function Planificateur({
                 >
                   {photoDe(r.id) ? (
                     <View style={{ marginBottom: 12, aspectRatio: 16 / 10, width: '100%', borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(195,24,30,0.05)' }}>
-                      <Image source={photoDe(r.id)} accessible={false} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+                      <Image source={photoDe(r.id)} accessible={false} contentFit="cover" transition={120} style={{ width: '100%', height: '100%' }} />
                     </View>
                   ) : (
                     <View style={{ marginBottom: 12, aspectRatio: 16 / 10, width: '100%', borderRadius: 12, backgroundColor: 'rgba(195,24,30,0.05)', alignItems: 'center', justifyContent: 'center' }}>
@@ -506,7 +530,7 @@ export function Planificateur({
               <Text style={ts.texte}>Chargement de la semaine…</Text>
             </View>
           ) : (
-            ready && (
+            (ready || semainesVues.has(key)) && (
               <>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
                   {Array.from({ length: 7 }, (_, i) => (
@@ -574,7 +598,7 @@ export function Planificateur({
                                 {mv.label} · {r.cuisine}
                               </Text>
                             </Pressable>
-                            <Action variante="fantome" icone={Trash2} nom={'Retirer ' + r.name} desactive={busy} onPress={() => remove(index)} />
+                            <Action variante="fantome" icone={Trash2} nom={'Retirer ' + r.name} desactive={busy || !ready} onPress={() => remove(index)} />
                           </View>
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
                             <View style={{ minWidth: 120 }}>
@@ -626,7 +650,7 @@ export function Planificateur({
         <Modale titre={selected.name} onFermer={() => setSelected(null)}>
           {photoDe(selected.id) && (
             <View style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 12, overflow: 'hidden' }}>
-              <Image source={photoDe(selected.id)} accessible={false} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+              <Image source={photoDe(selected.id)} accessible={false} contentFit="cover" transition={120} style={{ width: '100%', height: '100%' }} />
             </View>
           )}
           <Text style={doux}>

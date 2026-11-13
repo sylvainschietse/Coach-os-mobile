@@ -9,10 +9,12 @@ import { attribuerAuClient, entrainement, lierProgramme } from '@/data/entrainem
 import { ecrireJour, lireJour } from '@/domain/crm';
 import { ajouterJours, aujourdhuiParis, correspondRecherche, dansDates, LIBELLES_CYCLES, titreClient, type StatutCycle } from '@/domain/entrainement';
 import type { CycleClient, ModeLien, ModeleResume, SuiviClient } from '@/domain/entrainement-etat';
+import { FILTRES_SUIVIS, listeSuivis, TRIS_SUIVIS, type FiltreSuivis, type TriSuivis } from '@/domain/liste-suivis';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
-import { TitreDisplay } from '../coque';
+import { Selecteur, TitreDisplay } from '../coque';
+import { Puce, Puces } from '../composants';
 import { Choix, Modale, Recherche, Saisie } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
 import { Action, Confirmation, Etat, jourCourt, Ligne, ListeChoix, TexteLong, ts, PhotoProgramme } from './commun';
@@ -200,11 +202,14 @@ function DialogueCycle({
   clientId,
   cycle,
   debutParDefaut,
+  creerSuivi,
   onFermer,
   onEnregistre,
 }: {
   coachId: string;
   suiviId: string;
+  /** Sans suivi, le premier cycle enregistré le démarre (à la date d'aujourd'hui). */
+  creerSuivi?: () => Promise<void>;
   clientId: string;
   cycle?: CycleClient;
   debutParDefaut: string;
@@ -236,6 +241,7 @@ function DialogueCycle({
     setOccupe(true);
     setErreur('');
     try {
+      if (creerSuivi) await creerSuivi();
       await entrainement.enregistrerCycle(coachId, {
         id: cycle?.id ?? nouvelId(),
         suiviId,
@@ -259,7 +265,7 @@ function DialogueCycle({
   };
   return (
     <Modale
-      titre={cycle ? 'Modifier / replanifier le cycle' : 'Nouveau cycle'}
+      titre={cycle ? 'Modifier les dates du programme' : 'Prévoir un programme'}
       largeur={512}
       onFermer={() => !occupe && onFermer()}
       pied={
@@ -269,7 +275,7 @@ function DialogueCycle({
         </Ligne>
       }
     >
-      <Saisie libelle="Nom" valeur={f.nom} placeholder="Cycle 1 · Fondations" onChange={(v) => setF({ ...f, nom: v })} />
+      <Saisie libelle="Nom" valeur={f.nom} placeholder="Fondations" onChange={(v) => setF({ ...f, nom: v })} />
       <Saisie libelle="Objectif" long valeur={f.objectif} onChange={(v) => setF({ ...f, objectif: v })} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         <View style={{ flexBasis: 180, flexGrow: 1, minWidth: 0 }}>
@@ -287,7 +293,7 @@ function DialogueCycle({
             <Action key={s} petit libelle={s} variante={f.statut === s ? 'plein' : 'contour'} onPress={() => setF({ ...f, statut: s })} />
           ))}
         </Ligne>
-        {!actif && <Text style={ts.doux}>L’activation se fait avec le bouton « Activer » (un seul cycle actif par profil).</Text>}
+        {!actif && <Text style={ts.doux}>L’activation se fait avec le bouton « Activer » (un seul programme en cours à la fois).</Text>}
       </View>
       {err ? <Text style={[ts.erreur, { fontSize: 12 }]}>{err}</Text> : null}
       {erreur ? (
@@ -327,7 +333,7 @@ function DialogueProgrammeCycle({
     try {
       const lien: ModeLien = mode === 'copie' ? 'Copie personnalisée' : 'Modèle';
       await lierProgramme(coachId, cycle, modeleId, lien, { client, cycleModele: mode === 'copie' ? cycleModele : 1 });
-      onEnregistre(mode === 'copie' ? 'Copie créée et liée au cycle' : 'Modèle lié au cycle');
+      onEnregistre(mode === 'copie' ? 'Copie créée et liée' : 'Programme lié');
       onFermer();
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Échec');
@@ -337,7 +343,7 @@ function DialogueProgrammeCycle({
   };
   return (
     <Modale
-      titre={`Programme du cycle « ${cycle.nom} »`}
+      titre={`Programme pour « ${cycle.nom} »`}
       largeur={512}
       onFermer={() => !occupe && onFermer()}
       pied={
@@ -437,6 +443,7 @@ function ProfilSuivi({
     }
   };
   const [ouvert, setOuvert] = useState(false);
+  const [nouveauSuiviId] = useState(nouvelId);
   const actif = p.cycles.find((c) => c.statut === 'Actif');
   const dernier = p.cycles[p.cycles.length - 1];
   const resume = actif ? `${actif.nom} en cours` : p.cycles.length ? 'Aucun cycle en cours' : 'Aucun programme';
@@ -467,18 +474,17 @@ function ProfilSuivi({
             <Action petit variante="contour" icone={ExternalLink} libelle="Voir la fiche" onPress={onFiche} />
           </Ligne>
           <SuiviForm coachId={coachId} p={p} modeles={modeles} onEnregistre={recharger} />
-      {p.suivi && (
-        <>
+      <>
           <View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <Text style={ts.titreSection}>Cycles</Text>
-            <Action petit variante="contour" icone={Plus} libelle="Cycle" onPress={() => setDialogue({ type: 'cycle' })} />
+            <Text style={ts.titreSection}>Programmes</Text>
+            <Action petit variante="contour" icone={Plus} libelle="Prévoir" onPress={() => setDialogue({ type: 'cycle' })} />
           </View>
           <View style={{ marginTop: 6 }}>
             <Etat {...etat} />
           </View>
           {p.cycles.length === 0 ? (
             <Text style={[ts.texte, { marginTop: 8, borderWidth: 1, borderStyle: 'dashed', borderColor: couleurs.bordure, borderRadius: 10, padding: 16, textAlign: 'center', color: couleurs.texteDoux }]}>
-              Aucun cycle. Le contenu sportif reste à votre main.
+              Aucun programme. Attribue-lui un programme depuis la bibliothèque, ou prévois-en un ici.
             </Text>
           ) : (
             <View style={{ marginTop: 8, gap: 8 }}>
@@ -501,20 +507,20 @@ function ProfilSuivi({
               ))}
             </View>
           )}
-        </>
-      )}
+      </>
         </View>
       )}
-      {dialogue?.type === 'cycle' && p.suivi && (
+      {dialogue?.type === 'cycle' && (
         <DialogueCycle
           coachId={coachId}
-          suiviId={p.suivi.id}
+          suiviId={p.suivi?.id ?? nouveauSuiviId}
+          creerSuivi={p.suivi ? undefined : () => entrainement.enregistrerSuivi(coachId, { id: nouveauSuiviId, clientId: p.clientId, debut: aujourdhuiParis() })}
           clientId={p.clientId}
           cycle={dialogue.c}
-          debutParDefaut={dernier?.fin ? ajouterJours(dernier.fin, 1) : p.suivi.debut}
+          debutParDefaut={dernier?.fin ? ajouterJours(dernier.fin, 1) : (p.suivi?.debut ?? aujourdhuiParis())}
           onFermer={() => setDialogue(undefined)}
           onEnregistre={() => {
-            setEtat({ message: dialogue.c ? 'Cycle replanifié' : 'Cycle créé' });
+            setEtat({ message: dialogue.c ? 'Dates mises à jour' : 'Programme prévu' });
             recharger();
           }}
         />
@@ -535,12 +541,12 @@ function ProfilSuivi({
       {activer && (
         <Confirmation
           titre={`Activer « ${activer.nom} » ?`}
-          texte={`${actif ? `« ${actif.nom} » passera Terminé. ` : ''}Le client verra ce cycle et son programme. Tous les résultats passés restent rattachés à leur cycle d’origine.`}
+          texte={`${actif ? `« ${actif.nom} » passera Terminé. ` : ''}Le client verra ce programme. Ses résultats passés restent rangés avec leur programme d’origine.`}
           action="Activer"
           onFermer={() => setActiver(undefined)}
           onConfirmer={async () => {
             await entrainement.activerCycle(activer.id);
-            setEtat({ message: 'Cycle activé' });
+            setEtat({ message: 'Programme activé' });
             recharger();
           }}
         />
@@ -566,6 +572,10 @@ export function CyclesClients({
   useRechargerSur(profils.recharger, ecouterCrm);
   const modeles = useCharger(() => entrainement.bibliotheque(coachId), `modeles-${coachId}`);
   const recharger = useCallback(() => profils.recharger(), [profils]);
+  const [recherche, setRecherche] = useState('');
+  const [filtre, setFiltre] = useState<FiltreSuivis>('tous');
+  const [tri, setTri] = useState<TriSuivis>('nom');
+  const visibles = profils.donnee ? listeSuivis(profils.donnee, { recherche, filtre, tri, jour: aujourdhuiParis() }) : undefined;
   return (
     <View>
       <TitreDisplay taille={30}>Programmes des clients</TitreDisplay>
@@ -580,10 +590,26 @@ export function CyclesClients({
           Modèles indisponibles : {modeles.erreur}
         </Text>
       )}
+      {/* Chercher, filtrer et trier : la liste reste utilisable avec beaucoup de clients. */}
+      {!!profils.donnee?.length && (
+        <View style={{ marginTop: 16, gap: 10 }}>
+          {/* En ligne : la recherche prend la largeur, pas une hauteur de 192 px. */}
+          <View style={{ flexDirection: 'row' }}>
+            <Recherche valeur={recherche} onChange={setRecherche} libelle="Rechercher un client" placeholder="Rechercher un client…" />
+          </View>
+          <Puces>
+            {FILTRES_SUIVIS.map((f) => (
+              <Puce key={f.cle} libelle={f.libelle} actif={filtre === f.cle} onPress={() => setFiltre(f.cle)} />
+            ))}
+          </Puces>
+          <Selecteur libelle="Trier par" options={TRIS_SUIVIS} valeur={tri} onChange={setTri} />
+        </View>
+      )}
       <View style={{ marginTop: 20, gap: 8 }}>
         {!profils.donnee && !profils.erreur && [0, 1, 2].map((i) => <View key={i} style={{ height: 64, borderRadius: 12, backgroundColor: couleurs.discret }} />)}
         {profils.donnee?.length === 0 && <Text style={[ts.doux, { fontSize: 14 }]}>Aucun client actif. Un contact devient client depuis sa fiche.</Text>}
-        {profils.donnee?.map((p) => (
+        {visibles && profils.donnee?.length !== 0 && visibles.length === 0 && <Text style={[ts.doux, { fontSize: 14 }]}>Aucun client pour ces filtres.</Text>}
+        {visibles?.map((p) => (
           <ProfilSuivi key={p.clientId} coachId={coachId} p={p} modeles={modeles.donnee ?? null} recharger={recharger} onOuvrir={onOuvrirProgramme} onFiche={() => onOuvrirFiche(p.clientId)}
             onEntrainement={() => onOuvrirEntrainement(p.clientId)}
           />

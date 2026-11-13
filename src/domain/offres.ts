@@ -30,6 +30,24 @@ export interface Offre {
 
 export type SaisieOffre = Omit<Offre, 'id' | 'ordre' | 'enLigne'>;
 
+/** Offres dans l'ordre choisi par le coach : celles en vente d'abord, puis celles qui ne sont plus proposées. */
+export function trierOffres<T extends Pick<Offre, 'active' | 'ordre'>>(liste: T[]): T[] {
+  return [...liste].sort((a, b) => Number(b.active) - Number(a.active) || a.ordre - b.ordre);
+}
+
+/**
+ * Monte ou descend une offre en vente d'une place parmi les offres en vente.
+ * Renvoie les identifiants de ces offres dans leur nouvel ordre (ordre 1, 2, 3…), ou rien si l'offre est déjà au bout.
+ */
+export function deplacerOffre(liste: Pick<Offre, 'id' | 'active' | 'ordre'>[], id: string, sens: -1 | 1): string[] | undefined {
+  const ids = trierOffres(liste.filter((o) => o.active)).map((o) => o.id);
+  const i = ids.indexOf(id);
+  const j = i + sens;
+  if (i < 0 || j < 0 || j >= ids.length) return undefined;
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  return ids;
+}
+
 export const PERIODICITES: Record<Periodicite, { libelle: string; suffixe: string; mois: number }> = {
   mois: { libelle: 'Chaque mois', suffixe: '/ mois', mois: 1 },
   trimestre: { libelle: 'Chaque trimestre', suffixe: '/ trimestre', mois: 3 },

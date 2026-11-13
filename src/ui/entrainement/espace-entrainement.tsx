@@ -6,8 +6,8 @@
 //   par page (app/client/seance-bloc).
 // La vue « historique » montre les séances enregistrées (U06). Repos entre les séries : bandeau en bas de l'écran.
 import { router, useFocusEffect } from 'expo-router';
-import { CalendarRange, ChevronLeft, ChevronRight, Lock, PlayCircle, RefreshCw } from 'lucide-react-native';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { CalendarRange, ChevronLeft, Lock, PlayCircle, RefreshCw, Timer } from 'lucide-react-native';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { BackHandler, Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { depot } from '@/data';
@@ -24,8 +24,9 @@ import { couleurs, polices } from '../theme';
 import { MonCalendrier } from './calendrier';
 import { Action, Confirmation, TexteLong, jourCourt, ts, PhotoProgramme } from './commun';
 import { Historique, nbSeries } from './historique';
-import { BoutonPanneauMinuteurs } from './minuteurs';
+import { BoutonPanneauMinuteurs, useMinuteurs } from './minuteurs';
 import { SeanceLog } from './seance-log';
+import { MesSeances } from '../suivi/mes-seances';
 
 /** Garde des brouillons (GardeBrouillon d'origine), montée une fois dans l'espace client. */
 export function GardeBrouillon() {
@@ -116,8 +117,11 @@ export function EntrainementClient({
   onRepos,
   onHaut,
   onProgramme,
+  milieu,
 }: {
   clientId: string;
+  /** Accueil : ce qui s'affiche juste sous « Ma prochaine séance » (série, calories, ma journée). */
+  milieu?: ReactNode;
   prenom: string;
   apercu?: boolean;
   /** accueil : prochaine séance, cycle et calendrier ; programme : séances du cycle, consignes et séances faites. */
@@ -151,8 +155,13 @@ export function EntrainementClient({
       router.push({ pathname: '/client/seance-bloc', params: { seance: seanceId, plan: planificationId ?? '' } });
     else aller({ nom: 'seance', seanceId, planificationId, jeton: Date.now() });
   };
+  // Liste du programme : une séance d'exercices s'ouvre en séance guidée, comme celle de l'accueil.
+  const demarrerDepuisListe = (seanceId: string) => () =>
+    demanderSortie(() => router.push({ pathname: '/client/seance-bloc', params: { seance: seanceId, plan: '' } }));
   // Retour de la séance plein écran : la séance faite et le créneau réalisé apparaissent tout de suite.
   const premierAffichage = useRef(true);
+  // Le tableau « Mes séances » se relit au retour d'une séance.
+  const [versionSeances, setVersionSeances] = useState(0);
   const rechargerCalendrier = calendrier.recharger;
   useFocusEffect(
     useCallback(() => {
@@ -162,6 +171,7 @@ export function EntrainementClient({
       }
       recharger();
       rechargerCalendrier();
+      setVersionSeances((v) => v + 1);
     }, [recharger, rechargerCalendrier]),
   );
 
@@ -200,7 +210,7 @@ export function EntrainementClient({
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
               <Lock size={12} color={couleurs.texteDoux} />
-              <Text style={ts.doux}>{apercu ? 'Aperçu : seul le client peut noter une séance.' : 'Ouvrez une séance pour voir les exercices, puis notez ce que vous avez réalisé.'}</Text>
+              <Text style={ts.doux}>{apercu ? 'Aperçu : seul le client peut noter une séance.' : 'Touchez une séance pour la démarrer : un bloc par page, avec les vidéos.'}</Text>
             </View>
           </View>
           {espace.seances.map((s) => (
@@ -212,6 +222,7 @@ export function EntrainementClient({
               historique={espace.realisations}
               references={references}
               apercu={apercu}
+              onDemarrer={demarrerDepuisListe(s.id)}
               onRepos={onRepos}
               onEnregistre={apresEnregistrement}
             />
@@ -230,8 +241,13 @@ export function EntrainementClient({
         <Hero
           kicker="Mon entraînement"
           titre="Mon programme"
-          sousTitre="Votre cycle, ses séances et tout ce que vous avez déjà réalisé."
-          droite={<BoutonContour nom="Actualiser" icone={RefreshCw} onPress={() => demanderSortie(recharger)} />}
+          sousTitre="Ton cycle, ses séances et tout ce que tu as déjà fait."
+          droite={
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <BoutonMinuteurs />
+              <BoutonContour nom="Actualiser" icone={RefreshCw} onPress={() => demanderSortie(() => (recharger(), setVersionSeances((v) => v + 1)))} />
+            </View>
+          }
         />
         {erreur && !espace ? (
           <ErreurChargement erreur={erreur} onReessayer={recharger} />
@@ -240,11 +256,24 @@ export function EntrainementClient({
         ) : (
           <>
             {programme}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={ts.titreSection}>Mes séances réalisées</Text>
-              <Badge libelle={`${nbSeries(espace)} série${nbSeries(espace) > 1 ? 's' : ''}`} />
-            </View>
-            <Historique espace={espace} />
+            {/* Une seule liste de ce qui est fait : séances du programme et activités en plus, semaine par semaine. */}
+            <Text style={ts.titreSection}>Mes séances faites</Text>
+            <MesSeances key={`${clientId}:${versionSeances}`} clientId={clientId} apercu={apercu} />
+            {espace.realisations.length > 0 && (
+              <Repliable
+                style={{ borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 12, backgroundColor: couleurs.carte, paddingHorizontal: 16, paddingVertical: 6 }}
+                resume={
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={[ts.texte, { fontFamily: polices.texteGras }]}>Tout mon historique, série par série</Text>
+                    <Badge libelle={`${nbSeries(espace)} série${nbSeries(espace) > 1 ? 's' : ''}`} />
+                  </View>
+                }
+              >
+                <View style={{ paddingBottom: 12 }}>
+                  <Historique espace={espace} />
+                </View>
+              </Repliable>
+            )}
           </>
         )}
       </>
@@ -308,12 +337,14 @@ export function EntrainementClient({
           {!espace.cycle ? (
             <View style={[ts.carte, { borderRadius: 16, padding: 24 }]}>
               <Text style={ts.titre}>Votre programme se prépare</Text>
-              <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Votre coach activera votre prochain cycle ici. Vous pourrez alors consulter vos séances.</Text>
+              <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Votre coach activera votre prochain programme ici. Vous pourrez alors consulter vos séances.</Text>
             </View>
-          ) : (
+          ) : null}
+          {!espace.cycle && milieu}
+          {espace.cycle && (
             <>
               <ProchaineSeance espace={espace} creneaux={calendrier.donnee} apercu={apercu} onDemarrer={demarrer} onProgramme={voirProgramme} />
-              <CarteProgramme espace={espace} onPress={voirProgramme} />
+              {milieu}
               <MonCalendrier
                 key={`${clientId}:${espace.cycle.id}`}
                 clientId={clientId}
@@ -378,7 +409,7 @@ function ProchaineSeance({
       <Text style={{ fontFamily: polices.titre, fontSize: 30, letterSpacing: 0.6, color: '#FFFFFF' }}>{titreClient(p.seance.titre)}</Text>
       <Text style={[ts.doux, { color: 'rgba(255,255,255,0.85)' }]}>{nbExercices ? `${nbExercices} exercice${nbExercices > 1 ? 's' : ''}` : 'Activité · à valider une fois faite'}</Text>
       <Action
-        libelle={apercu ? 'Seul le client peut démarrer' : !ouvert ? 'Cycle terminé' : nbExercices ? 'Démarrer la séance' : 'Valider la séance'}
+        libelle={apercu ? 'Seul le client peut démarrer' : !ouvert ? 'Programme terminé' : nbExercices ? 'Démarrer la séance' : 'Valider la séance'}
         icone={PlayCircle}
         variante="contour"
         desactive={apercu || !ouvert}
@@ -391,31 +422,7 @@ function ProchaineSeance({
   );
 }
 
-/** La photo du programme et le cycle en cours : tout le bloc ouvre la page du programme. */
-function CarteProgramme({ espace, onPress }: { espace: EspaceEntrainement; onPress: () => void }) {
-  const c = espace.cycle!;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Voir mon programme${espace.programme ? ` : ${titreClient(espace.programme.titre)}` : ''}`}
-      onPress={onPress}
-      style={({ pressed }) => [ts.carte, { borderRadius: 16, gap: 6, padding: 0, overflow: 'hidden' }, pressed && { opacity: 0.85 }]}
-    >
-      {espace.programme && <PhotoProgramme programme={espace.programme} hauteur={170} style={{ borderRadius: 0 }} />}
-      <View style={{ padding: 16, paddingTop: espace.programme ? 10 : 16, gap: 4 }}>
-        <Text style={ts.kicker}>{etatCycle(c.etat)}</Text>
-        <Text style={[ts.titre, { fontSize: 18 }]}>{espace.programme ? titreClient(espace.programme.titre) : c.nom}</Text>
-        {!!c.semaine && <Text style={ts.doux}>Semaine {c.semaine}{c.nbSemaines ? ` sur ${c.nbSemaines}` : ''}</Text>}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
-          <Text style={{ fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.rouge }}>Voir mon programme</Text>
-          <ChevronRight size={16} color={couleurs.rouge} />
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
-const etatCycle = (e: 'a_venir' | 'en_cours' | 'depasse') => (e === 'a_venir' ? 'Cycle à venir' : e === 'depasse' ? 'Cycle terminé (dates dépassées)' : 'Cycle en cours');
+const etatCycle = (e: 'a_venir' | 'en_cours' | 'depasse') => (e === 'a_venir' ? 'Programme à venir' : e === 'depasse' ? 'Programme terminé (dates dépassées)' : 'Programme en cours');
 
 /** En tête de la page du programme : photo, cycle, dates, objectif et avancement. */
 function CarteCycle({ espace }: { espace: EspaceEntrainement }) {
@@ -424,7 +431,7 @@ function CarteCycle({ espace }: { espace: EspaceEntrainement }) {
     return (
       <View style={[ts.carte, { borderRadius: 16, padding: 24 }]}>
         <Text style={ts.titre}>Votre programme se prépare</Text>
-        <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Votre coach activera votre prochain cycle ici. Vous pourrez alors consulter vos séances.</Text>
+        <Text style={[ts.texte, { color: couleurs.texteDoux }]}>Votre coach activera votre prochain programme ici. Vous pourrez alors consulter vos séances.</Text>
       </View>
     );
   return (
@@ -452,14 +459,14 @@ function CarteCycle({ espace }: { espace: EspaceEntrainement }) {
       {c.etat === 'en_cours' && !!c.semaine && c.nbSemaines > 0 && (
         <View style={{ marginTop: 12, gap: 8 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text style={ts.doux}>Avancement du cycle</Text>
+            <Text style={ts.doux}>Avancement du programme</Text>
             <Text style={ts.doux}>
               {c.semaine} / {c.nbSemaines} semaines
             </Text>
           </View>
           <View
             accessibilityRole="progressbar"
-            aria-label="Avancement du cycle"
+            aria-label="Avancement du programme"
             aria-valuemin={0}
             aria-valuemax={c.nbSemaines}
             aria-valuenow={Math.min(c.semaine, c.nbSemaines)}
@@ -484,3 +491,9 @@ const styles = StyleSheet.create({
     boxShadow: '0 16px 30px -16px rgba(17, 18, 22, 0.7)',
   } as ViewStyle,
 });
+
+/** Les minuteurs (Tabata, EMOM, AMRAP…) depuis la page du programme, à côté d'Actualiser. */
+function BoutonMinuteurs() {
+  const m = useMinuteurs();
+  return m ? <BoutonContour nom="Ouvrir les minuteurs" icone={Timer} onPress={m.ouvrir} /> : null;
+}

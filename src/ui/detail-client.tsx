@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 
+import { titreClient } from '@/domain/entrainement';
 import { depot } from '@/data';
 import { champsPertinents, formaterValeur } from '@/domain/mesures';
 import type { Mesure, RealisationDetail, SerieRealisee } from '@/domain/types';
@@ -35,7 +36,7 @@ export function DetailClient({ clientId }: { clientId: string }) {
     <View style={{ gap: espace(4) }}>
       {realisations.map((r) => (
         <Carte key={r.id}>
-          <SousTitre>{r.seanceTitre}</SousTitre>
+          <SousTitre>{titreClient(r.seanceTitre)}</SousTitre>
           <Texte doux style={{ fontSize: 14 }}>{dateHeure(r.fin)}</Texte>
           {r.commentaire && (
             <View style={{ backgroundColor: couleurs.rougeClair, borderRadius: 10, padding: espace(3) }}>

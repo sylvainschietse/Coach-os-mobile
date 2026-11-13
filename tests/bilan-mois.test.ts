@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { RendezVous } from '../src/domain/agenda';
-import { chiffresDuMois, decalerMois, ecart, evolutionAnnuelle, evolutionMensuelle, moisParDefaut, moisParis, sourcePaiement, type Donnees } from '../src/domain/bilan-mois';
+import { chiffresDuMois, decalerMois, detailDuMois, ecart, evolutionAnnuelle, evolutionMensuelle, moisParDefaut, moisParis, sourcePaiement, type Donnees } from '../src/domain/bilan-mois';
 import type { Paiement } from '../src/domain/gestion';
 
 const p = (id: string, x: Partial<Paiement>): Paiement => ({ id, titre: id, devise: 'EUR', creeLe: '2026-01-01T00:00:00Z', ...x });
@@ -99,5 +99,26 @@ describe('bilan du mois', () => {
     expect(ecart(5, 0)).toBeNull();
     expect(sourcePaiement({ reference: 'achat:1' })).toBe('achat');
     expect(sourcePaiement({})).toBe('autre');
+  });
+});
+
+describe('détail des tuiles du bilan', () => {
+  it('liste ce que compte chaque tuile, avec les mêmes règles que les chiffres', () => {
+    const c = chiffresDuMois(donnees, '2026-10');
+    const d = detailDuMois(donnees, '2026-10');
+    expect(d.encaisse.map((x) => x.id)).toEqual(['a1', 'a2', 'k1', 'm1']);
+    expect(d.encaisse.reduce((s, x) => s + (x.montant ?? 0), 0)).toBe(c.encaisse);
+    expect(d.aEncaisser.map((x) => x.id)).toEqual(['s1']);
+    expect(d.abonnements.map((x) => x.id)).toEqual(['a1', 'a2']);
+    expect(d.packs.map((x) => x.id)).toEqual(['k1']);
+    expect(d.seances.map((r) => r.id)).toEqual(['1', '2', '5']);
+    expect(d.seances).toHaveLength(c.seancesRealisees);
+    expect(d.manquees.map((r) => r.id)).toEqual(['3']);
+    expect(d.clients.map((x) => [x.nom, x.contactId, x.seances])).toEqual([
+      ['Léa Martin', 'c-lea', 2],
+      ['Thomas Bernard', 'c-tom', 2],
+    ]);
+    expect(d.clients).toHaveLength(c.clientsVus);
+    expect(d.nouveaux).toHaveLength(c.nouveauxClients);
   });
 });

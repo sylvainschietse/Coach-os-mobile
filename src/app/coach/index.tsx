@@ -1,10 +1,13 @@
-// Espace coach repris de apps/coach-os/App.tsx : en-tête, cinq onglets, Tableau de bord = CRM à rubriques.
+// Espace coach : en-tête (cloche, messages, Mon profil), cinq onglets (barre du bas sur téléphone), plus aucun sous-menu.
 import { Redirect, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   Activity,
   ArrowLeft,
   CalendarCheck,
+  CalendarDays,
   ChartColumnIncreasing,
+  Dumbbell,
+  House,
   FileText,
   LayoutDashboard,
   ListTodo,
@@ -15,6 +18,7 @@ import {
   UserPlus,
   UserRound,
   Users,
+  Video,
   Wallet,
   Workflow,
 } from 'lucide-react-native';
@@ -24,6 +28,7 @@ import { View, useWindowDimensions } from 'react-native';
 import { depot } from '@/data';
 import { abonnements } from '@/data/abonnements';
 import { crm, ecouterCrm } from '@/data/crm';
+import { relancesCoach } from '@/data/relances-coach';
 import { useSession } from '@/data/session';
 import { questionnairesATraiter, type Booster, type Contact } from '@/domain/crm';
 import { aEncaisser, encaissementsDuMois } from '@/domain/gestion';
@@ -31,23 +36,27 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { useRetourAndroid } from '@/lib/retour-android';
 import { AgendaCoach } from '@/ui/agenda/agenda-coach';
 import { DefilementClavier } from '@/ui/clavier';
-import { NutritionCoach } from '@/ui/alimentation/nutrition-coach';
+import { RecettesCoach } from '@/ui/alimentation/nutrition-coach';
 import {
   BandeauDemo,
+  BarreClient,
   BoutonContour,
   BoutonIcone,
   CommutateurApercu,
   EnTete,
   EnTeteRubrique,
-  MenuRubriques,
   OngletsCoach,
+  SousNav,
   Vide,
   type OngletDef,
+  useMargeBarre,
 } from '@/ui/coque';
 import { Carte, Chargement, Erreur, Puce, Puces, Texte } from '@/ui/composants';
 import { Bilans, EditeurBilan } from '@/ui/crm/bilans';
 import { Boosters } from '@/ui/crm/boosters';
+import { ChoisirClientTest } from '@/ui/suivi/choisir-client-test';
 import { BoutonCloche } from '@/ui/notifications/cloche';
+import { estAuto, REGLAGES_RELANCES } from '@/domain/relances-coach';
 import { EspaceProfil, SECTIONS_PROFIL, type SectionProfil } from '@/ui/espace-profil';
 import { BoutonMessages, useNonLus } from '@/ui/messagerie/conversation';
 import { ConversationsCoach } from '@/ui/messagerie/conversations-coach';
@@ -61,6 +70,7 @@ import { FicheContactModale, VOLETS_FICHE, type VoletFiche } from '@/ui/crm/fich
 import { EditeurGestion, Gestion, QUOI, type ASupprimer, type ModuleGestion } from '@/ui/crm/gestion';
 import { ConfirmerSuppression } from '@/ui/crm/suppression';
 import { BilanMois } from '@/ui/crm/bilan-mois';
+import { ActiviteCoach } from '@/ui/crm/activite';
 import { VueEnsemble } from '@/ui/crm/vue-ensemble';
 import { BilansCoach } from '@/ui/suivi/bilans-coach';
 import { EspaceClient } from '@/ui/espace-client';
@@ -74,49 +84,74 @@ import { EditeurSeance } from '@/ui/entrainement/seance';
 import { couleurs, espace, LARGEUR_COACH, LARGEUR_LG, univers, type CleUnivers } from '@/ui/theme';
 import { UniversPage } from '@/ui/univers';
 
-type Onglet = 'crm' | 'agenda' | 'airtable' | 'suivis' | 'prospects' | 'boosters' | 'bilan' | 'hebdo' | 'nutrition' | 'profil';
-const TOUS: Onglet[] = ['crm', 'agenda', 'airtable', 'suivis', 'prospects', 'boosters', 'bilan', 'hebdo', 'nutrition', 'profil'];
+type Onglet = 'crm' | 'agenda' | 'airtable' | 'activite' | 'suivis' | 'prospects' | 'boosters' | 'bilan' | 'hebdo' | 'nutrition' | 'profil';
+const TOUS: Onglet[] = ['crm', 'agenda', 'airtable', 'activite', 'suivis', 'prospects', 'boosters', 'bilan', 'hebdo', 'nutrition', 'profil'];
 /**
- * Cinq onglets : « Agenda » pour les rendez-vous ; « Clients » regroupe les clients actifs (cycles), les prospects, les
- * Boosters et les bilans de la semaine ; les séances réalisées sont dans la fiche.
+ * Cinq onglets, en bas sur téléphone : Aujourd'hui, Agenda, Clients (prospects, Boosters, clients actifs, bilans de la
+ * semaine), Programmes (entraînement et recettes) et Activité (bilan du mois, paiements, documents sur une seule page).
+ * Mon profil s'ouvre par le bouton de l'en-tête. Le suivi nutrition d'un client est dans sa fiche.
  */
-type OngletVisible = 'crm' | 'agenda' | 'clients' | 'nutrition' | 'airtable';
+type OngletVisible = 'crm' | 'agenda' | 'clients' | 'airtable' | 'activite';
 const ONGLETS: OngletDef<OngletVisible>[] = [
-  { cle: 'crm', libelle: 'Accueil' },
-  { cle: 'agenda', libelle: 'Agenda' },
-  { cle: 'clients', libelle: 'Clients' },
-  { cle: 'airtable', libelle: 'Programmes' },
-  // Ajout demandé par Sylvain (absent de Zite) : recettes, clients suivis et plans alimentaires.
-  { cle: 'nutrition', libelle: 'Nutrition' },
+  { cle: 'crm', libelle: 'Aujourd’hui', icone: House },
+  { cle: 'agenda', libelle: 'Agenda', icone: CalendarDays },
+  { cle: 'clients', libelle: 'Clients', icone: Users },
+  { cle: 'airtable', libelle: 'Programmes', icone: Dumbbell },
+  { cle: 'activite', libelle: 'Activité', icone: ChartColumnIncreasing },
 ];
+/** Le client avance de gauche à droite : prospect, Booster, client actif ; les bilans de la semaine sont à relire. */
 const SUIVI_CLIENTS: { cle: Onglet; libelle: string }[] = [
-  { cle: 'suivis', libelle: 'Clients actifs' },
   { cle: 'prospects', libelle: 'Prospects' },
   { cle: 'boosters', libelle: 'Boosters' },
+  { cle: 'suivis', libelle: 'Clients actifs' },
   { cle: 'hebdo', libelle: 'Bilans de la semaine' },
 ];
-/** Mon profil s'ouvre par le bouton de l'en-tête : aucun onglet n'est alors surligné. */
-const visible = (o: Onglet): OngletVisible | 'profil' => (o === 'suivis' || o === 'prospects' || o === 'boosters' || o === 'bilan' || o === 'hebdo' ? 'clients' : o);
+/** Programmes : la bibliothèque d'entraînement et celle des recettes, deux parties d'un même onglet. */
+type Partie = 'entrainement' | 'recettes';
+const PARTIES: OngletDef<Partie>[] = [
+  { cle: 'entrainement', libelle: 'Entraînement' },
+  { cle: 'recettes', libelle: 'Recettes' },
+];
+/** Mon profil s'ouvre par le bouton de l'en-tête : aucun onglet n'est alors surligné. L'ancien onglet Nutrition mène aux recettes. */
+const visible = (o: Onglet): OngletVisible | 'profil' =>
+  o === 'suivis' || o === 'prospects' || o === 'boosters' || o === 'bilan' || o === 'hebdo' ? 'clients' : o === 'nutrition' ? 'airtable' : o;
 /** Anciennes rubriques de l'Accueil rangées dans Mon profil. */
 const SECTION_DE_LA_RUBRIQUE: Partial<Record<Rubrique, SectionProfil>> = { Profil: 'infos', Offres: 'offres', Automations: 'relances' };
 /** Prospects et Boosters ont quitté le menu de l'Accueil pour l'onglet Clients : leurs anciennes adresses y mènent. */
-const RUBRIQUE_DE_L_ONGLET: Partial<Record<Onglet, Rubrique>> = { prospects: 'Contacts', boosters: 'Boosters' };
+const RUBRIQUE_DE_L_ONGLET: Partial<Record<Onglet, Rubrique>> = { prospects: 'Contacts', boosters: 'Boosters', activite: 'Activite' };
+/** Bilan du mois, Paiements et Documents sont réunis dans l'onglet Activité : leurs anciennes adresses y mènent. */
+const DANS_ACTIVITE: Rubrique[] = ['Bilan', 'Paiements', 'Documents', 'Activite'];
 
-/** Couleur de chaque onglet : bleu l'agenda, rouge et doré les clients, vert la nutrition, rouge l'accueil et les programmes. */
+/** Couleur de chaque onglet : rouge l'accueil et les programmes, bleu l'agenda, rouge et doré les clients, ambre l'argent. */
 const UNIVERS_ONGLET: Record<OngletVisible | 'profil', CleUnivers> = {
   crm: 'rouge',
   agenda: 'bleu',
   clients: 'rougeDore',
   airtable: 'rouge',
-  nutrition: 'vert',
+  activite: 'ambre',
   profil: 'rougeDore',
 };
-/** Dans l'Accueil, l'argent (paiements, bilan du mois) passe en ambre, les échanges en rouge et doré. */
-const UNIVERS_RUBRIQUE: Partial<Record<Rubrique, CleUnivers>> = { Paiements: 'ambre', Bilan: 'ambre', Messages: 'rougeDore', Documents: 'rougeDore' };
+/** Dans l'Accueil, les échanges passent en rouge et doré. */
+const UNIVERS_RUBRIQUE: Partial<Record<Rubrique, CleUnivers>> = { Messages: 'rougeDore' };
 
-type Rubrique = 'Accueil' | 'Bilan' | 'Messages' | 'Contacts' | 'Boosters' | 'Coachings' | 'Bilans' | 'Documents' | 'Taches' | 'Paiements' | 'Offres' | 'Automations' | 'Profil';
+type Rubrique =
+  | 'Accueil'
+  | 'Activite'
+  | 'Bilan'
+  | 'Messages'
+  | 'Contacts'
+  | 'Boosters'
+  | 'Coachings'
+  | 'Bilans'
+  | 'Documents'
+  | 'Taches'
+  | 'Paiements'
+  | 'Offres'
+  | 'Automations'
+  | 'Profil';
 const RUBRIQUES: OngletDef<Rubrique>[] = [
-  { cle: 'Accueil', libelle: 'Accueil', icone: LayoutDashboard },
+  { cle: 'Accueil', libelle: 'Aujourd’hui', icone: LayoutDashboard },
+  { cle: 'Activite', libelle: 'Mon activité', icone: ChartColumnIncreasing },
   { cle: 'Bilan', libelle: 'Bilan du mois', icone: ChartColumnIncreasing },
   { cle: 'Messages', libelle: 'Messages', icone: MessageCircle },
   { cle: 'Contacts', libelle: 'Contacts', icone: Users },
@@ -130,19 +165,17 @@ const RUBRIQUES: OngletDef<Rubrique>[] = [
   { cle: 'Automations', libelle: 'Automatisations', icone: Workflow },
   { cle: 'Profil', libelle: 'Mon profil', icone: UserRound },
 ];
-/**
- * Menu de l'Accueil réduit au suivi de l'activité. Les autres rubriques restent joignables : Messages par son bouton en
- * haut, profil, offres et relances dans Mon profil, Contacts et Boosters dans Clients, les tâches dans « À faire » de
- * l'Accueil, les bilans complets dans le volet Documents de la fiche.
- */
-const MENU_RUBRIQUES = RUBRIQUES.filter((r) => ['Accueil', 'Bilan', 'Paiements', 'Documents'].includes(r.cle));
 
 const heure = (d: Date) => d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 
 export default function EspaceCoach() {
   const { profil, email, deconnecter } = useSession();
   const { width } = useWindowDimensions();
-  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; section?: string; client?: string; programme?: string; seance?: string; apercu?: string } & ParamsDossier>();
+  const large = width >= LARGEUR_LG;
+  // Sur téléphone, la barre des onglets flotte en bas : on peut défiler jusqu'à voir le dernier élément au-dessus d'elle.
+  const margeBarre = useMargeBarre();
+  const [choixTest, setChoixTest] = useState(false);
+  const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; section?: string; partie?: string; client?: string; programme?: string; seance?: string; apercu?: string } & ParamsDossier>();
   const ongletDemande = TOUS.find((o) => o === params.onglet) ?? 'crm';
   const rubriqueDemandee = RUBRIQUES.find((r) => r.cle === params.rubrique)?.cle ?? 'Accueil';
   // Anciennes adresses (Accueil › Contacts ou Boosters) : ouvertes dans l'onglet Clients.
@@ -153,8 +186,12 @@ export default function EspaceCoach() {
         ? 'boosters'
         : ongletDemande === 'crm' && SECTION_DE_LA_RUBRIQUE[rubriqueDemandee]
           ? 'profil'
-          : ongletDemande;
-  const section: SectionProfil = SECTIONS_PROFIL.find((x) => x.cle === params.section)?.cle ?? SECTION_DE_LA_RUBRIQUE[rubriqueDemandee] ?? 'infos';
+          : ongletDemande === 'crm' && DANS_ACTIVITE.includes(rubriqueDemandee)
+            ? 'activite'
+            : ongletDemande;
+  // Mon profil : la liste de ses rubriques, ou la rubrique ouverte.
+  const section: SectionProfil | undefined = SECTIONS_PROFIL.find((x) => x.cle === params.section)?.cle ?? SECTION_DE_LA_RUBRIQUE[rubriqueDemandee];
+  const partie: Partie = onglet === 'nutrition' || params.partie === 'recettes' ? 'recettes' : 'entrainement';
   const rubrique = RUBRIQUE_DE_L_ONGLET[onglet] ?? rubriqueDemandee;
   const coachId = profil?.role === 'coach' ? profil.coachId : '';
   const clients = useCharger(() => depot.clientsDuCoach(coachId), coachId);
@@ -173,8 +210,19 @@ export default function EspaceCoach() {
 
   // L'onglet et la rubrique vivent dans l'adresse : Retour et rechargement gardent le contexte.
   const naviguer = (o: Onglet, r?: Rubrique, dossier?: string) => {
-    const vers = o === 'crm' && r === 'Contacts' ? 'prospects' : o === 'crm' && r === 'Boosters' ? 'boosters' : o;
-    router.setParams({ onglet: vers, rubrique: vers === 'crm' ? (r ?? rubrique) : undefined, client: undefined, dossier, programme: undefined, seance: undefined, ...FERME });
+    const vers: Onglet =
+      o === 'crm' && r === 'Contacts' ? 'prospects' : o === 'crm' && r === 'Boosters' ? 'boosters' : o === 'crm' && r && DANS_ACTIVITE.includes(r) ? 'activite' : o;
+    router.setParams({
+      onglet: vers,
+      rubrique: vers === 'crm' ? (r ?? 'Accueil') : undefined,
+      section: undefined,
+      partie: undefined,
+      client: undefined,
+      dossier,
+      programme: undefined,
+      seance: undefined,
+      ...FERME,
+    });
   };
 
   // Depuis les suivis : la fiche du contact devenu client (coordonnées, abonnement, séances).
@@ -243,7 +291,7 @@ export default function EspaceCoach() {
       {enTete}
       <DefilementClavier
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: espace(4), paddingTop: width <= 640 ? 18.4 : width >= 640 ? 32 : 24, paddingBottom: 48 }}
+        contentContainerStyle={{ paddingHorizontal: espace(4), paddingTop: width <= 640 ? 18.4 : width >= 640 ? 32 : 24, paddingBottom: large ? 48 : margeBarre }}
       >
         <View style={{ width: '100%', maxWidth: LARGEUR_COACH, alignSelf: 'center' }}>
           {depot.mode === 'demo' && (
@@ -251,7 +299,8 @@ export default function EspaceCoach() {
               <BandeauDemo />
             </View>
           )}
-          <OngletsCoach onglets={ONGLETS} valeur={visible(onglet)} universDe={(o) => univers[UNIVERS_ONGLET[o]]} onChange={(o) => naviguer(o === 'clients' ? 'suivis' : o)} />
+          {/* Sur ordinateur, les cinq onglets restent en haut ; sur téléphone, ils sont dans la barre du bas. */}
+          {large && <OngletsCoach onglets={ONGLETS} valeur={visible(onglet)} universDe={(o) => univers[UNIVERS_ONGLET[o]]} onChange={(o) => naviguer(o === 'clients' ? 'suivis' : o)} />}
           {visible(onglet) === 'clients' && (
             <View style={{ marginBottom: espace(4) }}>
               <Puces>
@@ -261,23 +310,24 @@ export default function EspaceCoach() {
               </Puces>
             </View>
           )}
-          {(onglet === 'crm' || onglet === 'prospects' || onglet === 'boosters' || onglet === 'suivis') && (
+          {(onglet === 'crm' || onglet === 'activite' || onglet === 'prospects' || onglet === 'boosters' || onglet === 'suivis') && (
             <Crm
               rubrique={rubrique}
               params={params}
-              large={width >= LARGEUR_LG}
-              // Dans l'onglet Clients : pas de menu de l'Accueil ; sous Clients actifs, seulement la fiche ouverte.
-              mode={onglet === 'crm' ? 'complet' : onglet === 'suivis' ? 'fenetres' : 'integre'}
+              // Sous Clients actifs, seulement la fiche ouverte : la liste est celle des programmes de chaque client.
+              mode={onglet === 'suivis' ? 'fenetres' : 'integre'}
+              titreClients={onglet === 'prospects' || onglet === 'boosters'}
               onRubrique={(r, dossier) => naviguer('crm', r, dossier)}
               onCycles={() => naviguer('suivis')}
               onAgenda={() => naviguer('agenda')}
+              onBilansSemaine={() => naviguer('hebdo')}
             />
           )}
           {onglet === 'agenda' && <AgendaCoach coachId={coachId} onReglages={() => router.setParams({ onglet: 'profil', section: 'agenda' })} />}
           {onglet === 'profil' && (
             <EspaceProfil section={section} onSection={(x) => router.setParams({ onglet: 'profil', rubrique: undefined, section: x })} onDeconnecter={deconnecter} />
           )}
-          {onglet === 'airtable' &&
+          {(onglet === 'airtable' || onglet === 'nutrition') &&
             (params.seance ? (
               <EditeurSeance
                 key={params.seance}
@@ -294,7 +344,10 @@ export default function EspaceCoach() {
                 onOuvrirSeance={(id) => router.setParams({ seance: id })}
               />
             ) : (
-              <Bibliotheque coachId={coachId} onOuvrir={(id) => router.setParams({ programme: id })} />
+              <View style={{ gap: espace(4) }}>
+                <SousNav nom="Bibliothèque" onglets={PARTIES} valeur={partie} onChange={(p) => router.setParams({ onglet: 'airtable', partie: p === 'recettes' ? 'recettes' : undefined })} />
+                {partie === 'entrainement' ? <Bibliotheque coachId={coachId} onOuvrir={(id) => router.setParams({ programme: id })} /> : <RecettesCoach coachId={coachId} />}
+              </View>
             ))}
           {onglet === 'suivis' &&
             (params.client ? (
@@ -313,9 +366,19 @@ export default function EspaceCoach() {
             ) : (
               <View style={{ gap: espace(4) }}>
                 {/* Client qui commence directement (abonnement à l'appli ou coaching en présence), sans Booster. */}
-                <View style={{ alignSelf: 'flex-start' }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>
                   <Action petit icone={UserPlus} libelle="Nouveau client" onPress={() => router.setParams({ ...FERME, contact: 'nouveau-client' })} />
+                  <Action petit icone={Video} libelle="Faire un test" onPress={() => setChoixTest(true)} />
                 </View>
+                {choixTest && (
+                  <ChoisirClientTest
+                    onFermer={() => setChoixTest(false)}
+                    onChoisir={(id) => {
+                      setChoixTest(false);
+                      router.setParams({ ...FERME, contact: id, volet: 'tests' });
+                    }}
+                  />
+                )}
                 <CyclesClients
                 coachId={coachId}
                 onOuvrirProgramme={(id) => router.setParams({ onglet: 'airtable', programme: id, seance: undefined })}
@@ -332,11 +395,17 @@ export default function EspaceCoach() {
             />
           )}
           {onglet === 'hebdo' && <BilansCoach />}
-          {onglet === 'nutrition' && (
-            <NutritionCoach coachId={coachId} clientId={params.client} onClient={(id) => router.setParams({ onglet: 'nutrition', client: id })} />
-          )}
         </View>
       </DefilementClavier>
+      {!large && (
+        <BarreClient
+          nom="Navigation de l’espace coach"
+          onglets={ONGLETS}
+          valeur={visible(onglet) === 'profil' ? ('' as OngletVisible) : (visible(onglet) as OngletVisible)}
+          universDe={(o) => univers[UNIVERS_ONGLET[o]]}
+          onChange={(o) => naviguer(o === 'clients' ? 'suivis' : o)}
+        />
+      )}
     </View>
     </UniversPage>
   );
@@ -375,45 +444,55 @@ const PARAM_EDITEUR: Record<ModuleGestion, 'coaching' | 'tache' | 'paiement'> = 
 function Crm({
   rubrique,
   params,
-  large,
   mode,
+  titreClients,
   onRubrique,
   onCycles,
   onAgenda,
+  onBilansSemaine,
 }: {
   rubrique: Rubrique;
   params: ParamsDossier;
-  large: boolean;
-  /** complet : menu et rubrique (Accueil) ; integre : la rubrique seule (onglet Clients) ; fenetres : fiches et éditeurs seuls. */
-  mode: 'complet' | 'integre' | 'fenetres';
+  /** integre : la rubrique et ses fenêtres ; fenetres : fiches et éditeurs seuls (Clients actifs). */
+  mode: 'integre' | 'fenetres';
+  /** Prospects et Boosters, dans l'onglet Clients. */
+  titreClients?: boolean;
   onRubrique: (r: Rubrique, dossier?: string) => void;
   onCycles: () => void;
   onAgenda: () => void;
+  onBilansSemaine: () => void;
 }) {
   const [maj, setMaj] = useState(() => new Date());
   const [suppression, setSuppression] = useState<{ booster: Booster; contact: Contact }>();
   const [aSupprimer, setASupprimer] = useState<{ quoi: string; nom: string; contact?: string; action: () => Promise<void> }>();
+  const { profil } = useSession();
+  const nomCoach = profil?.role === 'coach' ? profil.nom : 'ton coach';
   const charger = useCallback(async () => {
-    // Les abonnements du mois deviennent des lignes « En attente » avant de lire les paiements.
+    // Les abonnements du mois deviennent des lignes « En attente » avant de lire les paiements ; les relances du coach
+    // (Mes relances) arrivées aujourd'hui rejoignent « À faire ».
     await abonnements.preparerEcheances().catch(() => undefined);
-    const [contacts, journee, boosters, carnet, lienQuestionnaire] = await Promise.all([
+    await relancesCoach.preparer(nomCoach).catch(() => 0);
+    const [contacts, journee, boosters, carnet, lienQuestionnaire, reglagesRelances] = await Promise.all([
       crm.contacts(),
       crm.journee(),
       crm.boosters(),
       crm.carnet(),
       crm.lienQuestionnaire(),
+      relancesCoach.lire().catch(() => REGLAGES_RELANCES),
     ]);
     setMaj(new Date());
     return {
       contacts,
-      relances: journee.relances,
+      // Une relance prête à l'emploi que le coach a coupée n'arrive plus dans « À faire ».
+      relances: journee.relances.filter((r) => !(estAuto(r.modele) && reglagesRelances.coupees.includes(r.modele))),
       boosters,
       encaissements: encaissementsDuMois(carnet, new Date()),
       aEncaisser: aEncaisser(carnet),
+      carnet,
       lienQuestionnaire,
       questionnaires: questionnairesATraiter(carnet),
     };
-  }, []);
+  }, [nomCoach]);
   const vue = useCharger(charger, 'vue-ensemble');
   useFocusEffect(vue.recharger);
   useRechargerSur(vue.recharger, ecouterCrm);
@@ -422,7 +501,7 @@ function Crm({
   const ouvrirContact = (id: string, volet?: VoletFiche) => router.setParams({ ...FERME, contact: id, volet });
   const ouvrirBooster = (b: Pick<Booster, 'id' | 'contactId'>) => router.setParams({ booster: b.id, bc: b.contactId });
   const nouveauBooster = (contactId?: string) => router.setParams({ booster: 'nouveau', bc: contactId });
-  const volet = VOLETS_FICHE.find((v) => v === params.volet) ?? 'fiche';
+  const volet = VOLETS_FICHE.find((v) => v === params.volet);
   const supprimerGestion = (x: ASupprimer) =>
     setASupprimer({
       quoi: QUOI[x.module],
@@ -431,15 +510,13 @@ function Crm({
       action: () => (x.module === 'Coachings' ? crm.supprimerCoaching(x.id) : x.module === 'Taches' ? crm.supprimerTache(x.id) : crm.supprimerPaiement(x.id)),
     });
 
-  const menu = mode === 'complet';
   return (
-    <View style={{ flexDirection: large && menu ? 'row' : 'column', gap: 24, alignItems: large && menu ? 'flex-start' : 'stretch' }}>
-      {menu && <MenuRubriques rubriques={MENU_RUBRIQUES} valeur={rubrique} onChange={(r) => onRubrique(r)} large={large} />}
+    <View style={{ gap: 24 }}>
       {mode !== 'fenetres' && (
-      <View style={{ flex: large && menu ? 1 : undefined, minWidth: 0 }}>
+      <View style={{ minWidth: 0 }}>
         <EnTeteRubrique
-          kicker={menu ? 'Gestion du coaching' : 'Clients'}
-          titre={rubrique === 'Contacts' && !menu ? 'Prospects' : titre}
+          kicker={titreClients ? 'Clients' : rubrique === 'Accueil' ? 'Espace coach' : 'Gestion du coaching'}
+          titre={rubrique === 'Contacts' && titreClients ? 'Prospects' : titre}
           sousTitre={`Dernière actualisation · ${heure(maj)}`}
           action={<BoutonContour libelle="Actualiser" icone={RefreshCw} iconeAGauche onPress={vue.recharger} />}
         />
@@ -461,13 +538,14 @@ function Crm({
               onPlanifierBooster={(id) => nouveauBooster(id)}
               onCycles={onCycles}
               onAgenda={onAgenda}
+              onBilansSemaine={onBilansSemaine}
             />
           ) : (
             !vue.erreur && <Chargement />
           ))}
         {rubrique === 'Contacts' && (
           <Contacts
-            prospects={!menu}
+            prospects={titreClients}
             onOuvrir={(id) => ouvrirContact(id)}
             onNouveau={() => router.setParams({ ...FERME, contact: 'nouveau' })}
             onPlanifierBooster={(id) => nouveauBooster(id)}
@@ -513,7 +591,43 @@ function Crm({
             onSupprimer={(x) => setASupprimer({ quoi: 'ce bilan', nom: x.nom, contact: x.contact, action: () => crm.supprimerBilan(x.id) })}
           />
         )}
-        {rubrique === 'Bilan' && <BilanMois onPaiements={() => onRubrique('Paiements')} />}
+        {rubrique === 'Bilan' && (
+          <BilanMois
+            onPaiements={() => onRubrique('Paiements')}
+            onOuvrirPaiement={(id) => router.setParams({ ...FERME, paiement: id })}
+            onOuvrirContact={(id) => ouvrirContact(id)}
+          />
+        )}
+        {/* Mon activité : bilan du mois, puis paiements, puis documents, sur une seule page. */}
+        {rubrique === 'Activite' && (
+          <ActiviteCoach
+            bilan={
+              <BilanMois
+                onOuvrirPaiement={(id) => router.setParams({ ...FERME, paiement: id })}
+                onOuvrirContact={(id) => ouvrirContact(id)}
+              />
+            }
+            paiements={
+              <Gestion
+                module="Paiements"
+                contactId={params.dossier}
+                onToutAfficher={() => onRubrique('Activite')}
+                onOuvrir={(id) => router.setParams({ ...FERME, paiement: id })}
+                onNouveau={() => router.setParams({ ...FERME, paiement: 'nouveau' })}
+                onSupprimer={supprimerGestion}
+                onCycles={onCycles}
+              />
+            }
+            documents={
+              <Documents
+                contactId={params.dossier}
+                onToutAfficher={() => onRubrique('Activite')}
+                onOuvrir={(id) => router.setParams({ ...FERME, doc: id })}
+                onNouveau={() => router.setParams({ ...FERME, doc: 'nouveau' })}
+              />
+            }
+          />
+        )}
         {rubrique === 'Messages' && <ConversationsCoach />}
       </View>
       )}

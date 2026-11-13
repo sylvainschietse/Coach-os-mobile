@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Dumbbell,
   FileText,
+  Newspaper,
   Package,
   UserPlus,
   UserX,
@@ -46,6 +47,7 @@ const ICONES: Record<string, LucideIcon> = {
   video_corrigee: Video,
   pack_fin: Package,
   inactif: UserX,
+  newsletter: Newspaper,
   // Rappels du client (À faire aujourd'hui).
   seance: Dumbbell,
   repas: Utensils,

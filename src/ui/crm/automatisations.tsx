@@ -9,7 +9,6 @@ import { Linking, StyleSheet, Text, View } from 'react-native';
 import { automatisations, type EntreeJournal, type EtatJournal } from '@/data/automatisations';
 import { crm, ecouterCrm } from '@/data/crm';
 import { documents, ecouterDocuments } from '@/data/documents';
-import { MODELES } from '@/domain/crm';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { adresseWeb } from '@/lib/adresse-web';
 
@@ -193,24 +192,6 @@ export function Automatisations() {
         </Repliable>
       </Carte>
 
-      <Carte style={styles.carte}>
-        <Text style={styles.titre}>Relances</Text>
-        <Text style={styles.texte}>CoachGo crée lui-même ces tâches de relance ; l’envoi du message reste fait par le coach.</Text>
-        {[
-          `${MODELES.questionnaire.libelle} : à la création d’un prospect.`,
-          `${MODELES.booster.libelle} : dès que ses réponses arrivent.`,
-          `${MODELES.rappel_booster.libelle} : la veille de la séance.`,
-          `${MODELES.suivi_booster.libelle} : deux jours après la séance.`,
-          `${MODELES.nouvelles_10j.libelle} et ${MODELES.nouvelles_1mois.libelle.toLowerCase()} : tant qu’aucun suivi n’est pris.`,
-        ].map((t) => (
-          <Text key={t} style={styles.texte}>
-            • {t}
-          </Text>
-        ))}
-        <Text style={styles.doux}>
-          Les relances J+10 / J+30 et les mises à jour de statut faites par les automatisations Airtable ne sont pas reprises ici.
-        </Text>
-      </Carte>
     </View>
   );
 }

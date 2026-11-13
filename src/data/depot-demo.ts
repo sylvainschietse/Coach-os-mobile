@@ -13,6 +13,7 @@ import type {
   RecordPerso,
   Seance,
 } from '@/domain/types';
+import type { TestClient } from '@/domain/tests-client';
 import { nouvelId } from '@/lib/identifiant';
 
 import catalogueDemo from './catalogue-demo.json';
@@ -78,6 +79,7 @@ const programmesStockes = collection<Programme & { archive?: boolean }>('program
 const exercicesAjoutes = collection<Exercice>('exercices', [], (e) => e.id);
 const mensurationsStockees = collection<Mensuration>('mensurations', MENSURATIONS_DEMO, (m) => m.id);
 const recordsStockes = collection<RecordPerso>('records', RECORDS_DEMO, (r) => r.id);
+const testsStockes = collection<TestClient>('tests-client', [], (t) => t.id);
 
 /** Une seule référence par exercice et par client : choisir un record retire la marque des autres du même exercice. */
 async function definirReferenceDemo(id: string) {
@@ -225,6 +227,12 @@ export const depotDemo: Depot = {
   ajouterMensuration: (m) => mensurationsStockees.mettre(m),
   supprimerMensuration: (id) => mensurationsStockees.retirer(id),
 
+  async testsClient(clientId) {
+    return (await testsStockes.lire()).filter((t) => t.clientId === clientId).sort((a, b) => b.date.localeCompare(a.date));
+  },
+  enregistrerTestClient: (t) => testsStockes.mettre(t),
+  supprimerTestClient: (id) => testsStockes.retirer(id),
+
   async records(clientId) {
     return (await recordsStockes.lire()).filter((r) => r.clientId === clientId).sort((a, b) => b.date.localeCompare(a.date));
   },
@@ -248,6 +256,6 @@ export const depotDemo: Depot = {
 
 export async function effacerDemo() {
   await AsyncStorage.multiRemove(
-    [CLE, ...['seances', 'programmes', 'exercices', 'mensurations', 'records', 'plans-nutrition', 'journal-nutrition', 'profils-nutrition', 'aliments', 'recettes', 'repas', 'nutrition'].map((c) => `coachos.demo.${c}`)],
+    [CLE, ...['seances', 'programmes', 'exercices', 'mensurations', 'records', 'tests-client', 'plans-nutrition', 'journal-nutrition', 'profils-nutrition', 'aliments', 'recettes', 'repas', 'nutrition'].map((c) => `coachos.demo.${c}`)],
   );
 }

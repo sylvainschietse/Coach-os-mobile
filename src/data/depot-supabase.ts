@@ -14,6 +14,7 @@ import type {
   Seance,
   Valeurs,
 } from '@/domain/types';
+import type { TestClient } from '@/domain/tests-client';
 import { attribuerModele } from '@/domain/programmes';
 import { nouvelId } from '@/lib/identifiant';
 
@@ -439,6 +440,26 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
 
     async supprimerMensuration(id) {
       echec(await db.from('mensurations').delete().eq('id', id));
+    },
+
+    async testsClient(clientId) {
+      const lignes = verifier(
+        await db.from('evaluations_client').select('*').eq('client_id', clientId).order('date', { ascending: false }),
+      ) as Record<string, unknown>[];
+      return lignes.map((l) => {
+        const d = (l.donnees ?? {}) as Partial<TestClient>;
+        return { id: l.id as string, clientId: l.client_id as string, date: l.date as string, golf: d.golf, posture: d.posture, mesures: d.mesures ?? {}, notes: sansNull(l.notes as string | null) };
+      });
+    },
+
+    async enregistrerTestClient(t) {
+      echec(
+        await db.from('evaluations_client').upsert({ id: t.id, client_id: t.clientId, date: t.date, donnees: { golf: t.golf ?? null, posture: t.posture ?? null, mesures: t.mesures }, notes: t.notes?.trim() || null }),
+      );
+    },
+
+    async supprimerTestClient(id) {
+      echec(await db.from('evaluations_client').delete().eq('id', id));
     },
 
     async records(clientId) {

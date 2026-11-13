@@ -8,13 +8,12 @@ import { Platform, Pressable, Share, Text, View } from 'react-native';
 import { factures } from '@/data/factures';
 import { offres, type EtatStripe } from '@/data/offres';
 import { useSession } from '@/data/session';
+import { brochure } from '@/data/brochure';
 import { brochureHtml, offresDeLaBrochure } from '@/domain/brochure';
-import { libellePrix, lireOffre, MODELES, PERIODICITES, type ModeleOffre, type Offre, type Periodicite, type SaisieOffre } from '@/domain/offres';
+import { deplacerOffre, libellePrix, lireOffre, MODELES, PERIODICITES, type ModeleOffre, type Offre, type Periodicite, type SaisieOffre, trierOffres } from '@/domain/offres';
 import { adresseWeb } from '@/lib/adresse-web';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { ouvrirPdf, voirPdf } from '@/lib/pdf';
-import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
-import { JOST_400_BASE64, JOST_600_BASE64, PHOTO_BROCHURE_BASE64 } from '@/lib/visuels-brochure-pdf';
 import { messageErreur, useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, Erreur, SousTitre, Texte } from '../composants';
@@ -22,6 +21,7 @@ import { Selecteur } from '../coque';
 import { CaseACocher, Saisie } from '../crm/dossier';
 import { couleurs, espace, polices } from '../theme';
 import { CarteOffre } from './carte-offre';
+import { coachDeLaBrochure, MaBrochure, VISUELS_BROCHURE } from './ma-brochure';
 
 export const lienOffre = (id: string) => adresseWeb(`/offre/${id}`);
 
@@ -203,7 +203,20 @@ function EditeurOffre({ offre, onFini }: { offre?: Offre; onFini: () => void }) 
 }
 
 /** Une offre de la liste : aperçu, lien à partager, modification, retrait. */
-function LigneOffre({ offre, pret, onModifier, onChange }: { offre: Offre; pret: boolean; onModifier: () => void; onChange: () => void }) {
+function LigneOffre({
+  offre,
+  pret,
+  onModifier,
+  onChange,
+  onDeplacer,
+}: {
+  offre: Offre;
+  pret: boolean;
+  onModifier: () => void;
+  onChange: () => void;
+  /** Monter (-1) ou descendre (1) l'offre ; absent quand elle est déjà au bout. */
+  onDeplacer: { monter?: () => Promise<void>; descendre?: () => Promise<void> };
+}) {
   const [confirmer, setConfirmer] = useState(false);
   const [occupe, setOccupe] = useState(false);
   const [info, setInfo] = useState<string>();
@@ -226,6 +239,16 @@ function LigneOffre({ offre, pret, onModifier, onChange }: { offre: Offre; pret:
 
   return (
     <CarteOffre offre={offre} mention={!offre.active ? 'Plus proposée' : offre.conseil ? 'Mon conseil' : undefined}>
+      {offre.active && (onDeplacer.monter || onDeplacer.descendre) && (
+        <View style={{ flexDirection: 'row', gap: espace(2) }}>
+          <View style={{ flex: 1 }}>
+            <Bouton variante="discret" libelle="↑ Monter" onPress={() => onDeplacer.monter && faire(onDeplacer.monter)} desactive={!onDeplacer.monter || occupe} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Bouton variante="discret" libelle="↓ Descendre" onPress={() => onDeplacer.descendre && faire(onDeplacer.descendre)} desactive={!onDeplacer.descendre || occupe} />
+          </View>
+        </View>
+      )}
       {offre.active && (
         <>
           <Text selectable style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux }}>
@@ -295,8 +318,8 @@ function LigneOffre({ offre, pret, onModifier, onChange }: { offre: Offre; pret:
   );
 }
 
-/** Brochure PDF des prix, faite à partir des offres en vente : toujours à jour, aux couleurs des factures du coach. */
-function Brochure({ liste }: { liste: Offre[] }) {
+/** Brochure PDF des prix, faite à partir des offres en vente : toujours à jour, réglée par le coach dans « Ma brochure ». */
+function Brochure({ liste, onPersonnaliser }: { liste: Offre[]; onPersonnaliser: () => void }) {
   const { profil } = useSession();
   const [occupe, setOccupe] = useState<'voir' | 'envoyer'>();
   const [erreur, setErreur] = useState<string>();
@@ -306,17 +329,11 @@ function Brochure({ liste }: { liste: Offre[] }) {
     setErreur(undefined);
     setOccupe(quoi);
     try {
-      const entete = await factures.entete().catch(() => undefined);
-      const nom = profil?.role === 'coach' ? profil.nom : (entete?.nom ?? 'Coach');
-      const html = brochureHtml(enVente, { nom, telephone: entete?.telephone || undefined }, {
-        logo: entete?.logo,
-        police: BEBAS_NEUE_BASE64,
-        texte: { normal: JOST_400_BASE64, gras: JOST_600_BASE64 },
-        photo: PHOTO_BROCHURE_BASE64,
-        lien: lienOffre,
-      });
+      const [entete, reglages] = await Promise.all([factures.entete().catch(() => undefined), brochure.lire()]);
+      const coach = coachDeLaBrochure(profil, entete);
+      const html = brochureHtml(enVente, coach, { ...VISUELS_BROCHURE, logo: entete?.logo, lien: lienOffre, reglages });
       if (quoi === 'voir') await voirPdf(html);
-      else await ouvrirPdf(html, `Les offres de ${nom}`);
+      else await ouvrirPdf(html, `Les offres de ${coach.nom}`);
     } catch (e) {
       setErreur(messageErreur(e));
     } finally {
@@ -334,6 +351,7 @@ function Brochure({ liste }: { liste: Offre[] }) {
           <Bouton variante="discret" libelle="Envoyer" onPress={() => faire('envoyer')} chargement={occupe === 'envoyer'} desactive={!!occupe} />
         </View>
       </View>
+      <Bouton variante="discret" libelle="Personnaliser (couleurs, blocs, textes)" onPress={onPersonnaliser} desactive={!!occupe} />
       <Texte doux style={{ fontSize: 13 }}>
         {`Faite avec tes ${enVente.length} offre${enVente.length > 1 ? 's' : ''} en vente. Toujours à jour : elle reprend tes prix du moment.`}
       </Texte>
@@ -345,7 +363,7 @@ function Brochure({ liste }: { liste: Offre[] }) {
 export function MesOffres() {
   const liste = useCharger(() => offres.lister(), 'offres');
   const stripe = useCharger(() => offres.etatStripe().catch(() => ({ compte: false, pret: false })), 'etat-stripe');
-  const [edition, setEdition] = useState<Offre | 'nouvelle'>();
+  const [edition, setEdition] = useState<Offre | 'nouvelle' | 'brochure'>();
   // Retour de la page Stripe : l'état du compte se met à jour.
   const rechargerStripe = stripe.recharger;
   useFocusEffect(useCallback(() => rechargerStripe(), [rechargerStripe]));
@@ -359,22 +377,38 @@ export function MesOffres() {
   return (
     <View style={{ gap: espace(3) }}>
       <CompteStripe etat={stripe.donnee} recharger={stripe.recharger} />
-      {edition ? (
+      {edition === 'brochure' ? (
+        <MaBrochure liste={toutes} lien={lienOffre} onFini={() => setEdition(undefined)} />
+      ) : edition ? (
         <EditeurOffre key={edition === 'nouvelle' ? 'nouvelle' : edition.id} offre={edition === 'nouvelle' ? undefined : edition} onFini={fini} />
       ) : (
         <>
           <Bouton libelle="+ Créer une offre" onPress={() => setEdition('nouvelle')} />
-          <Brochure liste={toutes} />
+          <Brochure liste={toutes} onPersonnaliser={() => setEdition('brochure')} />
           {liste.erreur && <Erreur message={liste.erreur} onReessayer={liste.recharger} />}
           {!liste.donnee && !liste.erreur && <Chargement />}
           {liste.donnee && toutes.length === 0 && (
             <Texte doux style={{ fontSize: 14 }}>Pas encore d’offre. Crée la première à partir d’un modèle : elle sera prête à partager en une minute.</Texte>
           )}
-          {[...toutes]
-            .sort((a, b) => Number(b.active) - Number(a.active) || a.ordre - b.ordre)
-            .map((o) => (
-              <LigneOffre key={o.id} offre={o} pret={!!stripe.donnee?.pret} onModifier={() => setEdition(o)} onChange={liste.recharger} />
-            ))}
+          {toutes.filter((o) => o.active).length > 1 && (
+            <Texte doux style={{ fontSize: 13 }}>Tes offres apparaissent dans cet ordre sur ta brochure et pour tes clients. Monte ou descends-les pour le changer.</Texte>
+          )}
+          {trierOffres(toutes).map((o) => {
+            const ranger = (sens: -1 | 1) => {
+              const ids = deplacerOffre(toutes, o.id, sens);
+              return ids ? () => offres.ordonner(ids) : undefined;
+            };
+            return (
+              <LigneOffre
+                key={o.id}
+                offre={o}
+                pret={!!stripe.donnee?.pret}
+                onModifier={() => setEdition(o)}
+                onChange={liste.recharger}
+                onDeplacer={{ monter: ranger(-1), descendre: ranger(1) }}
+              />
+            );
+          })}
         </>
       )}
     </View>

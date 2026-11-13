@@ -1,10 +1,12 @@
 // Coque reprise de l'app d'origine : en-tête sombre à ligne rouge, onglets coach (`wellness-tabs`),
 // sous-navigation (`premium-subnav`), menu CRM (`wellness-sidebar` / sélecteur « Rubrique »),
 // barre du bas client (`client-bottom-nav`), hero, statistiques et états vides.
-import { ChevronDown, Eye, type LucideIcon } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, Eye, type LucideIcon } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
-import { Image, Modal, Pressable, type PressableStateCallbackType, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, Modal, Pressable, type PressableStateCallbackType, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { usePression } from '@/lib/usePression';
 
 import { useHauteurClavier } from './clavier';
 import { arrondi, couleurs, espace, espacementTitre, polices, type Univers } from './theme';
@@ -76,14 +78,17 @@ export function EnTete({
 
 /** Bouton icône de l'en-tête (minuteur, déconnexion) : toujours un nom accessible. */
 export function BoutonIcone({ icone: Icone, nom, onPress }: { icone: LucideIcon; nom: string; onPress: () => void }) {
+  const { enCours, presser } = usePression(onPress);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={nom}
-      onPress={onPress}
+      accessibilityState={{ busy: enCours }}
+      disabled={enCours}
+      onPress={presser}
       style={(e) => [styles.boutonIcone, (e.pressed || survol(e)) && { backgroundColor: '#3a3a3a' }]}
     >
-      <Icone size={20} color="#FFFFFF" />
+      {enCours ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Icone size={20} color="#FFFFFF" />}
     </Pressable>
   );
 }
@@ -396,24 +401,40 @@ export function BoutonContour({
   nom?: string;
   desactive?: boolean;
 }) {
+  const { enCours, presser } = usePression(onPress);
+  // Pendant l'action, la roue remplace l'icône (ou s'ajoute au libellé) : l'appui est visiblement pris en compte.
+  const roue = enCours && <ActivityIndicator size="small" color={couleurs.texte} />;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={nom ?? libelle}
-      disabled={desactive}
-      onPress={onPress}
+      accessibilityState={{ disabled: !!(desactive || enCours), busy: enCours }}
+      disabled={desactive || enCours}
+      onPress={presser}
       style={(e) => [
         styles.contour,
         !libelle && { width: 44, paddingHorizontal: 0 },
-        survol(e) && { backgroundColor: couleurs.discret },
+        (survol(e) || e.pressed) && { backgroundColor: couleurs.discret },
         desactive && { opacity: 0.5 },
       ]}
     >
-      {Icone && iconeAGauche && <Icone size={16} color={couleurs.texte} />}
+      {Icone && iconeAGauche && (roue || <Icone size={16} color={couleurs.texte} />)}
       {libelle && <Text style={styles.contourTexte}>{libelle}</Text>}
-      {Icone && !iconeAGauche && <Icone size={libelle ? 14 : 16} color={couleurs.texte} />}
+      {Icone && !iconeAGauche ? roue || <Icone size={libelle ? 14 : 16} color={couleurs.texte} /> : !Icone && roue}
     </Pressable>
   );
+}
+
+/** Hauteur de la barre du bas (boutons de 60px, marges, trait du haut), sans la zone système. */
+const HAUTEUR_BARRE = 72;
+
+/**
+ * Marge à laisser sous le contenu d'un écran qui a la barre du bas : la barre flotte par-dessus la page, et sur
+ * Android elle s'allonge de la zone des boutons système. Sans cette marge, le bas de la page reste caché dessous.
+ */
+export function useMargeBarre(enPlus = espace(6)) {
+  const { bottom } = useSafeAreaInsets();
+  return HAUTEUR_BARRE + bottom + enPlus;
 }
 
 /** `client-bottom-nav` : cinq entrées toujours visibles, au moins 60px, trait rouge de 18 × 3px sur l'actif. */
@@ -422,17 +443,20 @@ export function BarreClient<T extends string>({
   valeur,
   onChange,
   universDe,
+  nom = 'Navigation de l’espace client',
 }: {
   onglets: OngletDef<T>[];
   valeur: T;
   onChange: (v: T) => void;
   /** L'onglet actif prend la couleur de son univers (fond pâle, trait, icône). */
   universDe?: (cle: T) => Univers;
+  /** Nom lu par les lecteurs d'écran (la même barre sert à l'espace coach). */
+  nom?: string;
 }) {
   const { bottom } = useSafeAreaInsets();
   const petit = useWindowDimensions().width < 640;
   return (
-    <View accessibilityRole="tablist" aria-label="Navigation de l’espace client" style={[styles.barre, { paddingBottom: bottom }]}>
+    <View accessibilityRole="tablist" aria-label={nom} style={[styles.barre, { paddingBottom: bottom }]}>
       <View style={styles.barreLigne}>
         {onglets.map((o) => {
           const actif = o.cle === valeur;
@@ -446,7 +470,8 @@ export function BarreClient<T extends string>({
               accessibilityState={{ selected: actif }}
               aria-selected={actif}
               aria-current={actif ? 'page' : undefined}
-              onPress={() => !actif && onChange(o.cle)}
+              // Toucher l'onglet ouvert ramène à son début (Progrès : la page des cartes).
+              onPress={() => onChange(o.cle)}
               style={[styles.barreBouton, actif && { backgroundColor: u?.clair ?? 'rgba(195, 24, 30, 0.065)' }]}
             >
               {actif && <View style={[styles.barreTrait, { backgroundColor: teinte, backgroundImage: u?.degrade }]} />}
@@ -515,12 +540,20 @@ export function EnTeteRubrique({ kicker, titre, sousTitre, action }: { kicker: s
 export function Stat({ libelle, valeur, onPress, style }: { libelle: string; valeur: string; onPress?: () => void; style?: StyleProp<ViewStyle> }) {
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? `${libelle} : ${valeur}` : undefined}
+      disabled={!onPress}
       onPress={onPress}
       style={(e) => [styles.stat, survol(e) && { borderColor: couleurs.rougeMarque }, style]}
     >
-      <Text style={{ fontSize: 12, fontFamily: polices.texte, color: couleurs.texteDoux }}>{libelle}</Text>
-      <Text style={styles.statValeur}>{valeur}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+        <Text style={{ flex: 1, fontSize: 12, fontFamily: polices.texte, color: couleurs.texteDoux }}>{libelle}</Text>
+        {onPress && <ChevronRight size={14} color={couleurs.texteDoux} />}
+      </View>
+      {/* Une seule ligne : un montant comme « 1 540 € » ne se coupe plus en deux, la taille s'adapte à la tuile. */}
+      <Text style={styles.statValeur} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+        {valeur}
+      </Text>
     </Pressable>
   );
 }

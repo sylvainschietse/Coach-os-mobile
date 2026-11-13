@@ -26,13 +26,16 @@ import {
   type StatutContact,
 } from '@/domain/crm';
 import { ENTRETIEN, TESTS } from '@/domain/evaluation';
+import { formaterMesure, lireMesure, TESTS_GOLF } from '@/domain/tests-golf';
+import { TestsClient } from '../suivi/tests-client';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { NutritionDuClient } from '../alimentation/nutrition-coach';
 import { BoutonContour, SousNav, type OngletDef } from '../coque';
 import { AbonnementClient } from '../abonnement';
 import { FacturesClient } from '../factures';
-import { ProgrammeClient, SuiviClient } from '../fiche-client';
+import { ProgrammeClient } from '../fiche-client';
+import { SuiviCoach } from '../suivi/suivi-coach';
 import { Bilans } from './bilans';
 import { Documents } from './documents';
 import { Chargement, Erreur } from '../composants';
@@ -44,20 +47,34 @@ import { ParcoursContact } from './parcours';
 import { ReponsesQuestionnaire } from './reponses-questionnaire';
 import { Cellule, Choix, Grille, Initiales, Modale, PiedEditeur, Repliable, Saisie, Valeur } from './dossier';
 
-export type VoletFiche = 'fiche' | 'paiements' | 'messages' | 'boosters' | 'programme' | 'suivi' | 'nutrition' | 'documents';
-export const VOLETS_FICHE: VoletFiche[] = ['fiche', 'paiements', 'messages', 'boosters', 'programme', 'suivi', 'nutrition', 'documents'];
-const VOLETS: OngletDef<VoletFiche>[] = [
-  { cle: 'fiche', libelle: 'Coordonnées' },
-  { cle: 'paiements', libelle: 'Abonnement et paiements' },
-  { cle: 'messages', libelle: 'Messages' },
-  { cle: 'boosters', libelle: 'Boosters' },
-  { cle: 'programme', libelle: 'Programme' },
+export type VoletFiche = 'fiche' | 'paiements' | 'messages' | 'boosters' | 'programme' | 'suivi' | 'tests' | 'nutrition' | 'documents';
+export const VOLETS_FICHE: VoletFiche[] = ['fiche', 'paiements', 'messages', 'boosters', 'programme', 'suivi', 'tests', 'nutrition', 'documents'];
+/**
+ * Un client : son suivi d'abord, puis programme, nutrition, échanges (messages, bilans et documents), abonnement, et
+ * ses coordonnées (avec ses Boosters) en dernier. Un prospect n'a pas encore d'espace client : coordonnées, Boosters, documents.
+ */
+const VOLETS_CLIENT: OngletDef<VoletFiche>[] = [
   { cle: 'suivi', libelle: 'Suivi' },
+  { cle: 'tests', libelle: 'Tests' },
+  { cle: 'programme', libelle: 'Programme' },
   { cle: 'nutrition', libelle: 'Nutrition' },
+  { cle: 'messages', libelle: 'Échanges' },
+  { cle: 'paiements', libelle: 'Abonnement' },
+  { cle: 'fiche', libelle: 'Coordonnées' },
+];
+const VOLETS_PROSPECT: OngletDef<VoletFiche>[] = [
+  { cle: 'fiche', libelle: 'Coordonnées' },
+  { cle: 'boosters', libelle: 'Boosters' },
   { cle: 'documents', libelle: 'Documents' },
 ];
-/** Un prospect n'a pas encore d'espace client : ni programme, ni suivi, ni nutrition. */
-const VOLETS_CLIENT: VoletFiche[] = ['paiements', 'messages', 'programme', 'suivi', 'nutrition'];
+
+/** Le volet à montrer : par défaut le suivi d'un client, les coordonnées d'un prospect ; les anciens liens retombent sur le bon volet. */
+export function voletAffiche(volet: VoletFiche | undefined, client: boolean): VoletFiche {
+  if (!client) return volet && VOLETS_PROSPECT.some((v) => v.cle === volet) ? volet : 'fiche';
+  if (volet === 'documents') return 'messages';
+  if (volet === 'boosters') return 'fiche';
+  return volet ?? 'suivi';
+}
 
 type Brouillon = Record<keyof Required<SaisieContactFiche>, string>;
 const CLES: (keyof Brouillon)[] = [
@@ -108,7 +125,8 @@ export function FicheContactModale({
   id?: string;
   /** Création d'un client qui commence directement (sans Booster) : statut « Client actif » d'emblée. */
   nouveauClient?: boolean;
-  volet: VoletFiche;
+  /** Absent : le volet par défaut (le suivi d'un client, les coordonnées d'un prospect). */
+  volet?: VoletFiche;
   onVolet: (v: VoletFiche) => void;
   onFermer: () => void;
   /** Doublon trouvé à la création : ouvrir la fiche existante au lieu d'en créer une seconde. */
@@ -131,7 +149,7 @@ export function FicheContactModale({
     <Editeur
       key={fiche ? `${fiche.contact.id}` : 'nouveau'}
       fiche={fiche ?? undefined}
-      volet={id ? volet : 'fiche'}
+      volet={id ? voletAffiche(volet, !!fiche?.contact.clientId) : 'fiche'}
       onVolet={onVolet}
       onFermer={onFermer}
       onOuvrirAutre={onOuvrirAutre}
@@ -180,7 +198,7 @@ function Editeur({
   const contact = fiche?.contact;
   const { profil } = useSession();
   const coachId = profil?.role === 'coach' ? profil.coachId : '';
-  const volets = VOLETS.filter((v) => contact?.clientId || !VOLETS_CLIENT.includes(v.cle));
+  const volets = contact?.clientId ? VOLETS_CLIENT : VOLETS_PROSPECT;
   const [initial, setInitial] = useState(() => brouillonDe(contact, nouveauClient ? 'Client actif' : undefined));
   const [brouillon, setBrouillon] = useState(initial);
   const [occupe, setOccupe] = useState(false);
@@ -332,7 +350,7 @@ function Editeur({
           </View>
         </View>
       )}
-      {volet === 'boosters' && fiche && (
+      {(volet === 'boosters' || (volet === 'fiche' && !!contact?.clientId)) && fiche && (
         <BoostersDuContact
           fiche={fiche}
           onBooster={onBooster}
@@ -341,14 +359,16 @@ function Editeur({
         />
       )}
       {volet === 'programme' && contact?.clientId && <ProgrammeClient key={contact.clientId} clientId={contact.clientId} coachId={coachId} />}
-      {volet === 'suivi' && contact?.clientId && <SuiviClient key={contact.clientId} clientId={contact.clientId} />}
+      {volet === 'suivi' && contact?.clientId && <SuiviCoach key={contact.clientId} clientId={contact.clientId} prenom={contact.prenom} />}
+      {volet === 'tests' && contact?.clientId && <TestsClient key={contact.clientId} clientId={contact.clientId} prenom={contact.prenom} />}
       {volet === 'messages' && contact?.clientId && (
         <View style={{ marginTop: espace(4) }}>
           <Conversation key={contact.clientId} clientId={contact.clientId} moi="coach" nomAutre={contact.prenom} />
         </View>
       )}
+      {/* Échanges : la conversation, puis les bilans complets et les documents partagés avec le client. */}
       {volet === 'nutrition' && contact && <NutritionContact contact={contact} />}
-      {volet === 'documents' && contact && (
+      {(volet === 'documents' || (volet === 'messages' && !!contact?.clientId)) && contact && (
         <View style={{ marginTop: espace(4), gap: espace(6) }}>
           <Bilans contactId={contact.id} onOuvrir={onBilan} onNouveau={() => onBilan('nouveau')} onSupprimer={onSupprimerBilan} />
           <Documents contactId={contact.id} onOuvrir={onDocument} onNouveau={() => onDocument('nouveau')} />
@@ -601,6 +621,9 @@ export function LectureBooster({ booster: b }: { booster: Booster }) {
             libelle: `${t.libelle} — observations`,
             valeur: e?.tests[t.id]?.observations.join(' · '),
           },
+          ...(e?.tests[t.id]?.mesures?.length
+            ? [{ libelle: `${t.libelle} — mesures vidéo`, valeur: e.tests[t.id]!.mesures!.map((m) => `${m.libelle} ${m.angle}°`).join(' · ') }]
+            : []),
           ...(t.rpe
             ? [
                 {
@@ -613,6 +636,18 @@ export function LectureBooster({ booster: b }: { booster: Booster }) {
         { libelle: 'Douleur pendant les tests', valeur: e?.douleur },
         { libelle: 'Douleur / gêne — précision', valeur: e?.douleurPrecision },
         { libelle: 'Observations tests', valeur: e?.notes, long: true },
+        ...(e?.golf?.actif
+          ? TESTS_GOLF.map((t) => ({
+              libelle: `Golf · ${t.libelle}`,
+              valeur:
+                t.champs
+                  .flatMap((c) => {
+                    const n = lireMesure(e.golf!.mesures[t.id]?.[c.cle]);
+                    return n === undefined ? [] : [`${c.libelle} ${formaterMesure(n, c.unite)}`];
+                  })
+                  .join(' · ') || undefined,
+            }))
+          : []),
       ],
     },
     {

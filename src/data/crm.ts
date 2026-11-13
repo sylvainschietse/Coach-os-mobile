@@ -39,6 +39,8 @@ export interface DepotCrm {
   ajouterRelance(contactId: string, echeance: string, modele: ModeleMessage, note?: string): Promise<void>;
   terminerRelance(id: string): Promise<void>;
   reporterRelance(id: string, echeance: string): Promise<void>;
+  /** Relances du coach (Mes relances) arrivées aujourd'hui : une tâche « libre » chacune, titre = nom, note = message prêt. */
+  ajouterRelancesPerso(relances: { contactId: string; echeance: string; titre: string; note: string }[]): Promise<void>;
   /** Ouvre l'espace client (programmes, séances) et clôt les relances commerciales. */
   devenirClient(contactId: string): Promise<void>;
   /**
@@ -64,6 +66,8 @@ export interface DepotCrm {
   supprimerTache(id: string): Promise<void>;
   creerPaiement(s: gestion.SaisiePaiement): Promise<string>;
   modifierPaiement(id: string, s: gestion.SaisiePaiement): Promise<void>;
+  /** Plusieurs lignes d'un client marquées payées en une fois, avec le même moyen de paiement. */
+  reglerPaiements(ids: string[], moyen: gestion.MoyenPaiement): Promise<void>;
   supprimerPaiement(id: string): Promise<void>;
   creerBilan(s: gestion.SaisieBilan): Promise<string>;
   modifierBilan(id: string, s: gestion.SaisieBilan, envoye: boolean): Promise<void>;
@@ -200,6 +204,8 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
     ajouterRelance: (contactId, echeance, modele, note) =>
       appliquer((c, ctx) => regles.ajouterRelance(c, contactId, echeance, modele, note, ctx)),
     terminerRelance: (id) => appliquer((c, ctx) => regles.terminerRelance(c, id, ctx)),
+    ajouterRelancesPerso: (relances) =>
+      appliquer((c, ctx) => ({ ...c, relances: [...c.relances, ...relances.map((r) => ({ ...r, id: ctx.nouvelId(), modele: 'libre' as const }))] })),
     reporterRelance: (id, echeance) => appliquer((c) => regles.reporterRelance(c, id, echeance)),
     async devenirClient(contactId) {
       const avant = await lire();
@@ -249,6 +255,7 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
     supprimerTache: (id) => appliquer((c) => gestion.supprimerTache(c, id)),
     creerPaiement: (saisie) => creer((c, ctx) => gestion.creerPaiement(c, saisie, ctx)),
     modifierPaiement: (id, saisie) => appliquer((c) => gestion.modifierPaiement(c, id, saisie)),
+    reglerPaiements: (ids, moyen) => appliquer((c) => gestion.reglerPaiements(c, ids, moyen)),
     supprimerPaiement: (id) => appliquer((c) => gestion.supprimerPaiement(c, id)),
     creerBilan: (saisie) => creer((c, ctx) => gestion.creerBilan(c, saisie, ctx)),
     modifierBilan: (id, saisie, envoye) => appliquer((c, ctx) => gestion.modifierBilan(c, id, saisie, ctx, envoye)),

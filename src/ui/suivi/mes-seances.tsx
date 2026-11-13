@@ -1,7 +1,8 @@
 // Suivi › Mes séances : le même tableau « semaine par semaine » que le coach, vu par le client, avec un seul bouton
 // « Ajouter une séance » : soit une séance de son programme (y compris faite un jour précédent), soit une autre
 // activité (cours collectif, sport, séance à lui) avec ses détails.
-import { Dumbbell, Plus, Sparkles } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { Dumbbell, PlayCircle, Plus, Sparkles } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
@@ -30,7 +31,8 @@ export function MesSeances({ clientId, apercu }: { clientId: string; apercu?: bo
   const espace = useCharger(() => entrainement.espaceClient(clientId), `espace-suivi-${clientId}`);
   const cycle = espace.donnee?.cycle;
   const calendrier = useCharger(() => (cycle ? entrainement.calendrier(clientId, cycle.id) : Promise.resolve([])), `calendrier-suivi-${clientId}-${cycle?.id ?? ''}`);
-  const libres = useCharger(async () => (await activites.liste(clientId, 200).catch(() => [] as Activite[])).filter(estLibre), `libres-suivi-${clientId}`);
+  // Toutes ses activités hors programme (saisies ou venues de la montre) ; seules les saisies se modifient.
+  const libres = useCharger(() => activites.liste(clientId, 200).catch(() => [] as Activite[]), `libres-suivi-${clientId}`);
   const records = useCharger(() => depot.records(clientId).catch(() => []), `records-suivi-${clientId}`);
   const minuteurs = useMinuteurs();
   const [choix, setChoix] = useState<Choix>();
@@ -177,7 +179,7 @@ export function MesSeances({ clientId, apercu }: { clientId: string; apercu?: bo
                   Le {jourCourt(jourParis(libre.debut))} · {resumeActivite(libre)}
                 </Text>
                 <DetailActiviteLibre a={libre} />
-                {!apercu && (
+                {!apercu && estLibre(libre) && (
                   <Ligne>
                     <Action petit variante="contour" libelle="Modifier" onPress={() => (setAjout(null), setModif(libre))} />
                   </Ligne>
@@ -319,7 +321,7 @@ function SeanceDuProgramme({
         </Pressable>
       </View>
       {!ouvert ? (
-        <Text style={ts.doux}>Ton cycle est terminé : demande à ton coach de lancer le suivant.</Text>
+        <Text style={ts.doux}>Ton programme est terminé : demande à ton coach de lancer le suivant.</Text>
       ) : (
         <>
           <View style={{ gap: 8 }}>
@@ -342,9 +344,17 @@ function SeanceDuProgramme({
               <ChampTexte libelle="Date" valeur={autreDate} onChange={setAutreDate} placeholder="26/10" erreur={autreDate && !date ? 'Écris la date comme 26/10' : undefined} />
             )}
             {horsCycle && (
-              <Text style={ts.erreur}>Choisis un jour entre le début de ton cycle ({jourCourt(cycle.debut)}) et aujourd’hui.</Text>
+              <Text style={ts.erreur}>Choisis un jour entre le début de ton programme ({jourCourt(cycle.debut)}) et aujourd’hui.</Text>
             )}
           </View>
+          {/* Faite maintenant : la même séance guidée que depuis l'accueil (un bloc par page, vidéos). */}
+          {seance && quand === 'aujourdhui' && seance.blocs.some((b) => b.lignes.length) && (
+            <Action
+              icone={PlayCircle}
+              libelle="Démarrer la séance guidée"
+              onPress={() => router.push({ pathname: '/client/seance-bloc', params: { seance: seance.id, plan: '' } })}
+            />
+          )}
           {seance && date && !horsCycle && (
             <SeanceLog
               key={`${seance.id}:${date}`}

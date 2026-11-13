@@ -2,6 +2,7 @@
 // ou choisir une vidéo de la galerie, l'envoyer au coach, puis retrouver sa réponse écrite ou vocale sous l'exercice.
 // Côté coach, dans l'Entraînement du client : la vidéo à côté des séries, du ressenti et du commentaire de la séance,
 // et une réponse par écrit et/ou par un vocal. Tout est effacé 30 jours après l'envoi.
+import { titreClient } from '@/domain/entrainement';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { File } from 'expo-file-system';
@@ -661,7 +662,7 @@ function CarteVideoCoach({ v, realisations, maintenant, onChange }: { v: VideoMo
       </View>
       <Text style={ts.doux}>
         Envoyée le {jourMois(v.creeLe)}
-        {v.seanceTitre ? ` · ${v.seanceTitre}` : ''} · effacée {restant <= 1 ? (restant === 0 ? 'aujourd’hui' : 'demain') : `dans ${restant} jours`}
+        {v.seanceTitre ? ` · ${titreClient(v.seanceTitre)}` : ''} · effacée {restant <= 1 ? (restant === 0 ? 'aujourd’hui' : 'demain') : `dans ${restant} jours`}
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
         <LecteurVideo chemin={v.chemin} dureeS={v.dureeS} largeur={200} onVue={() => !v.vueLe && videos.marquerVue(v.id).catch(() => undefined)} />

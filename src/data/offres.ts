@@ -26,6 +26,8 @@ export interface DepotOffres {
   /** Coach : toutes ses offres ; client : les offres proposées par son coach. */
   lister(): Promise<Offre[]>;
   enregistrer(offre: SaisieOffre, id?: string): Promise<string>;
+  /** Range les offres dans cet ordre (la première de la liste passe en tête de la brochure). */
+  ordonner(ids: string[]): Promise<void>;
   /** Supprime l'offre, ou la retire de la vente si des clients l'ont (ils la gardent, à leur prix). */
   retirer(id: string): Promise<'supprimee' | 'retiree'>;
   /** Met le prix à jour sur le compte Stripe du coach (fait aussi au premier paiement). */
@@ -70,6 +72,9 @@ const demo: DepotOffres = {
     const cree: Offre = { ...offre, id: nouvelId(), ordre: Math.max(0, ...memoire.offres.map((o) => o.ordre)) + 1, enLigne: false };
     memoire.offres.push(cree);
     return cree.id;
+  },
+  async ordonner(ids) {
+    memoire.offres = memoire.offres.map((o) => (ids.includes(o.id) ? { ...o, ordre: ids.indexOf(o.id) + 1 } : o));
   },
   async retirer(id) {
     memoire.offres = memoire.offres.filter((o) => o.id !== id);
@@ -191,6 +196,10 @@ function enLigne(db: NonNullable<typeof supabase>): DepotOffres {
         .single();
       if (error) throw new Error('L’offre n’a pas pu être créée. Réessaie.');
       return data.id as string;
+    },
+    async ordonner(ids) {
+      const resultats = await Promise.all(ids.map((id, i) => db.from('offres').update({ ordre: i + 1 }).eq('id', id)));
+      if (resultats.some((r) => r.error)) throw new Error('Le nouvel ordre n’a pas pu être enregistré. Réessaie.');
     },
     async retirer(id) {
       const { count } = await db.from('clients').select('id', { count: 'exact', head: true }).eq('offre_id', id);

@@ -1,6 +1,7 @@
 // Bilan.tsx et BilanComparaison.tsx d'origine (C15 « Séances réalisées ») : résultats d'un client en lecture seule,
 // filtres (profil, cycle, séance, exercice), cycles liés, comparaison brute des deux derniers résultats d'une même
 // ligne dans un même cycle, puis les dernières séances. Les séries cardio et statiques s'écrivent avec leurs unités.
+import { titreClient } from '@/domain/entrainement';
 import { AlertTriangle, ExternalLink, RotateCw } from 'lucide-react-native';
 import { useMemo, useState, type ReactNode } from 'react';
 import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
@@ -11,6 +12,7 @@ import type { SerieRealisee } from '@/domain/types';
 import { useCharger } from '@/lib/useCharger';
 
 import { TitreDisplay } from '../coque';
+import { ActivitesHorsProgramme, useActivitesClient } from '../suivi/activites-hors-programme';
 import { Badge, Choix, Recherche } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
 import { Action, Ligne, ts } from './commun';
@@ -79,13 +81,13 @@ export function SeancesRealisees({
 
   const optionsSeances = useMemo(() => {
     const m = new Map<string, string>();
-    (donnee ?? []).forEach((s) => m.set(s.r.seanceId, s.r.seanceTitre || 'Séance sans nom'));
+    (donnee ?? []).forEach((s) => m.set(s.r.seanceId, titreClient(s.r.seanceTitre || 'Séance sans nom')));
     return [...m];
   }, [donnee]);
   const optionsCycles = useMemo(() => {
     const m = new Map<string, string>();
     (profil?.cycles ?? []).forEach((c) => m.set(c.id, c.nom));
-    (donnee ?? []).forEach((s) => !m.has(s.cycleKey) && m.set(s.cycleKey, s.r.cycleNom || 'Cycle ?'));
+    (donnee ?? []).forEach((s) => !m.has(s.cycleKey) && m.set(s.cycleKey, s.r.cycleNom || 'Programme ?'));
     return [...m];
   }, [donnee, profil]);
   const filtrees = useMemo(
@@ -149,9 +151,9 @@ export function SeancesRealisees({
           )}
         {filtre(
           <Choix
-            libelle="Cycle"
+            libelle="Programme"
             sansLibelle
-            vide="Tous les cycles"
+            vide="Tous les programmes"
             choix={optionsCycles.map(([, n]) => n)}
             valeur={optionsCycles.find(([k]) => k === cycle)?.[1]}
             onChange={(n) => setCycle(optionsCycles.find(([, x]) => x === n)?.[0] ?? '')}
@@ -208,10 +210,17 @@ export function SeancesRealisees({
               <CarteSeance key={s.r.id} s={s} onOuvrirProgramme={onOuvrirProgramme} />
             ))}
           </View>
+          <ActivitesDuProfil clientId={profil.clientId} />
         </>
       )}
     </View>
   );
+}
+
+/** Marche, course, cours ou séance à lui : ce que le client a fait en plus du programme. */
+function ActivitesDuProfil({ clientId }: { clientId: string }) {
+  const { donnee } = useActivitesClient(clientId);
+  return <ActivitesHorsProgramme liste={donnee} proprietaire={false} />;
 }
 
 function CyclesLiens({
@@ -297,7 +306,7 @@ function Comparaison({ seances }: { seances: SeanceBilan[] }) {
       </Text>
       {comparables.length === 0 ? (
         <Text style={[ts.texte, { marginTop: 8, borderRadius: 10, backgroundColor: 'rgba(237,239,242,0.5)', padding: 12, color: couleurs.texteDoux }]}>
-          {tous.length ? 'Aucun exercice n’a encore 2 résultats dans un même cycle : rien à comparer.' : 'Aucun résultat dans cette sélection.'}
+          {tous.length ? 'Aucun exercice n’a encore 2 résultats dans un même programme : rien à comparer.' : 'Aucun résultat dans cette sélection.'}
         </Text>
       ) : (
         <View style={{ marginTop: 8, gap: 12 }}>
@@ -310,7 +319,7 @@ function Comparaison({ seances }: { seances: SeanceBilan[] }) {
               <View key={i} style={{ borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 10, padding: 12, gap: 8 }}>
                 <Ligne style={{ gap: 8 }}>
                   <Text style={[ts.texte, { fontFamily: polices.texteMoyen }]}>{g.nom}</Text>
-                  <Badge libelle={g.cycleNom || 'Cycle ?'} />
+                  <Badge libelle={g.cycleNom || 'Programme ?'} />
                   {b.ex.prescription && (
                     <Text style={ts.doux}>
                       Prescrit actuellement : {b.ex.prescription.series} × {b.ex.prescription.repetitions || '—'}
@@ -352,11 +361,11 @@ function CarteSeance({ s, onOuvrirProgramme }: { s: SeanceBilan; onOuvrirProgram
   return (
     <View style={[ts.carte, { padding: 16, gap: 4 }]}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-        <Text style={[ts.texte, { fontFamily: polices.texteMoyen, flexShrink: 1 }]}>{r.seanceTitre || 'Séance non identifiée'}</Text>
+        <Text style={[ts.texte, { fontFamily: polices.texteMoyen, flexShrink: 1 }]}>{titreClient(r.seanceTitre || 'Séance non identifiée')}</Text>
         <Text style={ts.doux}>{dateParis(r.fin)}</Text>
       </View>
       <Ligne style={{ gap: 8 }}>
-        <Badge libelle={r.cycleNom || 'Cycle ?'} />
+        <Badge libelle={r.cycleNom || 'Programme ?'} />
         {r.programmeId ? (
           <Text accessibilityRole="button" onPress={() => onOuvrirProgramme(r.programmeId!)} style={[ts.doux, { textDecorationLine: 'underline' }]}>
             {r.programmeNom || 'Programme'}

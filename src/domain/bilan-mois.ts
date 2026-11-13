@@ -206,3 +206,71 @@ export function ecart(valeur: number, reference: number): number | null {
   if (!reference) return null;
   return Math.round(((valeur - reference) / reference) * 100);
 }
+
+/** Les tuiles du bilan : chacune ouvre la liste de ce qu'elle compte. */
+export type Tuile = 'encaisse' | 'aEncaisser' | 'abonnements' | 'packs' | 'seances' | 'clients' | 'nouveaux' | 'manquees';
+
+/** Une personne derrière les chiffres : son contact quand on le connaît (pour ouvrir sa fiche). */
+export interface PersonneMois {
+  cle: string;
+  nom: string;
+  contactId?: string;
+  seances: number;
+  montant: number;
+}
+
+export interface DetailMois {
+  encaisse: Paiement[];
+  aEncaisser: Paiement[];
+  abonnements: Paiement[];
+  packs: Paiement[];
+  seances: RendezVous[];
+  manquees: RendezVous[];
+  clients: PersonneMois[];
+  nouveaux: PersonneMois[];
+}
+
+/** Ce qu'il y a derrière chaque tuile du mois, avec les mêmes règles que chiffresDuMois. */
+export function detailDuMois(d: Donnees, mois: Mois): DetailMois {
+  const k = cles(d);
+  const parDate = (a: Paiement, b: Paiement) => (a.date ?? '').localeCompare(b.date ?? '') || a.titre.localeCompare(b.titre);
+  const duMois = d.paiements.filter((p) => p.date?.slice(0, 7) === mois).sort(parDate);
+  const payes = duMois.filter((p) => p.statut === 'Payé');
+  const rdv = d.rendezVous.filter((r) => estSeance(r) && moisParis(r.debut) === mois).sort((a, b) => a.debut.localeCompare(b.debut));
+  const realises = rdv.filter((r) => r.statut === 'realise');
+
+  const personnes = new Map<string, PersonneMois>();
+  const personne = (cle: string, repli?: string) => {
+    let x = personnes.get(cle);
+    if (!x) {
+      x = { cle, nom: k.nom(cle, repli), contactId: cle.startsWith('contact:') ? cle.slice(8) : undefined, seances: 0, montant: 0 };
+      personnes.set(cle, x);
+    }
+    return x;
+  };
+  const vus = new Set<string>();
+  for (const r of realises)
+    for (const x of r.participants) {
+      const cle = k.duClient(x.clientId);
+      personne(cle, `${x.prenom} ${x.nom}`.trim()).seances += 1;
+      vus.add(cle);
+    }
+  for (const p of payes) {
+    const cle = k.duPaiement(p);
+    if (cle) personne(cle).montant = Math.round((personne(cle).montant + (p.montant ?? 0)) * 100) / 100;
+  }
+  const premier = premiersMois(d, k);
+  const actifs = new Set([...vus, ...payes.filter((p) => (p.montant ?? 0) > 0).map(k.duPaiement).filter((x): x is string => !!x)]);
+  const parNom = (a: PersonneMois, b: PersonneMois) => a.nom.localeCompare(b.nom);
+
+  return {
+    encaisse: payes,
+    aEncaisser: duMois.filter((p) => p.statut === 'En attente'),
+    abonnements: payes.filter((p) => sourcePaiement(p) === 'abonnement'),
+    packs: payes.filter((p) => sourcePaiement(p) === 'pack'),
+    seances: realises,
+    manquees: rdv.filter((r) => r.statut === 'absent' || r.statut === 'annule_tard'),
+    clients: [...vus].map((cle) => personnes.get(cle)!).sort(parNom),
+    nouveaux: [...actifs].filter((cle) => premier.get(cle) === mois).map((cle) => personnes.get(cle)!).sort(parNom),
+  };
+}

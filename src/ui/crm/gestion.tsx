@@ -41,11 +41,12 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Selecteur, Vide } from '../coque';
 import { Chargement, Erreur } from '../composants';
-import { BoutonFacture, BoutonToutesFactures } from '../factures';
+import { BoutonFacture, BoutonToutesFactures, FactureDeLaFiche } from '../factures';
 import { couleurs, espace, polices } from '../theme';
 import { adresseQuestionnaire, EnvoiMessage, nomComplet, useCoachNom } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
 import { Badge, BoutonPied, CaseACocher, Cellule, Choix, Grille, Libelle, Modale, PiedEditeur, Recherche, Saisie, useBlocNomCarte } from './dossier';
+import { ReglerPlusieurs } from './regler-groupe';
 
 export type ModuleGestion = 'Coachings' | 'Taches' | 'Paiements';
 export type ASupprimer = { module: ModuleGestion; id: string; nom: string; contact?: string };
@@ -166,6 +167,7 @@ export function Gestion({
                       reference={l.reference}
                       date={l.date}
                       onCree={lesFactures.recharger}
+                      onOuvrirFiche={() => onOuvrir(l.id)}
                       envoi={contact ? { contactId: contact.id, prenom: contact.prenom, telephone: contact.telephone, email: contact.email } : undefined}
                     />
                   )}
@@ -181,7 +183,7 @@ export function Gestion({
               </View>
               {module === 'Coachings' && (
                 <View style={styles.ligne}>
-                  <BoutonContour libelle="Gérer les cycles" onPress={onCycles} />
+                  <BoutonContour libelle="Gérer ses programmes" onPress={onCycles} />
                 </View>
               )}
               {module === 'Taches' && (l.ouverte || contact) && (
@@ -273,6 +275,9 @@ export function Gestion({
                     </View>
                     <Text style={styles.montant}>{montantLisible(g.total)}</Text>
                   </Pressable>
+                  {ouvert && g.cle && (
+                    <ReglerPlusieurs key={`regler-${g.cle}-${mois}`} prenom={contacts.get(g.cle)?.prenom ?? ''} lignes={g.lignes.filter((l) => l.statut === 'En attente')} />
+                  )}
                   {ouvert && <View style={{ gap: espace(2) }}>{g.lignes.map(carte)}</View>}
                 </View>
               );
@@ -611,6 +616,16 @@ function Formulaire({
             <Saisie libelle="Notes" long valeur={b.notes} onChange={(notes) => maj({ notes })} />
           </Cellule>
         </Grille>
+      )}
+      {module === 'Paiements' && id && (
+        <FactureDeLaFiche
+          paiementId={id}
+          modifie={modifie}
+          envoi={(() => {
+            const c = carnet.contacts.find((x) => x.id === initial.contactId);
+            return c ? { contactId: c.id, prenom: c.prenom, telephone: c.telephone, email: c.email } : undefined;
+          })()}
+        />
       )}
       {module === 'Paiements' && lireSeances(initial.notes) && (
         <DetailSeances

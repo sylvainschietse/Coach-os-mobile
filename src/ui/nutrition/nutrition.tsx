@@ -1,7 +1,7 @@
 // NutritionProfile.tsx d'origine (N01) : « Ma nutrition », sous-rubriques Mon profil / Recettes / Ma semaine / Journal /
 // Mes recettes, estimation Mifflin–St Jeor, profil alimentaire et, pour le coach, ajustement des objectifs.
 // Le brouillon du formulaire reste sur l'appareil ; Recettes et Ma semaine utilisent le dernier profil enregistré.
-import { Lock, RefreshCw } from 'lucide-react-native';
+import { Lock, RefreshCw, SlidersHorizontal } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
@@ -13,6 +13,8 @@ import { nouvelId } from '@/lib/identifiant';
 import { BoutonContour, Hero, Selecteur, SousNav, type OngletDef } from '../coque';
 import { CaseACocher, Cellule, Grille, Repliable, Saisie } from '../crm/dossier';
 import { Action, Etat, ts } from '../entrainement/commun';
+import { Puce, Puces } from '../composants';
+import { CaloriesDuJour, TuilesDuJour } from '../suivi/calories-jour';
 import { couleurs, polices } from '../theme';
 import { doux, Lien } from './commun';
 import { InvitationOptionNutrition } from './invitation-option';
@@ -26,6 +28,12 @@ const SECTIONS: OngletDef<SectionNutrition>[] = [
   { cle: 'semaine', libelle: 'Ma semaine' },
   { cle: 'journal', libelle: 'Journal' },
   { cle: 'personnelles', libelle: 'Mes recettes' },
+];
+/** Côté client, trois choix seulement : le profil passe derrière un bouton, « Mes recettes » dans Recettes. */
+const SECTIONS_CLIENT: OngletDef<SectionNutrition>[] = [
+  { cle: 'journal', libelle: 'Aujourd’hui' },
+  { cle: 'semaine', libelle: 'Ma semaine' },
+  { cle: 'recettes', libelle: 'Recettes' },
 ];
 
 const options = (l: string[][]) => l.map(([cle, libelle]) => ({ cle, libelle }));
@@ -111,7 +119,7 @@ type Brouillon = { f: Form; m: Manuel; version: string; envoiId: string };
 const SECTIONS_MACROS: SectionNutrition[] = ['profil', 'journal'];
 
 export function NutritionProfil({ clientId, coach = false, optionNutrition = true }: { clientId: string; coach?: boolean; optionNutrition?: boolean }) {
-  const [sectionChoisie, setSection] = useState<SectionNutrition>('profil');
+  const [sectionChoisie, setSection] = useState<SectionNutrition>(coach ? 'profil' : 'journal');
   const section = sectionChoisie;
   // Sans l'option, Recettes, Ma semaine et Mes recettes restent visibles, avec un cadenas : elles montrent ce qu'elles apportent.
   const verrouillee = !optionNutrition && !SECTIONS_MACROS.includes(section);
@@ -254,6 +262,15 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
         titre={coach ? `Nutrition · ${data?.nom || 'Client'}` : 'Ma nutrition'}
         sousTitre="Vos objectifs, vos repas et vos recettes réunis au même endroit."
         droite={
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+          {!coach && (
+            <BoutonContour
+              icone={SlidersHorizontal}
+              nom={section === 'profil' ? 'Revenir à ma journée' : 'Mon profil et mes objectifs'}
+              desactive={chargement || occupe}
+              onPress={() => demanderSortie(() => setSection(section === 'profil' ? 'journal' : 'profil'))}
+            />
+          )}
           <BoutonContour
             icone={RefreshCw}
             nom="Actualiser la nutrition"
@@ -267,6 +284,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
               }, [cle])
             }
           />
+          </View>
         }
       />
       <Etat erreur={erreur || undefined} message={message || undefined} />
@@ -274,11 +292,32 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
         <>
           <SousNav
             nom="Rubriques Nutrition"
-            grille="nutrition"
-            onglets={optionNutrition ? SECTIONS : SECTIONS.map((o) => (SECTIONS_MACROS.includes(o.cle) ? o : { ...o, icone: Lock }))}
-            valeur={section}
+            grille={coach ? 'nutrition' : undefined}
+            onglets={(coach ? SECTIONS : SECTIONS_CLIENT).map((o) => (optionNutrition || SECTIONS_MACROS.includes(o.cle) ? o : { ...o, icone: Lock }))}
+            valeur={!coach && section === 'personnelles' ? 'recettes' : section}
             onChange={(v) => v !== section && demanderSortie(() => setSection(v))}
           />
+          {!coach && section === 'profil' && <Text style={[ts.kicker, { fontSize: 12 }]}>Mon profil et mes objectifs</Text>}
+          {!coach && (section === 'recettes' || section === 'personnelles') && !verrouillee && (
+            <Puces>
+              <Puce libelle="Recettes de mon coach" actif={section === 'recettes'} onPress={() => section !== 'recettes' && demanderSortie(() => setSection('recettes'))} />
+              <Puce libelle="Mes recettes" actif={section === 'personnelles'} onPress={() => section !== 'personnelles' && demanderSortie(() => setSection('personnelles'))} />
+            </Puces>
+          )}
+          {/* Ce qui est mangé, face à l'objectif et à la dépense du jour (métabolisme, pas, séances) : en tête de la journée. */}
+          {!coach && section === 'journal' && (
+            <>
+              <TuilesDuJour clientId={clientId} />
+              <Repliable
+                style={{ borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 14, backgroundColor: couleurs.carte, paddingHorizontal: 16, paddingVertical: 6 }}
+                resume={<Text style={[ts.texte, { fontFamily: polices.texteGras }]}>Le détail de mes calories, jour par jour</Text>}
+              >
+                <View style={{ paddingBottom: 12 }}>
+                  <CaloriesDuJour clientId={clientId} />
+                </View>
+              </Repliable>
+            </>
+          )}
           {modifie && section !== 'profil' && (
             <Text style={[doux, { color: couleurs.rouge }]}>
               Votre profil contient des modifications non enregistrées. Les recettes et la proposition de semaine utilisent vos dernières préférences
