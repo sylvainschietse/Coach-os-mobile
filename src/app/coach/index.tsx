@@ -18,6 +18,7 @@ import {
   UserPlus,
   UserRound,
   Users,
+  Video,
   Wallet,
   Workflow,
 } from 'lucide-react-native';
@@ -53,6 +54,7 @@ import {
 import { Carte, Chargement, Erreur, Puce, Puces, Texte } from '@/ui/composants';
 import { Bilans, EditeurBilan } from '@/ui/crm/bilans';
 import { Boosters } from '@/ui/crm/boosters';
+import { ChoisirClientTest } from '@/ui/suivi/choisir-client-test';
 import { BoutonCloche } from '@/ui/notifications/cloche';
 import { estAuto, REGLAGES_RELANCES } from '@/domain/relances-coach';
 import { EspaceProfil, SECTIONS_PROFIL, type SectionProfil } from '@/ui/espace-profil';
@@ -172,6 +174,7 @@ export default function EspaceCoach() {
   const large = width >= LARGEUR_LG;
   // Sur téléphone, la barre des onglets flotte en bas : on peut défiler jusqu'à voir le dernier élément au-dessus d'elle.
   const margeBarre = useMargeBarre();
+  const [choixTest, setChoixTest] = useState(false);
   const params = useLocalSearchParams<{ onglet?: string; rubrique?: string; section?: string; partie?: string; client?: string; programme?: string; seance?: string; apercu?: string } & ParamsDossier>();
   const ongletDemande = TOUS.find((o) => o === params.onglet) ?? 'crm';
   const rubriqueDemandee = RUBRIQUES.find((r) => r.cle === params.rubrique)?.cle ?? 'Accueil';
@@ -363,9 +366,19 @@ export default function EspaceCoach() {
             ) : (
               <View style={{ gap: espace(4) }}>
                 {/* Client qui commence directement (abonnement à l'appli ou coaching en présence), sans Booster. */}
-                <View style={{ alignSelf: 'flex-start' }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>
                   <Action petit icone={UserPlus} libelle="Nouveau client" onPress={() => router.setParams({ ...FERME, contact: 'nouveau-client' })} />
+                  <Action petit icone={Video} libelle="Faire un test" onPress={() => setChoixTest(true)} />
                 </View>
+                {choixTest && (
+                  <ChoisirClientTest
+                    onFermer={() => setChoixTest(false)}
+                    onChoisir={(id) => {
+                      setChoixTest(false);
+                      router.setParams({ ...FERME, contact: id, volet: 'tests' });
+                    }}
+                  />
+                )}
                 <CyclesClients
                 coachId={coachId}
                 onOuvrirProgramme={(id) => router.setParams({ onglet: 'airtable', programme: id, seance: undefined })}

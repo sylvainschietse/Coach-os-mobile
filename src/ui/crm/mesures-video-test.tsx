@@ -14,11 +14,14 @@ export function MesuresVideoTest({
   libelle,
   mesures,
   onChange,
+  avant,
 }: {
   test: 'mobilite' | 'posture';
   libelle: string;
   mesures: MesureAngle[];
   onChange: (m: MesureAngle[]) => void;
+  /** Même mesure au test précédent, pour afficher l'écart. */
+  avant?: (libelle: string) => number | undefined;
 }) {
   const modeles = test === 'mobilite' ? MESURES_MOBILITE : MESURES_POSTURE;
   const [ouvert, setOuvert] = useState(false);
@@ -30,7 +33,15 @@ export function MesuresVideoTest({
       <Libelle>{`${libelle} — mesures vidéo`}</Libelle>
       {mesures.map((m, i) => (
         <View key={`${m.libelle}-${i}`} style={styles.ligne}>
-          <Text style={styles.texte}>{`${m.libelle} : ${m.angle}°`}</Text>
+          <Text style={styles.texte}>
+            {`${m.libelle} : ${m.angle}°`}
+            {(() => {
+              const a = avant?.(m.libelle);
+              if (a === undefined) return null;
+              const d = m.angle - a;
+              return <Text style={styles.avant}>{`  (avant ${a}° · ${d === 0 ? 'stable' : `${d > 0 ? '+' : '−'}${Math.abs(d)}°`})`}</Text>;
+            })()}
+          </Text>
           <Pressable accessibilityRole="button" accessibilityLabel={`Retirer ${m.libelle}`} onPress={() => onChange(mesures.filter((_, j) => j !== i))} hitSlop={8}>
             <Text style={styles.retirer}>Retirer</Text>
           </Pressable>
@@ -73,5 +84,6 @@ export function MesuresVideoTest({
 const styles = StyleSheet.create({
   ligne: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: espace(2), paddingVertical: 6, borderBottomWidth: 1, borderColor: couleurs.bordure },
   texte: { fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.texte, flexShrink: 1 },
+  avant: { fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux },
   retirer: { fontFamily: polices.texte, fontSize: 13, color: couleurs.rouge },
 });
