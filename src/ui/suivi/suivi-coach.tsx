@@ -12,7 +12,7 @@ import { entrainement } from '@/data/entrainement';
 import { quotidien } from '@/data/quotidien';
 import { suiviHebdo } from '@/data/suivi-hebdo';
 import { titreActivite } from '@/domain/activites';
-import { ajouterJours, aujourdhuiParis, jourParis } from '@/domain/entrainement';
+import { ajouterJours, aujourdhuiParis, jourParis, titreClient } from '@/domain/entrainement';
 import { indicateursDuClient, type Indicateur } from '@/domain/quotidien';
 import { formaterNombre, type ChampMensuration } from '@/domain/suivi';
 import { courbesExercices } from '@/domain/suivi-entrainement';
@@ -83,7 +83,7 @@ function useDonnees(clientId: string) {
     for (const r of repas) kcalParJour.set(r.date, (kcalParJour.get(r.date) ?? 0) + r.kcal);
     const releve = (i: Indicateur): PointDate[] => releves.filter((r) => r.indicateur === i).map((r) => ({ date: r.jour, valeur: r.valeur }));
     return {
-      seances: resultats.realisations.map((r) => ({ date: jourParis(r.fin), titre: r.seanceTitre, note: r.note })),
+      seances: resultats.realisations.map((r) => ({ date: jourParis(r.fin), titre: titreClient(r.seanceTitre), note: r.note })),
       libres: libres.map((a) => ({ date: jourParis(a.debut), titre: titreActivite(a), dureeS: a.dureeS })),
       courbes: courbesExercices(resultats.realisations),
       mensurations,
