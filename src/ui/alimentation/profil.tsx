@@ -1,5 +1,6 @@
+import { FileText } from 'lucide-react-native';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 
 import { depot } from '@/data';
 import { alimentation } from '@/data/alimentation';
@@ -8,8 +9,10 @@ import { jourLocal } from '@/domain/crm';
 import { formaterDate, lireDate } from '@/domain/programmes';
 import { formaterNombre, lireNombre } from '@/domain/suivi';
 import type { NiveauActivite, ObjectifNutrition, ProfilNutrition, Regime, Sexe } from '@/domain/types';
+import { LIEN_GUIDE_MACROS } from '@/lib/guides';
 import { useCharger } from '@/lib/useCharger';
 
+import { BoutonContour } from '../coque';
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, Puce, Puces, SousTitre, Texte } from '../composants';
 import { couleurs, espace } from '../theme';
 import { libelleRegime } from './commun';
@@ -140,6 +143,7 @@ function FormulaireProfil({
       <Carte>
         <SousTitre>Besoins du jour</SousTitre>
         <Besoins profil={brouillon()} dernierPoids={dernierPoids} />
+        <BoutonContour libelle="Lire le guide : tes macros, mode d’emploi" icone={FileText} onPress={() => Linking.openURL(LIEN_GUIDE_MACROS)} />
       </Carte>
       <Carte>
         <SousTitre>Profil</SousTitre>

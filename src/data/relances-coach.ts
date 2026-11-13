@@ -2,6 +2,7 @@
 // création, à l'ouverture de l'Accueil, des relances du coach arrivées aujourd'hui. Table absente : réglages de départ,
 // et l'enregistrement le dit.
 import { aujourdhuiParis, jourParis } from '@/domain/entrainement';
+import { LIEN_GUIDE_PROSPECTS } from '@/lib/guides';
 import { lireReglagesRelances, noterCreees, REGLAGES_RELANCES, relancesACreer, type ReglagesRelances, type Situation } from '@/domain/relances-coach';
 
 import { abonnements } from './abonnements';
@@ -108,7 +109,7 @@ async function preparer(coach: string): Promise<number> {
       attentes: carnet.paiements.filter((p) => p.contactId === c.id && p.statut === 'En attente' && p.date).map((p) => ({ id: p.id, date: p.date! })),
     };
   });
-  const nouvelles = relancesACreer(reglages, situations, jour, coach);
+  const nouvelles = relancesACreer(reglages, situations, jour, coach, LIEN_GUIDE_PROSPECTS);
   if (!nouvelles.length) return 0;
   // D'abord noter ce qui va être créé : si la note échoue, rien n'est créé (jamais deux fois la même relance).
   await base.enregistrer(noterCreees(reglages, nouvelles.map((n) => n.cle), jour));

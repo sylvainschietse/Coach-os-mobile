@@ -37,6 +37,7 @@ import {
   type StatutTache,
 } from '@/domain/gestion';
 import type { Facture } from '@/domain/factures';
+import { LIEN_GUIDE_PROSPECTS } from '@/lib/guides';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Selecteur, Vide } from '../coque';
@@ -303,7 +304,7 @@ function RelanceMessage({ contact, relance, lien }: { contact: Contact; relance?
   const message =
     relance.modele === 'tache'
       ? `Bonjour ${contact.prenom}, `
-      : rediger(relance.modele, contact, { coach, lienQuestionnaire: adresseQuestionnaire(lien) });
+      : rediger(relance.modele, contact, { coach, lienQuestionnaire: adresseQuestionnaire(lien), guide: LIEN_GUIDE_PROSPECTS });
   if (!ouvert)
     return (
       <Text accessibilityRole="button" onPress={() => setOuvert(true)} style={styles.lien}>

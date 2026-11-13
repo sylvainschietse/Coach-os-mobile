@@ -40,6 +40,13 @@ describe('textes', () => {
     expect(erreurTexte('  ')).toBe('Écris le message.');
     expect(erreurTexte('Bonjour {prenom}, rendez-vous {quand}')).toBeNull();
   });
+  it('la relance à 10 jours glisse le guide nutrition offert', () => {
+    const m = rediger('nouvelles_10j', { prenom: 'Léa' }, { coach: 'Camille', guide: 'https://coachgo.fr/guide-macros-prospects.pdf' });
+    expect(m).toMatch(/^Bonjour Léa, c’est Camille\./);
+    expect(m.endsWith('https://coachgo.fr/guide-macros-prospects.pdf')).toBe(true);
+    expect(erreurTexte('Mon guide : {guide}')).toBeNull();
+    expect(remplir('Mon guide : {guide}', { coach: 'Camille', guide: 'https://x/g.pdf' })).toBe('Mon guide : https://x/g.pdf');
+  });
   it('remplir garde un message propre sans date', () => {
     expect(remplir('Bonjour {prenom}, {quand} ?', { prenom: 'Léa', coach: 'Camille' })).toBe('Bonjour Léa, bientôt ?');
   });

@@ -197,7 +197,7 @@ function ChampMessage({ valeur, onChange }: { valeur: string; onChange: (v: stri
         !!valeur.trim() && (
           <View style={styles.apercu}>
             <Text style={styles.champ}>Aperçu</Text>
-            <Text style={styles.texte}>{remplir(valeur, { prenom: 'Léa', coach, quand: 'jeudi 19 novembre', lien: 'https://…' })}</Text>
+            <Text style={styles.texte}>{remplir(valeur, { prenom: 'Léa', coach, quand: 'jeudi 19 novembre', lien: 'https://…', guide: 'https://…/guide.pdf' })}</Text>
           </View>
         )
       )}

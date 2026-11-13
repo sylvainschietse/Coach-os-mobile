@@ -5,6 +5,7 @@ import { useSession } from '@/data/session';
 import { formaterTelephone, lienEnvoi, MODELES, normaliserTelephone, rediger, STATUTS, type Canal, type Contact, type Relance, type Statut } from '@/domain/crm';
 import { estAuto, estRelancePerso, REGLAGES_RELANCES, type ReglagesRelances } from '@/domain/relances-coach';
 import { adresseWeb } from '@/lib/adresse-web';
+import { LIEN_GUIDE_PROSPECTS } from '@/lib/guides';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 
@@ -157,7 +158,7 @@ export function CarteRelance({
   // Relance du coach : le message est déjà rempli dans la note ; sinon le texte en service (réécrit ou d'origine).
   const message = perso
     ? (relance.note ?? '')
-    : rediger(relance.modele, contact, { coach, lienQuestionnaire, booster }, estAuto(relance.modele) ? reglages.textes[relance.modele] : undefined);
+    : rediger(relance.modele, contact, { coach, lienQuestionnaire, booster, guide: LIEN_GUIDE_PROSPECTS }, estAuto(relance.modele) ? reglages.textes[relance.modele] : undefined);
   const tache = relance.modele === 'tache';
   // Sans adresse de questionnaire, le message partirait sans lien : on ne propose pas l'envoi.
   const sansLien = relance.modele === 'questionnaire' && !lienQuestionnaire;
