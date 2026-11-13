@@ -13,6 +13,7 @@ import { imageIllustration } from './illustrations';
 
 export type ArticleBibliotheque = Theme & { categorie?: string; /** Temps de lecture, en minutes. */ lecture?: number };
 
+const ECART = 10;
 const lecture = (a: ArticleBibliotheque) => a.lecture ?? Math.max(3, Math.round(a.message.length / 1300));
 const pourQui = (c: Cible) => (c === 'clients' ? 'Clients actifs' : 'Clients en veille');
 
@@ -20,6 +21,9 @@ export function Bibliotheque({ articles, onOuvrir }: { articles: readonly Articl
   const [pour, setPour] = useState<Cible | null>(null);
   const [choisie, setChoisie] = useState<CleCategorie | null>(null);
   const { width } = useWindowDimensions();
+  // Largeur réelle de la mosaïque, mesurée : les tuiles ont une taille en pixels (les pourcentages avec un rapport
+  // largeur/hauteur laissaient un grand vide sur Android).
+  const [dispo, setDispo] = useState(0);
   const visibles = pour ? articles.filter((a) => a.pour === pour) : articles;
   const groupes = parCategorie(visibles);
   const montres = choisie ? groupes.filter((g) => g.categorie.cle === choisie) : groupes;
@@ -40,14 +44,14 @@ export function Bibliotheque({ articles, onOuvrir }: { articles: readonly Articl
         <Puce libelle="Clients en veille" actif={pour === 'veille'} onPress={() => setPour('veille')} />
       </Puces>
 
-      <View style={styles.mosaique}>
-        {groupes.map((g, i) => (
+      <View style={styles.mosaique} onLayout={(e) => setDispo(Math.floor(e.nativeEvent.layout.width))}>
+        {dispo > 0 && groupes.map((g, i) => (
           <TuileCategorie
             key={g.categorie.cle}
             c={g.categorie}
             nombre={g.articles.length}
             image={g.articles[0].illustration ?? g.articles[0].cle}
-            largeur={i === 0 && groupes.length % colonnes !== 0 ? '100%' : `${100 / colonnes - 1.5}%`}
+            largeur={i === 0 && groupes.length % colonnes !== 0 ? dispo : Math.floor((dispo - ECART * (colonnes - 1)) / colonnes)}
             large={i === 0 && groupes.length % colonnes !== 0}
             active={choisie === g.categorie.cle}
             estompee={!!choisie && choisie !== g.categorie.cle}
@@ -90,7 +94,7 @@ function TuileCategorie({
   c: Categorie;
   nombre: number;
   image: string;
-  largeur: `${number}%`;
+  largeur: number;
   large: boolean;
   active: boolean;
   estompee: boolean;
@@ -102,7 +106,7 @@ function TuileCategorie({
       accessibilityState={{ selected: active }}
       accessibilityLabel={`Catégorie ${c.nom}, ${nombre} article${nombre > 1 ? 's' : ''}`}
       onPress={onPress}
-      style={({ pressed }) => [styles.tuile, { width: largeur, aspectRatio: large ? 2.4 : 1.3, opacity: estompee ? 0.45 : pressed ? 0.85 : 1 }, active && { borderWidth: 3, borderColor: c.couleur }]}
+      style={({ pressed }) => [styles.tuile, { width: largeur, height: Math.round(largeur / (large ? 2.4 : 1.45)), opacity: estompee ? 0.45 : pressed ? 0.85 : 1 }, active && { borderWidth: 3, borderColor: c.couleur }]}
     >
       <Image source={imageIllustration(image)} style={styles.plein} resizeMode="cover" />
       <View style={[StyleSheet.absoluteFill, styles.voile]} />
@@ -151,9 +155,9 @@ const styles = StyleSheet.create({
   surTitre: { fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase', color: couleurs.texteDoux, marginLeft: 4 },
   grandTitre: { fontFamily: polices.titre, fontSize: 32, lineHeight: 34, color: couleurs.texte, marginLeft: 4 },
   detail: { fontFamily: polices.texte, fontSize: 13, lineHeight: 18, color: couleurs.texteDoux },
-  mosaique: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
+  mosaique: { flexDirection: 'row', flexWrap: 'wrap', gap: ECART },
   tuile: { borderRadius: 16, overflow: 'hidden', backgroundColor: couleurs.discret },
-  voile: { backgroundColor: 'rgba(12,13,16,0.18)', backgroundImage: 'linear-gradient(180deg, rgba(12,13,16,0) 30%, rgba(12,13,16,0.78) 100%)' },
+  voile: { backgroundColor: 'rgba(12,13,16,0.32)', backgroundImage: 'linear-gradient(180deg, rgba(12,13,16,0) 30%, rgba(12,13,16,0.78) 100%)' },
   tuileTexte: { position: 'absolute', left: 12, right: 12, bottom: 10, gap: 2 },
   pastille: { width: 18, height: 3, borderRadius: 2, marginBottom: 4 },
   tuileNom: { fontFamily: polices.titre, fontSize: 24, lineHeight: 25, color: '#FFFFFF', letterSpacing: 0.4 },
