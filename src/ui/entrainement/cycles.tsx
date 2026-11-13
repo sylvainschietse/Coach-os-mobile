@@ -203,11 +203,17 @@ function DialogueCycle({
   cycle,
   debutParDefaut,
   creerSuivi,
+  client,
+  modeles,
   onFermer,
   onEnregistre,
 }: {
   coachId: string;
   suiviId: string;
+  /** Nom du client, pour nommer la copie du programme choisi. */
+  client: string;
+  /** Bibliothèque : à la création, le coach choisit directement le programme du cycle. */
+  modeles: ModeleResume[] | null;
   /** Sans suivi, le premier cycle enregistré le démarre (à la date d'aujourd'hui). */
   creerSuivi?: () => Promise<void>;
   clientId: string;
@@ -223,6 +229,8 @@ function DialogueCycle({
     fin: ecrireJour(cycle?.fin),
     statut: cycle?.statut ?? ('Brouillon' as StatutCycle),
   });
+  const [modeleId, setModeleId] = useState('');
+  const [q, setQ] = useState('');
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState('');
   const debut = lireJour(f.debut);
@@ -242,7 +250,7 @@ function DialogueCycle({
     setErreur('');
     try {
       if (creerSuivi) await creerSuivi();
-      await entrainement.enregistrerCycle(coachId, {
+      const stocke = {
         id: cycle?.id ?? nouvelId(),
         suiviId,
         clientId,
@@ -254,7 +262,10 @@ function DialogueCycle({
         statut: f.statut,
         programmeId: cycle?.programmeId,
         mode: cycle?.mode,
-      });
+      };
+      // Programme choisi dans la bibliothèque : le client en reçoit une copie à son nom, liée au cycle.
+      if (!cycle && modeleId) await lierProgramme(coachId, stocke, modeleId, 'Copie personnalisée', { client, cycleModele: 1 });
+      else await entrainement.enregistrerCycle(coachId, stocke);
       onEnregistre();
       onFermer();
     } catch (e) {
@@ -275,6 +286,27 @@ function DialogueCycle({
         </Ligne>
       }
     >
+      {!cycle && (
+        <View style={{ gap: 8 }}>
+          <Text style={ts.titreChamp}>Programme</Text>
+          <View style={{ flexDirection: 'row' }}>
+            <Recherche valeur={q} onChange={setQ} libelle="Rechercher un programme" placeholder="Rechercher un programme…" />
+          </View>
+          <ListeChoix
+            elements={modeles ? modeles.filter((m) => !m.seanceSeule && correspondRecherche(m.titre, q)) : null}
+            cle={(m) => m.id}
+            libelle={(m) => titreClient(m.titre)}
+            detail={(m) => [m.niveau, m.objectif].filter(Boolean).join(' · ') || undefined}
+            choisi={modeleId}
+            onChoisir={(m) => {
+              setModeleId(m.id);
+              if (!f.nom.trim()) setF({ ...f, nom: titreClient(m.titre) });
+            }}
+            vide="Aucun programme ne correspond."
+          />
+          <Text style={ts.doux}>Facultatif : tu peux aussi le lier plus tard avec « Lier un programme ».</Text>
+        </View>
+      )}
       <Saisie libelle="Nom" valeur={f.nom} placeholder="Fondations" onChange={(v) => setF({ ...f, nom: v })} />
       <Saisie libelle="Objectif" long valeur={f.objectif} onChange={(v) => setF({ ...f, objectif: v })} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
@@ -516,6 +548,8 @@ function ProfilSuivi({
           suiviId={p.suivi?.id ?? nouveauSuiviId}
           creerSuivi={p.suivi ? undefined : () => entrainement.enregistrerSuivi(coachId, { id: nouveauSuiviId, clientId: p.clientId, debut: aujourdhuiParis() })}
           clientId={p.clientId}
+          client={p.nom}
+          modeles={modeles}
           cycle={dialogue.c}
           debutParDefaut={dernier?.fin ? ajouterJours(dernier.fin, 1) : (p.suivi?.debut ?? aujourdhuiParis())}
           onFermer={() => setDialogue(undefined)}

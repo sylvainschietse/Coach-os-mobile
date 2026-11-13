@@ -28,6 +28,7 @@ import { DetailActiviteLibre, resumeActivite } from '../suivi/activite-libre';
 import { ActivitesHorsProgramme, useActivitesClient } from '../suivi/activites-hors-programme';
 import { Courbe } from '../suivi/courbe';
 import { couleurs, polices } from '../theme';
+import { ChoixProgrammeClient } from './choix-programme-client';
 import { Action, Ligne, TexteLong, jourCourt, ts } from './commun';
 import { GrilleSemaines, jourMois, Legende } from './grille-semaines';
 import { serieLisible, VideosMouvementCoach } from './videos-mouvement';
@@ -119,11 +120,13 @@ export function EntrainementClient({
   if (!profils.donnee) return <Text style={ts.doux}>Chargement…</Text>;
   if (!cycle)
     return (
-      <View style={ts.carte}>
-        <Text style={ts.titre}>Pas encore de programme en cours</Text>
-        <Text style={ts.doux}>
-          Dès qu’un programme est attribué à {profil?.nom ?? 'ce client'} (fiche › Programme › Séances) et activé, son entraînement s’affiche ici.
-        </Text>
+      <View style={{ gap: 16 }}>
+        <View style={ts.carte}>
+          <Text style={ts.titre}>Pas encore de programme en cours</Text>
+          <Text style={ts.doux}>Attribue-lui un programme ci-dessous : dès qu’il est activé, son entraînement s’affiche ici.</Text>
+        </View>
+        {/* Attribuer directement d'ici, sans passer par l'onglet Séances. */}
+        <ChoixProgrammeClient coachId={coachId} clientId={clientId} />
       </View>
     );
 
