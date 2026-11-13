@@ -37,6 +37,7 @@ import {
 import { useCharger } from '@/lib/useCharger';
 
 import { Courbe } from './courbe';
+import { CycleCoach } from './mon-cycle';
 import { couleurs, espace, polices } from '../theme';
 
 const TEINTES: Record<Domaine, string> = {
@@ -113,6 +114,8 @@ export function SuiviCoach({ clientId, prenom }: { clientId: string; prenom: str
       <Text accessibilityRole="header" style={styles.titre}>
         Suivi de {prenom || 'ton client'}
       </Text>
+      {/* Rien si la cliente ne partage pas son cycle (choix par défaut). */}
+      <CycleCoach clientId={clientId} />
       <View accessibilityRole="tablist" style={styles.segments}>
         {PERIODES.map((p) => (
           <Pressable
