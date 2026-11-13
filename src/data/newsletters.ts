@@ -2,6 +2,7 @@
 // compartiment public « newsletters », destinataires comptés pour l'écran et envoi d'un test à soi-même (fonction Edge
 // envoyer-newsletters). En démo, tout reste en mémoire et rien ne part.
 import { cibleDe, compterDestinataires, emailValide, imagesDuTexte, type Article, type ContactNewsletter, type Newsletter } from '@/domain/newsletters';
+import { cheminPdf, VALIDITE_LIEN_PDF } from '@/domain/newsletters-pdf';
 import { nouvelId } from '@/lib/identifiant';
 
 import { crm } from './crm';
@@ -232,6 +233,62 @@ export const newsletters = {
         return { id: c.id, nom: `${c.prenom} ${c.nom}`.trim(), email: emailValide(c.email), appli: !!c.clientId, groupe: g === 'clients' ? 'Client actif' : g === 'veille' ? 'En veille' : 'Prospect' };
       })
       .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+  },
+
+  /** Les personnes visées par une newsletter (groupes choisis et clients précis), avec de quoi leur écrire. */
+  async destinatairesDe(n: Pick<Newsletter, 'cibles' | 'contacts'>): Promise<{ id: string; prenom: string; nom: string; telephone?: string; appli: boolean }[]> {
+    const carnet = await crm.carnet();
+    const choisis = new Set(n.contacts ?? []);
+    return carnet.contacts
+      .filter((c) => c.statut !== 'archive' && (choisis.has(c.id) || (n.cibles as string[]).includes(cibleDe(c) ?? '')))
+      .map((c) => ({ id: c.id, prenom: c.prenom, nom: `${c.prenom} ${c.nom}`.trim(), telephone: c.telephone, appli: !!c.clientId }))
+      .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+  },
+
+  /**
+   * Range le PDF d'un article dans les documents du coach (une fois pour toutes) et rend son chemin et un lien signé
+   * valable un an : c'est ce lien que portent le bouton de l'e-mail et le message WhatsApp.
+   */
+  async preparerPdf(article: string, octets: () => Promise<ArrayBuffer>): Promise<{ chemin: string; lien: string; taille?: number }> {
+    if (!supabase) return { chemin: `demo/newsletters/${article}.pdf`, lien: `https://exemple.coachgo.fr/newsletters/${article}.pdf` };
+    const { data: coach } = await supabase.rpc('mon_coach_id');
+    if (!coach) throw new Error('Session coach introuvable : reconnecte-toi.');
+    const chemin = cheminPdf(coach as string, article);
+    const donnees = await octets();
+    const envoi = await supabase.storage.from('documents').upload(chemin, donnees, { contentType: 'application/pdf', upsert: false });
+    // Déjà rangé par une newsletter précédente : on garde ce fichier.
+    if (envoi.error && !/exist|duplicate|409/i.test(`${envoi.error.message} ${(envoi.error as { statusCode?: string }).statusCode ?? ''}`))
+      throw new Error('Le PDF n’a pas pu être préparé. Vérifie ta connexion et réessaie.');
+    const signe = await supabase.storage.from('documents').createSignedUrl(chemin, VALIDITE_LIEN_PDF);
+    if (signe.error || !signe.data) throw new Error('Le lien vers le PDF n’a pas pu être créé. Réessaie.');
+    return { chemin, lien: signe.data.signedUrl, taille: donnees.byteLength };
+  },
+
+  /** Dépose le PDF dans « Mes documents » de chaque personne (une seule fois par personne). Rend combien l'ont reçu et combien l'avaient déjà. */
+  async deposerPdfDansDocuments(pdf: { chemin: string; nom: string; nomFichier: string; taille?: number }, contacts: string[]): Promise<{ ajoutes: number; deja: number }> {
+    if (!contacts.length) return { ajoutes: 0, deja: 0 };
+    if (!supabase) return { ajoutes: contacts.length, deja: 0 };
+    const { data: existants, error: e1 } = await supabase.from('documents').select('contact_id').eq('chemin', pdf.chemin).in('contact_id', contacts);
+    if (e1) throw new Error('Les documents n’ont pas pu être lus. Réessaie.');
+    const deja = new Set((existants ?? []).map((l: { contact_id: string }) => l.contact_id));
+    const lignes = contacts
+      .filter((c) => !deja.has(c))
+      .map((c) => ({
+        contact_id: c,
+        nom: pdf.nom.slice(0, 200),
+        type: 'Autre',
+        chemin: pdf.chemin,
+        nom_fichier: pdf.nomFichier,
+        type_fichier: 'application/pdf',
+        taille: pdf.taille ?? null,
+        partage_client: true,
+        envoye: true,
+      }));
+    if (lignes.length) {
+      const { error } = await supabase.from('documents').insert(lignes);
+      if (error) throw new Error('Le PDF n’a pas pu être déposé dans leurs documents. Réessaie.');
+    }
+    return { ajoutes: lignes.length, deja: deja.size };
   },
 
   /** Envoie l'article, tel qu'il est à l'écran, à l'adresse du coach. Rend l'adresse. */
