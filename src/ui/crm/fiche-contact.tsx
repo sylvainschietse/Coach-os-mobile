@@ -26,6 +26,7 @@ import {
   type StatutContact,
 } from '@/domain/crm';
 import { ENTRETIEN, TESTS } from '@/domain/evaluation';
+import { resumeExercices } from '@/domain/exercices-test';
 import { formaterMesure, lireMesure, TESTS_GOLF } from '@/domain/tests-golf';
 import { TestsClient } from '../suivi/tests-client';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
@@ -621,6 +622,7 @@ export function LectureBooster({ booster: b }: { booster: Booster }) {
             libelle: `${t.libelle} — observations`,
             valeur: e?.tests[t.id]?.observations.join(' · '),
           },
+          ...(resumeExercices(e?.exercices, t.id) ? [{ libelle: `${t.libelle} — exercices`, valeur: resumeExercices(e?.exercices, t.id) }] : []),
           ...(e?.tests[t.id]?.mesures?.length
             ? [{ libelle: `${t.libelle} — mesures vidéo`, valeur: e.tests[t.id]!.mesures!.map((m) => `${m.libelle} ${m.angle}°`).join(' · ') }]
             : []),
@@ -633,6 +635,7 @@ export function LectureBooster({ booster: b }: { booster: Booster }) {
               ]
             : []),
         ]),
+        ...(resumeExercices(e?.exercices, 'libre') ? [{ libelle: 'Exercices au choix', valeur: resumeExercices(e?.exercices, 'libre') }] : []),
         { libelle: 'Douleur pendant les tests', valeur: e?.douleur },
         { libelle: 'Douleur / gêne — précision', valeur: e?.douleurPrecision },
         { libelle: 'Observations tests', valeur: e?.notes, long: true },

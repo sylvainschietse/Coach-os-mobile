@@ -4,11 +4,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { depot } from '@/data';
 import { jourLocal } from '@/domain/crm';
-import { golfAvant, mesureAvant, postureAvant, resumeTest, testClientVide, testVide, type TestClient } from '@/domain/tests-client';
+import { exercicesAvant, golfAvant, mesureAvant, postureAvant, resumeTest, testClientVide, testVide, type TestClient } from '@/domain/tests-client';
+import { CATEGORIES_EXERCICE } from '@/domain/exercices-test';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, Erreur, Texte } from '../composants';
+import { ExercicesTest } from '../crm/exercices-test';
 import { MesuresVideoTest } from '../crm/mesures-video-test';
 import { Grille, Cellule, Saisie } from '../crm/dossier';
 import { TestsGolf } from '../crm/tests-golf';
@@ -41,7 +43,7 @@ export function TestsClient({ clientId, prenom, ouvrirNouveau }: { clientId: str
   return (
     <View style={{ gap: espace(4), marginTop: espace(4) }}>
       <Texte doux>
-        {`Tests golf et angles mesurés en vidéo (mobilité, posture)${prenom ? ` pour ${prenom}` : ''}. Chaque test montre l’écart avec le précédent.`}
+        {`Exercices testés, tests golf et angles mesurés en vidéo (mobilité, posture)${prenom ? ` pour ${prenom}` : ''}. Chaque test montre l’écart avec le précédent.`}
       </Texte>
       <View style={{ alignSelf: 'flex-start' }}>
         <Bouton libelle="Nouveau test" onPress={() => setEdite(testVide(nouvelId(), clientId, jourLocal(new Date())))} />
@@ -65,6 +67,8 @@ function EditeurTest({ test, tests, existant, onFermer }: { test: TestClient; te
   const [erreur, setErreur] = useState<string>();
   const precedent = golfAvant(tests, t);
   const avantPosture = postureAvant(tests, t);
+  const avantExercices = exercicesAvant(tests, t);
+  const avant = avantExercices?.exercices ? { date: dateLisible(avantExercices.date), exercices: avantExercices.exercices } : undefined;
   const maj = (patch: Partial<TestClient>) => setT((x) => ({ ...x, ...patch }));
 
   const agir = async (action: () => Promise<void>) => {
@@ -85,6 +89,15 @@ function EditeurTest({ test, tests, existant, onFermer }: { test: TestClient; te
         <Cellule>
           <ChampDate libelle="Date du test" jour={t.date} onChange={(date) => maj({ date })} />
         </Cellule>
+        <Cellule pleine>
+          <Text style={styles.section}>Exercices testés</Text>
+          <Text style={styles.resume}>Choisis un ou plusieurs exercices par catégorie, et la façon de les mesurer selon le profil.</Text>
+        </Cellule>
+        {CATEGORIES_EXERCICE.map((c) => (
+          <Cellule key={c.id} pleine>
+            <ExercicesTest categorie={c.id} titre={c.libelle} exercices={t.exercices} avant={avant} onChange={(exercices) => maj({ exercices })} />
+          </Cellule>
+        ))}
         <Cellule pleine>
           <BilanPosturalSection
             bilan={t.posture}
@@ -129,6 +142,7 @@ function EditeurTest({ test, tests, existant, onFermer }: { test: TestClient; te
 }
 
 const styles = StyleSheet.create({
+  section: { fontFamily: polices.texteGras, fontSize: 13, letterSpacing: 0.5, color: couleurs.texte, textTransform: 'uppercase' },
   date: { fontFamily: polices.texteGras, fontSize: 15, color: couleurs.texte },
   resume: { fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux },
   erreur: { fontFamily: polices.texte, fontSize: 13, color: couleurs.rouge },
