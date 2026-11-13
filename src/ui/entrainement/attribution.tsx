@@ -58,7 +58,7 @@ export function AttributionClient({
       setEtat({
         message: r.active
           ? `Attribué à ${client.nom} dans « ${r.cycle} », visible dès maintenant dans son espace.`
-          : `Attribué à ${client.nom} dans « ${r.cycle} » (prêt). Activez-le depuis Suivis quand il doit commencer.`,
+          : `Attribué à ${client.nom} dans « ${r.cycle} » (prêt). Active ce cycle depuis Clients actifs quand il doit commencer.`,
       });
     } catch (e) {
       setEtat({ erreur: e instanceof Error ? e.message : 'Attribution impossible' });
@@ -95,14 +95,14 @@ export function AttributionClient({
           elements={clients}
           cle={(c) => c.clientId}
           libelle={(c) => c.nom}
-          detail={(c) => (c.suivi ? `Suivi depuis le ${jourCourt(c.suivi.debut)}` : 'Pas encore de suivi')}
+          detail={(c) => (c.cycles.length ? `${c.cycles.length} cycle${c.cycles.length > 1 ? 's' : ''}` : 'Aucun programme')}
           choisi={clientId}
           onChoisir={choisirClient}
           vide="Aucun client actif ne correspond."
         />
       )}
 
-      {client && !client.suivi && <Text style={ts.texte}>{client.nom} n’a pas encore de suivi : il démarrera aujourd’hui avec ce programme.</Text>}
+      
 
       {client && (
         <View style={{ gap: 8 }}>
