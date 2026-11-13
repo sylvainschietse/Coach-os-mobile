@@ -119,7 +119,7 @@ describe('profil alimentaire', () => {
     expect((await en(ids.userCoach1, `select client_id from public.profils_alimentaires`)).rows).toHaveLength(1);
     expect((await en(ids.userCoach2, `select client_id from public.profils_alimentaires`)).rows).toHaveLength(0);
     await expect(en(ids.userClientB, `select public.enregistrer_profil_alimentaire($1, 'preferences', $2::jsonb, null, '', 'envoi-b-0001')`, [ids.clientA, prefs()])).rejects.toThrow(
-      /hors de votre dossier/,
+      /hors de ton dossier/,
     );
     await expect(en(ids.userClientA, `update public.profils_alimentaires set objectifs = '{}'`)).rejects.toThrow(/permission/);
   });
@@ -149,8 +149,8 @@ describe('semaine choisie par le client', () => {
     await expect(appel(ids.userClientB, ids.clientB, mardi.toISOString().slice(0, 10), plan())).rejects.toThrow(/lundi/);
     await expect(appel(ids.userClientB, ids.clientB, semaine, plan(13))).rejects.toThrow(/12 éléments/);
     await expect(appel(ids.userClientB, ids.clientB, semaine, JSON.stringify([[{ ...repas, portions: 5 }], [], [], [], [], [], []]))).rejects.toThrow(/inconnue/);
-    await expect(appel(ids.userClientB, ids.clientA, semaine, plan())).rejects.toThrow(/hors de votre dossier/);
-    await expect(appel(ids.userCoach2, ids.clientB, semaine, plan())).rejects.toThrow(/hors de votre dossier/);
+    await expect(appel(ids.userClientB, ids.clientA, semaine, plan())).rejects.toThrow(/hors de ton dossier/);
+    await expect(appel(ids.userCoach2, ids.clientB, semaine, plan())).rejects.toThrow(/hors de ton dossier/);
   });
 });
 
@@ -183,7 +183,7 @@ describe('journal et recettes personnelles', () => {
     expect((await en(ids.userCoach1, `select 1 from public.alimentation_personnelle`)).rows).toHaveLength(3);
     expect((await en(ids.userCoach2, `select 1 from public.alimentation_personnelle`)).rows).toHaveLength(0);
     expect((await en(ids.userClientB, `select 1 from public.alimentation_personnelle`)).rows).toHaveLength(0);
-    await expect(ecrire(ids.userClientB, ids.clientA, 'recipes', null, [], 1, 'recettes-envoi-2')).rejects.toThrow(/hors de votre dossier/);
+    await expect(ecrire(ids.userClientB, ids.clientA, 'recipes', null, [], 1, 'recettes-envoi-2')).rejects.toThrow(/hors de ton dossier/);
     await expect(ecrire(ids.userClientA, ids.clientA, 'diary', null, [], 0, 'journal-envoi-4')).rejects.toThrow(/Date manquante/);
     expect((await ecrire(ids.userCoach1, ids.clientA, 'recipes', null, [], 1, 'recettes-envoi-3')).rows[0].v).toBe(2);
   });

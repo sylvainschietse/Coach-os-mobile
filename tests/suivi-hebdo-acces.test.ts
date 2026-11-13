@@ -128,7 +128,7 @@ describe('bilans hebdomadaires', () => {
   it('refuse une semaine future ou un jour qui n’est pas un lundi, et des scores incomplets', async () => {
     await expect(envoyer(ids.userClientA, ajouterJours(semaine, 7), reponses(), 'envoi-futur-1')).rejects.toThrow('Semaine invalide ou future');
     await expect(envoyer(ids.userClientA, ajouterJours(semaine, 1), reponses(), 'envoi-mardi-1')).rejects.toThrow('Semaine invalide ou future');
-    await expect(envoyer(ids.userClientA, semaine, reponses({ stress: 11 }), 'envoi-score-1')).rejects.toThrow('Complétez les quatre scores');
+    await expect(envoyer(ids.userClientA, semaine, reponses({ stress: 11 }), 'envoi-score-1')).rejects.toThrow('Complète les quatre scores');
   });
 
   it('un client ne voit pas les bilans d’un autre ; le coach voit ceux de ses clients seulement', async () => {
@@ -146,7 +146,7 @@ describe('bilans hebdomadaires', () => {
     await en(ids.userCoach1, `select public.repondre_bilan($1, 'Belle semaine.', 'Garder le rythme.', $2::timestamptz)`, [rows[0].id, rows[0].e]);
     const lu = (await en(ids.userClientA, `select retour_coach, priorite, source_retour, a_revoir from public.bilans_hebdo where semaine = $1`, [semaine])).rows[0];
     expect(lu).toEqual({ retour_coach: 'Belle semaine.', priorite: 'Garder le rythme.', source_retour: 'Coach', a_revoir: false });
-    await expect(envoyer(ids.userClientA, semaine, reponses(), 'envoi-semaine-2')).rejects.toThrow('Votre coach a déjà répondu');
+    await expect(envoyer(ids.userClientA, semaine, reponses(), 'envoi-semaine-2')).rejects.toThrow('Ton coach a déjà répondu');
   });
 });
 
@@ -177,7 +177,7 @@ describe('objectifs', () => {
     await expect(objectif(ids.userClientA, { action: 'creer', envoiId: 'objectif-2', objectif: { titre: 'Poids', unite: 'kg', depart: 70, cible: 70, echeance: '' } })).rejects.toThrow(
       'La cible doit être différente',
     );
-    await expect(objectif(ids.userClientB, { action: 'archiver', id, version: 'x', envoiId: 'archive-b' })).rejects.toThrow('hors de votre dossier');
+    await expect(objectif(ids.userClientB, { action: 'archiver', id, version: 'x', envoiId: 'archive-b' })).rejects.toThrow('hors de ton dossier');
     expect((await en(ids.userClientB, `select id from public.objectifs`)).rows).toHaveLength(0);
     expect((await en(ids.userCoach1, `select id from public.objectifs`)).rows).toHaveLength(1);
   });

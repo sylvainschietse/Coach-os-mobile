@@ -127,7 +127,7 @@ describe('envoi du compte rendu par Make', () => {
     (await coach(`select etat from public.journal_automatisations where document_id = $1 and version = 2`, [ids.document])).rows[0]?.etat;
 
   it('pas d’envoi sans PDF, ni pour une ancienne version', async () => {
-    await expect(reserver(ids.userCoach1, 2)).rejects.toThrow(/Générez le PDF/);
+    await expect(reserver(ids.userCoach1, 2)).rejects.toThrow(/Génère le PDF/);
     await db.exec(`update public.documents set chemin = '${ids.coach1}/cr.pdf' where id = '${ids.document}'`);
     await expect(reserver(ids.userCoach1, 1)).rejects.toThrow(/version courante/);
   });
