@@ -35,16 +35,28 @@ export const imageIllustration = (cle: string): number => FICHIERS[fichierIllust
 /** Au choix dans l'éditeur : les photos des articles, puis les dessins. */
 export const CLES_ILLUSTRATIONS: string[] = [...Object.keys(PHOTOS_ARTICLES), ...FICHIERS_ILLUSTRATIONS];
 
-/** Les octets JPEG d'une illustration livrée. */
-export async function octetsIllustration(cle: string): Promise<ArrayBuffer> {
-  const a = Asset.fromModule(FICHIERS[fichierIllustration(cle)]);
+/**
+ * Où lire un fichier livré avec l'appli : une adresse sur le web, un vrai chemin file:// sur le téléphone. Dans l'APK
+ * Android, le fichier est une ressource de l'appli (« assets_newsletters_photo01 », sans chemin) : le module natif le
+ * copie dans le cache et rend un chemin lisible.
+ */
+export async function uriLivree(module: number, extension: string): Promise<string> {
+  const a = Asset.fromModule(module);
   await a.downloadAsync();
-  let uri = a.localUri ?? a.uri;
-  if (Platform.OS === 'web' || /^https?:/.test(uri)) return (await fetch(uri)).arrayBuffer();
-  // APK Android : l'image est une ressource de l'appli (« assets_newsletters_photo01 », sans chemin). Le module natif la
-  // copie dans le cache et rend un vrai chemin file:// que l'on peut lire.
+  const uri = a.localUri ?? a.uri;
+  if (Platform.OS === 'web' || /^https?:/.test(uri)) return uri;
   if (!/^file:\/\/\//.test(uri) || uri.startsWith('file:///android_res/')) {
-    uri = String(await requireNativeModule<{ downloadAsync(u: string, h: string | null, t: string): Promise<string> }>('ExpoAsset').downloadAsync(uri, a.hash ?? null, a.type || 'jpg'));
+    return String(await requireNativeModule<{ downloadAsync(u: string, h: string | null, t: string): Promise<string> }>('ExpoAsset').downloadAsync(uri, a.hash ?? null, a.type || extension));
   }
+  return uri;
+}
+
+/** Les octets d'un fichier livré avec l'appli. */
+export async function octetsLivres(module: number, extension: string): Promise<ArrayBuffer> {
+  const uri = await uriLivree(module, extension);
+  if (/^https?:|^blob:|^data:/.test(uri)) return (await fetch(uri)).arrayBuffer();
   return new File(uri).arrayBuffer();
 }
+
+/** Les octets JPEG d'une illustration livrée. */
+export const octetsIllustration = (cle: string) => octetsLivres(FICHIERS[fichierIllustration(cle)], 'jpg');

@@ -26,6 +26,8 @@ export interface Newsletter {
   boutonLibelle?: string;
   boutonLien?: string;
   cibles: Cible[];
+  /** Écran seulement (jamais enregistré) : l'article de la bibliothèque dont le PDF accompagne la lettre. */
+  pdf?: string;
   /** Contacts choisis un par un (identifiants), en plus des groupes ou à leur place. */
   contacts?: string[];
   parEmail: boolean;

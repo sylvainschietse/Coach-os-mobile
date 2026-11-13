@@ -5,7 +5,7 @@
 import { decode, encode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import { Eye, ImagePlus, Mail, Send, Trash2 } from 'lucide-react-native';
+import { Eye, FolderInput, ImagePlus, Mail, MessageCircle, Send, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
@@ -25,6 +25,9 @@ import {
   type Theme,
 } from '@/domain/newsletters';
 import ARTICLES_BRUTS from '@/domain/articles-newsletters.json';
+import { lienEnvoi } from '@/domain/crm';
+import { articleDuLien, BOUTON_PDF, cheminDuLien, introPdf, messageWhatsAppPdf } from '@/domain/newsletters-pdf';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { maintenantMs } from '@/lib/temps';
 import { messageErreur, useCharger, useRechargerSur } from '@/lib/useCharger';
 
@@ -36,6 +39,7 @@ import { ApercuHtml } from '../offres/apercu-html';
 import { couleurs, espace, polices } from '../theme';
 import { Bibliotheque, type ArticleBibliotheque } from './bibliotheque';
 import { CLES_ILLUSTRATIONS, imageIllustration, octetsIllustration } from './illustrations';
+import { aUnPdf, octetsPdf, voirPdfArticle } from './pdf-newsletters';
 
 /** Une image du texte livrée avec l'appli (pas encore rangée en ligne). */
 const estLivree = (src: string) => CLES_ILLUSTRATIONS.includes(src);
@@ -82,6 +86,127 @@ const vierge = (): Newsletter => ({
   nbNotifs: 0,
   creeLe: '',
 });
+/** Un article de la bibliothèque part en PDF : l'e-mail présente le thème (chapeau, photo) et son bouton ouvre le PDF. */
+const depuisArticle = (a: ArticleBibliotheque): Newsletter => ({
+  ...vierge(),
+  rubrique: a.rubrique,
+  objet: a.objet,
+  chapeau: a.chapeau,
+  message: introPdf(a.lecture),
+  cibles: [a.pour],
+  image: `theme:${a.illustration ?? a.cle}`,
+  boutonLibelle: BOUTON_PDF,
+  boutonLien: '',
+  pdf: a.cle,
+});
+
+const sansPrenom = (t: string) => t.replace(/^\s*\{prenom\}\s*,\s*/, '').replace(/,?\s*\{prenom\}/g, '');
+const majuscule = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+
+/** Toucher un article de la bibliothèque : sa couverture, son thème, et le PDF à regarder avant de l'envoyer. */
+function FicheArticle({ a, onFermer, onEnvoyer }: { a: ArticleBibliotheque; onFermer: () => void; onEnvoyer: () => void }) {
+  const { width, height } = useWindowDimensions();
+  const [erreur, setErreur] = useState<string>();
+  const [ouvre, setOuvre] = useState(false);
+  const largeur = Math.min(width - 24, 560);
+  async function voir() {
+    setErreur(undefined);
+    setOuvre(true);
+    try {
+      await voirPdfArticle(a.cle);
+    } catch (e) {
+      setErreur(messageErreur(e));
+    } finally {
+      setOuvre(false);
+    }
+  }
+  return (
+    <Modal visible animationType="slide" onRequestClose={onFermer} transparent>
+      <View style={styles.fondModal}>
+        <View style={[styles.modal, { width: largeur, maxHeight: height - 60 }]}>
+          <ScrollView contentContainerStyle={{ gap: espace(3), padding: espace(4) }}>
+            <View style={[styles.couverture, { borderRadius: 14 }]}>
+              <Image source={imageIllustration(a.illustration ?? a.cle)} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} resizeMode="cover" accessibilityIgnoresInvertColors />
+            </View>
+            <Text style={styles.rubrique}>{a.rubrique}</Text>
+            <Text style={styles.ficheTitre}>{sansPrenom(a.objet)}</Text>
+            <Text style={styles.ficheChapeau}>{majuscule(sansPrenom(a.chapeau))}</Text>
+            <Text style={styles.detail}>
+              PDF de 3 pages · {a.lecture ?? 5} min de lecture · {a.pour === 'clients' ? 'pour les clients actifs' : 'pour les clients en veille'}
+            </Text>
+            <View style={styles.boutons}>
+              <Bouton libelle={ouvre ? 'Ouverture…' : 'Voir le PDF'} chargement={ouvre} onPress={voir} />
+              <BoutonContour libelle="Envoyer à mes clients" icone={Send} iconeAGauche onPress={onEnvoyer} />
+            </View>
+            <Text style={styles.detail}>Tu choisis ensuite pour qui : l’e-mail qui présente le thème avec le lien vers le PDF, le dépôt dans leurs documents, et WhatsApp.</Text>
+            {erreur && <Text style={styles.erreur}>{erreur}</Text>}
+            <View style={{ alignSelf: 'flex-start' }}>
+              <BoutonContour libelle="Fermer" onPress={onFermer} />
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/** Envoyer le PDF par WhatsApp, personne par personne : la conversation s'ouvre sur son numéro, le message est déjà écrit. */
+function EnvoiWhatsApp({ n, lien, coach, onFermer }: { n: Newsletter; lien: string; coach: string; onFermer: () => void }) {
+  const { width, height } = useWindowDimensions();
+  const liste = useCharger(() => newsletters.destinatairesDe(n), `newsletters-whatsapp-${n.cibles.join()}-${(n.contacts ?? []).join()}`);
+  const [faits, setFaits] = useState<string[]>([]);
+  const avecNumero = (liste.donnee ?? []).filter((c) => lienEnvoi('whatsapp', c, 'x'));
+  const sans = (liste.donnee ?? []).length - avecNumero.length;
+  return (
+    <Modal visible animationType="slide" onRequestClose={onFermer} transparent>
+      <View style={styles.fondModal}>
+        <View style={[styles.modal, { width: Math.min(width - 24, 560), maxHeight: height - 60 }]}>
+          <View style={{ padding: espace(4), gap: espace(2) }}>
+            <Text style={styles.champ}>Envoyer par WhatsApp</Text>
+            <Text style={styles.detail}>Touche « Envoyer » : WhatsApp s’ouvre sur la conversation de la personne, avec le message et le lien du PDF déjà écrits. Il ne te reste qu’à appuyer sur la flèche.</Text>
+          </View>
+          <ScrollView contentContainerStyle={{ paddingHorizontal: espace(4), paddingBottom: espace(3) }}>
+            {liste.erreur && <Erreur message={liste.erreur} onReessayer={liste.recharger} />}
+            {!liste.donnee && !liste.erreur && <Chargement />}
+            {liste.donnee && avecNumero.length === 0 && <Text style={styles.detail}>Personne avec un numéro de téléphone parmi les destinataires choisis.</Text>}
+            {avecNumero.map((c) => {
+              const fait = faits.includes(c.id);
+              return (
+                <View key={c.id} style={styles.ligneChoix}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.nomChoix} numberOfLines={1}>
+                      {c.nom}
+                    </Text>
+                    <Text style={styles.detail}>{fait ? 'WhatsApp ouvert ✓' : `+${lienEnvoi('whatsapp', c, 'x')!.match(/wa\.me\/(\d+)/)?.[1] ?? ''}`}</Text>
+                  </View>
+                  <BoutonContour
+                    libelle={fait ? 'Renvoyer' : 'Envoyer'}
+                    icone={MessageCircle}
+                    iconeAGauche
+                    onPress={() => {
+                      const url = lienEnvoi('whatsapp', c, messageWhatsAppPdf(n, { prenom: c.prenom, coach, lien }));
+                      if (url) void ouvrirLien(url).catch(() => undefined);
+                      setFaits((f) => (f.includes(c.id) ? f : [...f, c.id]));
+                    }}
+                  />
+                </View>
+              );
+            })}
+            {sans > 0 && (
+              <Text style={[styles.detail, { marginTop: espace(2) }]}>
+                {sans} personne{sans > 1 ? 's' : ''} sans numéro de téléphone : ajoute-le dans sa fiche client.
+              </Text>
+            )}
+          </ScrollView>
+          <View style={{ padding: espace(3), alignItems: 'flex-start' }}>
+            <BoutonContour libelle="Fermer" onPress={onFermer} />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const depuisTheme = (t: Theme): Newsletter => ({ ...vierge(), rubrique: t.rubrique, objet: t.objet, chapeau: t.chapeau, message: t.message, cibles: [t.pour], image: `theme:${t.illustration ?? t.cle}` });
 
 function illustrationDe(n: Newsletter): Illustration {
@@ -96,8 +221,7 @@ export function MesNewsletters() {
   const comptes = useCharger(() => newsletters.destinataires(), 'newsletters-destinataires');
   const [ouverte, setOuverte] = useState<Newsletter | null>(null);
   // Article de la bibliothèque ouvert en lecture, mis en page comme l'e-mail (photos comprises).
-  const [lu, setLu] = useState<Newsletter | null>(null);
-  const coach = useCoachNom();
+  const [fiche, setFiche] = useState<ArticleBibliotheque | null>(null);
 
   if (ouverte)
     return (
@@ -146,21 +270,14 @@ export function MesNewsletters() {
           ),
       )}
 
-      <Bibliotheque articles={ARTICLES} onOuvrir={(t) => setLu(depuisTheme(t))} />
-      {lu && (
-        <Apercu
-          visible
-          onFermer={() => setLu(null)}
-          n={lu}
-          illustration={illustrationDe(lu)}
-          coach={coach}
-          titre={lu.rubrique || 'Article'}
-          action={{
-            libelle: 'Adapter et programmer',
-            onPress: () => {
-              setOuverte(lu);
-              setLu(null);
-            },
+      <Bibliotheque articles={ARTICLES} onOuvrir={setFiche} />
+      {fiche && (
+        <FicheArticle
+          a={fiche}
+          onFermer={() => setFiche(null)}
+          onEnvoyer={() => {
+            setOuverte(depuisArticle(fiche));
+            setFiche(null);
           }}
         />
       )}
@@ -301,6 +418,13 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
   const [info, setInfo] = useState<string>();
   const [apercu, setApercu] = useState(false);
   const [choixOuvert, setChoixOuvert] = useState(!!initiale.contacts?.length);
+  // Le PDF de la bibliothèque qui accompagne la lettre, et où il est rangé une fois préparé.
+  const article = initiale.pdf ?? articleDuLien(initiale.boutonLien);
+  const [pdfRange, setPdfRange] = useState<{ chemin: string; lien: string; taille?: number } | undefined>(() => {
+    const chemin = cheminDuLien(initiale.boutonLien);
+    return chemin && initiale.boutonLien ? { chemin, lien: initiale.boutonLien } : undefined;
+  });
+  const [whatsapp, setWhatsapp] = useState<string>();
   const [selection, setSelection] = useState({ start: initiale.message.length, end: initiale.message.length });
   const partie = initiale.etat === 'envoyee' || initiale.etat === 'en_cours';
   const maj = (m: Partial<Newsletter>) => {
@@ -348,14 +472,25 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
     return Promise.all(cles.map(async (cle) => ({ cle, octets: await octetsIllustration(cle) })));
   }
 
+  /** Range le PDF (une fois) et met son lien dans le bouton de l'e-mail. */
+  async function avecPdf(x: Newsletter): Promise<{ n: Newsletter; pdf?: { chemin: string; lien: string; taille?: number } }> {
+    if (!aUnPdf(article)) return { n: x, pdf: pdfRange };
+    const pdf = pdfRange ?? (await newsletters.preparerPdf(article, () => octetsPdf(article)));
+    setPdfRange(pdf);
+    const y = { ...x, boutonLibelle: x.boutonLibelle?.trim() || BOUTON_PDF, boutonLien: x.boutonLien?.trim() || pdf.lien };
+    setN(y);
+    return { n: y, pdf };
+  }
+
   async function enregistrer(etat: 'brouillon' | 'programmee') {
     setErreur(undefined);
     setInfo(undefined);
-    const probleme = erreurNewsletter({ ...n, envoiLe }, etat === 'programmee' ? maintenantMs() : undefined);
+    const probleme = erreurNewsletter({ ...n, boutonLien: n.boutonLien || (article ? 'https://pdf.a.venir' : n.boutonLien), envoiLe }, etat === 'programmee' ? maintenantMs() : undefined);
     if (probleme) return setErreur(probleme);
     setOccupe(etat);
     try {
-      const enregistree = await newsletters.enregistrer({ ...n, envoiLe, etat }, await imageAEnregistrer(), await imagesTexte());
+      const { n: pret } = await avecPdf(n);
+      const enregistree = await newsletters.enregistrer({ ...pret, envoiLe, etat }, await imageAEnregistrer(), await imagesTexte());
       setN(enregistree);
       setIllustration(illustrationDe(enregistree) ?? illustration);
       if (etat === 'programmee') onFermer();
@@ -370,26 +505,72 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
   async function test() {
     setErreur(undefined);
     setInfo(undefined);
-    const probleme = erreurNewsletter({ ...n, parEmail: true });
+    const probleme = erreurNewsletter({ ...n, boutonLien: n.boutonLien || (article ? 'https://pdf.a.venir' : n.boutonLien), parEmail: true });
     if (probleme) return setErreur(probleme);
     setOccupe('test');
     try {
+      const { n: pret } = await avecPdf(n);
       // L'illustration doit être en ligne pour s'afficher dans la boîte : on enregistre d'abord le brouillon.
       let image = n.image;
       let message = n.message;
       if ((illustration && illustration.quoi !== 'rangee') || imagesDuTexte(n.message).some(estLivree)) {
-        const enregistree = await newsletters.enregistrer({ ...n, envoiLe, etat: n.etat === 'programmee' ? 'programmee' : 'brouillon' }, await imageAEnregistrer(), await imagesTexte());
-        setN(enregistree);
+        const enregistree = await newsletters.enregistrer({ ...pret, envoiLe, etat: n.etat === 'programmee' ? 'programmee' : 'brouillon' }, await imageAEnregistrer(), await imagesTexte());
+        setN({ ...enregistree, pdf: article });
         setIllustration(illustrationDe(enregistree));
         image = enregistree.image;
         message = enregistree.message;
       }
-      const a = await newsletters.envoyerTest({ ...n, image, message });
+      const a = await newsletters.envoyerTest({ ...pret, image, message });
       setInfo(`Test envoyé à ${a}. Regarde ta boîte de réception.`);
     } catch (e) {
       setErreur(messageErreur(e));
     } finally {
       setOccupe(undefined);
+    }
+  }
+
+  async function deposerDocuments() {
+    setErreur(undefined);
+    setInfo(undefined);
+    setOccupe('documents');
+    try {
+      const { pdf } = await avecPdf(n);
+      if (!pdf) throw new Error('Ce PDF est introuvable.');
+      const dest = await newsletters.destinatairesDe(n);
+      if (!dest.length) throw new Error('Choisis d’abord pour qui, dans « Pour qui ? ».');
+      const r = await newsletters.deposerPdfDansDocuments({ chemin: pdf.chemin, nom: sansPrenom(n.objet), nomFichier: `${article ?? 'newsletter'}.pdf`, taille: pdf.taille }, dest.map((d) => d.id));
+      setInfo(
+        r.ajoutes
+          ? `PDF déposé dans les documents de ${r.ajoutes} personne${r.ajoutes > 1 ? 's' : ''}${r.deja ? ` (${r.deja} l’avai${r.deja > 1 ? 'en' : ''}t déjà)` : ''}. Ceux qui ont l’appli le retrouvent dans « Mes documents ».`
+          : 'Tous les destinataires l’avaient déjà dans leurs documents.',
+      );
+    } catch (e) {
+      setErreur(messageErreur(e));
+    } finally {
+      setOccupe(undefined);
+    }
+  }
+
+  async function ouvrirWhatsApp() {
+    setErreur(undefined);
+    setOccupe('whatsapp');
+    try {
+      const { pdf } = await avecPdf(n);
+      if (!pdf) throw new Error('Ce PDF est introuvable.');
+      setWhatsapp(pdf.lien);
+    } catch (e) {
+      setErreur(messageErreur(e));
+    } finally {
+      setOccupe(undefined);
+    }
+  }
+
+  async function voirPdf() {
+    setErreur(undefined);
+    try {
+      await voirPdfArticle(article, pdfRange?.lien ?? n.boutonLien);
+    } catch (e) {
+      setErreur(messageErreur(e));
     }
   }
 
@@ -422,6 +603,21 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
           {initiale.etat === 'en_cours' ? 'Cette newsletter est en train de partir.' : `Envoyée : ${initiale.nbEmails} e-mail${initiale.nbEmails > 1 ? 's' : ''} et ${initiale.nbNotifs} notification${initiale.nbNotifs > 1 ? 's' : ''}.`} Elle ne peut plus être modifiée.
         </Text>
       )}
+
+      {(aUnPdf(article) || !!pdfRange) && (
+        <Carte style={styles.carte}>
+          <Text style={styles.champ}>La newsletter en PDF</Text>
+          <Text style={styles.detail}>
+            C’est le PDF magazine qui part. L’e-mail le présente en quelques lignes, avec un bouton qui l’ouvre. Tu peux aussi le déposer dans leurs documents et l’envoyer par WhatsApp aux personnes choisies plus bas.
+          </Text>
+          <View style={styles.boutons}>
+            <Bouton libelle="Voir le PDF" onPress={voirPdf} />
+            {!partie && <BoutonContour libelle={occupe === 'documents' ? 'Dépôt…' : 'Mettre dans leurs documents'} icone={FolderInput} iconeAGauche onPress={deposerDocuments} />}
+            <BoutonContour libelle={occupe === 'whatsapp' ? 'Préparation…' : 'Envoyer par WhatsApp'} icone={MessageCircle} iconeAGauche onPress={ouvrirWhatsApp} />
+          </View>
+        </Carte>
+      )}
+      {whatsapp && <EnvoiWhatsApp n={n} lien={whatsapp} coach={coach} onFermer={() => setWhatsapp(undefined)} />}
 
       <Carte style={styles.carte}>
         <Text style={styles.champ}>Pour qui ?</Text>
@@ -523,6 +719,10 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
             <Text style={styles.aide}>« ## » au début d’une ligne en fait un intertitre, « - » un point de liste, « {">"} » une citation en grand. Une ligne « ![légende](image) » place une illustration dans le texte.</Text>
           </>
         )}
+        {aUnPdf(article) || pdfRange ? (
+          <Text style={[styles.detail, { marginTop: espace(2) }]}>Le bouton « {n.boutonLibelle || BOUTON_PDF} » de l’e-mail ouvre le PDF : son lien est créé tout seul à l’enregistrement.</Text>
+        ) : (
+          <>
         <Text style={[styles.champ, { marginTop: espace(2) }]}>Bouton (facultatif)</Text>
         <View style={styles.boutons}>
           <TextInput
@@ -547,6 +747,8 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
             style={[styles.saisie, { flex: 1, minWidth: 160 }]}
           />
         </View>
+          </>
+        )}
       </Carte>
 
       <Carte style={styles.carte}>
@@ -739,6 +941,8 @@ const styles = StyleSheet.create({
   pastilleActifs: { backgroundColor: couleurs.vertClair, color: '#0F4D2A' },
   pastilleVeille: { backgroundColor: '#F1ECFF', color: '#4A3699' },
   pastilleCanal: { backgroundColor: couleurs.discret, color: couleurs.secondaire },
+  ficheTitre: { fontFamily: polices.texteGras, fontSize: 22, lineHeight: 27, color: couleurs.texte },
+  ficheChapeau: { fontFamily: polices.texte, fontSize: 15, lineHeight: 22, color: couleurs.texteDoux, fontStyle: 'italic' },
   ligneChoix: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, paddingHorizontal: 4, borderRadius: 10 },
   caseChoix: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: couleurs.saisie, alignItems: 'center', justifyContent: 'center' },
   caseCochee: { backgroundColor: couleurs.texte, borderColor: couleurs.texte },
