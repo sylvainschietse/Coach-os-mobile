@@ -3,11 +3,12 @@
 import { useFocusEffect } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { crm, ecouterCrm } from '@/data/crm';
 import { etapeSuivante, filtrerContacts, formaterTelephone, statutContact, STATUTS_CONTACT, type ContactResume, type StatutContact } from '@/domain/crm';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
+import { usePression } from '@/lib/usePression';
 
 import { BoutonContour, Vide } from '../coque';
 import { Chargement, Erreur } from '../composants';
@@ -92,9 +93,16 @@ export function Contacts({
 
 /** Bouton principal à icône « + » de la barre d'outils d'origine. */
 export function BoutonPrincipal({ libelle, onPress }: { libelle: string; onPress: () => void }) {
+  const { enCours, presser } = usePression(onPress);
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.principal, pressed && { opacity: 0.85 }]}>
-      <Plus size={16} color="#FFFFFF" />
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ busy: enCours }}
+      disabled={enCours}
+      onPress={presser}
+      style={({ pressed }) => [styles.principal, pressed && { opacity: 0.7 }]}
+    >
+      {enCours ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Plus size={16} color="#FFFFFF" />}
       <Text style={styles.principalTexte}>{libelle}</Text>
     </Pressable>
   );

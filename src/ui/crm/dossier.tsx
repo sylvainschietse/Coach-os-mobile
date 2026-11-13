@@ -3,7 +3,7 @@
 // cases à cocher, badges, initiales (`premium-avatar`) et volet repliable (`<details>`).
 import { Check, ChevronDown, ChevronRight, Search, X } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Selecteur } from '../coque';
@@ -13,6 +13,7 @@ import { BoutonDictee } from '../dictee';
 import { arrondi, couleurs, espace, polices } from '../theme';
 
 import { roleWeb } from '@/lib/role-web';
+import { usePression } from '@/lib/usePression';
 
 /** Largeur `sm` de Tailwind : en dessous, une seule colonne. */
 const SM = 640;
@@ -139,18 +140,24 @@ export function PiedEditeur({
 }
 
 export function BoutonPied({ libelle, onPress, danger, desactive }: { libelle: string; onPress: () => void; danger?: boolean; desactive?: boolean }) {
+  const { enCours, presser } = usePression(onPress);
   return (
     <Pressable
       accessibilityRole="button"
-      disabled={desactive}
-      onPress={onPress}
+      accessibilityState={{ disabled: !!(desactive || enCours), busy: enCours }}
+      disabled={desactive || enCours}
+      onPress={presser}
       style={({ pressed }) => [
         styles.boutonPied,
         danger && { borderColor: 'transparent' },
-        (pressed || desactive) && { opacity: desactive ? 0.4 : 0.8 },
+        (pressed || desactive) && { opacity: desactive ? 0.4 : 0.7 },
       ]}
     >
-      <Text style={[styles.boutonPiedTexte, danger && { color: couleurs.rouge }]}>{libelle}</Text>
+      {enCours ? (
+        <ActivityIndicator size="small" color={danger ? couleurs.rouge : couleurs.texte} />
+      ) : (
+        <Text style={[styles.boutonPiedTexte, danger && { color: couleurs.rouge }]}>{libelle}</Text>
+      )}
     </Pressable>
   );
 }
