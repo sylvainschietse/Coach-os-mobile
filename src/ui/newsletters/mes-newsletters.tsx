@@ -33,10 +33,11 @@ import { useCoachNom } from '../crm/commun';
 import { ChampDate, ChampHeure } from '../date-heure';
 import { ApercuHtml } from '../offres/apercu-html';
 import { couleurs, espace, polices } from '../theme';
+import { Bibliotheque, type ArticleBibliotheque } from './bibliotheque';
 import { CLES_ILLUSTRATIONS, imageIllustration, octetsIllustration } from './illustrations';
 
-/** 20 articles complets et sourcés sur le sport et l'alimentation (environ 3 pages chacun). */
-const ARTICLES = ARTICLES_BRUTS as Theme[];
+/** Les articles complets et sourcés (environ 3 pages chacun), chacun dans sa catégorie. */
+const ARTICLES = ARTICLES_BRUTS as ArticleBibliotheque[];
 
 /** L'illustration à l'écran : un thème livré, une photo choisie (pas encore rangée), ou celle déjà rangée. */
 type Illustration = { quoi: 'theme'; cle: string } | { quoi: 'photo'; base64: string } | { quoi: 'rangee'; chemin: string } | null;
@@ -138,37 +139,11 @@ export function MesNewsletters() {
           ),
       )}
 
-      <View style={{ gap: espace(2) }}>
-        <Text style={styles.groupe}>Articles complets · sport et alimentation</Text>
-        <Text style={styles.detail}>20 articles d’environ 3 pages, documentés et sourcés. Touche-en un pour le relire, l’adapter et le programmer.</Text>
-        {CIBLES.map((cible) => (
-          <View key={cible.cle} style={{ gap: espace(2) }}>
-            <Text style={styles.sousGroupe}>{cible.cle === 'clients' ? 'Pour les clients actifs' : 'Pour les clients en veille'}</Text>
-            {ARTICLES.filter((t) => t.pour === cible.cle).map((t) => (
-              <Pressable
-                key={t.cle}
-                accessibilityRole="button"
-                accessibilityLabel={`Article : ${t.rubrique}, ${t.objet}`}
-                onPress={() => setOuverte(depuisTheme(t))}
-                style={({ pressed }) => [styles.ligne, pressed && { backgroundColor: couleurs.discret }]}
-              >
-                <Image source={imageIllustration(t.illustration ?? t.cle)} style={styles.vignette} resizeMode="cover" />
-                <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-                  <Text style={styles.rubrique}>{t.rubrique}</Text>
-                  <Text style={styles.titre} numberOfLines={3}>
-                    {t.objet.replace('{prenom}', 'Léa')}
-                  </Text>
-                  <Text style={styles.detail}>{Math.max(1, Math.round(t.message.length / 2600))} pages · sources citées</Text>
-                </View>
-              </Pressable>
-            ))}
-          </View>
-        ))}
-      </View>
+      <Bibliotheque articles={ARTICLES} onOuvrir={(t) => setOuverte(depuisTheme(t))} />
 
       <View style={{ gap: espace(2) }}>
-        <Text style={styles.groupe}>Idées de sujets</Text>
-        <Text style={styles.detail}>Touche une idée : l’article est déjà écrit, il ne reste qu’à l’adapter.</Text>
+        <Text style={styles.groupe}>Idées courtes</Text>
+        <Text style={styles.detail}>Des lettres brèves, déjà écrites, à personnaliser en deux minutes.</Text>
         {CIBLES.map((cible) => (
           <View key={cible.cle} style={{ gap: espace(2) }}>
             <Text style={styles.sousGroupe}>{cible.cle === 'clients' ? 'Pour les clients actifs' : 'Pour les clients en veille'}</Text>

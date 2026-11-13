@@ -23,5 +23,7 @@ const ALIAS: Record<string, (typeof FICHIERS_ILLUSTRATIONS)[number]> = {
 
 /** Le fichier (sans extension) d'une illustration, d'après son nom simple ou son fichier. */
 export function fichierIllustration(cle: string): string {
+  // Photo d'un article de la bibliothèque (assets/newsletters/photo-NN.jpg), une par article.
+  if (/^photo-\d{2}$/.test(cle)) return cle;
   return ALIAS[cle] ?? ((FICHIERS_ILLUSTRATIONS as readonly string[]).includes(cle) ? cle : 'mag-cd8ea2');
 }

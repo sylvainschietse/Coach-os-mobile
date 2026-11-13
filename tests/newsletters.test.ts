@@ -17,6 +17,7 @@ import {
   personnaliser,
   THEMES,
 } from '@/domain/newsletters';
+import { CATEGORIES, estCategorie, parCategorie } from '@/domain/categories-newsletters';
 import { fichierIllustration } from '@/domain/illustrations-newsletters';
 
 const lire = (f: string) => readFileSync(join(__dirname, '..', f), 'utf8');
@@ -107,7 +108,19 @@ describe('newsletters', () => {
 });
 
 describe('articles complets', () => {
-  it('les 20 articles sont prêts à partir, avec une illustration livrée et des sources', async () => {
+  it('les 49 articles ont chacun leur photo, jamais la même, et leur catégorie', async () => {
+    const articles = (await import('@/domain/articles-newsletters.json')).default as { cle: string; illustration: string; categorie: string }[];
+    expect(articles.every((a) => /^photo-\d{2}$/.test(a.illustration))).toBe(true);
+    expect(new Set(articles.map((a) => a.illustration)).size).toBe(articles.length);
+    const octets = articles.map((a) => readFileSync(join(__dirname, '../assets/newsletters', `${a.illustration}.jpg`)).toString('base64'));
+    expect(new Set(octets).size).toBe(articles.length);
+    expect(articles.every((a) => estCategorie(a.categorie))).toBe(true);
+    const groupes = parCategorie(articles);
+    expect(groupes.reduce((n, g) => n + g.articles.length, 0)).toBe(articles.length);
+    expect(groupes.length).toBe(CATEGORIES.length);
+  });
+
+  it('les articles sont prêts à partir, avec une illustration livrée et des sources', async () => {
     const articles = (await import('@/domain/articles-newsletters.json')).default as { cle: string; pour: 'clients' | 'veille'; rubrique: string; objet: string; chapeau: string; message: string; illustration: string }[];
     expect(articles.length).toBeGreaterThanOrEqual(49);
     for (const a of articles) {

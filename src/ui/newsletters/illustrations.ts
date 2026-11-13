@@ -1,4 +1,5 @@
-// Illustrations des newsletters, livrées avec l'appli (assets/newsletters). Rangées dans le stockage à
+// Illustrations des newsletters, livrées avec l'appli (assets/newsletters) : une photo par article de la
+// bibliothèque (photo-NN) et les dessins des idées courtes (mag-*). Rangées dans le stockage à
 // l'enregistrement : c'est l'adresse publique que les e-mails affichent.
 import { Asset } from 'expo-asset';
 import { File } from 'expo-file-system';
@@ -6,7 +7,10 @@ import { Platform } from 'react-native';
 
 import { FICHIERS_ILLUSTRATIONS, fichierIllustration } from '@/domain/illustrations-newsletters';
 
+import { PHOTOS_ARTICLES } from './photos-articles';
+
 const FICHIERS: Record<string, number> = {
+  ...PHOTOS_ARTICLES,
   'mag-cd8ea2': require('../../../assets/newsletters/mag-cd8ea2.jpg'),
   'mag-979c40': require('../../../assets/newsletters/mag-979c40.jpg'),
   'mag-2996d9': require('../../../assets/newsletters/mag-2996d9.jpg'),
@@ -27,7 +31,8 @@ const FICHIERS: Record<string, number> = {
 
 /** L'image d'une illustration, d'après son nom simple (« recette ») ou son fichier (« mag-979c40 »). */
 export const imageIllustration = (cle: string): number => FICHIERS[fichierIllustration(cle)];
-export const CLES_ILLUSTRATIONS: string[] = [...FICHIERS_ILLUSTRATIONS];
+/** Au choix dans l'éditeur : les photos des articles, puis les dessins. */
+export const CLES_ILLUSTRATIONS: string[] = [...Object.keys(PHOTOS_ARTICLES), ...FICHIERS_ILLUSTRATIONS];
 
 /** Les octets JPEG d'une illustration livrée. */
 export async function octetsIllustration(cle: string): Promise<ArrayBuffer> {
