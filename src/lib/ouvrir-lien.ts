@@ -3,12 +3,22 @@
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 
-import { lienWhatsAppNatif } from '@/domain/whatsapp';
+import { lienWhatsAppNatif, lireLienWhatsApp } from '@/domain/whatsapp';
+import { ouvrirConversationWhatsApp } from '@/lib/whatsapp-fichier';
 
 export async function ouvrirLien(url: string): Promise<void> {
   if (Platform.OS === 'web' && typeof window !== 'undefined' && /^https?:/i.test(url)) {
     window.open(url, '_blank', 'noopener');
     return;
+  }
+  // Android : l'intention adressée à WhatsApp ouvre vraiment la conversation du numéro, message prérempli.
+  const wa = lireLienWhatsApp(url);
+  if (wa) {
+    try {
+      if (await ouvrirConversationWhatsApp(wa.telephone, wa.message)) return;
+    } catch {
+      // On retombe sur les liens ci-dessous.
+    }
   }
   const natif = lienWhatsAppNatif(url);
   if (natif) {

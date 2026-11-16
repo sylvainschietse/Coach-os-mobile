@@ -5,7 +5,12 @@ import { File, Paths } from 'expo-file-system';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { Platform } from 'react-native';
 
-type Natif = { installe(): boolean; envoyer(fichier: string, telephone: string, message: string, type: string): Promise<void> };
+type Natif = {
+  installe(): boolean;
+  envoyer(fichier: string, telephone: string, message: string, type: string): Promise<void>;
+  /** Absent des APK d'avant novembre 2026 (16/11). */
+  ouvrirConversation?: (telephone: string, message: string) => Promise<void>;
+};
 
 const natif = Platform.OS === 'android' ? requireOptionalNativeModule<Natif>('WhatsappFichier') : null;
 
@@ -25,7 +30,21 @@ export function whatsAppAvecFichier(): boolean {
 export async function envoyerFichierWhatsApp(source: string, nom: string, telephone: string, message: string, type = 'application/pdf'): Promise<boolean> {
   if (!natif || !whatsAppAvecFichier()) return false;
   const dest = new File(Paths.cache, nom);
-  if (!dest.exists) new File(source).copy(dest);
+  // Un fichier du même nom peut rester d'un envoi précédent (autre client, autre version) : on le remplace.
+  if (dest.uri !== new File(source).uri) {
+    if (dest.exists) dest.delete();
+    new File(source).copy(dest);
+  }
   await natif.envoyer(dest.uri, telephone, message, type);
+  return true;
+}
+
+/**
+ * Ouvre WhatsApp sur la conversation de ce numéro, message déjà écrit (Android). False si le module ou WhatsApp manque :
+ * l'appelant passe alors par le lien wa.me.
+ */
+export async function ouvrirConversationWhatsApp(telephone: string, message: string): Promise<boolean> {
+  if (!natif?.ouvrirConversation || !whatsAppAvecFichier()) return false;
+  await natif.ouvrirConversation(telephone, message);
   return true;
 }
