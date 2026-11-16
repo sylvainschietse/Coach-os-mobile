@@ -2,8 +2,8 @@
 // sur un jour, une semaine, un mois ou une année qu'on remonte avec ‹ ›, puis l'historique semaine par semaine.
 // Toucher une semaine de l'historique l'ouvre. Chaque source se lit à part : une source en panne n'efface pas les autres.
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { AccessibilityInfo, Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { depot } from '@/data';
 import { alimentation } from '@/data/alimentation';
@@ -15,7 +15,7 @@ import { titreActivite } from '@/domain/activites';
 import { ajouterJours, aujourdhuiParis, jourParis, titreClient } from '@/domain/entrainement';
 import { indicateursDuClient, type Indicateur } from '@/domain/quotidien';
 import { formaterNombre, type ChampMensuration } from '@/domain/suivi';
-import { courbesExercices } from '@/domain/suivi-entrainement';
+import { compterSeances, courbesExercices, derniereSeanceFaite } from '@/domain/suivi-entrainement';
 import {
   dateCourte,
   decaler,
@@ -36,6 +36,7 @@ import {
 } from '@/domain/suivi-periode';
 import { useCharger } from '@/lib/useCharger';
 
+import { DetailSeanceModale, type SeanceOuverte } from '../entrainement/suivi-client';
 import { Courbe } from './courbe';
 import { CycleCoach } from './mon-cycle';
 import { couleurs, espace, polices } from '../theme';
@@ -83,8 +84,12 @@ function useDonnees(clientId: string) {
     for (const r of repas) kcalParJour.set(r.date, (kcalParJour.get(r.date) ?? 0) + r.kcal);
     const releve = (i: Indicateur): PointDate[] => releves.filter((r) => r.indicateur === i).map((r) => ({ date: r.jour, valeur: r.valeur }));
     return {
-      seances: resultats.realisations.map((r) => ({ date: jourParis(r.fin), titre: titreClient(r.seanceTitre), note: r.note })),
-      libres: libres.map((a) => ({ date: jourParis(a.debut), titre: titreActivite(a), dureeS: a.dureeS })),
+      seances: resultats.realisations.map((r) => ({ id: r.id, date: jourParis(r.fin), titre: titreClient(r.seanceTitre), note: r.note })),
+      libres: libres.map((a) => ({ id: a.id, date: jourParis(a.debut), titre: titreActivite(a), dureeS: a.dureeS })),
+      // Pour ouvrir le détail d'une séance (exercices, charges, répétitions).
+      realisations: resultats.realisations,
+      prescriptions: resultats.prescriptions,
+      activites: libres,
       courbes: courbesExercices(resultats.realisations),
       mensurations,
       records,
@@ -171,12 +176,15 @@ export function SuiviCoach({ clientId, prenom }: { clientId: string; prenom: str
       {!d && !charge.erreur && <Text style={styles.doux}>Chargement…</Text>}
       {d && (
         <>
-          {(domaine === 'tout' || domaine === 'seances') && <BlocSeances d={d} f={f} />}
-          {(domaine === 'tout' || domaine === 'force') && <BlocForce d={d} f={f} />}
-          {(domaine === 'tout' || domaine === 'corps') && <BlocCorps d={d} f={f} />}
-          {(domaine === 'tout' || domaine === 'bien-etre') && <BlocBienEtre d={d} f={f} />}
-          {(domaine === 'tout' || domaine === 'nutrition') && <BlocNutrition d={d} f={f} />}
-          {(domaine === 'tout' || domaine === 'pas') && <BlocPas d={d} f={f} />}
+          {/* Glisser les blocs vers la droite remonte d'une période (semaine, mois…), vers la gauche avance : comme ‹ ›. */}
+          <Glisser onPrecedent={() => setAncre(decaler(periode, ancre, -1))} onSuivant={avancer ? () => setAncre(decaler(periode, ancre, 1)) : undefined}>
+            {(domaine === 'tout' || domaine === 'seances') && <BlocSeances d={d} f={f} />}
+            {(domaine === 'tout' || domaine === 'force') && <BlocForce d={d} f={f} />}
+            {(domaine === 'tout' || domaine === 'corps') && <BlocCorps d={d} f={f} />}
+            {(domaine === 'tout' || domaine === 'bien-etre') && <BlocBienEtre d={d} f={f} />}
+            {(domaine === 'tout' || domaine === 'nutrition') && <BlocNutrition d={d} f={f} />}
+            {(domaine === 'tout' || domaine === 'pas') && <BlocPas d={d} f={f} />}
+          </Glisser>
           <Historique
             d={d}
             fin={f.fin < aujourdhui ? f.fin : aujourdhui}
@@ -213,22 +221,72 @@ function Bloc({ domaine, titre, chiffre, detail, children }: { domaine: Domaine;
 const Panneau = ({ children }: { children: ReactNode }) => <View style={styles.panneau}>{children}</View>;
 const Vide = ({ children }: { children: ReactNode }) => <Text style={styles.vide}>{children}</Text>;
 
+/**
+ * Glissement de côté : vers la droite la période d'avant, vers la gauche la suivante. Il ne prend la main que si le doigt
+ * part nettement à l'horizontale, pour laisser la fiche défiler de haut en bas.
+ */
+function Glisser({ onPrecedent, onSuivant, children }: { onPrecedent: () => void; onSuivant?: () => void; children: ReactNode }) {
+  const actions = useRef({ onPrecedent, onSuivant });
+  useEffect(() => {
+    actions.current = { onPrecedent, onSuivant };
+  });
+  const [decalage] = useState(() => new Animated.Value(0));
+  const pan = useMemo(
+    () =>
+      // eslint-disable-next-line react-hooks/refs -- la ref n'est lue que pendant le geste, jamais au rendu
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 18 && Math.abs(g.dx) > Math.abs(g.dy) * 1.6,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderMove: (_, g) => decalage.setValue(Math.max(-60, Math.min(60, g.dx / 3))),
+        onPanResponderRelease: (_, g) => {
+          Animated.spring(decalage, { toValue: 0, useNativeDriver: false, bounciness: 4 }).start();
+          if (g.dx > 60) actions.current.onPrecedent();
+          else if (g.dx < -60) actions.current.onSuivant?.();
+        },
+        onPanResponderTerminate: () => Animated.spring(decalage, { toValue: 0, useNativeDriver: false }).start(),
+      }),
+    [decalage],
+  );
+  return (
+    <Animated.View {...pan.panHandlers} style={{ gap: espace(4), transform: [{ translateX: decalage }] }}>
+      {children}
+    </Animated.View>
+  );
+}
+
 function BlocSeances({ d, f }: { d: Donnees; f: Fenetre }) {
+  const [ouverte, setOuverte] = useState<SeanceOuverte>();
   const dans = (x: { date: string }) => x.date >= f.debut && x.date <= f.fin;
   const seances = d.seances.filter(dans);
   const libres = d.libres.filter(dans);
   const un = (x: { date: string }) => ({ date: x.date, valeur: 1 });
   const notes = seances.filter((s) => s.note !== undefined);
   const ressenti = notes.length ? notes.reduce((s, x) => s + (x.note ?? 0), 0) / notes.length : undefined;
+  // Les séances hors programme comptent dans le total : c'est du travail aussi, à valoriser.
+  const faites = [...d.seances.map((s) => ({ ...s, horsProgramme: false })), ...d.libres.map((l) => ({ ...l, horsProgramme: true }))];
+  const compte = compterSeances(faites, f.debut, f.fin);
+  // Rien sur la période : on rappelle la dernière, pour ne pas laisser croire que le client ne fait rien.
+  const avant = compte.total ? undefined : derniereSeanceFaite(faites, ajouterJours(f.debut, -1));
   const dernieres = [...seances.map((s) => ({ ...s, libre: false })), ...libres.map((l) => ({ ...l, note: undefined, libre: true }))]
     .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 3);
+    .slice(0, 5);
+  const ouvrir = (x: { id: string; libre: boolean }) => {
+    const a = x.libre ? d.activites.find((y) => y.id === x.id) : undefined;
+    const r = x.libre ? undefined : d.realisations.find((y) => y.id === x.id);
+    if (a) setOuverte({ type: 'libre', a });
+    else if (r) setOuverte({ type: 'programme', r });
+  };
   return (
     <Bloc
       domaine="seances"
       titre="Séances"
-      chiffre={String(seances.length)}
-      detail={[`séance${seances.length > 1 ? 's' : ''} du programme`, libres.length ? `+ ${libres.length} hors programme` : '', ressenti !== undefined ? `ressenti ${formaterNombre(ressenti)}/10` : '']
+      chiffre={String(compte.total)}
+      detail={[
+        `séance${compte.total > 1 ? 's' : ''} faite${compte.total > 1 ? 's' : ''}`,
+        compte.total ? `${compte.programme} du programme` : '',
+        compte.total ? `${compte.horsProgramme} hors programme` : '',
+        ressenti !== undefined ? `ressenti ${formaterNombre(ressenti)}/10` : '',
+      ]
         .filter(Boolean)
         .join(' · ')}
     >
@@ -246,14 +304,31 @@ function BlocSeances({ d, f }: { d: Donnees; f: Fenetre }) {
       {dernieres.length ? (
         <Panneau>
           {dernieres.map((s, i) => (
-            <Text key={`${s.date}-${i}`} style={styles.ligne} numberOfLines={1}>
-              <Text style={{ fontFamily: polices.texteGras }}>{dateCourte(s.date)}</Text> · {s.titre}
-              {s.libre ? ' · hors programme' : s.note !== undefined ? ` · ressenti ${s.note}/10` : ''}
-            </Text>
+            <Pressable
+              key={`${s.id}-${i}`}
+              accessibilityRole="button"
+              accessibilityHint="Ouvre le détail de la séance"
+              onPress={() => ouvrir(s)}
+              style={({ pressed }) => [styles.seance, pressed && { opacity: 0.6 }]}
+            >
+              <View style={[styles.point, { backgroundColor: s.libre ? couleurs.bleu : TEINTES.seances }]} />
+              <Text style={[styles.ligne, { flex: 1 }]} numberOfLines={1}>
+                <Text style={{ fontFamily: polices.texteGras }}>{dateCourte(s.date)}</Text> · {s.titre}
+                {s.libre ? ' · hors programme' : s.note !== undefined ? ` · ressenti ${s.note}/10` : ''}
+              </Text>
+              <ChevronRight size={16} color={couleurs.texteDoux} />
+            </Pressable>
           ))}
         </Panneau>
       ) : (
-        <Vide>Aucune séance sur cette période.</Vide>
+        <Vide>
+          Aucune séance sur cette période.
+          {avant ? ` Dernière : ${dateCourte(avant.date)}, ${avant.titre}${avant.horsProgramme ? ' (hors programme)' : ''}.` : ''}
+        </Vide>
+      )}
+      <Text style={styles.legende}>Glisse vers la droite pour voir la période d’avant.</Text>
+      {ouverte && (
+        <DetailSeanceModale ouverte={ouverte} toutes={d.realisations} prescriptions={d.prescriptions} videos={[]} onFermer={() => setOuverte(undefined)} />
       )}
     </Bloc>
   );
@@ -596,6 +671,8 @@ const styles = StyleSheet.create({
   sousTitre: { fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.carte },
   panneau: { backgroundColor: couleurs.carte, borderRadius: 14, padding: 12, gap: 6 },
   ligne: { fontFamily: polices.texte, fontSize: 13, color: couleurs.texte, lineHeight: 18 },
+  seance: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 34 },
+  point: { width: 8, height: 8, borderRadius: 4 },
   vide: { fontFamily: polices.texte, fontSize: 13, color: blanc(0.9), fontStyle: 'italic' },
   axe: { flex: 1, fontFamily: polices.texte, fontSize: 10, color: blanc(0.8), textAlign: 'center' },
   axeMois: { position: 'absolute', width: 24, marginLeft: -12, flex: undefined },

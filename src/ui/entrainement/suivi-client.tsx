@@ -16,14 +16,19 @@ import {
   assiduite,
   bilanParSemaine,
   courbesExercices,
+  compterSeances,
+  derniereSeanceFaite,
   detailSeance,
   ressentiMoyen,
   semainesDuCycle,
+  type Pastille,
   type PointExercice,
+  type SeanceFaite,
 } from '@/domain/suivi-entrainement';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Puce, Puces } from '../composants';
+import { Modale } from '../crm/dossier';
 import { DetailActiviteLibre, resumeActivite } from '../suivi/activite-libre';
 import { ActivitesHorsProgramme, useActivitesClient } from '../suivi/activites-hors-programme';
 import { Courbe } from '../suivi/courbe';
@@ -103,14 +108,21 @@ export function EntrainementClient({
       jour,
       libres: (libres.donnee ?? []).map((a) => ({ id: a.id, titre: titreActivite(a), date: jourParis(a.debut) })),
     });
+    const fin = jour < cycle.fin ? jour : cycle.fin;
+    const faites: SeanceFaite[] = [
+      ...realisations.map((r) => ({ date: jourParis(r.fin || r.debut), titre: titreClient(r.seanceTitre || 'Séance'), horsProgramme: false })),
+      ...(libres.donnee ?? []).map((a) => ({ date: jourParis(a.debut), titre: titreActivite(a), horsProgramme: true })),
+    ];
     return {
       realisations,
       toutes: d.realisations,
+      // Le cycle jusqu'à aujourd'hui : séances du programme et hors programme, comptées à part et ensemble.
+      compte: compterSeances(faites, cycle.debut, fin),
+      derniere: derniereSeanceFaite(faites, fin),
       prescriptions: d.prescriptions,
       semaines,
       assiduite: assiduite(semaines),
       ressenti: ressentiMoyen(realisations, ajouterJours(jour, -28)),
-      derniere: [...realisations].sort((a, b) => b.fin.localeCompare(a.fin))[0],
       courbes: courbesExercices(realisations),
       bilan: bilanParSemaine(semaines, realisations),
     };
@@ -166,7 +178,8 @@ export function EntrainementClient({
 type Vue = {
   assiduite: ReturnType<typeof assiduite>;
   ressenti?: number;
-  derniere?: RealisationLue;
+  compte: ReturnType<typeof compterSeances>;
+  derniere?: SeanceFaite;
 } | null;
 
 function EnTete({
@@ -184,7 +197,8 @@ function EnTete({
 }) {
   const { nbSemaines, semaine } = avancementCycle(cycle, jour);
   const a = vue?.assiduite;
-  const derniere = vue?.derniere && jourParis(vue.derniere.fin);
+  const c = vue?.compte;
+  const derniere = vue?.derniere;
   return (
     <View style={ts.carte}>
       <View style={{ gap: 2 }}>
@@ -197,15 +211,23 @@ function EnTete({
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         <Chiffre
-          libelle="Assiduité"
+          libelle="Séances faites"
+          valeur={c ? String(c.total) : '—'}
+          detail={c ? `${c.programme} du programme · ${c.horsProgramme} hors programme` : undefined}
+          accent={!!c?.horsProgramme}
+        />
+        <Chiffre
+          libelle="Assiduité au programme"
           valeur={a?.taux !== undefined ? `${a.taux} %` : '—'}
           detail={a ? `${a.faites} faite${a.faites > 1 ? 's' : ''} sur ${a.faites + a.manquees}` : undefined}
         />
         <Chiffre libelle="À venir" valeur={a ? String(a.aVenir) : '—'} detail="séances du programme" />
         <Chiffre
           libelle="Dernière séance"
-          valeur={derniere ? jourMois(derniere) : '—'}
-          detail={derniere ? ilYa(joursDepuis(derniere, jour)) : 'aucune pour l’instant'}
+          valeur={derniere ? jourMois(derniere.date) : '—'}
+          detail={
+            derniere ? `${ilYa(joursDepuis(derniere.date, jour))} · ${derniere.titre}${derniere.horsProgramme ? ' (hors programme)' : ''}` : 'aucune pour l’instant'
+          }
         />
         <Chiffre libelle="Ressenti" valeur={vue?.ressenti !== undefined ? `${formaterNombre(vue.ressenti)}/10` : '—'} detail="moyenne sur 4 semaines" />
       </View>
@@ -218,9 +240,21 @@ function EnTete({
   );
 }
 
-function Chiffre({ libelle, valeur, detail }: { libelle: string; valeur: string; detail?: string }) {
+/** `accent` : liseré bleu, la couleur des séances hors programme dans le tableau. */
+function Chiffre({ libelle, valeur, detail, accent }: { libelle: string; valeur: string; detail?: string; accent?: boolean }) {
   return (
-    <View style={{ flexGrow: 1, flexBasis: 130, backgroundColor: couleurs.fond, borderRadius: 10, padding: 12, gap: 2 }}>
+    <View
+      style={{
+        flexGrow: 1,
+        flexBasis: 130,
+        backgroundColor: couleurs.fond,
+        borderRadius: 10,
+        padding: 12,
+        gap: 2,
+        borderWidth: 1.5,
+        borderColor: accent ? couleurs.bleu : 'transparent',
+      }}
+    >
       <Text style={ts.doux}>{libelle}</Text>
       <Text style={{ fontFamily: polices.texteGras, fontSize: 20, color: couleurs.texte }}>{valeur}</Text>
       {detail && <Text style={ts.doux}>{detail}</Text>}
@@ -243,48 +277,88 @@ function Semaines({
   videos: VideoMouvement[];
   libres: Activite[];
 }) {
-  // Par défaut : la dernière séance faite.
-  const derniere = [...realisations].sort((a, b) => b.fin.localeCompare(a.fin))[0];
   const [choix, setChoix] = useState<{ semaine: number; index: number }>();
-  const pastilleChoisie = choix ? semaines[choix.semaine - 1]?.pastilles[choix.index] : undefined;
-  const realisationId = choix ? pastilleChoisie?.realisationId : derniere?.id;
-  const r = realisations.find((x) => x.id === realisationId);
-  const libre = pastilleChoisie?.activiteId ? libres.find((a) => a.id === pastilleChoisie.activiteId) : undefined;
-
+  const pastille = choix ? semaines[choix.semaine - 1]?.pastilles[choix.index] : undefined;
   return (
     <View style={ts.carte}>
       <Text style={ts.titreSection}>Semaine par semaine</Text>
       <Legende />
-      <GrilleSemaines
-        semaines={semaines}
-        estChoisi={(c, p) => (choix ? choix.semaine === c.semaine && choix.index === c.index : p.realisationId === derniere?.id && !!p.realisationId)}
-        onChoisir={setChoix}
-      />
-      {libre ? (
-        <View style={{ borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: 12, gap: 8 }}>
-          <Text style={ts.titre}>{titreActivite(libre)}</Text>
-          <Text style={ts.doux}>
-            {estLibre(libre) ? 'Activité ajoutée par le client' : `Activité de sa montre (${SOURCES[libre.source]})`}, le {jourCourt(jourParis(libre.debut))} · {resumeActivite(libre)}
-          </Text>
-          <DetailActiviteLibre a={libre} />
-        </View>
-      ) : r ? (
-        <DetailSeance r={r} toutes={toutes} prescriptions={prescriptions} videos={liste} />
-      ) : pastilleChoisie ? (
-        <View style={{ borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: 12, gap: 2 }}>
-          <Text style={ts.titre}>{titreClient(pastilleChoisie.titre)}</Text>
-          <Text style={ts.doux}>
-            {pastilleChoisie.statut === 'manquee'
-              ? pastilleChoisie.date
-                ? `Prévue le ${jourCourt(pastilleChoisie.date)}, pas faite.`
-                : 'Séance attendue cette semaine-là (fréquence du programme), pas faite.'
-              : pastilleChoisie.date
-                ? `Prévue le ${jourCourt(pastilleChoisie.date)}.`
-                : 'Séance attendue cette semaine, pas encore planifiée par le client.'}
-          </Text>
-        </View>
-      ) : (
-        <Text style={ts.doux}>Touche une séance verte ou une activité bleue pour voir ce que le client a fait.</Text>
+      <GrilleSemaines semaines={semaines} estChoisi={(c) => choix?.semaine === c.semaine && choix?.index === c.index} onChoisir={setChoix} />
+      <Text style={ts.doux}>Touche une séance pour voir son détail : exercices, charges et répétitions.</Text>
+      {pastille && (
+        <DetailSeanceModale
+          ouverte={ouvertureDePastille(pastille, realisations, libres)}
+          toutes={toutes}
+          prescriptions={prescriptions}
+          videos={liste}
+          onFermer={() => setChoix(undefined)}
+        />
+      )}
+    </View>
+  );
+}
+
+/** Ce qu'on ouvre en détail : une séance du programme faite, une activité hors programme, ou un créneau (manqué, à venir). */
+export type SeanceOuverte = { type: 'programme'; r: RealisationLue } | { type: 'libre'; a: Activite } | { type: 'creneau'; p: Pastille };
+
+export function ouvertureDePastille(p: Pastille, realisations: RealisationLue[], libres: Activite[]): SeanceOuverte {
+  const a = p.activiteId ? libres.find((x) => x.id === p.activiteId) : undefined;
+  if (a) return { type: 'libre', a };
+  const r = p.realisationId ? realisations.find((x) => x.id === p.realisationId) : undefined;
+  if (r) return { type: 'programme', r };
+  return { type: 'creneau', p };
+}
+
+/** Le détail d'une séance par-dessus la fiche : on le voit tout de suite, sans le chercher sous le tableau. */
+export function DetailSeanceModale({
+  ouverte,
+  toutes,
+  prescriptions,
+  videos: liste,
+  onFermer,
+}: {
+  ouverte: SeanceOuverte;
+  toutes: RealisationLue[];
+  prescriptions: Record<string, { series: number; repetitions?: string }>;
+  videos: VideoMouvement[];
+  onFermer: () => void;
+}) {
+  const titre =
+    ouverte.type === 'programme' ? titreClient(ouverte.r.seanceTitre || 'Séance') : ouverte.type === 'libre' ? titreActivite(ouverte.a) : titreClient(ouverte.p.titre);
+  return (
+    <Modale titre={titre} onFermer={onFermer}>
+      {ouverte.type === 'programme' && <DetailSeance r={ouverte.r} toutes={toutes} prescriptions={prescriptions} videos={liste} sansTitre />}
+      {ouverte.type === 'libre' && <DetailLibre a={ouverte.a} />}
+      {ouverte.type === 'creneau' && (
+        <Text style={ts.texte}>
+          {ouverte.p.statut === 'manquee'
+            ? ouverte.p.date
+              ? `Prévue le ${jourCourt(ouverte.p.date)}, pas faite.`
+              : 'Séance attendue cette semaine-là (fréquence du programme), pas faite.'
+            : ouverte.p.date
+              ? `Prévue le ${jourCourt(ouverte.p.date)}.`
+              : 'Séance attendue cette semaine, pas encore planifiée par le client.'}
+        </Text>
+      )}
+    </Modale>
+  );
+}
+
+function DetailLibre({ a }: { a: Activite }) {
+  const vide = !a.ressenti && !a.note && !a.exercices?.length;
+  return (
+    <View style={{ gap: 10 }}>
+      <View style={{ alignSelf: 'flex-start', backgroundColor: '#E8F0FE', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+        <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: couleurs.bleu }}>Hors programme</Text>
+      </View>
+      <Text style={ts.doux}>
+        {estLibre(a) ? 'Ajoutée par le client' : `Venue de sa montre (${SOURCES[a.source]})`}, le {jourCourt(jourParis(a.debut))} · {resumeActivite(a)}
+      </Text>
+      <DetailActiviteLibre a={a} />
+      {vide && (
+        <Text style={ts.doux}>
+          {estLibre(a) ? 'Le client n’a pas noté d’exercice pour cette séance.' : 'La montre ne donne que la durée et l’effort, pas les exercices.'}
+        </Text>
       )}
     </View>
   );
@@ -295,20 +369,23 @@ export function DetailSeance({
   toutes,
   prescriptions,
   videos: liste,
+  sansTitre,
 }: {
   r: RealisationLue;
   toutes: RealisationLue[];
   prescriptions: Record<string, { series: number; repetitions?: string }>;
   videos: VideoMouvement[];
+  /** Dans une fenêtre qui porte déjà le titre de la séance. */
+  sansTitre?: boolean;
 }) {
   const exercices = detailSeance(r, toutes, prescriptions);
   const maintenant = new Date();
   const filmes = new Set(liste.filter((v) => v.realisationId === r.id && !expiree(v, maintenant)).map((v) => v.ligneId));
   const duree = Math.round((new Date(r.fin).getTime() - new Date(r.debut).getTime()) / 60000);
   return (
-    <View style={{ borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: 12, gap: 12 }}>
+    <View style={[{ gap: 12 }, !sansTitre && { borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: 12 }]}>
       <View style={{ gap: 2 }}>
-        <Text style={ts.titre}>{titreClient(r.seanceTitre)}</Text>
+        {!sansTitre && <Text style={ts.titre}>{titreClient(r.seanceTitre)}</Text>}
         <Text style={ts.doux}>
           Faite le {jourCourt(jourParis(r.fin))}
           {duree > 0 && duree < 600 ? ` · ${duree} min` : ''}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Planification, RealisationLue } from '@/domain/entrainement-etat';
-import { assiduite, bilanParSemaine, courbesExercices, detailSeance, ressentiMoyen, semainesDuCycle } from '@/domain/suivi-entrainement';
+import { assiduite, bilanParSemaine, compterSeances, courbesExercices, derniereSeanceFaite, detailSeance, ressentiMoyen, semainesDuCycle } from '@/domain/suivi-entrainement';
 
 const serie = (ligneId: string, index: number, charge: number | undefined, repetitions: number, exerciceId = `exo-${ligneId}`) => ({
   id: `${ligneId}-${index}-${charge}`,
@@ -112,5 +112,33 @@ describe('évolutions', () => {
     ]);
     expect(ressentiMoyen([r1, r2])).toBe(7);
     expect(ressentiMoyen([r1, r2], '2026-10-10')).toBe(8);
+  });
+});
+
+describe('compterSeances : programme et hors programme', () => {
+  const faites = [
+    { date: '2026-11-05', titre: 'Séance de musculation', horsProgramme: true },
+    { date: '2026-11-08', titre: 'RPM', horsProgramme: true },
+    { date: '2026-11-10', titre: 'Bas du corps A', horsProgramme: false },
+    { date: '2026-11-15', titre: 'Body Pump', horsProgramme: true },
+  ];
+
+  it('compte les deux sortes à part et ensemble', () => {
+    expect(compterSeances(faites, '2026-11-02', '2026-11-15')).toMatchObject({ programme: 1, horsProgramme: 3, total: 4 });
+  });
+
+  it('la dernière séance peut être hors programme', () => {
+    expect(compterSeances(faites, '2026-10-30', '2026-11-16').derniere).toEqual(faites[3]);
+    expect(derniereSeanceFaite(faites, '2026-11-12')).toEqual(faites[2]);
+  });
+
+  it('une période vide ne compte rien, mais la dernière d’avant se retrouve', () => {
+    expect(compterSeances(faites, '2026-11-16', '2026-11-22')).toEqual({ programme: 0, horsProgramme: 0, total: 0, derniere: undefined });
+    expect(derniereSeanceFaite(faites, '2026-11-15')?.titre).toBe('Body Pump');
+  });
+
+  it('le même jour, la séance du programme passe devant', () => {
+    const memeJour = [faites[3], { date: '2026-11-15', titre: 'Haut du corps', horsProgramme: false }];
+    expect(derniereSeanceFaite(memeJour, '2026-11-16')?.titre).toBe('Haut du corps');
   });
 });
