@@ -18,6 +18,22 @@ describe('accès client', () => {
     expect(m).not.toContain('\n\n');
   });
 
+  it('pour iPhone : lien de la version web, marche à suivre dans Safari et mot de passe', () => {
+    const m = messageAcces('Clément', 'Sylvain', { email: 'c@e.fr', motDePasse: 'abcd-efgh-jkmn' }, 'https://exemple.github.io/app', undefined, 'iphone');
+    expect(m).toContain('ouvre ce lien dans Safari : https://exemple.github.io/app');
+    expect(m).toContain('Partager');
+    expect(m).toContain('« Sur l’écran d’accueil »');
+    expect(m).toContain('Mot de passe provisoire : abcd-efgh-jkmn');
+    expect(m).not.toContain('Pour l’installer');
+    expect(m).not.toContain('\n\n');
+  });
+
+  it('par défaut, le message reste celui d’Android', () => {
+    const m = messageAcces('Marc', 'Sylvain', { email: 'm@e.fr', motDePasse: 'x' }, 'https://exemple.fr/app.apk');
+    expect(m).toContain('Pour l’installer : https://exemple.fr/app.apk');
+    expect(m).not.toContain('Safari');
+  });
+
   it('sans lien d’installation, pas de ligne vide', () => {
     const m = messageAcces('Marc', 'Sylvain', { email: 'm@e.fr', motDePasse: 'x' });
     expect(m).not.toContain('installer');
