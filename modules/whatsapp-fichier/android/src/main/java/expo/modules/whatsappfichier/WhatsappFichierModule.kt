@@ -36,6 +36,27 @@ class WhatsappFichierModule : Module() {
 
     Function("installe") { paquetWhatsApp() != null }
 
+    // Ouvre la conversation d'un numéro avec un message déjà écrit, sans fichier. L'intention est adressée à WhatsApp
+    // lui-même (setPackage) et lancée depuis l'écran de CoachGo, sans FLAG_ACTIVITY_NEW_TASK : Linking.openURL de
+    // React Native ajoute ce drapeau pour toute autre appli, et Android se contente alors de ramener WhatsApp tel qu'il
+    // était (la dernière conversation ouverte), sans le numéro ni le message ; un lien wa.me peut aussi partir au navigateur.
+    AsyncFunction("ouvrirConversation") { telephone: String, message: String ->
+      val paquet = paquetWhatsApp() ?: throw WhatsAppAbsentException()
+      val chiffres = telephone.filter { it.isDigit() }
+      val lien = Uri.parse("https://api.whatsapp.com/send").buildUpon()
+        .apply { if (chiffres.isNotEmpty()) appendQueryParameter("phone", chiffres) }
+        .appendQueryParameter("text", message)
+        .build()
+      val intent = Intent(Intent.ACTION_VIEW, lien).apply { setPackage(paquet) }
+      val activite = appContext.currentActivity
+      if (activite != null) {
+        activite.startActivity(intent)
+      } else {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+      }
+    }
+
     AsyncFunction("envoyer") { fichier: String, telephone: String, message: String, typeFichier: String ->
       val paquet = paquetWhatsApp() ?: throw WhatsAppAbsentException()
       val chemin = Uri.parse(fichier).path ?: fichier

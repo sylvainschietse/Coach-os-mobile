@@ -352,3 +352,8 @@ export function emailCompteRendu(cr: CompteRendu): { sujet: string; corps: strin
 export function messageCompteRenduEnvoye(cr: CompteRendu): string {
   return `Bonjour ${cr.prenom}, c’est ${cr.coach} ! Je viens de t’envoyer par e-mail ton plan d’action personnalisé suite à notre séance Booster. Jette un œil (pense à regarder dans tes spams s’il n’arrive pas) et dis-moi si tu as des questions 💪`;
 }
+
+/** Le message qui accompagne le PDF envoyé directement dans la conversation WhatsApp du client. */
+export function messageCompteRenduWhatsApp(cr: CompteRendu): string {
+  return `Bonjour ${cr.prenom}, c’est ${cr.coach} ! Voici ton plan d’action personnalisé suite à notre séance Booster. Jette un œil et dis-moi si tu as des questions 💪`;
+}

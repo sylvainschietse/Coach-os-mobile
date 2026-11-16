@@ -7,14 +7,15 @@ import { Platform, Text, View } from 'react-native';
 import { crm } from '@/data/crm';
 import { depuisBase64, documents, ecouterDocuments, type Fichier } from '@/data/documents';
 import { iaDisponible, redigerCompteRendu } from '@/data/redaction';
-import { compteRenduHtml, construireCompteRendu, emailCompteRendu, messageCompteRenduEnvoye } from '@/domain/compte-rendu';
-import { lienEnvoi, troisPriorites } from '@/domain/crm';
+import { compteRenduHtml, construireCompteRendu, emailCompteRendu, messageCompteRenduEnvoye, messageCompteRenduWhatsApp } from '@/domain/compte-rendu';
+import { lienEnvoi, normaliserTelephone, troisPriorites } from '@/domain/crm';
 import type { Booster, FicheContact } from '@/domain/crm';
 import { TESTS } from '@/domain/evaluation';
 import { appliquerRedaction, prioritesAuto, redactionModele, type Redaction } from '@/domain/redaction';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
+import { envoyerFichierWhatsApp, whatsAppAvecFichier } from '@/lib/whatsapp-fichier';
 
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, SousTitre, Texte } from '../composants';
 import { BoutonDictee } from '../dictee';
@@ -35,7 +36,7 @@ export function CompteRenduVue({ contactId, boosterId, onModifierSeance }: { con
 function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheContact; booster: Booster; onModifierSeance: () => void; recharger: () => void }) {
   const coach = useCoachNom();
   const [mot, setMot] = useState(booster.compteRendu ?? '');
-  const [envoi, setEnvoi] = useState<'email' | 'partage'>();
+  const [envoi, setEnvoi] = useState<'email' | 'partage' | 'whatsapp'>();
   const [erreur, setErreur] = useState<string>();
   // Textes retouchés ou rédigés par l'IA ; tant qu'il n'y en a pas, le modèle suit les tests et les priorités.
   const [textes, setTextes] = useState<Redaction | undefined>(booster.redaction);
@@ -143,13 +144,19 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
   }
 
   /** La version enregistrée dans Documents part en pièce jointe ; seul « envoyé » rendu par le téléphone compte. */
-  async function envoyer(par: 'email' | 'partage') {
+  async function envoyer(par: 'email' | 'partage' | 'whatsapp') {
     if (!doc?.chemin) return;
     setEnvoi(par);
     setErreur(undefined);
     setRetour(undefined);
     try {
       const uri = await copieLocale(await documents.lien(doc.chemin), `compte-rendu-v${doc.version}.pdf`);
+      if (par === 'whatsapp' && telWhatsApp) {
+        // La conversation du client s'ouvre, PDF joint et message écrits : il ne reste qu'à appuyer sur la flèche.
+        // WhatsApp ne dit pas si c'est parti : rien n'est marqué, comme pour le partage.
+        const nom = `plan-action-booster-${cr.prenom.normalize('NFD').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'client'}-v${doc.version}.pdf`;
+        if (await envoyerFichierWhatsApp(uri, nom, telWhatsApp, messageCompteRenduWhatsApp(cr))) return;
+      }
       if (par === 'email' && contact.email && (await MailComposer.isAvailableAsync())) {
         const mail = emailCompteRendu(cr);
         const r = await MailComposer.composeAsync({ recipients: [contact.email], subject: mail.sujet, body: mail.corps, attachments: [uri] });
@@ -171,6 +178,8 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
     }
   }
 
+  // Android avec WhatsApp : le PDF part directement dans la conversation du client.
+  const telWhatsApp = Platform.OS === 'android' && whatsAppAvecFichier() ? normaliserTelephone(contact.telephone) : undefined;
   // Numéro non reconnu : pas de lien, le bouton n'apparaît pas (avant, il ne faisait rien).
   const lienPrevenir = lienEnvoi('whatsapp', contact, messageCompteRenduEnvoye(cr));
   const prevenir = () => lienPrevenir && ouvrirLien(lienPrevenir).catch(() => undefined);
@@ -351,8 +360,21 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
         ) : (
           <Texte style={{ fontSize: 14, color: couleurs.orange }}>Pas d’e-mail sur la fiche : ajoute-le, ou envoie le PDF autrement.</Texte>
         )}
+        {telWhatsApp && doc?.chemin && (
+          <Bouton
+            variante="discret"
+            libelle={`Envoyer le PDF sur WhatsApp à ${contact.prenom}`}
+            onPress={() => envoyer('whatsapp')}
+            chargement={envoi === 'whatsapp'}
+          />
+        )}
         {Platform.OS !== 'web' && doc?.chemin && (
-          <Bouton variante="discret" libelle="Envoyer le PDF autrement (WhatsApp, Messages…)" onPress={() => envoyer('partage')} chargement={envoi === 'partage'} />
+          <Bouton
+            variante="discret"
+            libelle={telWhatsApp ? 'Envoyer le PDF autrement (Messages, Gmail…)' : 'Envoyer le PDF autrement (WhatsApp, Messages…)'}
+            onPress={() => envoyer('partage')}
+            chargement={envoi === 'partage'}
+          />
         )}
         {booster.planEnvoyeLe && <Texte doux style={{ fontSize: 13 }}>{`Envoi confirmé le ${dateCourte(booster.planEnvoyeLe)}`}</Texte>}
 
