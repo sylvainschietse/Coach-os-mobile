@@ -514,14 +514,21 @@ function Formulaire({
   );
   const lien = (cle: 'boosterId' | 'coachingId', libelle: string, options: { id: string; nom?: string; date?: string }[]) => (
     <View style={{ gap: espace(2) }}>
-      <Libelle>{libelle}</Libelle>
-      <Selecteur
-        libelle={libelle}
-        sansLibelle
-        options={[{ cle: '', libelle: 'Choisir…' }, ...options.map((o) => ({ cle: o.id, libelle: o.nom || (o.date ? `Booster du ${jourCourt(o.date.slice(0, 10))}` : 'Sans nom') }))]}
-        valeur={b[cle]}
-        onChange={(v) => maj({ [cle]: v })}
-      />
+      <Libelle>{`${libelle} (facultatif)`}</Libelle>
+      {!options.length && !b[cle] ? (
+        // Une liste qui ne propose que « Choisir… » laisse croire à un champ bloquant : on dit plutôt qu'il n'y a rien à lier.
+        <Text style={styles.aide}>
+          {cle === 'coachingId' ? 'Aucun coaching' : 'Aucun Booster'} {b.contactId ? 'pour ce contact' : 'à lier'} : rien à choisir, tu peux enregistrer sans.
+        </Text>
+      ) : (
+        <Selecteur
+          libelle={libelle}
+          sansLibelle
+          options={[{ cle: '', libelle: 'Choisir…' }, ...options.map((o) => ({ cle: o.id, libelle: o.nom || (o.date ? `Booster du ${jourCourt(o.date.slice(0, 10))}` : 'Sans nom') }))]}
+          valeur={b[cle]}
+          onChange={(v) => maj({ [cle]: v })}
+        />
+      )}
     </View>
   );
   const date = (cle: string, libelle: string) => (
