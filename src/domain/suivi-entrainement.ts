@@ -224,3 +224,34 @@ export function bilanParSemaine(semaines: SemaineSuivi[], realisations: Realisat
     };
   });
 }
+
+/** Une séance faite, du programme ou hors programme, réduite à son jour et son titre. */
+export interface SeanceFaite {
+  date: string;
+  titre: string;
+  horsProgramme: boolean;
+}
+
+export interface CompteSeances {
+  programme: number;
+  horsProgramme: number;
+  total: number;
+  /** La plus récente des deux sortes, sur la plage (ou avant sa fin si `avantFin`). */
+  derniere?: SeanceFaite;
+}
+
+/**
+ * Séances faites entre `debut` et `fin` (inclus), en comptant à part celles du programme et celles hors programme
+ * (cours collectif, séance de muscu à lui…). Les deux comptent dans le total : le travail hors programme se valorise.
+ */
+export function compterSeances(seances: SeanceFaite[], debut: string, fin: string): CompteSeances {
+  const dans = seances.filter((s) => s.date >= debut && s.date <= fin);
+  const horsProgramme = dans.filter((s) => s.horsProgramme).length;
+  const derniere = [...dans].sort((a, b) => b.date.localeCompare(a.date) || Number(a.horsProgramme) - Number(b.horsProgramme))[0];
+  return { programme: dans.length - horsProgramme, horsProgramme, total: dans.length, derniere };
+}
+
+/** La dernière séance faite jusqu'au `jour` inclus, programme ou hors programme. */
+export function derniereSeanceFaite(seances: SeanceFaite[], jour: string): SeanceFaite | undefined {
+  return compterSeances(seances, '0000-00-00', jour).derniere;
+}
