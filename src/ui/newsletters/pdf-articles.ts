@@ -49,4 +49,5 @@ export const PDF_ARTICLES: Record<string, number> = {
   'article-47-fascias-et-automassage': require('../../../assets/newsletters/pdf/47-fascias-et-automassage.pdf'),
   'article-48-le-transverse': require('../../../assets/newsletters/pdf/48-le-transverse.pdf'),
   'article-49-le-perinee-femmes-et-hommes': require('../../../assets/newsletters/pdf/49-le-perinee-femmes-et-hommes.pdf'),
+  'article-50-debuter-la-musculation': require('../../../assets/newsletters/pdf/50-debuter-la-musculation.pdf'),
 };
