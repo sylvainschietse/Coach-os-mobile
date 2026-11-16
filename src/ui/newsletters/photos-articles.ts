@@ -99,4 +99,6 @@ export const PHOTOS_ARTICLES: Record<string, number> = {
   'illus-48': require('../../../assets/newsletters/illus-48.jpg'),
   'photo-49': require('../../../assets/newsletters/photo-49.jpg'),
   'illus-49': require('../../../assets/newsletters/illus-49.jpg'),
+  'photo-50': require('../../../assets/newsletters/photo-50.jpg'),
+  'illus-50': require('../../../assets/newsletters/illus-50.jpg'),
 };

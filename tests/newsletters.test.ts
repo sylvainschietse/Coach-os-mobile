@@ -138,7 +138,7 @@ describe('images dans le texte', () => {
 });
 
 describe('articles complets', () => {
-  it('les 49 articles ont chacun leur photo, jamais la même, et leur catégorie', async () => {
+  it('les articles ont chacun leur photo, jamais la même, et leur catégorie', async () => {
     const articles = (await import('@/domain/articles-newsletters.json')).default as { cle: string; illustration: string; categorie: string }[];
     expect(articles.every((a) => /^photo-\d{2}$/.test(a.illustration))).toBe(true);
     expect(new Set(articles.map((a) => a.illustration)).size).toBe(articles.length);
