@@ -18,7 +18,7 @@ import type { Remplacement } from '@/domain/seance-blocs';
 import type { LignePrescription, Mesure, Seance, SerieRealisee, Valeurs } from '@/domain/types';
 import { videosDeLExercice, type ContexteVideo, type VideoMouvement } from '@/domain/videos-mouvement';
 import { annoncer } from '@/lib/enregistrement';
-import { demanderSortie, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
+import { demanderSortie, ecrireBrouillon, libererBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
@@ -187,12 +187,16 @@ export function SeanceLog({
     if (ouverture) setOuvert(true);
   }
 
+  // Brouillon repris de l'appareil : tant que le client n'y touche pas, il est déjà sauvegardé et ne bloque rien.
+  const repris = useRef<string | null>(null);
   useEffect(() => {
     let annule = false;
+    repris.current = null;
     lireBrouillon<Brouillon>(cle).then((b) => {
       if (annule) return;
       if (b && !apercu) {
         const suite = { ...vide(), ...b };
+        repris.current = JSON.stringify(suite);
         setD(suite);
         if (sale(suite)) setOuvert(true);
       }
@@ -205,8 +209,10 @@ export function SeanceLog({
 
   useEffect(() => {
     if (!pret || apercu) return;
-    ecrireBrouillon(cle, brouillon ? d : null);
+    ecrireBrouillon(cle, brouillon ? d : null, JSON.stringify(d) !== repris.current);
   }, [pret, apercu, cle, d, brouillon]);
+  // En quittant la page, le brouillon reste sur l'appareil mais ne déclenche plus l'alerte sur les autres onglets.
+  useEffect(() => () => libererBrouillon(cle), [cle]);
 
   /** Dernière séance où cet exercice a des valeurs : la référence grisée, série par série. */
   const precedentes = (ligneId: string): Record<number, Valeurs> => {

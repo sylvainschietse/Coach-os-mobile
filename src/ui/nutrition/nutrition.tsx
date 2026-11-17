@@ -155,7 +155,8 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
           version.current = b.version;
           envoi.current = b.envoiId;
           setModifie(true);
-          ecrireBrouillon(cle, b);
+          // Repris de l'appareil, pas encore retouché : déjà sauvegardé, il ne déclenche pas « Saisie non enregistrée ».
+          ecrireBrouillon(cle, b, false);
         } else {
           setF(toForm(d.preferences));
           setM(manuel(d.objectifCoach || d.calcul.cible));

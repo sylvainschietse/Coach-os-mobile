@@ -33,7 +33,7 @@ import {
 } from '@/domain/seance-blocs';
 import type { Bloc, Exercice, LignePrescription, Mesure, Seance, Valeurs } from '@/domain/types';
 import { annoncer } from '@/lib/enregistrement';
-import { ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
+import { ecrireBrouillon, libererBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { annulerAlertes, programmerAlerte } from '@/lib/notifications';
 import { dansSecondes, maintenantMs } from '@/lib/temps';
 import { messageErreur, useCharger } from '@/lib/useCharger';
@@ -114,6 +114,8 @@ export function SeanceParBloc({
 
   // Le brouillon est gardé dès qu'on avance d'un bloc : « Quitter » ne perd rien.
   const garder = sale(d) || !!valides.length || !!d.bloc;
+  // Séance quittée : le brouillon reste sur l'appareil (repris à la prochaine ouverture), sans bloquer les autres pages.
+  useEffect(() => () => libererBrouillon(cle), [cle]);
   useEffect(() => {
     if (pret && etat !== 'ok' && etat !== 'doublon') ecrireBrouillon(cle, garder ? d : null);
   }, [pret, cle, d, garder, etat]);

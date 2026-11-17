@@ -219,7 +219,8 @@ export function Planificateur({
           version.current = draft.version;
           envoi.current = draft.envoiId;
           setDirty(true);
-          ecrireBrouillon(key, draft);
+          // Repris de l'appareil, pas encore retouché : déjà sauvegardé, il ne déclenche pas « Saisie non enregistrée ».
+          ecrireBrouillon(key, draft, false);
           setNotice('Brouillon récupéré : enregistre ta semaine.');
         }
         setReady(true);
