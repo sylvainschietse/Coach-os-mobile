@@ -12,6 +12,8 @@ export type Niveau = 'normal' | 'leger' | 'marque';
 export interface Repere {
   cle: string;
   libelle: string;
+  /** Repère facultatif : la vue est complète sans lui, il ajoute une mesure. */
+  optionnel?: boolean;
 }
 
 export interface DefinitionVue {
@@ -120,6 +122,8 @@ export const VUES: DefinitionVue[] = [
       { cle: 'eiasAutre', libelle: 'Bassin côté levé (épine iliaque avant gauche)' },
       { cle: 'genou', libelle: 'Genou d’appui (centre de la rotule)' },
       { cle: 'cheville', libelle: 'Cheville d’appui (milieu)' },
+      { cle: 'epauleAppui', libelle: 'Épaule côté appui (facultatif)', optionnel: true },
+      { cle: 'epauleAutre', libelle: 'Épaule côté levé (facultatif)', optionnel: true },
     ],
     observations: ['Tronc qui penche vers l’appui', 'Perte d’équilibre'],
   },
@@ -133,21 +137,35 @@ export const VUES: DefinitionVue[] = [
       { cle: 'eiasAutre', libelle: 'Bassin côté levé (épine iliaque avant droite)' },
       { cle: 'genou', libelle: 'Genou d’appui (centre de la rotule)' },
       { cle: 'cheville', libelle: 'Cheville d’appui (milieu)' },
+      { cle: 'epauleAppui', libelle: 'Épaule côté appui (facultatif)', optionnel: true },
+      { cle: 'epauleAutre', libelle: 'Épaule côté levé (facultatif)', optionnel: true },
     ],
     observations: ['Tronc qui penche vers l’appui', 'Perte d’équilibre'],
   },
 ];
 
+/** Photo ou vidéo gardée pour être revue, avec l'image où les repères ont été posés. */
+export interface MediaVue {
+  /** Chemin dans le stockage (ou adresse locale en démo). */
+  chemin: string;
+  type: string;
+  /** Seconde de la vidéo où les repères ont été posés. */
+  instant?: number;
+  /** Taille de la zone d'affichage quand les repères ont été posés : les points s'y rapportent. */
+  cadre: { largeur: number; hauteur: number };
+}
+
 export interface SaisieVue {
   points: Record<string, Point>;
   observations: string[];
+  media?: MediaVue;
 }
 
 export interface BilanPostural {
   vues: Partial<Record<VueId, SaisieVue>>;
 }
 
-export const vueComplete = (d: DefinitionVue, s: SaisieVue | undefined) => !!s && d.reperes.every((r) => s.points[r.cle]);
+export const vueComplete = (d: DefinitionVue, s: SaisieVue | undefined) => !!s && d.reperes.every((r) => r.optionnel || s.points[r.cle]);
 export const vuesCompletes = (b: BilanPostural | undefined) => VUES.filter((v) => vueComplete(v, b?.vues[v.id])).length;
 
 // ---------- Géométrie ----------
@@ -200,10 +218,15 @@ export type IdConstat =
   | 'squatGenouD'
   | 'squatGenouG'
   | 'squatTronc'
+  | 'squatBassin'
+  | 'squatProfondeur'
+  | 'squatCheville'
   | 'unipodalGenouD'
   | 'unipodalGenouG'
   | 'unipodalBassinD'
-  | 'unipodalBassinG';
+  | 'unipodalBassinG'
+  | 'unipodalTroncD'
+  | 'unipodalTroncG';
 
 export interface Constat {
   id: IdConstat;
@@ -215,13 +238,39 @@ export interface Constat {
   /** Ce que dit la valeur, en clair. */
   texte: string;
   repere: string;
+  /** Zone normale, en degrés, pour la jauge. */
+  norme: [number, number];
 }
+
+/** Zones normales pour la jauge, par famille de mesure (sans le côté). */
+const NORMES: Record<string, [number, number]> = {
+  epaules: [0, 2],
+  bassinFrontal: [0, 2],
+  genouStatique: [-5, 6],
+  omoplates: [0, 2],
+  talon: [-3, 6],
+  tete: [50, 60],
+  bassinSagittal: [4, 14],
+  cyphose: [20, 45],
+  lordose: [25, 50],
+  tronc: [-4, 6],
+  genouProfil: [-5, 5],
+  squatGenou: [-10, 10],
+  squatBassin: [0, 3],
+  squatTronc: [-20, 10],
+  squatProfondeur: [-5, 20],
+  squatCheville: [25, 45],
+  unipodalGenou: [-10, 10],
+  unipodalBassin: [-2, 2],
+  unipodalTronc: [-5, 5],
+};
 
 const niveauEcart = (v: number, leger: number, marque: number): Niveau => (Math.abs(v) > marque ? 'marque' : Math.abs(v) > leger ? 'leger' : 'normal');
 
 function constatsVue(id: VueId, p: Record<string, Point>): Constat[] {
   const c: Constat[] = [];
-  const ajouter = (x: Omit<Constat, 'vue' | 'valeur'> & { valeur: number }) => c.push({ ...x, vue: id, valeur: arrondi(x.valeur) });
+  const ajouter = (x: Omit<Constat, 'vue' | 'norme'> & { norme?: [number, number] }) =>
+    c.push({ ...x, vue: id, valeur: arrondi(x.valeur), norme: x.norme ?? NORMES[x.id.replace(/[DG]$/, '')] ?? [0, 0] });
   const plusHaut = (d: Point, g: Point) => (d.y < g.y ? 'droit' : 'gauche');
 
   if (id === 'face') {
@@ -290,8 +339,10 @@ function constatsVue(id: VueId, p: Record<string, Point>): Constat[] {
     const axe = (p.eiasD.x + p.eiasG.x) / 2;
     for (const [cote, nom] of [['D', 'droit'], ['G', 'gauche']] as const) {
       const v = ecartVersAxe(p[`eias${cote}`], p[`genou${cote}`], p[`cheville${cote}`], axe);
-      ajouter({ id: `squatGenou${cote}`, titre: `Squat : genou ${nom}`, valeur: v, niveau: v > 10 ? (v > 15 ? 'marque' : 'leger') : 'normal', repere: '10° ou moins', texte: v > 10 ? 'Le genou rentre pendant la descente (valgus dynamique).' : 'Genou stable dans l’axe.' });
+      ajouter({ id: `squatGenou${cote}`, titre: `Squat : genou ${nom}`, valeur: v, niveau: v > 10 ? (v > 15 ? 'marque' : 'leger') : 'normal', repere: '10° ou moins', texte: v > 10 ? 'Le genou rentre pendant la descente (valgus dynamique).' : v < -10 ? 'Le genou part nettement vers l’extérieur.' : 'Genou stable dans l’axe.' });
     }
+    const b = inclinaison(p.eiasD, p.eiasG);
+    ajouter({ id: 'squatBassin', titre: 'Squat : bassin', valeur: b, niveau: niveauEcart(b, 3, 6), repere: '3° ou moins', texte: b <= 3 ? 'Bassin horizontal au point bas : poids bien réparti.' : `Bassin plus bas à ${plusHaut(p.eiasD, p.eiasG) === 'droit' ? 'gauche' : 'droite'} au point bas : le poids part d’un côté.` });
   }
 
   if (id === 'squatProfil') {
@@ -300,6 +351,24 @@ function constatsVue(id: VueId, p: Record<string, Point>): Constat[] {
     const tibia = deg(Math.atan2(avant * (p.genou.x - p.malleole.x), p.malleole.y - p.genou.y));
     const d = tronc - tibia;
     ajouter({ id: 'squatTronc', titre: 'Squat : buste par rapport au tibia', valeur: d, niveau: d > 10 ? (d > 20 ? 'marque' : 'leger') : 'normal', repere: '10° ou moins (buste parallèle au tibia)', texte: d > 10 ? 'Le buste penche nettement plus que le tibia.' : 'Buste et tibia bien parallèles.' });
+    // Cuisse par rapport à l'horizontale : positif quand la hanche descend sous le genou.
+    const prof = deg(Math.atan2(p.hanche.y - p.genou.y, Math.abs(p.genou.x - p.hanche.x)));
+    ajouter({
+      id: 'squatProfondeur',
+      titre: 'Squat : profondeur',
+      valeur: prof,
+      niveau: prof >= -5 ? 'normal' : prof >= -20 ? 'leger' : 'marque',
+      repere: '−5° ou plus (cuisse à l’horizontale)',
+      texte: prof >= 0 ? 'Hanche sous le genou : squat complet.' : prof >= -5 ? 'Cuisse à l’horizontale.' : 'Le squat s’arrête avant que la cuisse soit à l’horizontale.',
+    });
+    ajouter({
+      id: 'squatCheville',
+      titre: 'Squat : flexion de cheville',
+      valeur: tibia,
+      niveau: tibia >= 25 ? 'normal' : tibia >= 18 ? 'leger' : 'marque',
+      repere: '25° ou plus (tibia vers l’avant)',
+      texte: tibia >= 25 ? 'Le genou avance bien au-dessus du pied : chevilles souples.' : 'Le tibia reste droit : la cheville plie peu.',
+    });
   }
 
   if (id === 'unipodalDroit' || id === 'unipodalGauche') {
@@ -310,6 +379,11 @@ function constatsVue(id: VueId, p: Record<string, Point>): Constat[] {
     ajouter({ id: `unipodalGenou${cote}`, titre: `Squat jambe ${nom} : genou`, valeur: v, niveau: v > 10 ? (v > 15 ? 'marque' : 'leger') : 'normal', repere: '10° ou moins', texte: v > 10 ? 'Le genou d’appui rentre vers l’intérieur.' : 'Genou d’appui stable.' });
     const chute = deg(Math.atan2(p.eiasAutre.y - p.eiasAppui.y, Math.abs(p.eiasAutre.x - p.eiasAppui.x)));
     ajouter({ id: `unipodalBassin${cote}`, titre: `Squat jambe ${nom} : bassin`, valeur: chute, niveau: chute > 2 ? (chute > 5 ? 'marque' : 'leger') : 'normal', repere: '2° ou moins', texte: chute > 2 ? 'Le bassin s’affaisse du côté de la jambe levée.' : 'Bassin stable.' });
+    if (p.epauleAppui && p.epauleAutre) {
+      // Positif quand l'épaule côté appui descend : le buste penche vers la jambe d'appui pour compenser.
+      const t = deg(Math.atan2(p.epauleAppui.y - p.epauleAutre.y, Math.abs(p.epauleAutre.x - p.epauleAppui.x)));
+      ajouter({ id: `unipodalTronc${cote}`, titre: `Squat jambe ${nom} : buste`, valeur: t, niveau: t > 5 ? (t > 10 ? 'marque' : 'leger') : 'normal', repere: '5° ou moins', texte: t > 5 ? 'Le buste penche vers la jambe d’appui pour garder l’équilibre.' : 'Buste droit.' });
+    }
   }
   return c;
 }
@@ -330,115 +404,169 @@ export interface Piste {
   depuis: string[];
   raccourcis: string[];
   faibles: string[];
+  /** Phase 1 : corriger (mobilité, activation, contrôle). */
   exercices: string[];
+  /** Phase 2 : renforcer, une fois le geste propre. */
+  renforcement: string[];
+  /** Ce que le client y gagne, en mots simples. */
+  benefice: string;
   prudence?: string;
+  /** Importance : plus c'est haut, plus c'est prioritaire. */
+  poids: number;
 }
 
-type ModelePiste = Omit<Piste, 'depuis'>;
+type ModelePiste = Omit<Piste, 'depuis' | 'poids'> & {
+  /** Constats (ids) et observations qui alimentent la piste quand ils sortent de la norme. */
+  ids: IdConstat[];
+  obs?: string[];
+};
 
 const PISTES: { si: (c: Map<IdConstat, Constat>, obs: Set<string>) => boolean; piste: ModelePiste }[] = [
   {
     si: (c) => (c.get('bassinSagittal')?.valeur ?? 0) > 14 || (c.get('lordose')?.valeur ?? 0) > 50,
     piste: {
       titre: 'Bassin en avant et bas du dos cambré',
+      ids: ['bassinSagittal', 'lordose'],
+      obs: ['Bas du dos qui se cambre'],
       raccourcis: ['Fléchisseurs de hanche (psoas, droit fémoral)', 'Muscles du bas du dos'],
       faibles: ['Fessiers', 'Abdominaux profonds (transverse, obliques)'],
-      exercices: ['Étirement du psoas en fente, bassin rentré', 'Pont fessier', 'Dead bug', 'Rétroversion du bassin allongé', 'Gainage avec rétroversion'],
+      exercices: ['Étirement du psoas en fente, bassin rentré', 'Pont fessier', 'Dead bug', 'Rétroversion du bassin allongé'],
+      renforcement: ['Hip thrust', 'Gainage avec rétroversion', 'Soulevé de terre jambes tendues léger'],
+      benefice: 'Soulager le bas du dos et mieux utiliser tes fessiers.',
     },
   },
   {
     si: (c) => (c.get('bassinSagittal')?.valeur ?? 10) < 4 || (c.get('lordose')?.valeur ?? 40) < 25,
     piste: {
       titre: 'Bassin en arrière et bas du dos plat',
+      ids: ['bassinSagittal', 'lordose'],
+      obs: ['Bas du dos qui s’arrondit'],
       raccourcis: ['Ischio-jambiers', 'Grands droits de l’abdomen'],
       faibles: ['Fléchisseurs de hanche', 'Muscles du bas du dos'],
-      exercices: ['Étirement des ischio-jambiers', 'Chat-vache', 'Bird dog', 'Extension lombaire à la machine (charge légère)'],
+      exercices: ['Étirement des ischio-jambiers', 'Chat-vache', 'Bird dog'],
+      renforcement: ['Extension lombaire à la machine (charge légère)', 'Good morning léger', 'Relevé de genoux suspendu'],
+      benefice: 'Retrouver une cambrure naturelle et un dos plus solide quand tu te penches.',
     },
   },
   {
     si: (c) => (c.get('cyphose')?.valeur ?? 0) > 45 || (c.get('tete')?.valeur ?? 60) < 50,
     piste: {
       titre: 'Haut du dos arrondi, épaules et tête en avant',
+      ids: ['cyphose', 'tete'],
       raccourcis: ['Pectoraux', 'Grand dorsal', 'Trapèzes supérieurs et muscles de la nuque'],
       faibles: ['Trapèzes moyens et inférieurs, rhomboïdes', 'Extenseurs du haut du dos', 'Fléchisseurs profonds du cou'],
-      exercices: ['Face pull à la poulie haute', 'Tirage horizontal à la poulie, omoplates serrées', 'Extension du haut du dos sur rouleau', 'Étirement des pectoraux contre un cadre de porte', 'Rentré du menton contre un mur'],
+      exercices: ['Extension du haut du dos sur rouleau', 'Étirement des pectoraux contre un cadre de porte', 'Rentré du menton contre un mur'],
+      renforcement: ['Face pull à la poulie haute', 'Tirage horizontal, omoplates serrées', 'Y-T-W allongé sur banc incliné'],
+      benefice: 'Te tenir plus droit et soulager la nuque et les épaules.',
     },
   },
   {
     si: (c) => (c.get('tronc')?.valeur ?? 0) < -4 || (c.get('genouProfil')?.valeur ?? 0) > 5,
     piste: {
       titre: 'Posture relâchée, bassin poussé vers l’avant',
+      ids: ['tronc', 'genouProfil'],
       raccourcis: ['Ischio-jambiers', 'Abdominaux supérieurs'],
       faibles: ['Fléchisseurs de hanche', 'Obliques externes', 'Fessiers'],
-      exercices: ['Gainage frontal', 'Pont fessier', 'Leg curl à la machine en contrôlant la fin de mouvement', 'Apprendre à se tenir genoux déverrouillés'],
+      exercices: ['Gainage frontal', 'Pont fessier', 'Apprendre à se tenir genoux déverrouillés'],
+      renforcement: ['Leg curl en contrôlant la fin de mouvement', 'Pallof press', 'Fente arrière'],
+      benefice: 'Une posture plus tonique, moins de tension dans le bas du dos et les genoux.',
     },
   },
   {
-    si: (c) => ['genouStatiqueD', 'genouStatiqueG', 'squatGenouD', 'squatGenouG', 'unipodalGenouD', 'unipodalGenouG'].some((id) => (c.get(id as IdConstat)?.valeur ?? 0) > 10 || (id.startsWith('genouStatique') && (c.get(id as IdConstat)?.valeur ?? 0) > 6)),
+    si: (c) => (['genouStatiqueD', 'genouStatiqueG'] as IdConstat[]).some((id) => (c.get(id)?.valeur ?? 0) > 6) || (['squatGenouD', 'squatGenouG', 'unipodalGenouD', 'unipodalGenouG'] as IdConstat[]).some((id) => (c.get(id)?.valeur ?? 0) > 10),
     piste: {
       titre: 'Genou qui rentre vers l’intérieur',
+      ids: ['genouStatiqueD', 'genouStatiqueG', 'squatGenouD', 'squatGenouG', 'unipodalGenouD', 'unipodalGenouG'],
+      obs: ['Pieds qui s’affaissent'],
       raccourcis: ['Adducteurs', 'Mollets (souvent)'],
       faibles: ['Moyen fessier', 'Rotateurs externes de la hanche'],
-      exercices: ['Abduction de hanche à la poulie basse ou à la machine', 'Squat avec élastique au-dessus des genoux', 'Marche latérale avec élastique', 'Pont fessier avec élastique'],
+      exercices: ['Squat avec élastique au-dessus des genoux', 'Marche latérale avec élastique', 'Pont fessier avec élastique'],
+      renforcement: ['Abduction de hanche à la poulie basse', 'Fente bulgare genou dans l’axe', 'Montée sur marche contrôlée'],
+      benefice: 'Protéger tes genoux à la course, dans les sauts et sous charge.',
     },
   },
   {
-    si: (c) => (c.get('unipodalBassinD')?.valeur ?? 0) > 2 || (c.get('unipodalBassinG')?.valeur ?? 0) > 2,
+    si: (c, obs) => (c.get('unipodalBassinD')?.valeur ?? 0) > 2 || (c.get('unipodalBassinG')?.valeur ?? 0) > 2 || (c.get('unipodalTroncD')?.valeur ?? 0) > 5 || (c.get('unipodalTroncG')?.valeur ?? 0) > 5 || obs.has('Tronc qui penche vers l’appui'),
     piste: {
       titre: 'Bassin qui s’affaisse sur une jambe',
+      ids: ['unipodalBassinD', 'unipodalBassinG', 'unipodalTroncD', 'unipodalTroncG', 'squatBassin'],
+      obs: ['Tronc qui penche vers l’appui', 'Perte d’équilibre'],
       raccourcis: [],
       faibles: ['Moyen fessier du côté de l’appui', 'Gainage latéral'],
-      exercices: ['Abduction de hanche à la poulie, côté faible', 'Gainage latéral', 'Montée sur marche contrôlée', 'Équilibre unipodal bassin horizontal'],
+      exercices: ['Abduction de hanche allongé sur le côté, côté faible', 'Gainage latéral', 'Équilibre unipodal bassin horizontal'],
+      renforcement: ['Abduction à la poulie, côté faible en premier', 'Montée sur marche lestée', 'Fente bulgare, côté faible en premier'],
+      benefice: 'Un bassin stable à chaque pas : moins de contraintes sur le genou et le bas du dos.',
     },
   },
   {
     si: (c) => (c.get('talonD')?.valeur ?? 0) > 6 || (c.get('talonG')?.valeur ?? 0) > 6,
     piste: {
       titre: 'Pied qui s’affaisse (pronation)',
+      ids: ['talonD', 'talonG'],
+      obs: ['Pieds qui s’affaissent'],
       raccourcis: ['Mollets', 'Péroniers'],
       faibles: ['Tibial postérieur et muscles de la voûte plantaire', 'Moyen fessier'],
-      exercices: ['« Pied court » : creuser la voûte sans plier les orteils', 'Montées sur pointes lentes, talons rapprochés', 'Équilibre unipodal pieds nus', 'Étirement des mollets'],
+      exercices: ['« Pied court » : creuser la voûte sans plier les orteils', 'Équilibre unipodal pieds nus', 'Étirement des mollets'],
+      renforcement: ['Montées sur pointes lentes, talons rapprochés', 'Marche sur la pointe des pieds', 'Sauts légers à la corde'],
+      benefice: 'Des appuis plus solides, du pied jusqu’au genou.',
       prudence: 'Si le pied s’affaisse beaucoup ou fait mal, un avis de podologue est utile.',
     },
   },
   {
-    si: (c, obs) => (c.get('squatTronc')?.valeur ?? 0) > 10 || obs.has('Talons qui décollent'),
+    si: (c, obs) => (c.get('squatTronc')?.valeur ?? 0) > 10 || (c.get('squatCheville')?.valeur ?? 40) < 25 || obs.has('Talons qui décollent'),
     piste: {
       titre: 'Manque de souplesse des chevilles au squat',
+      ids: ['squatTronc', 'squatCheville', 'squatProfondeur'],
+      obs: ['Talons qui décollent', 'Pieds qui s’ouvrent'],
       raccourcis: ['Mollets (soléaire, gastrocnémiens)', 'Fléchisseurs de hanche'],
       faibles: ['Fessiers', 'Gainage', 'Extenseurs du haut du dos'],
-      exercices: ['Mobilité de cheville genou vers le mur', 'Étirement des mollets', 'Squat à la poulie basse en contrepoids, talons au sol', 'Presse à cuisses pieds hauts, amplitude contrôlée'],
+      exercices: ['Mobilité de cheville genou vers le mur', 'Étirement des mollets', 'Squat à la poulie basse en contrepoids, talons au sol'],
+      renforcement: ['Squat goblet talons au sol', 'Presse à cuisses pieds hauts, amplitude contrôlée', 'Fente avant genou au-dessus des orteils'],
+      benefice: 'Descendre plus bas sans que le dos compense.',
     },
   },
   {
     si: (_c, obs) => obs.has('Bras qui tombent vers l’avant'),
     piste: {
       titre: 'Épaules qui manquent de mobilité au-dessus de la tête',
+      ids: ['cyphose'],
+      obs: ['Bras qui tombent vers l’avant'],
       raccourcis: ['Grand dorsal', 'Pectoraux'],
       faibles: ['Trapèzes moyens et inférieurs', 'Coiffe des rotateurs'],
-      exercices: ['Étirement du grand dorsal à la poulie haute', 'Glissés de bras au mur', 'Face pull', 'Rotation externe à la poulie'],
+      exercices: ['Étirement du grand dorsal à la poulie haute', 'Glissés de bras au mur', 'Rotation externe à la poulie'],
+      renforcement: ['Face pull', 'Développé militaire léger, amplitude contrôlée', 'Tirage vertical prise neutre'],
+      benefice: 'Lever les bras sans forcer et protéger tes épaules quand tu pousses au-dessus de toi.',
     },
   },
   {
-    si: (c) => ['epaules', 'bassinFrontal', 'omoplates'].some((id) => (c.get(id as IdConstat)?.valeur ?? 0) > 2),
+    si: (c) => (['epaules', 'bassinFrontal', 'omoplates'] as IdConstat[]).some((id) => (c.get(id)?.valeur ?? 0) > 2),
     piste: {
       titre: 'Asymétrie droite / gauche',
+      ids: ['epaules', 'bassinFrontal', 'omoplates'],
       raccourcis: ['Carré des lombes et trapèze supérieur du côté haut (souvent)'],
       faibles: ['Moyen fessier et gainage latéral du côté opposé'],
-      exercices: ['Gainage latéral, plus long du côté faible', 'Travail unilatéral à la poulie', 'Étirement latéral du tronc côté raide'],
+      exercices: ['Gainage latéral, plus long du côté faible', 'Étirement latéral du tronc côté raide'],
+      renforcement: ['Travail unilatéral à la poulie', 'Marche du fermier d’un seul côté'],
+      benefice: 'Un corps plus équilibré, des deux côtés.',
       prudence: 'Vérifie au test d’Adams (client penché en avant) : une bosse d’un côté du dos demande un avis médical. Une différence de longueur de jambe se mesure chez un professionnel de santé.',
     },
   },
 ];
 
+const POIDS: Record<Niveau, number> = { normal: 0, leger: 2, marque: 3 };
+
+/** Pistes du bilan, de la plus importante à la moins importante. */
 export function pistes(b: BilanPostural | undefined): Piste[] {
   const liste = constats(b);
   const parId = new Map(liste.map((c) => [c.id, c]));
   const obs = new Set(Object.values(b?.vues ?? {}).flatMap((s) => s?.observations ?? []));
-  return PISTES.filter((p) => p.si(parId, obs)).map((p) => ({
-    ...p.piste,
-    depuis: liste.filter((c) => c.niveau !== 'normal').map((c) => c.titre),
-  }));
+  return PISTES.filter((p) => p.si(parId, obs))
+    .map(({ piste: { ids, obs: obsPiste, ...p } }) => {
+      const lies = ids.map((id) => parId.get(id)).filter((c): c is Constat => !!c && c.niveau !== 'normal');
+      const vus = (obsPiste ?? []).filter((o) => obs.has(o));
+      return { ...p, depuis: [...lies.map((c) => c.titre), ...vus], poids: lies.reduce((s, c) => s + POIDS[c.niveau], 0) + vus.length };
+    })
+    .sort((a, b) => b.poids - a.poids);
 }
 
 export const AVERTISSEMENT =

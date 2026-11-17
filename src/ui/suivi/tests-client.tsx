@@ -33,6 +33,7 @@ export function TestsClient({ clientId, prenom, ouvrirNouveau }: { clientId: str
         test={edite}
         tests={tests}
         existant={tests.some((t) => t.id === edite.id)}
+        prenom={prenom}
         onFermer={() => {
           setEdite(null);
           charge.recharger();
@@ -61,7 +62,7 @@ export function TestsClient({ clientId, prenom, ouvrirNouveau }: { clientId: str
   );
 }
 
-function EditeurTest({ test, tests, existant, onFermer }: { test: TestClient; tests: TestClient[]; existant: boolean; onFermer: () => void }) {
+function EditeurTest({ test, tests, existant, prenom, onFermer }: { test: TestClient; tests: TestClient[]; existant: boolean; prenom?: string; onFermer: () => void }) {
   const [t, setT] = useState(test);
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string>();
@@ -103,6 +104,8 @@ function EditeurTest({ test, tests, existant, onFermer }: { test: TestClient; te
             bilan={t.posture}
             avant={avantPosture?.posture}
             dateAvant={avantPosture ? dateLisible(avantPosture.date) : undefined}
+            clientId={t.clientId}
+            prenom={prenom}
             onChange={(posture) => maj({ posture })}
           />
         </Cellule>
