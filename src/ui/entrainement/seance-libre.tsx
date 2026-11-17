@@ -15,7 +15,7 @@ import type { RealisationLue } from '@/domain/entrainement-etat';
 import { MENTIONS, remplirDepuisDictee, type LigneADicter } from '@/domain/saisie-apres';
 import { dureeSeance, enTeteBloc, titreBloc, tonnage } from '@/domain/seance-blocs';
 import type { Bloc, LignePrescription, Mesure, Seance, Valeurs } from '@/domain/types';
-import { ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
+import { ecrireBrouillon, libererBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { annulerAlertes, programmerAlerte } from '@/lib/notifications';
 import { maintenantMs } from '@/lib/temps';
 import { messageErreur } from '@/lib/useCharger';
@@ -109,6 +109,8 @@ export function SeanceSansTelephone({
     };
   }, [cle, seance.id, seance.titre, planificationId]);
 
+  // Séance quittée : le brouillon reste sur l'appareil (repris à la prochaine ouverture), sans bloquer les autres pages.
+  useEffect(() => () => libererBrouillon(cle), [cle]);
   useEffect(() => {
     if (d && !fini) ecrireBrouillon(cle, d);
   }, [cle, d, fini]);

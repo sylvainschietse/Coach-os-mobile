@@ -63,7 +63,8 @@ export function BilanSemaine({ clientId, apercu }: { clientId: string; apercu?: 
         if (!b || annule) return;
         setForm((f) => ({ ...f, ...b.form }));
         setEnvoi(b.envoiId);
-        ecrireBrouillon(cle, b);
+        // Repris de l'appareil, pas encore retouché : déjà sauvegardé, il ne déclenche pas « Saisie non enregistrée ».
+        ecrireBrouillon(cle, b, false);
       });
     return () => {
       annule = true;
