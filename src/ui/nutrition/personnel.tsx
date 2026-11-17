@@ -1,7 +1,7 @@
 // PersonalFood.tsx d'origine (N04, N05) : « Mon journal alimentaire » par jour et par repas, comparé aux objectifs,
 // et « Mes recettes personnelles » dont les macros par portion se calculent depuis les ingrédients.
 // Aliments : Ciqual, produits de marque et code-barres Open Food Facts, ou saisie de l'étiquette.
-import { Plus, RefreshCw, Trash2 } from 'lucide-react-native';
+import { Camera, Plus, RefreshCw, Trash2 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
@@ -19,6 +19,7 @@ import { BoutonContour, Selecteur, TitreDisplay } from '../coque';
 import { Cellule, Grille, Modale, Repliable, Saisie } from '../crm/dossier';
 import { Action, Confirmation, Etat, ts } from '../entrainement/commun';
 import { DicteeRecette } from '../alimentation/dictee-recette';
+import { PhotoRepas } from '../alimentation/photo';
 import { BoutonDictee } from '../dictee';
 import { couleurs, polices } from '../theme';
 import { Bloc, doux, Lien } from './commun';
@@ -89,6 +90,8 @@ function LigneAliment({ e, desactive, onRetirer }: { e: Entry; desactive: boolea
 
 export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue: 'journal' | 'personnelles' }) {
   const [foodOpen, setFoodOpen] = useState(false);
+  // Photo de l'assiette : l'IA estime les aliments et les grammes, le client corrige, puis tout part dans le repas choisi.
+  const [photoOpen, setPhotoOpen] = useState(false);
   const [date, setDate] = useState(today);
   const [saisieDate, setSaisieDate] = useState(today);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -300,6 +303,27 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
       setError(e instanceof Error ? e.message : 'Aliment invalide');
     }
   };
+  const ajouterPhoto = async (aliments: { nom: string; quantiteG: number; kcal: number; proteines: number; glucides: number; lipides: number }[]) => {
+    const borne = (n: number) => Math.min(2000, Math.max(0, round(n)));
+    const nouvelles: Entry[] = aliments.map((a) => ({
+      id: nouvelId(),
+      food: {
+        name: a.nom.trim().slice(0, 200) || 'Aliment',
+        barcode: '',
+        source: 'manual',
+        reference: '',
+        note: 'Estimé sur photo',
+        basis: 'g',
+        kcal: borne(a.kcal),
+        protein: borne(a.proteines),
+        carbs: borne(a.glucides),
+        fat: borne(a.lipides),
+      },
+      amount: Math.min(10000, round(a.quantiteG)),
+      meal,
+    }));
+    if (await save('diary', [...entries, ...nouvelles])) setPhotoOpen(false);
+  };
   const pickRecipe = (recipe: PersonalRecipe) => {
     setFoodOpen(true);
     resetMeasure();
@@ -500,7 +524,24 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderRadius: 14, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.carte, padding: 12 }}>
         <Text style={doux}>{vue === 'journal' ? 'Aliments enregistrés pour cette journée' : 'Composition de ta recette'}</Text>
         <Action icone={Plus} libelle={vue === 'journal' ? 'Ajouter un aliment' : 'Ajouter un ingrédient'} desactive={busy || loading} onPress={() => setFoodOpen(true)} />
+        {vue === 'journal' && (
+          <View style={{ width: '100%', alignItems: 'flex-start' }}>
+            <Action variante="contour" icone={Camera} libelle="Photo de mon assiette" desactive={busy || loading} onPress={() => setPhotoOpen(true)} />
+          </View>
+        )}
       </View>
+      {photoOpen && (
+        <Modale
+          titre="Photo de mon assiette"
+          onFermer={() => {
+            if (!busy) setPhotoOpen(false);
+          }}
+        >
+          <Selecteur libelle="Repas" options={mealNames.map((x) => ({ cle: x, libelle: x }))} valeur={meal} onChange={setMeal} />
+          <Etat erreur={error || undefined} />
+          <PhotoRepas libelleValider={meal === 'Collation' ? 'Ajouter à la collation' : `Ajouter au ${meal.toLowerCase()}`} onValider={ajouterPhoto} onFermer={() => setPhotoOpen(false)} />
+        </Modale>
+      )}
       {foodOpen && (
         <Modale
           titre={vue === 'journal' ? 'Ajouter à ma journée' : 'Ajouter un ingrédient'}
