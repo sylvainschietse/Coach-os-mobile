@@ -49,7 +49,8 @@ export function Objectifs({ clientId, apercu }: { clientId: string; apercu?: boo
       if (!b || annule) return;
       setForm(b.form || initial());
       setBrouillons(b.drafts || {});
-      ecrireBrouillon(cle, b);
+      // Repris de l'appareil, pas encore retouché : déjà sauvegardé, il ne déclenche pas « Saisie non enregistrée ».
+      ecrireBrouillon(cle, b, false);
     });
     return () => {
       annule = true;

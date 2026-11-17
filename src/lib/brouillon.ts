@@ -33,13 +33,26 @@ export async function lireBrouillon<T>(cle: string): Promise<T | null> {
   }
 }
 
-/** `null` efface le brouillon. Une erreur de stockage n'empêche pas la saisie. */
-export function ecrireBrouillon(cle: string, valeur: unknown | null) {
+/**
+ * `null` efface le brouillon. Une erreur de stockage n'empêche pas la saisie.
+ * `garde` à false : le brouillon est gardé sur l'appareil sans déclencher « Saisie non enregistrée » (rien n'a été
+ * modifié depuis qu'il a été repris, il ne peut donc pas être perdu).
+ */
+export function ecrireBrouillon(cle: string, valeur: unknown | null, garde = true) {
   if (valeur === null) {
     brouillonsOuverts.delete(cle);
     AsyncStorage.removeItem(cle).catch(() => {});
   } else {
-    brouillonsOuverts.add(cle);
+    if (garde) brouillonsOuverts.add(cle);
+    else brouillonsOuverts.delete(cle);
     AsyncStorage.setItem(cle, JSON.stringify(valeur)).catch(() => {});
   }
+}
+
+/**
+ * L'écran de saisie se ferme : son brouillon reste sur l'appareil (il sera repris à la prochaine ouverture), mais il ne
+ * doit plus déclencher « Saisie non enregistrée » ailleurs dans l'appli.
+ */
+export function libererBrouillon(cle: string) {
+  brouillonsOuverts.delete(cle);
 }

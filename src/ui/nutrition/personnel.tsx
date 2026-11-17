@@ -173,7 +173,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
         setIngredients(saved.ingredients || []);
         setEditing(saved.editing || '');
         if (saved.f?.name || saved.f?.barcode) setFoodOpen(true);
-        brouillonsOuverts.add(draftKey);
+        // Repris de l'appareil, pas encore retouché : déjà sauvegardé, il ne déclenche pas « Saisie non enregistrée ».
       }
       draftLoaded.current = true;
     });
