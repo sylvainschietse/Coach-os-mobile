@@ -30,6 +30,7 @@ import { lireDictee } from '@/domain/dictee-seance';
 import { ajouterJours, aujourdhuiParis, jourParis } from '@/domain/entrainement';
 import { lireDate } from '@/domain/programmes';
 import type { Exercice } from '@/domain/types';
+import { useEnregistre } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 import { messageErreur, useCharger } from '@/lib/useCharger';
 
@@ -297,6 +298,7 @@ export function FormulaireActiviteLibre({
   const [exercices, setExercices] = useState<ExerciceLibre[]>(existante?.exercices ?? []);
   const [avecExercices, setAvecExercices] = useState(!!existante?.exercices?.length);
   const [enCours, setEnCours] = useState(false);
+  const { signaler } = useEnregistre();
   const [erreur, setErreur] = useState('');
   // Dernier poids connu du client, pour estimer la dépense (70 kg sinon).
   const poids = useCharger(async () => (await depot.mensurations(clientId).catch(() => [])).find((m) => m.poidsKg)?.poidsKg, `poids-${clientId}`);
@@ -346,6 +348,7 @@ export function FormulaireActiviteLibre({
     setEnCours(true);
     try {
       await activites.enregistrerLibre(clientId, s);
+      signaler(existante ? 'Activité modifiée' : 'Activité enregistrée');
       onEnregistre();
     } catch (e) {
       setErreur(messageErreur(e));

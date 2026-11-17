@@ -31,6 +31,7 @@ import {
   type Son,
   type Sonnerie,
 } from '@/domain/formats-minuteur';
+import { annoncer } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 import { annulerSonneries, ecouter, jouer, preparerSons, programmerAlertes, useSignauxMinuteur, useSortieEveillee } from '@/lib/sons-minuteur';
 import { maintenantMs } from '@/lib/temps';
@@ -272,6 +273,7 @@ export function Minuteurs({ utilisateurId, children }: { utilisateurId: string; 
       setNommer(null);
       setVue({ ecran: 'reglage', edition: { ...f, majLe: new Date().toISOString() } });
       setMessage(`« ${nom} » est enregistré dans Mes formats.`);
+      annoncer('Format enregistré');
     } catch (e) {
       setNommer({ ...nommer, occupe: false, erreur: e instanceof Error ? e.message : 'Enregistrement impossible' });
     }

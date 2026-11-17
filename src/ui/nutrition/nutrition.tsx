@@ -7,6 +7,7 @@ import { ActivityIndicator, Linking, Text, View } from 'react-native';
 
 import { nutrition, type ActionProfil, type DonneesNutrition } from '@/data/nutrition';
 import { blankPreferences, calculate, macros, preferences, target, type Preferences, type Target } from '@/domain/nutrition/calcul';
+import { annoncer, useEnregistre } from '@/lib/enregistrement';
 import { brouillonsOuverts, demanderSortie, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { LIEN_GUIDE_MACROS } from '@/lib/guides';
 import { nouvelId } from '@/lib/identifiant';
@@ -180,6 +181,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
     ecrireBrouillon(cle, { f: suivant, m: valeurs, version: version.current, envoiId: envoi.current });
   };
 
+  const { confirme, signaler } = useEnregistre();
   const enregistrer = async (action: ActionProfil) => {
     if (verrou.current) return;
     setErreur('');
@@ -224,6 +226,8 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
           ? 'Enregistré. Tes données et mensurations sont synchronisées ; les objectifs sont à jour.'
           : 'Enregistré. Les objectifs sont à jour.',
       );
+      if (action === 'preferences') signaler();
+      else annoncer('Objectifs à jour');
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Enregistrement impossible');
     } finally {
@@ -464,6 +468,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
                     <Action
                       libelle={occupe ? 'Enregistrement…' : 'Enregistrer et calculer mes objectifs'}
                       chargement={occupe}
+                      confirme={confirme && !modifie}
                       onPress={() => enregistrer('preferences')}
                     />
                     <Text style={doux}>

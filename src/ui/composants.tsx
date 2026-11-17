@@ -12,6 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Check } from 'lucide-react-native';
+
+import { estLibelleEnregistrement } from '@/lib/enregistrement';
 import { usePression } from '@/lib/usePression';
 
 import { DefilementClavier } from './clavier';
@@ -53,33 +56,69 @@ export function Bouton({
   variante = 'primaire',
   desactive,
   chargement,
+  confirme,
+  libelleConfirme = 'Enregistré',
 }: {
   libelle: string;
   onPress: () => void;
   variante?: Variante;
   desactive?: boolean;
   chargement?: boolean;
+  /** Juste après un enregistrement réussi (voir `useEnregistre`) : bouton vert pâle « Enregistré ✓ », inactif. */
+  confirme?: boolean;
+  libelleConfirme?: string;
 }) {
   const u = useUnivers();
-  const fond = variante === 'primaire' ? (u.cle === 'rouge' ? couleurs.rouge : u.uni) : variante === 'secondaire' ? couleurs.secondaire : variante === 'discret' ? couleurs.carte : 'transparent';
-  const texte = variante === 'discret' ? couleurs.texte : '#FFFFFF';
-  const bordure = variante === 'contour' ? '#FFFFFF' : couleurs.bordure;
   const { enCours, presser } = usePression(onPress);
   const attente = chargement || enCours;
+  const etat = confirme && !attente ? 'confirme' : attente ? 'attente' : desactive ? 'desactive' : 'normal';
+  // Un bouton plein inactif devient gris (et non rouge pâle) : on voit qu'il n'y a rien à faire pour l'instant.
+  const gris = etat === 'desactive' && (variante === 'primaire' || variante === 'secondaire');
+  const fond =
+    etat === 'confirme'
+      ? couleurs.vertClair
+      : gris
+        ? couleurs.discret
+        : variante === 'primaire'
+          ? u.cle === 'rouge'
+            ? couleurs.rouge
+            : u.uni
+          : variante === 'secondaire'
+            ? couleurs.secondaire
+            : variante === 'discret'
+              ? couleurs.carte
+              : 'transparent';
+  const texte = etat === 'confirme' ? couleurs.vert : gris ? couleurs.suggestion : variante === 'discret' ? couleurs.texte : '#FFFFFF';
+  const bordure = etat === 'confirme' ? couleurs.vert : variante === 'contour' ? '#FFFFFF' : couleurs.bordure;
+  const enregistrement = estLibelleEnregistrement(libelle);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!(desactive || attente), busy: attente }}
+      accessibilityLabel={etat === 'confirme' ? libelleConfirme : libelle}
+      accessibilityState={{ disabled: !!(desactive || attente || confirme), busy: attente }}
+      accessibilityLiveRegion="polite"
       onPress={presser}
-      disabled={desactive || attente}
+      disabled={desactive || attente || confirme}
       style={({ pressed }) => [
         styles.bouton,
-        { backgroundColor: fond, opacity: desactive ? 0.4 : pressed ? 0.7 : 1 },
-        variante === 'primaire' && { backgroundImage: u.degrade },
-        (variante === 'discret' || variante === 'contour') && { borderWidth: 1, borderColor: bordure },
+        { backgroundColor: fond, opacity: etat === 'desactive' && !gris ? 0.4 : pressed ? 0.7 : 1 },
+        variante === 'primaire' && etat !== 'confirme' && !gris && { backgroundImage: u.degrade },
+        (variante === 'discret' || variante === 'contour' || etat === 'confirme' || gris) && { borderWidth: 1, borderColor: bordure },
       ]}
     >
-      {attente ? <ActivityIndicator color={texte} /> : <Text style={[styles.boutonTexte, { color: texte }]}>{libelle}</Text>}
+      {etat === 'confirme' ? (
+        <View style={styles.boutonLigne}>
+          <Check size={18} color={texte} strokeWidth={2.6} />
+          <Text style={[styles.boutonTexte, { color: texte }]}>{libelleConfirme}</Text>
+        </View>
+      ) : attente ? (
+        <View style={styles.boutonLigne}>
+          <ActivityIndicator color={texte} />
+          {enregistrement && <Text style={[styles.boutonTexte, { color: texte }]}>Enregistrement…</Text>}
+        </View>
+      ) : (
+        <Text style={[styles.boutonTexte, { color: texte }]}>{libelle}</Text>
+      )}
     </Pressable>
   );
 }
@@ -238,6 +277,7 @@ const styles = StyleSheet.create({
   },
   bouton: { minHeight: 44, borderRadius: arrondi.controle, alignItems: 'center', justifyContent: 'center', paddingHorizontal: espace(5) },
   boutonTexte: { fontFamily: polices.texteMoyen, fontSize: 15 },
+  boutonLigne: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: espace(2) },
   pastille: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: espace(2.5), paddingVertical: espace(0.5) },
   pastilleTexte: { color: '#FFFFFF', fontFamily: polices.texteMoyen, fontSize: 12 },
   champ: { flex: 1, minWidth: 72, gap: espace(1) },

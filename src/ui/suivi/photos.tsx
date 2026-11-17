@@ -9,6 +9,7 @@ import { suiviHebdo } from '@/data/suivi-hebdo';
 import { ecrireJour, lireJour } from '@/domain/crm';
 import { aujourdhuiParis } from '@/domain/entrainement';
 import { imageValide, VUES, type VuePhoto } from '@/domain/suivi-hebdo';
+import { useEnregistre } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
 
@@ -205,6 +206,7 @@ function AjoutPhoto({ clientId, onEnregistre }: { clientId: string; onEnregistre
   const [date, setDate] = useState(() => ecrireJour(aujourdhuiParis()));
   const [vue, setVue] = useState<VuePhoto>('Face');
   const [partage, setPartage] = useState(false);
+  const { signaler } = useEnregistre();
   const [image, setImage] = useState('');
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState('');
@@ -259,6 +261,7 @@ function AjoutPhoto({ clientId, onEnregistre }: { clientId: string; onEnregistre
       setImage('');
       setPartage(false);
       setJeton(nouvelId());
+      signaler('Photo enregistrée');
       onEnregistre();
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Enregistrement impossible');

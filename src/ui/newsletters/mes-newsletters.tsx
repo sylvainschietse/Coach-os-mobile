@@ -27,6 +27,7 @@ import {
 import ARTICLES_BRUTS from '@/domain/articles-newsletters.json';
 import { lienEnvoi } from '@/domain/crm';
 import { articleDuLien, BOUTON_PDF, cheminDuLien, introPdf, messageWhatsAppPdf } from '@/domain/newsletters-pdf';
+import { annoncer } from '@/lib/enregistrement';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { envoyerFichierWhatsApp, whatsAppAvecFichier } from '@/lib/whatsapp-fichier';
 import { maintenantMs } from '@/lib/temps';
@@ -515,6 +516,7 @@ function Editeur({ initiale, comptes, onFermer }: { initiale: Newsletter; compte
       const enregistree = await newsletters.enregistrer({ ...pret, envoiLe, etat }, await imageAEnregistrer(), await imagesTexte());
       setN(enregistree);
       setIllustration(illustrationDe(enregistree) ?? illustration);
+      annoncer(etat === 'programmee' ? 'Newsletter programmée' : 'Brouillon enregistré');
       if (etat === 'programmee') onFermer();
       else setInfo('Brouillon enregistré.');
     } catch (e) {

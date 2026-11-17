@@ -12,6 +12,7 @@ import { macros } from '@/domain/nutrition/calcul';
 import type { CiqualFood } from '@/domain/nutrition/ciqual';
 import { foodMeasures, measuredAmount } from '@/domain/nutrition/mesures';
 import { food, foodTotal, NOTE_PHOTO, recipeFood, type Entry, type PersonalRecipe } from '@/domain/nutrition/personnel';
+import { useEnregistre } from '@/lib/enregistrement';
 import { brouillonsOuverts, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { nouvelId } from '@/lib/identifiant';
 
@@ -194,6 +195,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
     garder({ f: x });
   };
 
+  const { signaler } = useEnregistre();
   const save = async (kind: 'recipes' | 'diary', content: PersonalRecipe[] | Entry[]) => {
     if (working.current || loading) return false;
     working.current = true;
@@ -211,6 +213,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
       }
       else setEntries(result.entries);
       setNotice('Enregistré');
+      signaler(kind === 'recipes' ? 'Recette enregistrée' : 'Journal enregistré');
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Enregistrement impossible');

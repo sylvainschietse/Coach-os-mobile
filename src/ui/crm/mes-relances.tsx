@@ -23,6 +23,7 @@ import {
   type RelancePerso,
   type ReglagesRelances,
 } from '@/domain/relances-coach';
+import { annoncer } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 
 import { Bouton, Carte, Puce, Puces } from '../composants';
@@ -40,6 +41,7 @@ export function MesRelances() {
     setErreur(undefined);
     try {
       await relancesCoach.enregistrer(r);
+      annoncer('Relances enregistrées');
       return true;
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Non enregistré, réessaie.');

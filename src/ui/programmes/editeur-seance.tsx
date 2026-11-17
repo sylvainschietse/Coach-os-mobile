@@ -3,6 +3,7 @@ import { Pressable, TextInput, View } from 'react-native';
 
 import { deplacer, erreursSeance, formaterDate, lireDate, nettoyerSeance, nouveauBloc, nouvelleLigne, resumeLigne } from '@/domain/programmes';
 import type { Bloc, LignePrescription, SeanceModele } from '@/domain/types';
+import { useEnregistre } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 
 import { Bouton, Carte, ChampNombre, ChampTexte, Erreur, Texte } from '../composants';
@@ -111,6 +112,7 @@ export function EditeurSeance<T extends SeanceModele>({
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [enCours, setEnCours] = useState(false);
   const [enregistree, setEnregistree] = useState(false);
+  const { confirme, signaler } = useEnregistre();
 
   const majBlocs = (f: (blocs: Bloc[]) => Bloc[]) => {
     setEnregistree(false);
@@ -129,6 +131,7 @@ export function EditeurSeance<T extends SeanceModele>({
     try {
       await onEnregistrer(nettoyerSeance(aVerifier));
       setEnregistree(true);
+      signaler('Séance enregistrée');
     } catch (e) {
       setErreurs([e instanceof Error ? e.message : 'Enregistrement impossible']);
     } finally {
@@ -208,7 +211,7 @@ export function EditeurSeance<T extends SeanceModele>({
           <Texte>Séance enregistrée.</Texte>
         </Carte>
       )}
-      <Bouton libelle={libelleEnregistrer} onPress={enregistrer} chargement={enCours} />
+      <Bouton libelle={libelleEnregistrer} onPress={enregistrer} chargement={enCours} confirme={confirme && enregistree} />
     </View>
   );
 }

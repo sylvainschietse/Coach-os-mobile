@@ -20,6 +20,7 @@ import {
   type SaisieDocument,
   type TypeDocument,
 } from '@/domain/documents';
+import { signalerEchec, useEnregistre } from '@/lib/enregistrement';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Selecteur, Vide } from '../coque';
@@ -344,13 +345,14 @@ function Editeur({
   coachings: Coaching[];
   onFermer: () => void;
 }) {
-  const [initial] = useState(() => brouillonDe(doc, contactId));
+  const [initial, setInitial] = useState(() => brouillonDe(doc, contactId));
   const [b, setB] = useState(initial);
   const [fichier, setFichier] = useState<Fichier>();
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string>();
   const [sortie, setSortie] = useState<(() => void) | null>(null);
   const [suppression, setSuppression] = useState(false);
+  const { confirme, signaler } = useEnregistre();
   const maj = (patch: Partial<Brouillon>) => setB((x) => ({ ...x, ...patch }));
   const modifie = JSON.stringify(b) !== JSON.stringify(initial) || !!fichier;
   const demanderSortie = (suite: () => void) => (modifie ? setSortie(() => suite) : suite());
@@ -394,14 +396,20 @@ function Editeur({
     try {
       if (!doc) {
         await documents.creer(saisie, fichier);
+        signaler('Document ajouté');
         onFermer();
         return;
       }
       await documents.modifier(doc.id, saisie);
       if (fichier) await documents.deposer(doc.id, fichier);
-      // L'éditeur se recharge sur la version enregistrée (clé = date de modification).
+      // L'éditeur se recharge sur la version enregistrée (clé = date de modification). En attendant, on ne laisse
+      // plus la roue tourner : le bouton dit « Enregistré ✓ » et le pied repasse à jour.
+      setInitial(b);
+      setFichier(undefined);
+      signaler();
     } catch (e) {
-      setErreur(e instanceof Error ? e.message : 'Enregistrement non confirmé');
+      setErreur(signalerEchec(e));
+    } finally {
       setOccupe(false);
     }
   }
@@ -423,6 +431,7 @@ function Editeur({
             enregistrement={occupe}
             peutEnregistrer={!occupe && !invalide && (!doc || modifie)}
             onEnregistrer={enregistrer}
+            confirme={confirme}
             onFermer={() => (sortie ? sortie() : demanderSortie(onFermer))}
             sortieDemandee={!!sortie}
             onRester={() => setSortie(null)}

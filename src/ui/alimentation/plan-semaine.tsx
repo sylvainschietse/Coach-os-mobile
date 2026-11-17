@@ -22,6 +22,7 @@ import {
   type PlanRepas,
 } from '@/domain/plan-repas';
 import type { Macros, MomentRepas, Recette } from '@/domain/types';
+import { useEnregistre } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
 
@@ -63,6 +64,7 @@ export function PlanSemaine({ clientId, modifiable }: { clientId: string; modifi
   // Une édition ne vaut que pour le plan relu dont elle part : changer de semaine ou relire l'écarte.
   const [edition, setEdition] = useState<{ source: typeof lu; plan: PlanRepas; enregistre?: boolean }>();
   const [envoi, setEnvoi] = useState(false);
+  const { confirme, signaler } = useEnregistre();
   const [message, setMessage] = useState<{ ok: boolean; texte: string }>();
   const [ajoutJour, setAjoutJour] = useState<number>();
 
@@ -89,6 +91,7 @@ export function PlanSemaine({ clientId, modifiable }: { clientId: string; modifi
       // On relit le plan enregistré : ce qui s'affiche ensuite vient de la base, pas du brouillon.
       charge.recharger();
       setMessage({ ok: true, texte: `Plan enregistré le ${horodatage(enregistre.version!)}.` });
+      signaler('Plan enregistré');
     } catch (e) {
       // Le brouillon est conservé : rien n'est perdu après une erreur.
       setMessage({ ok: false, texte: e instanceof Error ? e.message : 'Enregistrement impossible.' });
@@ -219,7 +222,7 @@ export function PlanSemaine({ clientId, modifiable }: { clientId: string; modifi
               Enregistré le {horodatage(brouillon.version)} · {nbRepas(brouillon)} repas.
             </Texte>
           )}
-          <Bouton libelle="Enregistrer le plan" onPress={enregistrer} chargement={envoi} desactive={!modifie} />
+          <Bouton libelle="Enregistrer le plan" onPress={enregistrer} chargement={envoi} desactive={!modifie} confirme={confirme && !modifie} />
           {modifie && (
             <Bouton
               variante="discret"

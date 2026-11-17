@@ -34,6 +34,7 @@ import {
 } from '@/domain/cycle-menstruel';
 import { aujourdhuiParis } from '@/domain/entrainement';
 import { decalerJour } from '@/domain/quotidien';
+import { useEnregistre } from '@/lib/enregistrement';
 import { messageErreur, useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, Puce, Puces, Texte } from '../composants';
@@ -280,6 +281,7 @@ function NoterRegles({ clientId, donnees, situation: s, onFait }: { clientId: st
   const [autre, setAutre] = useState(false);
   const [jour, setJour] = useState(aujourdhui);
   const [erreur, setErreur] = useState<string>();
+  const { signaler } = useEnregistre();
   const derniere = trier(donnees.regles).at(-1);
   // Règles en cours, sans fin notée : on propose plutôt de noter la fin.
   const enCours = derniere && !derniere.fin && s?.phase === 'regles';
@@ -295,6 +297,7 @@ function NoterRegles({ clientId, donnees, situation: s, onFait }: { clientId: st
       if (duree !== donnees.reglages.dureeCycle && duree >= BORNES.cycle.min && duree <= BORNES.cycle.max)
         await cycle.enregistrerReglages({ ...donnees.reglages, dureeCycle: duree });
       setAutre(false);
+      signaler();
       onFait();
     } catch (e) {
       setErreur(messageErreur(e));
@@ -413,6 +416,7 @@ function MaJourneeCycle({ clientId, notes, energie, onFait }: { clientId: string
   const [note, setNote] = useState(actuelle?.note ?? '');
   const [etat, setEtat] = useState<'' | 'envoi' | 'ok'>('');
   const [erreur, setErreur] = useState<string>();
+  const { signaler } = useEnregistre();
 
   async function enregistrer() {
     setEtat('envoi');
@@ -423,6 +427,7 @@ function MaJourneeCycle({ clientId, notes, energie, onFait }: { clientId: string
         cycle.enregistrerNote({ clientId, jour, symptomes, note: note.trim() || undefined }),
       ]);
       setEtat('ok');
+      signaler('Journée enregistrée');
       onFait();
     } catch (e) {
       setErreur(messageErreur(e));

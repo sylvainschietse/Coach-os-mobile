@@ -7,6 +7,7 @@ import { useSession } from '@/data/session';
 import { deplacer, erreursProgramme, lireDate, nouveauBloc } from '@/domain/programmes';
 import { lireNombre } from '@/domain/suivi';
 import type { Programme, SeanceModele } from '@/domain/types';
+import { annoncer } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
 import { Bouton, Carte, Chargement, ChampTexte, Ecran, Erreur, Puce, Puces, SousTitre, Texte, Titre } from '@/ui/composants';
@@ -85,6 +86,7 @@ function Editeur({ initial, coachId, nouveau }: { initial: Programme; coachId: s
       await depot.enregistrerModele(coachId, complet);
       setP(complet);
       setEnregistre(true);
+      annoncer('Programme enregistré');
       return true;
     } catch (e) {
       setErreurs([e instanceof Error ? e.message : 'Enregistrement impossible']);

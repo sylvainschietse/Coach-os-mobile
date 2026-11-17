@@ -12,6 +12,7 @@ import { DefilementClavier } from '@/ui/clavier';
 import { Bouton, Texte } from '@/ui/composants';
 import { LienPolitique } from '@/ui/consentement';
 import { couleurs, espace, polices } from '@/ui/theme';
+import { annoncer } from '@/lib/enregistrement';
 
 export default function Accueil() {
   const { profil, motDePasseProvisoire, sansDossier } = useSession();
@@ -96,8 +97,10 @@ function NouveauMotDePasse() {
     const probleme = verifierMotDePasse(motDePasse, confirmation);
     if (probleme) return setErreur(probleme);
     setEnvoi(true);
-    setErreur(await changerMotDePasse(motDePasse));
+    const probleme2 = await changerMotDePasse(motDePasse);
+    setErreur(probleme2);
     setEnvoi(false);
+    if (!probleme2) annoncer('Mot de passe enregistré');
   }
 
   return (

@@ -7,6 +7,7 @@ import { jourLocal } from '@/domain/crm';
 import { formaterDate, lireDate } from '@/domain/programmes';
 import { CHAMPS_MENSURATIONS, erreursMensuration, erreursTaille, evolution, formaterNombre, imc, lireNombre } from '@/domain/suivi';
 import type { Mensuration } from '@/domain/types';
+import { useEnregistre } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
 
@@ -22,6 +23,7 @@ function Saisie({ clientId, onAjoute, parCoach }: { clientId: string; onAjoute: 
   const [note, setNote] = useState('');
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [enCours, setEnCours] = useState(false);
+  const { confirme, signaler } = useEnregistre();
 
   async function enregistrer() {
     const jour = lireDate(date);
@@ -36,6 +38,7 @@ function Saisie({ clientId, onAjoute, parCoach }: { clientId: string; onAjoute: 
       await depot.ajouterMensuration(m);
       setValeurs({});
       setNote('');
+      signaler('Mesures enregistrées');
       onAjoute();
     } catch (e) {
       setErreurs([e instanceof Error ? e.message : 'Enregistrement impossible']);
@@ -67,7 +70,7 @@ function Saisie({ clientId, onAjoute, parCoach }: { clientId: string; onAjoute: 
       </View>
       <ChampTexte libelle="Note (facultatif)" valeur={note} onChange={setNote} />
       {erreurs.length > 0 && <Erreur message={erreurs.join('\n')} />}
-      <Bouton libelle="Enregistrer" onPress={enregistrer} chargement={enCours} />
+      <Bouton libelle="Enregistrer" onPress={enregistrer} chargement={enCours} confirme={confirme} />
     </Carte>
   );
 }
@@ -83,6 +86,7 @@ function Taille({ clientId, saisie, poidsKg }: { clientId: string; saisie: boole
   const [texte, setTexte] = useState<string>();
   const [erreur, setErreur] = useState('');
   const [enCours, setEnCours] = useState(false);
+  const { confirme: tailleOk, signaler: signalerTaille } = useEnregistre();
   if (!donnee && !erreurChargement) return null;
   const taille = profil?.tailleCm;
   const valeurIMC = imc(poidsKg, taille);
@@ -96,6 +100,7 @@ function Taille({ clientId, saisie, poidsKg }: { clientId: string; saisie: boole
     try {
       await alimentation.enregistrerProfil({ ...(profil ?? { clientId, regimes: [] }), tailleCm: cm });
       setTexte(undefined);
+      signalerTaille('Taille enregistrée');
       recharger();
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Enregistrement impossible');
@@ -126,7 +131,7 @@ function Taille({ clientId, saisie, poidsKg }: { clientId: string; saisie: boole
             onChange={setTexte}
           />
           {erreur !== '' && <Erreur message={erreur} />}
-          <Bouton libelle="Enregistrer la taille" variante="discret" desactive={!texte?.trim()} onPress={enregistrer} chargement={enCours} />
+          <Bouton libelle="Enregistrer la taille" variante="discret" desactive={!texte?.trim()} onPress={enregistrer} chargement={enCours} confirme={tailleOk} />
         </>
       )}
     </Carte>

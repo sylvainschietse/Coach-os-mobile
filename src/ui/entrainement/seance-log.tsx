@@ -17,6 +17,7 @@ import { circuitAlterne, resumeAlternance, resumeMinuteur } from '@/domain/minut
 import type { Remplacement } from '@/domain/seance-blocs';
 import type { LignePrescription, Mesure, Seance, SerieRealisee, Valeurs } from '@/domain/types';
 import { videosDeLExercice, type ContexteVideo, type VideoMouvement } from '@/domain/videos-mouvement';
+import { annoncer } from '@/lib/enregistrement';
 import { demanderSortie, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
@@ -262,6 +263,7 @@ export function SeanceLog({
       ecrireBrouillon(cle, null);
       setD(vide());
       setEtat(resultat === 'doublon' ? 'doublon' : 'ok');
+      annoncer(resultat === 'doublon' ? 'Séance déjà enregistrée' : 'Séance enregistrée');
       onEnregistre({ resultat });
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Échec de l’enregistrement');

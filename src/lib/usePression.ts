@@ -2,6 +2,8 @@ import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
+import { annoncer, estAnnulation, messageErreur } from './enregistrement';
+
 /** Au-delà, le bouton redevient utilisable même si l'action n'a pas répondu : il ne reste jamais bloqué. */
 const ATTENTE_MAX_MS = 20_000;
 
@@ -16,6 +18,8 @@ const estPromesse = (r: unknown): r is PromiseLike<unknown> => !!r && typeof (r 
 /**
  * Enveloppe l'action d'un bouton. Si elle renvoie une promesse (enregistrement, envoi…), le bouton passe en
  * chargement jusqu'à la fin et ignore les appuis répétés : on voit que l'appui a été pris en compte.
+ * Une erreur que l'écran n'a pas rattrapée, ou une absence de réponse, s'affiche dans le bandeau rouge :
+ * auparavant le bouton redevenait simplement normal, sans qu'on sache si c'était enregistré.
  */
 export function usePression(action: (() => unknown) | undefined) {
   const [enCours, setEnCours] = useState(false);
@@ -43,10 +47,15 @@ export function usePression(action: (() => unknown) | undefined) {
       occupe.current = false;
       if (monte.current) setEnCours(false);
     };
-    const minuterie = setTimeout(fin, ATTENTE_MAX_MS);
+    const minuterie = setTimeout(() => {
+      if (fini) return;
+      fin();
+      annoncer('Pas de réponse pour l’instant : vérifie ta connexion. Si rien n’a changé, appuie à nouveau.', 'erreur');
+    }, ATTENTE_MAX_MS);
     r.then(fin, (e: unknown) => {
       fin();
       if (__DEV__) console.warn(e);
+      if (!estAnnulation(e)) annoncer(`Ça n’a pas marché : ${messageErreur(e)}`, 'erreur');
     });
   }, [action]);
 

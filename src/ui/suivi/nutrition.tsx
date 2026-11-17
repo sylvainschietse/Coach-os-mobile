@@ -7,6 +7,7 @@ import { jourLocal } from '@/domain/crm';
 import { formaterDate } from '@/domain/programmes';
 import { caloriesDesMacros, erreursJournal, erreursPlan, formaterNombre, LIBELLES_RESPECT, lireNombre, resumeJournal } from '@/domain/suivi';
 import type { JournalNutrition, PlanNutrition } from '@/domain/types';
+import { useEnregistre } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
 
@@ -53,6 +54,7 @@ export function PlanNutritionCarte({ clientId, modifiable }: { clientId: string;
   const [conseils, setConseils] = useState('');
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [enCours, setEnCours] = useState(false);
+  const { signaler } = useEnregistre();
 
   function ouvrir() {
     const v: Record<string, string> = {};
@@ -76,6 +78,7 @@ export function PlanNutritionCarte({ clientId, modifiable }: { clientId: string;
     setEnCours(true);
     try {
       await depot.enregistrerPlanNutrition(p);
+      signaler('Plan enregistré');
       setEdition(false);
       recharger();
     } catch (e) {
@@ -148,6 +151,7 @@ function SaisieDuJour({ clientId, existant, onAjoute }: { clientId: string; exis
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [enCours, setEnCours] = useState(false);
   const [ok, setOk] = useState(false);
+  const { confirme, signaler } = useEnregistre();
 
   async function enregistrer() {
     const j: JournalNutrition = {
@@ -166,6 +170,7 @@ function SaisieDuJour({ clientId, existant, onAjoute }: { clientId: string; exis
     try {
       await depot.enregistrerJournal(j);
       setOk(true);
+      signaler();
       onAjoute();
     } catch (e) {
       setErreurs([e instanceof Error ? e.message : 'Enregistrement impossible']);
@@ -188,7 +193,7 @@ function SaisieDuJour({ clientId, existant, onAjoute }: { clientId: string; exis
       <ChampTexte libelle="Faim, énergie, écarts… (facultatif)" valeur={ressenti} onChange={(t) => (setRessenti(t), setOk(false))} />
       {erreurs.length > 0 && <Erreur message={erreurs.join('\n')} />}
       {ok && <Texte style={{ color: couleurs.vert }}>C’est noté, ton coach le verra.</Texte>}
-      <Bouton libelle={existant ? 'Mettre à jour' : 'Enregistrer'} onPress={enregistrer} chargement={enCours} />
+      <Bouton libelle={existant ? 'Mettre à jour' : 'Enregistrer'} onPress={enregistrer} chargement={enCours} confirme={confirme} />
     </Carte>
   );
 }

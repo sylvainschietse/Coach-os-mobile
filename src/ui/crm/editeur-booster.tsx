@@ -28,6 +28,7 @@ import { ENTRETIEN, evaluationVide, TESTS, type Evaluation, type IdTest } from '
 import { exercicesRenseignes, type ExerciceTest } from '@/domain/exercices-test';
 import { prioritesAuto } from '@/domain/redaction';
 import { testsGolfRenseignes } from '@/domain/tests-golf';
+import { signalerEchec, useEnregistre } from '@/lib/enregistrement';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Selecteur, SousNav, type OngletDef } from '../coque';
@@ -219,6 +220,7 @@ function Editeur({
   const [sortie, setSortie] = useState<(() => void) | null>(null);
   const [conclure, setConclure] = useState(false);
   const [vente, setVente] = useState<string>();
+  const { confirme, signaler } = useEnregistre();
   // Les offres du coach (Mes offres) ; sans offre créée, la liste d'origine.
   const mesOffres = useCharger(() => offres.lister(), 'offres-booster');
   const choixOffres = (() => {
@@ -251,6 +253,7 @@ function Editeur({
           date: date!,
           statutCrm: b.statut,
         });
+        signaler('Booster créé');
         onFermer();
         return;
       }
@@ -259,6 +262,7 @@ function Editeur({
       await crm.modifierBooster(booster.id, { ...saisie, ...priorites });
       setInitial(b);
       setVente(undefined);
+      signaler();
       // « Vendu » : client actif (fait par le dépôt) avec l'offre recommandée sur sa fiche client.
       if (contact && b.resultatCommercial === 'Vendu' && (saisie.resultatCommercial || saisie.offreRecommandee)) {
         const nom = await appliquerOffreVendue(contact.id, b.offreRecommandee);
@@ -268,7 +272,7 @@ function Editeur({
       const decide = b.resultatCommercial === 'Vendu' || b.resultatCommercial === 'En veille';
       if (saisie.statutCrm === 'Terminée' && !decide && contact && contact.statut !== 'client' && contact.statut !== 'archive') setConclure(true);
     } catch (e) {
-      setErreur(e instanceof Error ? e.message : 'Enregistrement non confirmé');
+      setErreur(signalerEchec(e));
     } finally {
       setOccupe(false);
     }
@@ -299,6 +303,7 @@ function Editeur({
             enregistrement={occupe}
             peutEnregistrer={!occupe && !invalide && (!booster || modifie)}
             onEnregistrer={enregistrer}
+            confirme={confirme}
             onFermer={() => (sortie ? sortie() : demanderSortie(onFermer))}
             sortieDemandee={!!sortie}
             onRester={() => setSortie(null)}

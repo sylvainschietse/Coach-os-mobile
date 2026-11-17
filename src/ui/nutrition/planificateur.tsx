@@ -44,6 +44,7 @@ import {
 } from '@/domain/nutrition/recettes';
 import { totalJour, type PlanRepas } from '@/domain/plan-repas';
 import type { MomentRepas } from '@/domain/types';
+import { useEnregistre } from '@/lib/enregistrement';
 import { brouillonsOuverts, demanderSortie, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { nouvelId } from '@/lib/identifiant';
 import { roleWeb } from '@/lib/role-web';
@@ -250,6 +251,7 @@ export function Planificateur({
     setError('');
     ecrireBrouillon(key, { plan: next, version: version.current, envoiId: envoi.current });
   };
+  const { confirme, signaler } = useEnregistre();
   const save = async () => {
     if (sending.current || !ready) return;
     sending.current = true;
@@ -264,6 +266,7 @@ export function Planificateur({
       setDirty(false);
       ecrireBrouillon(key, null);
       setNotice('Semaine enregistrée et disponible dans la nutrition du client et du coach.');
+      signaler('Semaine enregistrée');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Enregistrement impossible');
     } finally {
@@ -621,6 +624,7 @@ export function Planificateur({
                     libelle={busy ? 'Enregistrement…' : dirty ? 'Enregistrer ma semaine' : 'Semaine enregistrée'}
                     chargement={busy}
                     desactive={!dirty || busy}
+                    confirme={confirme && !dirty}
                     onPress={save}
                   />
                 )}

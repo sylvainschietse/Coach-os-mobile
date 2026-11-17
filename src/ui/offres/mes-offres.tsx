@@ -11,6 +11,7 @@ import { useSession } from '@/data/session';
 import { brochure } from '@/data/brochure';
 import { brochureHtml, offresDeLaBrochure } from '@/domain/brochure';
 import { deplacerOffre, libellePrix, lireOffre, MODELES, PERIODICITES, type ModeleOffre, type Offre, type Periodicite, type SaisieOffre, trierOffres } from '@/domain/offres';
+import { annoncer } from '@/lib/enregistrement';
 import { adresseWeb } from '@/lib/adresse-web';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { ouvrirPdf, voirPdf } from '@/lib/pdf';
@@ -118,6 +119,7 @@ function EditeurOffre({ offre, onFini }: { offre?: Offre; onFini: () => void }) 
       const id = await offres.enregistrer({ ...lu, modele: modele ?? lu.modele }, offre?.id);
       // Mise en ligne sur Stripe tout de suite si le compte est prêt ; sinon elle se fera au premier paiement.
       await offres.publier(id).catch(() => undefined);
+      annoncer(offre ? 'Offre enregistrée' : 'Offre créée');
       onFini();
     } catch (e) {
       setErreur(messageErreur(e));

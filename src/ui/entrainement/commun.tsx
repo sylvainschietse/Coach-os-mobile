@@ -22,6 +22,7 @@ import { arrondi, couleurs, espace, polices } from '../theme';
 import { useUnivers } from '../univers';
 
 import { photoProgramme, type ProgrammeIllustre } from '@/data/photos-programmes';
+import { estLibelleEnregistrement } from '@/lib/enregistrement';
 import { roleWeb } from '@/lib/role-web';
 import { usePression } from '@/lib/usePression';
 
@@ -38,6 +39,8 @@ export function Action({
   chargement,
   petit,
   nom,
+  confirme,
+  libelleConfirme = 'Enregistré',
 }: {
   libelle?: string;
   onPress: () => void;
@@ -48,32 +51,58 @@ export function Action({
   petit?: boolean;
   /** Libellé lu par les lecteurs d'écran pour un bouton icône. */
   nom?: string;
+  /** Juste après un enregistrement réussi (voir `useEnregistre`) : « Enregistré ✓ » en vert, inactif. */
+  confirme?: boolean;
+  libelleConfirme?: string;
 }) {
   const u = useUnivers();
-  const fond = variante === 'plein' ? (u.cle === 'rouge' ? couleurs.rouge : u.uni) : variante === 'danger' ? '#DC2626' : variante === 'contour' ? couleurs.carte : 'transparent';
-  const texte = variante === 'plein' || variante === 'danger' ? '#FFFFFF' : couleurs.texte;
   const { enCours, presser } = usePression(onPress);
   const attente = chargement || enCours;
+  const ok = !!confirme && !attente;
+  // Bouton plein inactif : gris plutôt que rouge pâle.
+  const gris = !ok && !attente && !!desactive && (variante === 'plein' || variante === 'danger');
+  const fond = ok
+    ? couleurs.vertClair
+    : gris
+      ? couleurs.discret
+      : variante === 'plein'
+        ? u.cle === 'rouge'
+          ? couleurs.rouge
+          : u.uni
+        : variante === 'danger'
+          ? '#DC2626'
+          : variante === 'contour'
+            ? couleurs.carte
+            : 'transparent';
+  const texte = ok ? couleurs.vert : gris ? couleurs.suggestion : variante === 'plein' || variante === 'danger' ? '#FFFFFF' : couleurs.texte;
+  const libelleVu = ok ? libelleConfirme : attente && estLibelleEnregistrement(libelle) ? 'Enregistrement…' : libelle;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={nom ?? libelle}
-      accessibilityState={{ disabled: !!(desactive || attente), busy: attente }}
-      disabled={desactive || attente}
+      accessibilityLabel={ok ? libelleConfirme : (nom ?? libelle)}
+      accessibilityState={{ disabled: !!(desactive || attente || ok), busy: attente }}
+      accessibilityLiveRegion="polite"
+      disabled={desactive || attente || ok}
       onPress={presser}
       style={(e) => [
         styles.action,
         petit && styles.actionPetite,
         !libelle && { width: petit ? 36 : 44, paddingHorizontal: 0 },
         { backgroundColor: fond },
-        variante === 'plein' && { backgroundImage: u.degrade },
-        variante === 'contour' && { borderWidth: 1, borderColor: couleurs.saisie },
-        (survol(e) || e.pressed) && variante !== 'plein' && variante !== 'danger' && { backgroundColor: couleurs.discret },
-        { opacity: desactive ? 0.45 : e.pressed ? 0.7 : 1 },
+        variante === 'plein' && !ok && !gris && { backgroundImage: u.degrade },
+        (variante === 'contour' || ok || gris) && { borderWidth: 1, borderColor: ok ? couleurs.vert : gris ? couleurs.bordure : couleurs.saisie },
+        !ok && !gris && (survol(e) || e.pressed) && variante !== 'plein' && variante !== 'danger' && { backgroundColor: couleurs.discret },
+        { opacity: desactive && !gris && !ok ? 0.45 : e.pressed ? 0.7 : 1 },
       ]}
     >
-      {attente ? <ActivityIndicator size="small" color={texte} /> : Icone && <Icone size={petit ? 14 : 16} color={texte} />}
-      {libelle && <Text style={[styles.actionTexte, petit && { fontSize: 13 }, { color: texte }]}>{libelle}</Text>}
+      {ok ? (
+        <Check size={petit ? 14 : 16} color={texte} strokeWidth={2.6} />
+      ) : attente ? (
+        <ActivityIndicator size="small" color={texte} />
+      ) : (
+        Icone && <Icone size={petit ? 14 : 16} color={texte} />
+      )}
+      {libelleVu && <Text style={[styles.actionTexte, petit && { fontSize: 13 }, { color: texte }]}>{libelleVu}</Text>}
     </Pressable>
   );
 }

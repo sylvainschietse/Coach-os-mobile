@@ -14,6 +14,7 @@ import { ecrireJour, jourLocal, lireJour, type Carnet } from '@/domain/crm';
 import type { Document } from '@/domain/documents';
 import type { Mensuration } from '@/domain/types';
 import { bilanHtml, ecartPrecedent, PILIERS, type BilanCoach, type Pilier, type SaisieBilan } from '@/domain/gestion';
+import { signalerEchec, useEnregistre } from '@/lib/enregistrement';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
@@ -303,6 +304,7 @@ function FormulaireBilan({
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string>();
   const [retour, setRetour] = useState<string>();
+  const { confirme, signaler } = useEnregistre();
   const [sortie, setSortie] = useState<(() => void) | null>(null);
   const modifie = JSON.stringify(b) !== JSON.stringify(initial);
   const demanderSortie = (suite: () => void) => (modifie ? setSortie(() => suite) : suite());
@@ -353,8 +355,9 @@ function FormulaireBilan({
       else bilanId = await crm.creerBilan(saisie());
       setId(bilanId);
       setInitial(b);
+      signaler('Bilan enregistré');
     } catch (e) {
-      setErreur(e instanceof Error ? e.message : 'Bilan non enregistré');
+      setErreur(signalerEchec(e));
       setOccupe(false);
       return;
     }
@@ -446,6 +449,7 @@ function FormulaireBilan({
                 onPress={enregistrer}
                 chargement={occupe}
                 desactive={occupe || invalide || envoye || (!!id && !modifie)}
+                confirme={confirme && !modifie}
               />
               {Platform.OS === 'web' && id && !modifie && (
                 <View style={styles.ligne}>

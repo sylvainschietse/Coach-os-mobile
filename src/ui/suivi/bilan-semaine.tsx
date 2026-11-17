@@ -7,6 +7,7 @@ import { Text, View } from 'react-native';
 import { suiviHebdo } from '@/data/suivi-hebdo';
 import { formaterDate } from '@/domain/programmes';
 import { erreurReponses, finSemaine, lundiCourant, SCORES, semainesProposees, TEXTES, type BilanHebdo, type ReponsesBilan } from '@/domain/suivi-hebdo';
+import { useEnregistre } from '@/lib/enregistrement';
 import { brouillonsOuverts, demanderSortie, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
@@ -37,6 +38,7 @@ export function BilanSemaine({ clientId, apercu }: { clientId: string; apercu?: 
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState('');
   const [message, setMessage] = useState('');
+  const { signaler } = useEnregistre();
   const verrou = useRef(false);
 
   const cle = `coachos-weekly:${clientId}:${semaine}`;
@@ -103,6 +105,7 @@ export function BilanSemaine({ clientId, apercu }: { clientId: string; apercu?: 
       setEnvoi(nouvelId());
       recharger();
       setMessage('Bilan enregistré. Ta synthèse automatique et ta priorité sont disponibles.');
+      signaler('Bilan enregistré');
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Envoi impossible');
     } finally {

@@ -27,6 +27,7 @@ import {
 } from '@/domain/agenda';
 import { soldeSeances } from '@/domain/abonnements';
 import type { Occupation } from '@/domain/agenda-google';
+import { annoncer } from '@/lib/enregistrement';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Vide } from '../coque';
@@ -827,6 +828,7 @@ function Reglages({ initial, onEnregistre }: { initial: ReglagesAgenda; onEnregi
     setErreur(undefined);
     try {
       await agenda.enregistrerReglages(valeurs);
+      annoncer('Réglages enregistrés');
       onEnregistre();
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Réglages non enregistrés.');

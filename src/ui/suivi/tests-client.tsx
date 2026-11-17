@@ -6,6 +6,7 @@ import { depot } from '@/data';
 import { jourLocal } from '@/domain/crm';
 import { exercicesAvant, golfAvant, mesureAvant, postureAvant, resumeTest, testClientVide, testVide, type TestClient } from '@/domain/tests-client';
 import { CATEGORIES_EXERCICE } from '@/domain/exercices-test';
+import { signalerEchec, useEnregistre } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
 
@@ -66,20 +67,22 @@ function EditeurTest({ test, tests, existant, prenom, onFermer }: { test: TestCl
   const [t, setT] = useState(test);
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string>();
+  const { signaler } = useEnregistre();
   const precedent = golfAvant(tests, t);
   const avantPosture = postureAvant(tests, t);
   const avantExercices = exercicesAvant(tests, t);
   const avant = avantExercices?.exercices ? { date: dateLisible(avantExercices.date), exercices: avantExercices.exercices } : undefined;
   const maj = (patch: Partial<TestClient>) => setT((x) => ({ ...x, ...patch }));
 
-  const agir = async (action: () => Promise<void>) => {
+  const agir = async (action: () => Promise<void>, fait: string) => {
     setOccupe(true);
     setErreur(undefined);
     try {
       await action();
+      signaler(fait);
       onFermer();
     } catch (e) {
-      setErreur(e instanceof Error ? e.message : 'Enregistrement non confirmé');
+      setErreur(signalerEchec(e));
       setOccupe(false);
     }
   };
@@ -135,10 +138,10 @@ function EditeurTest({ test, tests, existant, prenom, onFermer }: { test: TestCl
           libelle="Enregistrer le test"
           chargement={occupe}
           desactive={occupe || testClientVide(t) || !/^\d{4}-\d{2}-\d{2}$/.test(t.date)}
-          onPress={() => agir(() => depot.enregistrerTestClient(t))}
+          onPress={() => agir(() => depot.enregistrerTestClient(t), 'Test enregistré')}
         />
         <Bouton variante="discret" libelle="Annuler" onPress={onFermer} desactive={occupe} />
-        {existant && <Bouton variante="discret" libelle="Supprimer ce test" onPress={() => agir(() => depot.supprimerTestClient(t.id))} desactive={occupe} />}
+        {existant && <Bouton variante="discret" libelle="Supprimer ce test" onPress={() => agir(() => depot.supprimerTestClient(t.id), 'Test supprimé')} desactive={occupe} />}
       </View>
     </View>
   );

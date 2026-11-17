@@ -29,6 +29,7 @@ import {
   type PackAVendre,
 } from '@/domain/abonnements';
 import { contenuOffre, droitsOffre, libellePrix } from '@/domain/offres';
+import { annoncer } from '@/lib/enregistrement';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
@@ -42,7 +43,7 @@ const aujourdhui = () => new Date().toISOString().slice(0, 10);
 const dateFr = (j: string) => j.split('-').reverse().join('/');
 
 /** Remise exceptionnelle : 100 % pour un testeur, ou un pourcentage ou un montant au choix. */
-function RemiseCoach({ a, occupe, changer }: { a: Abonnement; occupe: boolean; changer: (m: Partial<Abonnement>) => Promise<void> }) {
+function RemiseCoach({ a, occupe, changer }: { a: Abonnement; occupe: boolean; changer: (m: Partial<Abonnement>) => Promise<unknown> }) {
   const [ouvert, setOuvert] = useState(false);
   // Pré-rempli avec la remise en place, sinon avec l'offre testeur (100 %).
   const [type, setType] = useState<Remise['type']>(a.remise?.type ?? 'pourcent');
@@ -226,14 +227,19 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
   const mesOffres = useCharger(() => offres.lister(), 'offres');
   const [prixSurMesure, setPrixSurMesure] = useState<string>();
 
-  async function faire(action: () => Promise<void>, apres: () => void) {
+  /** Renvoie `true` si c'est enregistré : la saisie (prix, tarif) ne se referme qu'à ce moment-là. */
+  async function faire(action: () => Promise<void>, apres: () => void, fait = 'Enregistré') {
     setErreur(undefined);
     setOccupe(true);
     try {
       await action();
       apres();
+      annoncer(fait);
+      return true;
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Action impossible pour le moment.');
+      annoncer(`Pas enregistré : ${e instanceof Error ? e.message : 'réessaie dans un instant.'}`, 'erreur');
+      return false;
     } finally {
       setOccupe(false);
     }
@@ -268,7 +274,7 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
   const tarifSaisi = tarif === undefined ? undefined : Number(tarif.replace(',', '.'));
   const enregistrerTarif = () =>
     tarifSaisi !== undefined && Number.isFinite(tarifSaisi) && tarifSaisi >= 0
-      ? changer({ tarifSeance: tarifSaisi }).then(() => setTarif(undefined))
+      ? changer({ tarifSeance: tarifSaisi }).then((ok) => ok && setTarif(undefined))
       : setErreur('Tarif illisible : écris un montant comme 50 ou 47,50.');
   const decompter = (sens: 1 | -1) => faire(() => abonnements.decompter(clientId, sens), packs.recharger);
   const supprimer = (packId: string) =>
@@ -381,7 +387,7 @@ export function AbonnementClient({ clientId, prenom, onChange }: { clientId: str
                       onPress={() => {
                         const n = prixSurMesure.trim() ? Number(prixSurMesure.replace(',', '.')) : undefined;
                         if (n !== undefined && !(Number.isFinite(n) && n >= 0)) return setErreur('Prix illisible : écris un montant comme 79 ou 79,90.');
-                        void changer({ offrePrix: n }).then(() => setPrixSurMesure(undefined));
+                        void changer({ offrePrix: n }).then((ok) => ok && setPrixSurMesure(undefined));
                       }}
                     />
                   </View>

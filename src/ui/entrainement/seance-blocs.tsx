@@ -32,6 +32,7 @@ import {
   type Remplacement,
 } from '@/domain/seance-blocs';
 import type { Bloc, Exercice, LignePrescription, Mesure, Seance, Valeurs } from '@/domain/types';
+import { annoncer } from '@/lib/enregistrement';
 import { ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { annulerAlertes, programmerAlerte } from '@/lib/notifications';
 import { dansSecondes, maintenantMs } from '@/lib/temps';
@@ -196,6 +197,7 @@ export function SeanceParBloc({
       });
       ecrireBrouillon(cle, null);
       setEtat(resultat === 'doublon' ? 'doublon' : 'ok');
+      annoncer(resultat === 'doublon' ? 'Séance déjà enregistrée' : 'Séance enregistrée');
       onEnregistre({ resultat });
     } catch (e) {
       setErreur(messageErreur(e));

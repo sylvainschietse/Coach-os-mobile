@@ -10,6 +10,7 @@ import { ecrireJour, lireJour } from '@/domain/crm';
 import { ajouterJours, aujourdhuiParis, correspondRecherche, dansDates, LIBELLES_CYCLES, titreClient, type StatutCycle } from '@/domain/entrainement';
 import type { CycleClient, ModeLien, ModeleResume, SuiviClient } from '@/domain/entrainement-etat';
 import { FILTRES_SUIVIS, listeSuivis, TRIS_SUIVIS, type FiltreSuivis, type TriSuivis } from '@/domain/liste-suivis';
+import { useEnregistre } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
@@ -233,6 +234,7 @@ function DialogueCycle({
   const [q, setQ] = useState('');
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState('');
+  const { signaler } = useEnregistre();
   const debut = lireJour(f.debut);
   const fin = lireJour(f.fin);
   const err = !f.nom.trim()
@@ -266,6 +268,7 @@ function DialogueCycle({
       // Programme choisi dans la bibliothèque : le client en reçoit une copie à son nom, liée au cycle.
       if (!cycle && modeleId) await lierProgramme(coachId, stocke, modeleId, 'Copie personnalisée', { client, cycleModele: 1 });
       else await entrainement.enregistrerCycle(coachId, stocke);
+      signaler(cycle ? 'Dates enregistrées' : 'Programme prévu');
       onEnregistre();
       onFermer();
     } catch (e) {

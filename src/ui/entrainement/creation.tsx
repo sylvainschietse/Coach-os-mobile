@@ -11,6 +11,7 @@ import { activiteSimpleDans, seanceActivite } from '@/domain/catalogue-activites
 import { LIBELLES_CYCLES, NIVEAUX, OBJECTIFS } from '@/domain/entrainement';
 import type { ModeleResume } from '@/domain/entrainement-etat';
 import type { Bloc } from '@/domain/types';
+import { useEnregistre } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 
 import { Choix, Modale, Repliable, Saisie } from '../crm/dossier';
@@ -80,6 +81,7 @@ export function CreationEntrainement({
   const [proposition, setProposition] = useState<{ p: PropositionSeance; blocs: Bloc[] }>();
   const [programmePropose, setProgrammePropose] = useState<ProgrammePropose>();
   const [avancement, setAvancement] = useState('');
+  const { signaler } = useEnregistre();
 
   const prog = action === 'programme' || action === 'editProgramme';
   const copie = action === 'copyProgramme' || action === 'copySeance';
@@ -92,7 +94,10 @@ export function CreationEntrainement({
       await completerDescriptif(cree.id);
       setOccupe(false);
     }
-    if (cree) onEnregistre(cree);
+    if (cree) {
+      signaler('Séance enregistrée');
+      onEnregistre(cree);
+    }
     onFermer();
   };
   /** Une séance terminée sans descriptif en reçoit un, écrit d'après ses blocs ; celui du coach n'est jamais remplacé. */
@@ -133,8 +138,10 @@ export function CreationEntrainement({
       if (action === 'seance') {
         setCree(r);
         setEnregistre({ nom: f.nom, consignes: f.consignes });
+        signaler('Brouillon enregistré');
         setEtape(2);
       } else {
+        signaler();
         onEnregistre(r);
         onFermer();
       }

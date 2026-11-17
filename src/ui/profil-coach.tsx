@@ -7,6 +7,7 @@ import { Image, View } from 'react-native';
 
 import { erreursProfilCoach, HORAIRES_PAR_DEFAUT, MAX_HORAIRES, profilCoach, type ProfilCoach } from '@/data/profil-coach';
 import { formaterTelephone } from '@/domain/crm';
+import { useEnregistre } from '@/lib/enregistrement';
 import { useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, SousTitre, Texte } from './composants';
@@ -54,6 +55,7 @@ function Formulaire({ initial }: { initial: ProfilCoach }) {
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [enCours, setEnCours] = useState(false);
   const [enregistre, setEnregistre] = useState(false);
+  const { confirme, signaler } = useEnregistre();
   const modifier = (m: Partial<ProfilCoach>) => {
     setP({ ...p, ...m });
     setEnregistre(false);
@@ -77,6 +79,7 @@ function Formulaire({ initial }: { initial: ProfilCoach }) {
     try {
       await profilCoach.enregistrer(p);
       setEnregistre(true);
+      signaler('Profil enregistré');
     } catch (e) {
       setErreurs([e instanceof Error ? e.message : 'Profil non enregistré']);
     } finally {
@@ -111,7 +114,7 @@ function Formulaire({ initial }: { initial: ProfilCoach }) {
           Affiché en haut de la messagerie de tes clients, pour qu’ils sachent quand tu réponds. Vide : « {HORAIRES_PAR_DEFAUT} »
         </Texte>
         {erreurs.length > 0 && <Erreur message={erreurs.join('\n')} />}
-        <Bouton libelle="Enregistrer" onPress={enregistrer} chargement={enCours} />
+        <Bouton libelle="Enregistrer" onPress={enregistrer} chargement={enCours} confirme={confirme} />
         {enregistre && <Texte style={{ fontSize: 14, color: couleurs.vert }}>Profil enregistré.</Texte>}
       </Carte>
     </View>

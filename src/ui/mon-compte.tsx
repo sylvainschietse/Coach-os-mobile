@@ -23,6 +23,7 @@ import {
 import { contenuOffre, libellePrix, type Offre } from '@/domain/offres';
 import { verifierCoordonnees } from '@/domain/acces-client';
 import { formaterTelephone, normaliserTelephone } from '@/domain/crm';
+import { annoncer } from '@/lib/enregistrement';
 import { demanderSortie } from '@/lib/brouillon';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { messageErreur, useCharger } from '@/lib/useCharger';
@@ -84,6 +85,7 @@ function MesInformations({ infos, apercu, onModifie }: { infos: MesInfos | null;
       setErreur(null);
       try {
         await modifierMesCoordonnees(edition);
+        annoncer('Informations enregistrées');
         setEdition(null);
         onModifie();
       } catch (e) {

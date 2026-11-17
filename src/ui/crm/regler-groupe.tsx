@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { crm } from '@/data/crm';
 import { montantLisible, type MoyenPaiement } from '@/domain/gestion';
+import { annoncer, signalerEchec } from '@/lib/enregistrement';
 
 import { BoutonContour } from '../coque';
 import { Bouton } from '../composants';
@@ -53,10 +54,11 @@ export function ReglerPlusieurs({ prenom, lignes, onFait }: { prenom: string; li
     setErreur(undefined);
     try {
       await crm.reglerPaiements(ids, moyen);
+      annoncer(ids.length > 1 ? `${ids.length} paiements réglés` : 'Paiement réglé');
       setOuvert(false);
       onFait?.();
     } catch (e) {
-      setErreur(e instanceof Error ? e.message : 'Enregistrement non confirmé');
+      setErreur(signalerEchec(e));
     } finally {
       setOccupe(false);
     }
