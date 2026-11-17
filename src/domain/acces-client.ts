@@ -8,11 +8,30 @@ export interface AccesClient {
   motDePasse: string;
 }
 
+/** Téléphone du client : Android installe l'APK, iPhone ajoute la version web à son écran d'accueil (pas encore sur l'App Store). */
+export type PlateformeAcces = 'android' | 'iphone';
+
 /** Message WhatsApp (ou SMS) qui transmet l'accès au client. */
-export function messageAcces(prenom: string, coach: string, acces: AccesClient, lienAppli?: string, lienTuto?: string): string {
+export function messageAcces(
+  prenom: string,
+  coach: string,
+  acces: AccesClient,
+  lienAppli?: string,
+  lienTuto?: string,
+  plateforme: PlateformeAcces = 'android',
+): string {
+  const installation =
+    plateforme === 'iphone'
+      ? lienAppli
+        ? [
+            `Sur ton iPhone, ouvre ce lien dans Safari : ${lienAppli}`,
+            'Puis appuie sur le bouton Partager (le carré avec la flèche vers le haut) et choisis « Sur l’écran d’accueil ». L’appli CoachGo apparaît alors avec tes autres applis.',
+          ]
+        : []
+      : [lienAppli ? `Pour l’installer : ${lienAppli}` : ''];
   return [
     `Salut ${prenom || 'à toi'} ! Voici ton accès à l’appli CoachGo, pour retrouver tes séances et noter ce que tu fais.`,
-    lienAppli ? `Pour l’installer : ${lienAppli}` : '',
+    ...installation,
     lienTuto ? `Pour bien démarrer, regarde la vidéo (1 min 30) : ${lienTuto}` : '',
     `E-mail : ${acces.email}`,
     `Mot de passe provisoire : ${acces.motDePasse}`,

@@ -139,6 +139,12 @@ export function FicheContactModale({
   const charge = useCharger(() => (id ? crm.fiche(id) : Promise.resolve(null)), `fiche-${id ?? 'nouveau'}`);
   useRechargerSur(charge.recharger, ecouterCrm);
   const fiche = charge.donnee;
+  // Sans volet demandé, on garde celui du premier affichage : un prospect qui devient client en créant son accès
+  // reste sur « Coordonnées », où s'affiche le message avec son mot de passe provisoire (sinon la fiche basculait sur
+  // son suivi et le mot de passe était perdu).
+  const [depart, setDepart] = useState<{ id: string; volet: VoletFiche }>();
+  if (fiche && depart?.id !== fiche.contact.id) setDepart({ id: fiche.contact.id, volet: voletAffiche(undefined, !!fiche.contact.clientId) });
+  const voletDepart = depart && depart.id === id ? depart.volet : undefined;
 
   if (id && !fiche)
     return (
@@ -150,7 +156,7 @@ export function FicheContactModale({
     <Editeur
       key={fiche ? `${fiche.contact.id}` : 'nouveau'}
       fiche={fiche ?? undefined}
-      volet={id ? voletAffiche(volet, !!fiche?.contact.clientId) : 'fiche'}
+      volet={id ? voletAffiche(volet ?? voletDepart, !!fiche?.contact.clientId) : 'fiche'}
       onVolet={onVolet}
       onFermer={onFermer}
       onOuvrirAutre={onOuvrirAutre}
