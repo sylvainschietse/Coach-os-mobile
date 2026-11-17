@@ -8,12 +8,14 @@ import { AccessibilityInfo, Animated, PanResponder, Pressable, StyleSheet, Text,
 import { depot } from '@/data';
 import { alimentation } from '@/data/alimentation';
 import { activites } from '@/data/activites';
+import { nutrition } from '@/data/nutrition';
 import { entrainement } from '@/data/entrainement';
 import { quotidien } from '@/data/quotidien';
 import { suiviHebdo } from '@/data/suivi-hebdo';
 import { titreActivite } from '@/domain/activites';
 import { ajouterJours, aujourdhuiParis, jourParis, titreClient } from '@/domain/entrainement';
 import { indicateursDuClient, type Indicateur } from '@/domain/quotidien';
+import { foodTotal, NOTE_PHOTO } from '@/domain/nutrition/personnel';
 import { formaterNombre, type ChampMensuration } from '@/domain/suivi';
 import { compterSeances, courbesExercices, derniereSeanceFaite } from '@/domain/suivi-entrainement';
 import {
@@ -69,7 +71,7 @@ const BIEN_ETRE: { cle: Indicateur; libelle: string; unite: string; inverse?: bo
 function useDonnees(clientId: string) {
   return useCharger(async () => {
     const depuis = ajouterJours(aujourdhuiParis(), -800);
-    const [resultats, libres, mensurations, records, releves, reglages, bilans, photos, repas] = await Promise.all([
+    const [resultats, libres, mensurations, records, releves, reglages, bilans, photos, repas, journaux] = await Promise.all([
       sur(entrainement.resultats(clientId), { realisations: [], prescriptions: {} }),
       sur(activites.liste(clientId, 500), []),
       sur(depot.mensurations(clientId), []),
@@ -79,9 +81,18 @@ function useDonnees(clientId: string) {
       sur(suiviHebdo.bilansClient(clientId), []),
       sur(suiviHebdo.photos(clientId, false), []),
       sur(alimentation.repas(clientId, depuis), []),
+      sur(nutrition.journaux(clientId, depuis), []),
     ]);
+    // Deux sources : l'ancien journal des repas (historique) et le journal alimentaire que le client remplit aujourd'hui
+    // (Nutrition › Aujourd'hui). Un jour présent dans les deux additionne les deux.
     const kcalParJour = new Map<string, number>();
     for (const r of repas) kcalParJour.set(r.date, (kcalParJour.get(r.date) ?? 0) + r.kcal);
+    for (const j of journaux)
+      if (j.entries.length) kcalParJour.set(j.date, (kcalParJour.get(j.date) ?? 0) + foodTotal(j.entries).kcal);
+    // Un repas en photo = un repas (petit déjeuner, déjeuner…) d'un jour où au moins un aliment a été estimé sur photo.
+    const repasPhotoJournal = journaux.flatMap((j) =>
+      [...new Set(j.entries.filter((e) => e.food.note === NOTE_PHOTO).map((e) => e.meal))].map(() => j.date),
+    );
     const releve = (i: Indicateur): PointDate[] => releves.filter((r) => r.indicateur === i).map((r) => ({ date: r.jour, valeur: r.valeur }));
     return {
       seances: resultats.realisations.map((r) => ({ id: r.id, date: jourParis(r.fin), titre: titreClient(r.seanceTitre), note: r.note })),
@@ -98,7 +109,7 @@ function useDonnees(clientId: string) {
       bilans,
       photos,
       kcal: [...kcalParJour].map(([date, valeur]) => ({ date, valeur })),
-      repasPhoto: repas.filter((r) => r.source === 'photo').map((r) => r.date),
+      repasPhoto: [...repas.filter((r) => r.source === 'photo').map((r) => r.date), ...repasPhotoJournal],
     };
   }, `suivi-coach-${clientId}`);
 }
