@@ -4,9 +4,9 @@
 import { useEvent } from 'expo';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
-import { useRef, useState, type ComponentRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import { Image, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
-import Svg, { Circle, Line, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
 
 import type { Repere } from '@/domain/bilan-postural';
 import type { Point } from '@/domain/mesure-angle';
@@ -30,12 +30,15 @@ export function PointeurReperes({
   reperes,
   points,
   onChange,
+  onCadre,
 }: {
   media: 'photo' | 'video';
   uri: string;
   reperes: Repere[];
   points: Record<string, Point>;
   onChange: (p: Record<string, Point>) => void;
+  /** Taille de la zone et seconde de la vidéo où le dernier repère a été posé : pour revoir la vue plus tard. */
+  onCadre?: (c: CadreReperes) => void;
 }) {
   const { width, height } = useWindowDimensions();
   const largeur = Math.min(width - 64, 560);
@@ -44,10 +47,12 @@ export function PointeurReperes({
   const [choisi, setChoisi] = useState<number | null>(null);
   const actif = choisi ?? (premierManquant === -1 ? null : premierManquant);
   const zone = useRef<ComponentRef<typeof View>>(null);
+  const temps = useRef<number | undefined>(undefined);
 
   const poser = (p: Point) => {
     if (actif === null) return;
     onChange({ ...points, [reperes[actif].cle]: p });
+    onCadre?.({ largeur, hauteur, instant: media === 'video' ? temps.current : undefined });
     setChoisi(null);
   };
   const toucher = (e: GestureResponderEvent) => {
@@ -91,7 +96,7 @@ export function PointeurReperes({
           {dessin}
         </View>
       ) : (
-        <VideoPointee uri={uri} largeur={largeur} hauteur={hauteur}>
+        <VideoPointee uri={uri} largeur={largeur} hauteur={hauteur} onTemps={(t) => (temps.current = t)}>
           {dessin}
         </VideoPointee>
       )}
@@ -111,7 +116,22 @@ export function PointeurReperes({
   );
 }
 
-function VideoPointee({ uri, largeur, hauteur, children }: { uri: string; largeur: number; hauteur: number; children: ReactNode }) {
+export function VideoPointee({
+  uri,
+  largeur,
+  hauteur,
+  instantInitial,
+  onTemps,
+  children,
+}: {
+  uri: string;
+  largeur: number;
+  hauteur: number;
+  /** Seconde où se placer à l'ouverture (l'image où les repères ont été posés). */
+  instantInitial?: number;
+  onTemps?: (t: number) => void;
+  children: ReactNode;
+}) {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = false;
     p.muted = true;
@@ -122,6 +142,15 @@ function VideoPointee({ uri, largeur, hauteur, children }: { uri: string; largeu
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
   const [largeurBarre, setLargeurBarre] = useState(1);
   const duree = player.duration || 0;
+  const place = useRef(false);
+  useEffect(() => {
+    onTemps?.(currentTime);
+  }, [currentTime, onTemps]);
+  useEffect(() => {
+    if (place.current || !duree || !instantInitial) return;
+    place.current = true;
+    allerA(player, duree, instantInitial);
+  }, [duree, instantInitial, player]);
   return (
     <View style={{ gap: espace(2) }}>
       <View style={[styles.cadre, { width: largeur, height: hauteur }]}>
@@ -144,6 +173,89 @@ function VideoPointee({ uri, largeur, hauteur, children }: { uri: string; largeu
         <Commande libelle="+1 s" onPress={() => allerA(player, duree, player.currentTime + 1)} />
       </View>
     </View>
+  );
+}
+
+export interface CadreReperes {
+  largeur: number;
+  hauteur: number;
+  instant?: number;
+}
+
+export interface Etiquette {
+  /** Repère près duquel écrire. */
+  cle: string;
+  texte: string;
+  couleur: string;
+}
+
+/**
+ * Photo ou vidéo revue avec ses repères, les segments qui les relient et la valeur des angles. Les points ont été posés
+ * dans une zone de taille `cadre` : on garde ses proportions et on les met à l'échelle de la largeur voulue.
+ */
+export function ApercuAnnote({
+  media,
+  uri,
+  cadre,
+  points,
+  traces,
+  etiquettes,
+  largeur,
+  reperesVisibles = true,
+}: {
+  media: 'photo' | 'video';
+  uri: string;
+  cadre: CadreReperes;
+  points: Record<string, Point>;
+  traces: [string, string][];
+  etiquettes: Etiquette[];
+  largeur: number;
+  reperesVisibles?: boolean;
+}) {
+  const echelle = largeur / (cadre.largeur || largeur);
+  const hauteur = Math.round(cadre.hauteur * echelle);
+  const pt = (cle: string) => (points[cle] ? { x: points[cle].x * echelle, y: points[cle].y * echelle } : undefined);
+  const dessin = (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {reperesVisibles && (
+        <Svg width={largeur} height={hauteur}>
+          {traces.map(([a, b]) => {
+            const p1 = pt(a);
+            const p2 = pt(b);
+            return p1 && p2 ? <Line key={`${a}-${b}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" /> : null;
+          })}
+          {Object.keys(points).map((cle) => {
+            const p = pt(cle)!;
+            return <Circle key={cle} cx={p.x} cy={p.y} r={6} fill="#C3181E" stroke="#FFFFFF" strokeWidth={2} />;
+          })}
+          {etiquettes.map((e, i) => {
+            const p = pt(e.cle);
+            if (!p) return null;
+            const l = e.texte.length * 7.4 + 14;
+            const x = Math.min(Math.max(4, p.x + 10), largeur - l - 4);
+            const y = Math.min(Math.max(4, p.y - 26 + (i % 2) * 4), hauteur - 26);
+            return [
+              <Rect key={`r${i}`} x={x} y={y} rx={8} width={l} height={22} fill={e.couleur} />,
+              <SvgText key={`t${i}`} x={x + 7} y={y + 15} fill="#FFFFFF" fontSize={12} fontFamily={polices.chiffres}>
+                {e.texte}
+              </SvgText>,
+            ];
+          })}
+        </Svg>
+      )}
+    </View>
+  );
+  if (media === 'photo')
+    return (
+      <View style={[styles.cadre, { width: largeur, height: hauteur }]}>
+        <Image source={{ uri }} resizeMode="contain" style={{ width: largeur, height: hauteur }} />
+        {dessin}
+      </View>
+    );
+  return (
+    <VideoPointee uri={uri} largeur={largeur} hauteur={hauteur} instantInitial={cadre.instant}>
+      {dessin}
+    </VideoPointee>
   );
 }
 

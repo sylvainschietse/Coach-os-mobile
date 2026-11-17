@@ -1,5 +1,6 @@
 // Tests d'un client suivi depuis longtemps (hors Booster) : tests golf chiffrés et angles mesurés en vidéo,
 // datés, pour suivre l'évolution d'une fois sur l'autre.
+import { asymetries, morphologie, priorites, scoreMouvement } from './analyse-mouvement';
 import { syntheseBilan, vuesCompletes, type BilanPostural } from './bilan-postural';
 import { CATEGORIES_EXERCICE, exercicesRenseignes, resumeExercices, type ExerciceTest } from './exercices-test';
 import type { MesureAngle } from './mesure-angle';
@@ -75,6 +76,13 @@ export function resumeTest(t: TestClient): string {
 /** Texte complet, au format des tests du Booster. */
 export function syntheseTest(t: TestClient): string {
   const lignes = [...syntheseBilan(t.posture)];
+  const score = scoreMouvement(t.posture);
+  if (score !== undefined) lignes.unshift(`MOUVEMENT — score ${score}/100`);
+  for (const a of asymetries(t.posture).filter((x) => x.net))
+    lignes.push(`SYMÉTRIE · ${a.titre.toUpperCase()} — droite ${a.droite}°, gauche ${a.gauche}° (écart ${a.ecart}°)`);
+  priorites(t.posture).forEach((p, i) => lignes.push(`PRIORITÉ ${i + 1} — ${p.titre}${p.detail ? ` (${p.detail})` : ''}`));
+  const m = morphologie(t.posture);
+  if (m) lignes.push(`MORPHOLOGIE — buste ${m.buste}, cuisse ${m.cuisse} (rapportés à la jambe) : ${m.lecture[0]}`);
   for (const c of CATEGORIES_EXERCICE) {
     const r = resumeExercices(t.exercices, c.id);
     if (r) lignes.push(`${c.libelle.toUpperCase()} — ${r}`);
