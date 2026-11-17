@@ -6,6 +6,7 @@ import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Annonce } from '../annonce';
 import { Selecteur } from '../coque';
 import { DefilementClavier, useHauteurClavier } from '../clavier';
 import { Bouton } from '../composants';
@@ -14,6 +15,8 @@ import { arrondi, couleurs, espace, polices } from '../theme';
 
 import { roleWeb } from '@/lib/role-web';
 import { usePression } from '@/lib/usePression';
+
+const heureCourte = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
 /** Largeur `sm` de Tailwind : en dessous, une seule colonne. */
 const SM = 640;
@@ -68,6 +71,7 @@ export function Modale({
           {pied && <View style={styles.pied}>{pied}</View>}
         </View>
       </View>
+      <Annonce />
     </Modal>
   );
 }
@@ -95,7 +99,10 @@ export function PiedEditeur({
   sortieDemandee,
   onRester,
   gauche,
+  confirme,
 }: {
+  /** Juste après un enregistrement réussi (`useEnregistre`) : « Enregistré ✓ » sur le bouton et à côté. */
+  confirme?: boolean;
   modifie: boolean;
   enregistrement: boolean;
   peutEnregistrer: boolean;
@@ -127,12 +134,16 @@ export function PiedEditeur({
         }}
       >
         {gauche}
-        <Text style={styles.etat}>{modifie ? 'Modifications à enregistrer' : 'Dossier à jour'}</Text>
+        {confirme && !modifie ? (
+          <Text style={[styles.etat, { color: couleurs.vert }]}>Enregistré à {heureCourte(new Date())}</Text>
+        ) : (
+          <Text style={[styles.etat, modifie && { color: couleurs.rougeTexte }]}>{modifie ? 'Modifications à enregistrer' : 'Dossier à jour'}</Text>
+        )}
       </View>
       <View style={styles.boutons}>
         <BoutonPied libelle="Fermer" onPress={onFermer} />
         <View style={{ minWidth: 132 }}>
-          <Bouton libelle="Enregistrer" onPress={onEnregistrer} chargement={enregistrement} desactive={!peutEnregistrer} />
+          <Bouton libelle="Enregistrer" onPress={onEnregistrer} chargement={enregistrement} desactive={!peutEnregistrer} confirme={confirme && !modifie} />
         </View>
       </View>
     </View>

@@ -27,6 +27,7 @@ import {
   type EnteteFacture,
   type Facture,
 } from '@/domain/factures';
+import { annoncer, useEnregistre } from '@/lib/enregistrement';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { useCharger } from '@/lib/useCharger';
@@ -631,6 +632,7 @@ function Numeroter({
     try {
       await factures.changerNumerotation(clientId, { prefixe, prochain: n, nomFacture });
       setMessage({ ok: true, texte: 'Numérotation enregistrée.' });
+      annoncer('Numérotation enregistrée');
       setOuvert(false);
       onEnregistre();
     } catch (e) {
@@ -673,6 +675,8 @@ function Numeroter({
       <Texte doux style={{ fontSize: 13 }}>
         Prochaine facture : {prochainNumero(prefixe || undefined, n || 1, prenom, nom)}
       </Texte>
+      {/* Un échec restait invisible tant que la saisie était ouverte : le message n'était affiché qu'une fois refermée. */}
+      {message && !message.ok && <Texte style={{ fontSize: 13, color: couleurs.rouge }}>{message.texte}</Texte>}
       <View style={{ flexDirection: 'row', gap: espace(2) }}>
         <View style={{ flex: 1 }}>
           <Bouton variante="secondaire" libelle="Enregistrer" onPress={enregistrer} desactive={!n || !modifie} />
@@ -716,6 +720,7 @@ function FormulaireEntete({ initial }: { initial: EnteteFacture }) {
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [enCours, setEnCours] = useState(false);
   const [enregistre, setEnregistre] = useState(false);
+  const { confirme, signaler } = useEnregistre();
   const modifier = (m: Partial<EnteteFacture>) => {
     setE({ ...e, ...m });
     setEnregistre(false);
@@ -739,6 +744,7 @@ function FormulaireEntete({ initial }: { initial: EnteteFacture }) {
     try {
       await factures.enregistrerEntete(e);
       setEnregistre(true);
+      signaler('Réglages enregistrés');
     } catch (x) {
       setErreurs([x instanceof Error ? x.message : 'Non enregistré']);
     } finally {
@@ -824,7 +830,7 @@ function FormulaireEntete({ initial }: { initial: EnteteFacture }) {
           libelle="Voir un exemple"
           onPress={() => ouvrirFacture(exemple, { couleur: e.couleur, logo: e.logo, iban: e.iban, bic: e.bic }).catch((x) => setErreurs([x instanceof Error ? x.message : 'Aperçu impossible']))}
         />
-        <Bouton libelle="Enregistrer" onPress={enregistrer} chargement={enCours} />
+        <Bouton libelle="Enregistrer" onPress={enregistrer} chargement={enCours} confirme={confirme} />
         {enregistre && <Texte style={{ fontSize: 14, color: couleurs.vert }}>Réglages enregistrés.</Texte>}
       </Carte>
     </View>

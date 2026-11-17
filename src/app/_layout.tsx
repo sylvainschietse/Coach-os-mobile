@@ -14,6 +14,7 @@ import { prevenirMessages } from '@/data/messagerie';
 import { preparerNotifications } from '@/lib/notifications';
 import { preparerCanaux } from '@/lib/rappels';
 import { prevenirCloche } from '@/data/cloche';
+import { Annonce } from '@/ui/annonce';
 import { couleurs, polices } from '@/ui/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -119,6 +120,7 @@ export default function RootLayout() {
     <SessionProvider>
       <StatusBar style="light" />
       <Navigation />
+      <Annonce />
     </SessionProvider>
   );
 }

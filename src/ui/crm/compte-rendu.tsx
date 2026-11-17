@@ -12,6 +12,7 @@ import { lienEnvoi, normaliserTelephone, troisPriorites } from '@/domain/crm';
 import type { Booster, FicheContact } from '@/domain/crm';
 import { TESTS } from '@/domain/evaluation';
 import { appliquerRedaction, prioritesAuto, redactionModele, type Redaction } from '@/domain/redaction';
+import { annoncer } from '@/lib/enregistrement';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
@@ -100,6 +101,7 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
   async function deposer(fichier: Fichier) {
     const d = await documents.deposerCompteRendu(booster.id, contact, fichier);
     setRetour(`Version ${d.version} enregistrée dans Documents.`);
+    annoncer(`PDF enregistré (version ${d.version})`);
     docs.recharger();
   }
 

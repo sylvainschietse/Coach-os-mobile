@@ -5,6 +5,7 @@ import { Text, View } from 'react-native';
 
 import { consentements } from '@/data/consentement';
 import { DONNEES_SANTE, LIEN_POLITIQUE, type Consentement } from '@/domain/consentement';
+import { useEnregistre } from '@/lib/enregistrement';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 
 import { Bouton, Carte, Erreur, Texte, Titre } from './composants';
@@ -45,12 +46,15 @@ export function AccordDonnees({
   const [ia, setIa] = useState(actuel?.analyseIa ?? false);
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string>();
+  const { confirme, signaler } = useEnregistre();
 
   async function valider() {
     setEnvoi(true);
     setErreur(undefined);
     try {
-      onFait(await consentements.accepter(clientId, ia));
+      const c = await consentements.accepter(clientId, ia);
+      if (reglage) signaler('Choix enregistrés');
+      onFait(c);
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Ton accord n’a pas pu être enregistré. Réessaie.');
     } finally {
@@ -93,6 +97,7 @@ export function AccordDonnees({
         onPress={valider}
         chargement={envoi}
         desactive={!sante || (reglage && ia === actuel?.analyseIa)}
+        confirme={confirme}
       />
       {reglage ? (
         <Texte doux style={{ fontSize: 14 }}>

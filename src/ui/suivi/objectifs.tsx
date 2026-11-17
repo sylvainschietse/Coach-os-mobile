@@ -8,6 +8,7 @@ import { suiviHebdo } from '@/data/suivi-hebdo';
 import { ecrireJour, lireJour } from '@/domain/crm';
 import { aujourdhuiParis } from '@/domain/entrainement';
 import { lireObjectif, UNITES_OBJECTIF, type UniteObjectif } from '@/domain/suivi-hebdo';
+import { useEnregistre } from '@/lib/enregistrement';
 import { brouillonsOuverts, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
@@ -41,6 +42,7 @@ export function Objectifs({ clientId, apercu }: { clientId: string; apercu?: boo
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState('');
   const [message, setMessage] = useState('');
+  const { signaler } = useEnregistre();
   const verrou = useRef(false);
 
   useEffect(() => {
@@ -107,9 +109,9 @@ export function Objectifs({ clientId, apercu }: { clientId: string; apercu?: boo
         garder(form, suite);
       }
       recharger();
-      setMessage(
-        action === 'creer' ? 'Objectif ajouté.' : action === 'progresser' ? 'Progression enregistrée.' : action === 'archiver' ? 'Objectif archivé.' : 'Objectif réactivé.',
-      );
+      const fait = action === 'creer' ? 'Objectif ajouté.' : action === 'progresser' ? 'Progression enregistrée.' : action === 'archiver' ? 'Objectif archivé.' : 'Objectif réactivé.';
+      setMessage(fait);
+      signaler(fait.slice(0, -1));
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Enregistrement impossible');
     } finally {

@@ -23,6 +23,7 @@ import {
   type TypeRdv,
 } from '@/domain/agenda';
 import { soldeSeances, TARIFS } from '@/domain/abonnements';
+import { annoncer } from '@/lib/enregistrement';
 import { maintenantMs } from '@/lib/temps';
 import { useCharger } from '@/lib/useCharger';
 
@@ -114,11 +115,12 @@ export function EditeurRendezVous({
     return c ? `${c.prenom} ${c.nom}`.trim() : 'Client';
   };
 
-  async function faire(action: () => Promise<void>) {
+  async function faire(action: () => Promise<void>, fait: string) {
     setErreur(undefined);
     setOccupe(true);
     try {
       await action();
+      annoncer(fait);
       onEnregistre();
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Action impossible pour le moment.');
@@ -130,9 +132,12 @@ export function EditeurRendezVous({
   const enregistrer = () => {
     if (erreurs.length) return setErreur(erreurs.join('\n'));
     const commun = { type, clientIds, lieu, lienVisio: type === 'visio' ? lienVisio : undefined, note };
-    return faire(() => (rdv ? agenda.modifier(rdv.id, { ...commun, ...creneaux[0] }) : agenda.creer({ ...commun, creneaux })));
+    return faire(
+      () => (rdv ? agenda.modifier(rdv.id, { ...commun, ...creneaux[0] }) : agenda.creer({ ...commun, creneaux })),
+      rdv ? 'Rendez-vous enregistré' : creneaux.length > 1 ? `${creneaux.length} rendez-vous créés` : 'Rendez-vous créé',
+    );
   };
-  const changerStatut = (statut: StatutRdv, compter = true) => faire(() => agenda.changerStatut(rdv!.id, statut, compter));
+  const changerStatut = (statut: StatutRdv, compter = true) => faire(() => agenda.changerStatut(rdv!.id, statut, compter), 'Rendez-vous mis à jour');
 
   const passe = rdv ? new Date(rdv.debut).getTime() < maintenant : false;
   const restants = clients.filter((c) => !clientIds.includes(c.id));
@@ -150,7 +155,7 @@ export function EditeurRendezVous({
                 libelle={suppression ? 'Confirmer la suppression' : 'Supprimer'}
                 danger
                 desactive={occupe}
-                onPress={() => (suppression ? faire(() => agenda.supprimer(rdv.id)) : setSuppression(true))}
+                onPress={() => (suppression ? faire(() => agenda.supprimer(rdv.id), 'Rendez-vous supprimé') : setSuppression(true))}
               />
             )}
             <BoutonPied libelle="Fermer" onPress={onFermer} />

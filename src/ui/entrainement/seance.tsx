@@ -10,6 +10,7 @@ import { CONTRACTIONS, descriptifSeance, FORMATS_BLOC } from '@/domain/descripti
 import { aDesCycles, appliquerCycle, casesLigne, LIBELLES_CYCLES, titreClient } from '@/domain/entrainement';
 import type { SeanceCoach } from '@/domain/entrainement-etat';
 import type { Bloc, FormatBloc, LignePrescription, Seance } from '@/domain/types';
+import { useEnregistre } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 import { roleWeb } from '@/lib/role-web';
 
@@ -53,6 +54,7 @@ export function EditeurSeance({
   const [aRetirer, setARetirer] = useState<LignePrescription>();
   const [suppression, setSuppression] = useState(false);
   const [creation, setCreation] = useState<DemandeCreation>();
+  const { signaler } = useEnregistre();
   const revision = useRef(0);
 
   useEffect(() => onOccupe?.(!!occupe), [occupe, onOccupe]);
@@ -101,6 +103,7 @@ export function EditeurSeance({
       await entrainement.enregistrerSeance(coachId, suivante);
       await charger();
       setEtat({ message: ok });
+      signaler(ok);
     } catch (e) {
       setEtat({ erreur: e instanceof Error ? e.message : 'Échec' });
       throw e;

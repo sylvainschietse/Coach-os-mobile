@@ -9,6 +9,7 @@ import { jourLocal } from '@/domain/crm';
 import { formaterDate, lireDate } from '@/domain/programmes';
 import { formaterNombre, lireNombre } from '@/domain/suivi';
 import type { NiveauActivite, ObjectifNutrition, ProfilNutrition, Regime, Sexe } from '@/domain/types';
+import { useEnregistre } from '@/lib/enregistrement';
 import { LIEN_GUIDE_MACROS } from '@/lib/guides';
 import { useCharger } from '@/lib/useCharger';
 
@@ -99,6 +100,7 @@ function FormulaireProfil({
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [enCours, setEnCours] = useState(false);
   const [ok, setOk] = useState(false);
+  const { confirme, signaler } = useEnregistre();
 
   const aujourdhui = jourLocal(new Date());
   const lireNaissance = () => (/\d{4}$/.test(naissance.trim()) || /^\d{4}-/.test(naissance.trim()) ? lireDate(naissance) : undefined);
@@ -127,6 +129,7 @@ function FormulaireProfil({
     try {
       await alimentation.enregistrerProfil(p);
       setOk(true);
+      signaler('Profil enregistré');
       onEnregistre();
     } catch (e) {
       setErreurs([e instanceof Error ? e.message : 'Enregistrement impossible']);
@@ -204,7 +207,7 @@ function FormulaireProfil({
       </Carte>
       {erreurs.length > 0 && <Erreur message={erreurs.join('\n')} />}
       {ok && <Texte style={{ color: couleurs.vert }}>Profil enregistré.</Texte>}
-      <Bouton libelle="Enregistrer le profil" onPress={enregistrer} chargement={enCours} />
+      <Bouton libelle="Enregistrer le profil" onPress={enregistrer} chargement={enCours} confirme={confirme} />
     </View>
   );
 }

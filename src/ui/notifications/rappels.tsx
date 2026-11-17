@@ -18,6 +18,7 @@ import type { Entry } from '@/domain/nutrition/personnel';
 import { heureValide, planifierRappels, rappelsAFaire, type ContexteRappels, type PreferencesRappels, type Rappel } from '@/domain/rappels';
 import { lundiCourant } from '@/domain/suivi-hebdo';
 import type { MomentRepas } from '@/domain/types';
+import { useEnregistre } from '@/lib/enregistrement';
 import { enregistrerPreferences, inscrireMessages, lirePreferences, programmerRappels } from '@/lib/rappels';
 import { useCharger } from '@/lib/useCharger';
 
@@ -126,6 +127,7 @@ export function ReglagesNotifications({ clientId, prenom }: { clientId: string; 
   const [etat, setEtat] = useState<'repos' | 'envoi' | 'ok'>('repos');
   const [erreur, setErreur] = useState('');
   const [nb, setNb] = useState<number>();
+  const { confirme, signaler } = useEnregistre();
   const valeur = p ?? prefs.donnee;
   if (!valeur) return <Chargement />;
 
@@ -152,6 +154,7 @@ export function ReglagesNotifications({ clientId, prenom }: { clientId: string; 
       await inscrireMessages(true);
       permission.recharger();
       setEtat('ok');
+      signaler('Rappels enregistrés');
     } catch {
       setErreur('Réglages non enregistrés, réessaie.');
       setEtat('repos');
@@ -190,7 +193,7 @@ export function ReglagesNotifications({ clientId, prenom }: { clientId: string; 
           </View>
         )}
         {!!erreur && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{erreur}</Texte>}
-        <Bouton libelle="Enregistrer" onPress={enregistrer} chargement={etat === 'envoi'} />
+        <Bouton libelle="Enregistrer" onPress={enregistrer} chargement={etat === 'envoi'} confirme={confirme} />
         {etat === 'ok' && (
           <Texte style={{ fontSize: 14, color: couleurs.vert }}>
             {nb ? `C’est noté : ${nb} rappel${nb > 1 ? 's' : ''} prévu${nb > 1 ? 's' : ''} pour les deux prochaines semaines.` : 'C’est noté.'}

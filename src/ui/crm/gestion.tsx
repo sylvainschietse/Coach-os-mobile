@@ -37,6 +37,7 @@ import {
   type StatutTache,
 } from '@/domain/gestion';
 import type { Facture } from '@/domain/factures';
+import { signalerEchec, useEnregistre } from '@/lib/enregistrement';
 import { LIEN_GUIDE_PROSPECTS } from '@/lib/guides';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
@@ -419,6 +420,7 @@ function Formulaire({
   const [initial] = useState(() => brouillonDe(carnet, module, id, contactId));
   const [b, setB] = useState(initial);
   const [occupe, setOccupe] = useState(false);
+  const { signaler } = useEnregistre();
   const [erreur, setErreur] = useState<string>();
   const [sortie, setSortie] = useState<(() => void) | null>(null);
   const modifie = Object.keys(b).some((k) => b[k] !== initial[k]);
@@ -483,10 +485,11 @@ function Formulaire({
         if (id) await crm.modifierTache(id, s);
         else await crm.creerTache(s);
       }
-      // Comme RecordEditor : l'éditeur se ferme une fois l'enregistrement confirmé.
+      // Comme RecordEditor : l'éditeur se ferme une fois l'enregistrement confirmé (le bandeau « Enregistré » le dit).
+      signaler();
       onFermer();
     } catch (e) {
-      setErreur(e instanceof Error ? e.message : 'Enregistrement non confirmé');
+      setErreur(signalerEchec(e));
     } finally {
       setOccupe(false);
     }

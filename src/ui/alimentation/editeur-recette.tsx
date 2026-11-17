@@ -12,6 +12,7 @@ import { couleurs, espace } from '../theme';
 import { type Auteur, ChoixAliment } from './choix-aliment';
 import { libelleRegime, LigneMacros } from './commun';
 import { DicteeRecette } from './dictee-recette';
+import { useEnregistre } from '@/lib/enregistrement';
 
 /** Régimes que les ingrédients ne suffisent pas à garantir : le coach les confirme. */
 const A_CONFIRMER: Regime[] = ['sans_gluten', 'sans_lactose'];
@@ -39,6 +40,7 @@ export function EditeurRecette({
   const [ajout, setAjout] = useState(false);
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [enCours, setEnCours] = useState(false);
+  const { confirme, signaler } = useEnregistre();
   // Après une dictée : ce que l'IA signale, et les ingrédients estimés faute d'être dans la base.
   const [dictee, setDictee] = useState<{ remarque?: string; aVerifier: string[] }>();
 
@@ -65,6 +67,8 @@ export function EditeurRecette({
         description: brouillon.description?.trim() || undefined,
         etapes: brouillon.etapes?.trim() || undefined,
       });
+      signaler('Recette enregistrée');
+      setEnCours(false);
     } catch (e) {
       setErreurs([e instanceof Error ? e.message : 'Enregistrement impossible']);
       setEnCours(false);
@@ -251,7 +255,7 @@ export function EditeurRecette({
       )}
 
       {erreurs.length > 0 && <Erreur message={erreurs.join('\n')} />}
-      <Bouton libelle="Enregistrer la recette" onPress={enregistrer} chargement={enCours} />
+      <Bouton libelle="Enregistrer la recette" onPress={enregistrer} chargement={enCours} confirme={confirme} />
       <Bouton variante="discret" libelle="Annuler" onPress={onAnnuler} />
     </View>
   );

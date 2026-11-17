@@ -29,6 +29,7 @@ import { ENTRETIEN, TESTS } from '@/domain/evaluation';
 import { resumeExercices } from '@/domain/exercices-test';
 import { formaterMesure, lireMesure, TESTS_GOLF } from '@/domain/tests-golf';
 import { TestsClient } from '../suivi/tests-client';
+import { signalerEchec, useEnregistre } from '@/lib/enregistrement';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { NutritionDuClient } from '../alimentation/nutrition-coach';
@@ -213,6 +214,7 @@ function Editeur({
   const [doublon, setDoublon] = useState<Doublon>();
   const [sortie, setSortie] = useState<(() => void) | null>(null);
   const [versionAbo, setVersionAbo] = useState(0);
+  const { confirme, signaler } = useEnregistre();
   const modifies = CLES.filter((k) => brouillon[k] !== initial[k]);
   const modifie = modifies.length > 0;
   const demanderSortie = (suite: () => void) => (modifie ? setSortie(() => suite) : suite());
@@ -238,6 +240,7 @@ function Editeur({
           setDoublon(r.doublon);
           return;
         }
+        signaler('Fiche créée');
         // Client direct : sa fiche s'ouvre pour choisir tout de suite son offre ou son pack (carte Abonnement).
         if (nouveauClient) onOuvrirAutre(r.contact.id);
         else onFermer();
@@ -246,8 +249,9 @@ function Editeur({
       await crm.modifierContact(contact.id, versSaisie(brouillon, modifies, contact));
       // Relu depuis la base par l'écouteur : le pied repasse à « Dossier à jour ».
       setInitial(brouillon);
+      signaler();
     } catch (e) {
-      setErreur(e instanceof Error ? e.message : 'Enregistrement non confirmé');
+      setErreur(signalerEchec(e));
     } finally {
       setOccupe(false);
     }
@@ -313,6 +317,7 @@ function Editeur({
             enregistrement={occupe}
             peutEnregistrer={peutEnregistrer}
             onEnregistrer={enregistrer}
+            confirme={confirme}
             onFermer={() => (sortie ? sortie() : demanderSortie(onFermer))}
             sortieDemandee={!!sortie}
             onRester={() => setSortie(null)}

@@ -26,6 +26,7 @@ import {
   type Releve,
   type Resume,
 } from '@/domain/quotidien';
+import { useEnregistre } from '@/lib/enregistrement';
 import { accesAccordes, demanderAcces, etatHealthConnect, lireNuit, lirePas, ouvrirReglages, type EtatHealthConnect } from '@/lib/health-connect';
 import { useCharger } from '@/lib/useCharger';
 
@@ -75,6 +76,7 @@ export function Quotidien({
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState('');
   const [message, setMessage] = useState('');
+  const { confirme, signaler } = useEnregistre();
 
   const actifs = donnee?.suivis.filter((s) => s.actif) ?? [];
   const duJour = (k: Indicateur) => donnee?.releves.find((r) => r.jour === jour && r.indicateur === k);
@@ -110,6 +112,7 @@ export function Quotidien({
       if (Object.keys(valeurs).length) await quotidien.enregistrerReleves(clientId, jour, valeurs);
       setBrouillon({});
       setMessage(jour === aujourdhui ? 'Journée enregistrée.' : `Journée du ${ecrireJour(jour)} enregistrée.`);
+      signaler(jour === aujourdhui ? 'Journée enregistrée' : `Journée du ${ecrireJour(jour)} enregistrée`);
       recharger();
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Enregistrement impossible');
@@ -188,6 +191,7 @@ export function Quotidien({
           chargement={occupe}
           desactive={!modifie || occupe}
           onPress={enregistrer}
+          confirme={confirme && !modifie}
         />
       )}
 
@@ -519,6 +523,7 @@ function Reglages({ clientId, suivis, parCoach, onChange }: { clientId: string; 
   const [occupe, setOccupe] = useState<Indicateur>();
   const [erreur, setErreur] = useState('');
   const [message, setMessage] = useState('');
+  const { signaler: signalerReglage } = useEnregistre();
 
   async function enregistrer(s: IndicateurSuivi, patch: { actif?: boolean; cible?: string }) {
     let cible = s.cibleParDefaut ? undefined : s.cible;
@@ -536,7 +541,9 @@ function Reglages({ clientId, suivis, parCoach, onChange }: { clientId: string; 
       const suite = { ...cibles };
       delete suite[s.def.cle];
       setCibles(suite);
-      setMessage(patch.actif === undefined ? `Cible « ${s.def.libelle} » enregistrée.` : patch.actif ? `« ${s.def.libelle} » ajouté.` : `« ${s.def.libelle} » retiré.`);
+      const fait = patch.actif === undefined ? `Cible « ${s.def.libelle} » enregistrée` : patch.actif ? `« ${s.def.libelle} » ajouté` : `« ${s.def.libelle} » retiré`;
+      setMessage(`${fait}.`);
+      signalerReglage(fait);
       onChange();
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Enregistrement impossible');

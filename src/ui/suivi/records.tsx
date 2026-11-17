@@ -7,6 +7,7 @@ import { formaterDate, lireDate } from '@/domain/programmes';
 import { unRm } from '@/domain/entrainement';
 import { erreursRecord, formaterNombre, formaterRecord, lireNombre, meilleuresChargesDesSeances, meilleursRecords, UNITES_RECORD } from '@/domain/suivi';
 import type { RecordPerso, UniteRecord } from '@/domain/types';
+import { useEnregistre } from '@/lib/enregistrement';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
 
@@ -33,6 +34,7 @@ function Saisie({ clientId, onAjoute, parCoach }: { clientId: string; onAjoute: 
   const [choix, setChoix] = useState(false);
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [enCours, setEnCours] = useState(false);
+  const { confirme, signaler } = useEnregistre();
   const pistes = realisations.donnee ? meilleuresChargesDesSeances(realisations.donnee).slice(0, 6) : [];
 
   async function enregistrer() {
@@ -57,6 +59,7 @@ function Saisie({ clientId, onAjoute, parCoach }: { clientId: string; onAjoute: 
     try {
       await depot.ajouterRecord(r as RecordPerso);
       setB(vide());
+      signaler(parCoach ? 'Performance enregistrée' : 'Record enregistré');
       onAjoute();
     } catch (e) {
       setErreurs([e instanceof Error ? e.message : 'Enregistrement impossible']);
@@ -137,7 +140,7 @@ function Saisie({ clientId, onAjoute, parCoach }: { clientId: string; onAjoute: 
         </Pressable>
       )}
       {erreurs.length > 0 && <Erreur message={erreurs.join('\n')} />}
-      <Bouton libelle={parCoach ? 'Enregistrer la performance' : 'Enregistrer le record'} onPress={enregistrer} chargement={enCours} />
+      <Bouton libelle={parCoach ? 'Enregistrer la performance' : 'Enregistrer le record'} onPress={enregistrer} chargement={enCours} confirme={confirme} />
     </Carte>
   );
 }

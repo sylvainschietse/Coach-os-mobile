@@ -23,6 +23,7 @@ import {
 } from '@/domain/brochure';
 import { COULEURS_FACTURE, estCouleur, type EnteteFacture } from '@/domain/factures';
 import { libellePrix, type Offre } from '@/domain/offres';
+import { annoncer } from '@/lib/enregistrement';
 import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
 import { messageErreur } from '@/lib/useCharger';
 import { JOST_400_BASE64, JOST_600_BASE64, PHOTO_BROCHURE_BASE64 } from '@/lib/visuels-brochure-pdf';
@@ -142,6 +143,7 @@ export function MaBrochure({ liste, lien, onFini }: { liste: Offre[]; lien: (id:
     setOccupe(true);
     try {
       await brochure.enregistrer(r);
+      annoncer('Brochure enregistrée');
       onFini();
     } catch (e) {
       setErreur(messageErreur(e));
