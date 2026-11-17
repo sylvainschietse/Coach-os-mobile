@@ -11,7 +11,7 @@ import { ingredientsPersoDepuisDictee } from '@/domain/alimentation';
 import { macros } from '@/domain/nutrition/calcul';
 import type { CiqualFood } from '@/domain/nutrition/ciqual';
 import { foodMeasures, measuredAmount } from '@/domain/nutrition/mesures';
-import { food, foodTotal, recipeFood, type Entry, type PersonalRecipe } from '@/domain/nutrition/personnel';
+import { food, foodTotal, NOTE_PHOTO, recipeFood, type Entry, type PersonalRecipe } from '@/domain/nutrition/personnel';
 import { brouillonsOuverts, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { nouvelId } from '@/lib/identifiant';
 
@@ -312,7 +312,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
         barcode: '',
         source: 'manual',
         reference: '',
-        note: 'Estimé sur photo',
+        note: NOTE_PHOTO,
         basis: 'g',
         kcal: borne(a.kcal),
         protein: borne(a.proteines),

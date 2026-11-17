@@ -40,6 +40,8 @@ export interface DepotNutrition {
   semaine(clientId: string, semaine: string): Promise<{ plan: Plan; version: string }>;
   enregistrerSemaine(clientId: string, semaine: string, plan: Plan, version: string, envoiId: string): Promise<{ plan: Plan; version: string }>;
   personnel(clientId: string, kind: 'recipes' | 'diary', date: string): Promise<{ recipes: PersonalRecipe[]; entries: Entry[]; version: number }>;
+  /** Le journal alimentaire jour par jour depuis une date (AAAA-MM-JJ), pour le suivi du coach. Un jour illisible est ignoré. */
+  journaux(clientId: string, depuis: string): Promise<{ date: string; entries: Entry[] }[]>;
   enregistrerPersonnel(
     clientId: string,
     kind: 'recipes' | 'diary',
@@ -164,6 +166,15 @@ export const nutritionDemo: DepotNutrition = {
     };
   },
 
+  async journaux(clientId, depuis) {
+    const prefixe = `${clientId}|diary|`;
+    return Object.entries((await lire()).personnel).flatMap(([cle, p]) => {
+      const date = cle.startsWith(prefixe) ? cle.slice(prefixe.length) : '';
+      const lu = date >= depuis ? diary.safeParse(p.donnees) : undefined;
+      return lu?.success ? [{ date, entries: lu.data }] : [];
+    });
+  },
+
   async enregistrerPersonnel(clientId, kind, date, contenu, version, envoiId) {
     const e = await lire();
     const cle = `${clientId}|${kind}|${kind === 'recipes' ? 'library' : date}`;
@@ -245,6 +256,20 @@ export function creerNutritionSupabase(db: SupabaseClient): DepotNutrition {
       });
       erreur(error);
       return { plan, version: data as string };
+    },
+
+    async journaux(clientId, depuis) {
+      const { data, error } = await db
+        .from('alimentation_personnelle')
+        .select('cle, donnees')
+        .eq('client_id', clientId)
+        .eq('type', 'diary')
+        .gte('cle', depuis);
+      erreur(error);
+      return (data ?? []).flatMap((l) => {
+        const lu = diary.safeParse(l.donnees);
+        return lu.success ? [{ date: l.cle as string, entries: lu.data }] : [];
+      });
     },
 
     async personnel(clientId, kind, date) {

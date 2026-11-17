@@ -1,5 +1,7 @@
 // lib/personalFood.ts et lib/foodSearch.ts d'origine : journal, recettes personnelles, fiches Open Food Facts.
 import { z } from 'zod';
+/** La note d'un aliment ajouté avec « Photo de mon assiette » : le suivi du coach compte ainsi les repas en photo. */
+export const NOTE_PHOTO = 'Estimé sur photo';
 export const nutrient = z.number().finite().min(0).max(2000);
 export const food = z.object({
   name: z.string().trim().min(1).max(200),

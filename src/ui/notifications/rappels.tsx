@@ -11,10 +11,13 @@ import { depot } from '@/data';
 import { agenda } from '@/data/agenda';
 import { reglerAlerte } from '@/data/alertes';
 import { alimentation } from '@/data/alimentation';
+import { nutrition } from '@/data/nutrition';
 import { suiviHebdo } from '@/data/suivi-hebdo';
 import { aujourdhuiParis } from '@/domain/entrainement';
+import type { Entry } from '@/domain/nutrition/personnel';
 import { heureValide, planifierRappels, rappelsAFaire, type ContexteRappels, type PreferencesRappels, type Rappel } from '@/domain/rappels';
 import { lundiCourant } from '@/domain/suivi-hebdo';
+import type { MomentRepas } from '@/domain/types';
 import { enregistrerPreferences, inscrireMessages, lirePreferences, programmerRappels } from '@/lib/rappels';
 import { useCharger } from '@/lib/useCharger';
 
@@ -25,23 +28,31 @@ import { BoutonCloche } from './cloche';
 import { couleurs, espace } from '../theme';
 
 const CLE_DEMANDE = 'coachgo.notifications.demandees';
+const MOMENT_DU_REPAS: Record<Entry['meal'], MomentRepas> = {
+  'Petit déjeuner': 'petit_dejeuner',
+  Déjeuner: 'dejeuner',
+  Dîner: 'diner',
+  Collation: 'collation',
+};
 
 /** Ce qu'il faut savoir pour les rappels du client. Les sources indisponibles (hors ligne) sont simplement ignorées. */
 async function contexte(clientId: string, prenom: string) {
   const prefs = await lirePreferences(clientId);
   const aujourdhui = aujourdhuiParis();
-  const [seances, rdv, repas, bilans] = await Promise.all([
+  const [seances, rdv, repas, bilans, journal] = await Promise.all([
     depot.seancesDuClient(clientId).catch(() => []),
     agenda.mesRendezVous(clientId).catch(() => []),
     alimentation.repas(clientId, aujourdhui).catch(() => []),
     suiviHebdo.bilansClient(clientId).catch(() => []),
+    nutrition.personnel(clientId, 'diary', aujourdhui).catch(() => null),
   ]);
   const ctx: ContexteRappels = {
     maintenant: new Date(),
     prenom,
     seances,
     rendezVous: rdv,
-    repasDuJour: repas.filter((r) => r.date === aujourdhui).map((r) => r.moment),
+    // L'ancien journal des repas et le journal alimentaire de Nutrition › Aujourd'hui : un repas noté dans l'un ou l'autre ne se rappelle plus.
+    repasDuJour: [...repas.filter((r) => r.date === aujourdhui).map((r) => r.moment), ...(journal?.entries ?? []).map((e) => MOMENT_DU_REPAS[e.meal])],
     bilanFait: bilans.some((b) => b.semaine === lundiCourant()),
     journalRepas: true,
   };
