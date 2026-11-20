@@ -32,7 +32,7 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { Stat } from '../coque';
 import { Carte, Chargement, Erreur, Puce, Puces } from '../composants';
 import { Modale } from './dossier';
-import { couleurs, polices } from '../theme';
+import { titreSection, couleurs, polices } from '../theme';
 import { etatA11y } from '@/lib/accessibilite';
 
 /** Tous les rendez-vous depuis la première activité, trimestre par trimestre (une lecture rend 1 000 lignes au plus). */
@@ -476,7 +476,7 @@ function Barres({
   );
 }
 
-const titreCarte = { fontSize: 16, fontFamily: polices.texteGras, color: couleurs.texte, marginBottom: 12 } as const;
+const titreCarte = { ...titreSection, marginBottom: 12 } as const;
 const ligne = { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 } as const;
 const bordure = { borderBottomWidth: 1, borderBottomColor: couleurs.bordure } as const;
 const texte = { fontSize: 14, fontFamily: polices.texte, color: couleurs.texte } as const;

@@ -12,10 +12,10 @@ import { imageValide, VUES, type VuePhoto } from '@/domain/suivi-hebdo';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
 
-import { Selecteur, TitreDisplay } from '../coque';
+import { Selecteur } from '../coque';
 import { CaseACocher, Saisie } from '../crm/dossier';
 import { Action, Confirmation, Etat, Ligne, ts } from '../entrainement/commun';
-import { couleurs } from '../theme';
+import { couleurs, titreSection } from '../theme';
 
 const OPTIONS_VUE = VUES.map((v) => ({ cle: v, libelle: v }));
 
@@ -66,9 +66,9 @@ export function Photos({ clientId, proprietaire }: { clientId: string; proprieta
   return (
     <View style={{ gap: 16 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-        <TitreDisplay taille={24} style={{ flexShrink: 1 }}>
+        <Text accessibilityRole="header" style={[titreSection, { flexShrink: 1 }]}>
           Photos de progression
-        </TitreDisplay>
+        </Text>
         <Action variante="contour" libelle="Actualiser" desactive={!photos && !erreurChargement} onPress={recharger} />
       </View>
       <View style={{ borderRadius: 12, backgroundColor: couleurs.discret, padding: 16 }}>

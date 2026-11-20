@@ -17,7 +17,7 @@ import { toutReessayer } from '@/lib/memoire';
 import { usePression } from '@/lib/usePression';
 
 import { DefilementClavier } from './clavier';
-import { arrondi, couleurs, espace, espacementTitre, polices } from './theme';
+import { arrondi, couleurs, espace, espacementTitre, polices, titreSection } from './theme';
 import { useUnivers } from './univers';
 import { etatA11y } from '@/lib/accessibilite';
 
@@ -36,7 +36,11 @@ export function Titre({ children, style }: { children: ReactNode; style?: StyleP
 }
 
 export function SousTitre({ children }: { children: ReactNode }) {
-  return <Text style={styles.sousTitre}>{children}</Text>;
+  return (
+    <Text accessibilityRole="header" style={titreSection}>
+      {children}
+    </Text>
+  );
 }
 
 export function Texte({ children, doux, style }: { children: ReactNode; doux?: boolean; style?: StyleProp<TextStyle> }) {
@@ -248,7 +252,6 @@ const styles = StyleSheet.create({
   ecran: { flex: 1, backgroundColor: couleurs.fond },
   defilement: { padding: espace(4), paddingBottom: espace(12) },
   titre: { fontFamily: polices.titre, fontSize: 40, lineHeight: 42, color: couleurs.texte, letterSpacing: espacementTitre(40) },
-  sousTitre: { fontFamily: polices.titre, fontSize: 24, color: couleurs.texte, letterSpacing: espacementTitre(24) },
   texte: { fontFamily: polices.texte, fontSize: 16, lineHeight: 22, color: couleurs.texte },
   carte: {
     backgroundColor: couleurs.carte,
