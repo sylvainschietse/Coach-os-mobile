@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { VERSION_POLITIQUE, type Consentement } from '@/domain/consentement';
+import { estErreurReseau } from '@/domain/reseau';
 
 import { supabase } from './supabase';
 
@@ -36,7 +37,8 @@ const demo: DepotConsentement = {
 const enLigne = (db: NonNullable<typeof supabase>): DepotConsentement => ({
   async lire() {
     const { data, error } = await db.rpc('mon_consentement');
-    if (error) throw new Error('Impossible de lire ton accord. Vérifie ta connexion.');
+    // Une coupure garde son message d'origine : l'espace s'ouvre alors avec l'accord déjà donné sur ce téléphone.
+    if (error) throw estErreurReseau(error) ? new Error(error.message) : new Error('Impossible de lire ton accord. Vérifie ta connexion.');
     return lireLigne(data as Ligne | null);
   },
   async accepter(_clientId, analyseIa) {

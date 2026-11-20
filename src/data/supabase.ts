@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
+import { fetchAvecDelai } from '@/domain/reseau';
+
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const cle = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
@@ -17,6 +19,9 @@ export const supabase: SupabaseClient | null =
           detectSessionInUrl: Platform.OS === 'web',
           flowType: 'pkce',
         },
+        // En salle, le réseau peut caler : une demande sans réponse est abandonnée au bout de 20 s, et l'écran
+        // propose « Réessayer » au lieu de tourner sans fin. Les envois de photos et vidéos ne sont pas limités.
+        global: { fetch: fetchAvecDelai((entree, init) => fetch(entree, init)) },
       })
     : null;
 
