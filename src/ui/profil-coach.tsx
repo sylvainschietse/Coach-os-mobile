@@ -1,7 +1,7 @@
 // « Mon profil » du coach : prénom, numéro WhatsApp, photo et horaires de réponse, tels que ses clients les voient dans leur appli.
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import { UserRound } from 'lucide-react-native';
+import { UserRound } from '@/ui/icones';
 import { useState } from 'react';
 import { Image, View } from 'react-native';
 

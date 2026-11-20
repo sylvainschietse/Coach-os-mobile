@@ -4,7 +4,7 @@
 // exercice similaire ou cherché par son nom ; le coach voit le remplacement et sa raison. Dernière page : le bilan,
 // le ressenti et l'enregistrement. Même brouillon que la carte de séance (SeanceLog) : on peut passer de l'une à l'autre.
 import { router } from 'expo-router';
-import { ArrowLeftRight, Check, CheckCircle2, ChevronLeft, ChevronRight, Search, Timer, X } from 'lucide-react-native';
+import { ArrowLeftRight, Check, CheckCircle2, ChevronLeft, ChevronRight, Search, Timer, X } from '@/ui/icones';
 import { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

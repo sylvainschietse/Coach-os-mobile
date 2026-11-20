@@ -2,7 +2,7 @@
 // Le client choisit l'activité dans un catalogue (ou tape son nom), indique la date, la durée et l'effort ressenti,
 // et pour une séance de musculation ses exercices, séries, répétitions et charges, au clavier ou en dictée.
 // Le coach voit la même chose, en lecture.
-import { Minus, Plus, Trash2 } from 'lucide-react-native';
+import { Minus, Plus, Trash2 } from '@/ui/icones';
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 

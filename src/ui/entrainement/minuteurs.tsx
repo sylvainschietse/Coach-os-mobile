@@ -4,7 +4,7 @@
 // les séries d'une séance passe par le même minuteur. Le minuteur en cours reste sur l'appareil.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { ChevronLeft, MoreHorizontal, Pause, Play, Plus, RotateCcw, Timer, Volume2, X } from 'lucide-react-native';
+import { ChevronLeft, MoreHorizontal, Pause, Play, Plus, RotateCcw, Timer, Volume2, X } from '@/ui/icones';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

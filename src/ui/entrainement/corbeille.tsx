@@ -1,5 +1,5 @@
 // DeleteTraining.tsx d'origine : suppression vers la corbeille (jamais d'effacement) et corbeille avec Restaurer.
-import { RotateCcw, Trash2 } from 'lucide-react-native';
+import { RotateCcw, Trash2 } from '@/ui/icones';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 

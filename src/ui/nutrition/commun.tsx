@@ -1,7 +1,7 @@
 // Briques des écrans Nutrition repris de l'app d'origine : bloc de quatre valeurs (Numbers de RecipePlanner),
 // carte, lien externe et choix de portions par huitièmes.
 import * as Linking from 'expo-linking';
-import { ExternalLink } from 'lucide-react-native';
+import { ExternalLink } from '@/ui/icones';
 import type { ReactNode } from 'react';
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 

@@ -2,7 +2,7 @@
 // « Ajouter une séance » : soit une séance de son programme (y compris faite un jour précédent), soit une autre
 // activité (cours collectif, sport, séance à lui) avec ses détails.
 import { router } from 'expo-router';
-import { Dumbbell, PlayCircle, Plus, Sparkles } from 'lucide-react-native';
+import { Dumbbell, PlayCircle, Plus, Sparkles } from '@/ui/icones';
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 

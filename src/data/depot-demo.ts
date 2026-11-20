@@ -16,7 +16,7 @@ import type {
 import type { TestClient } from '@/domain/tests-client';
 import { nouvelId } from '@/lib/identifiant';
 
-import catalogueDemo from './catalogue-demo.json';
+import { catalogueDemoJson as catalogueDemo } from './demo-json';
 import {
   CLIENTS_DEMO,
   EXERCICES_DEMO,

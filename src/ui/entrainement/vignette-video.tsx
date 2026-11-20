@@ -1,6 +1,6 @@
 // Vignette de la vidéo de démonstration d'un exercice : miniature YouTube avec un bouton lecture, ouvre la vidéo.
 // Sans miniature possible (lien d'un autre site, image en échec), on retombe sur un simple lien « Vidéo ».
-import { PlayCircle } from 'lucide-react-native';
+import { PlayCircle } from '@/ui/icones';
 import { useState } from 'react';
 import { Image, Linking, Pressable, Text, View } from 'react-native';
 

@@ -19,7 +19,7 @@ import {
   Wallet,
   X,
   type LucideIcon,
-} from 'lucide-react-native';
+} from '@/ui/icones';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

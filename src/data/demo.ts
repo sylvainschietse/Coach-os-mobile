@@ -15,8 +15,7 @@ import type {
   Seance,
 } from '@/domain/types';
 
-import recettesCoach from './recettes-coach.json';
-import recettesDemo from './recettes-demo.json';
+import { recettesCoachJson as recettesCoach, recettesDemoJson as recettesDemo } from './demo-json';
 
 export const COACH_DEMO = { id: 'coach-sylvain', nom: 'Sylvain' };
 

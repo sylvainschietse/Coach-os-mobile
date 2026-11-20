@@ -3,7 +3,7 @@
 // rangé dans Documents (type Bilan). Un bilan déjà envoyé n'est plus modifiable : on en crée un nouveau.
 import * as Print from 'expo-print';
 import { useFocusEffect } from 'expo-router';
-import { ArrowUpRight } from 'lucide-react-native';
+import { ArrowUpRight } from '@/ui/icones';
 import { useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
@@ -14,7 +14,7 @@ import { ecrireJour, jourLocal, lireJour, type Carnet } from '@/domain/crm';
 import type { Document } from '@/domain/documents';
 import type { Mensuration } from '@/domain/types';
 import { bilanHtml, ecartPrecedent, PILIERS, type BilanCoach, type Pilier, type SaisieBilan } from '@/domain/gestion';
-import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
+import { policeTitrePdf } from '@/lib/police-pdf';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { BoutonContour, Selecteur, Vide } from '../coque';
@@ -368,7 +368,7 @@ function FormulaireBilan({
       const x = c.bilans.find((y) => y.id === bilanId)!;
       const contact = c.contacts.find((y) => y.id === x.contactId);
       // A4 en points (72 par pouce).
-      const { base64 } = await Print.printToFileAsync({ html: bilanHtml(x, contact ? nomComplet(contact) : 'Bilan', { police: BEBAS_NEUE_BASE64 }), width: 595, height: 842, base64: true });
+      const { base64 } = await Print.printToFileAsync({ html: bilanHtml(x, contact ? nomComplet(contact) : 'Bilan', { police: await policeTitrePdf() }), width: 595, height: 842, base64: true });
       if (!base64) throw new Error('Le PDF n’a pas pu être créé.');
       const donnees = depuisBase64(base64);
       const d = await enregistrerPdf(bilanId, { nom: `bilan-${x.date}.pdf`, type: 'application/pdf', taille: donnees.byteLength, donnees });
@@ -390,7 +390,7 @@ function FormulaireBilan({
     cadre.style.width = '0';
     cadre.style.height = '0';
     cadre.style.border = '0';
-    cadre.srcdoc = bilanHtml(x, contact ? nomComplet(contact) : 'Bilan', { police: BEBAS_NEUE_BASE64 });
+    cadre.srcdoc = bilanHtml(x, contact ? nomComplet(contact) : 'Bilan', { police: await policeTitrePdf() });
     cadre.onload = () => {
       cadre.contentWindow?.print();
       setTimeout(() => cadre.remove(), 60000);

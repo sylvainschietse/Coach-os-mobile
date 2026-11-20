@@ -2,7 +2,7 @@
 // filtres (profil, cycle, séance, exercice), cycles liés, comparaison brute des deux derniers résultats d'une même
 // ligne dans un même cycle, puis les dernières séances. Les séries cardio et statiques s'écrivent avec leurs unités.
 import { titreClient } from '@/domain/entrainement';
-import { AlertTriangle, ExternalLink, RotateCw } from 'lucide-react-native';
+import { AlertTriangle, ExternalLink, RotateCw } from '@/ui/icones';
 import { useMemo, useState, type ReactNode } from 'react';
 import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 

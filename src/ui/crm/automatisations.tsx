@@ -3,7 +3,7 @@
 // Rien n'est présenté comme fonctionnel sans preuve : Tally n'est « reçu » qu'après une vraie réponse arrivée par le webhook,
 // et l'envoi n'est « raccordé » que si la fonction serveur le confirme. Des crédits ou un quota épuisés sont un blocage visible.
 import { useFocusEffect } from 'expo-router';
-import { ArrowUpRight } from 'lucide-react-native';
+import { ArrowUpRight } from '@/ui/icones';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { automatisations, type EntreeJournal, type EtatJournal } from '@/data/automatisations';

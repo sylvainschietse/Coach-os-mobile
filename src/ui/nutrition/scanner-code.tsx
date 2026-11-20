@@ -2,7 +2,7 @@
 // L'original lisait aussi une photo du code-barres dans le navigateur ; ici la lecture se fait en direct sur le
 // téléphone, et la saisie des chiffres reste disponible partout (dans le navigateur, c'est la seule voie).
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Camera } from 'lucide-react-native';
+import { Camera } from '@/ui/icones';
 import { useRef, useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 

@@ -1,5 +1,5 @@
 // Miniature YouTube avec un gros bouton lecture, pour la vidéo intégrée de la séance par bloc.
-import { Play } from 'lucide-react-native';
+import { Play } from '@/ui/icones';
 import { Image, Pressable, View, type ViewStyle } from 'react-native';
 
 export function Miniature({ image, nom, style, onPress }: { image: string; nom: string; style: ViewStyle; onPress: () => void }) {

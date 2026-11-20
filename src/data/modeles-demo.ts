@@ -4,8 +4,7 @@ import type { VarianteCycle } from '@/domain/cycles';
 import type { Exercice, LignePrescription, Phase } from '@/domain/types';
 import type { ProgrammeStocke, SeanceStockee } from '@/domain/entrainement-etat';
 
-import catalogue from './catalogue-demo.json';
-import brut from './modeles-demo.json';
+import { catalogueDemoJson as catalogue, modelesDemoJson as brut } from './demo-json';
 
 type N = number | null;
 type Ligne = [string, number, N, N, N, N, N, N, N, N, N, N, N, N, N, N];

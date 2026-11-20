@@ -3,7 +3,7 @@
 // jamais dans l'appli iPhone : sur iPhone, le client demande le lien à son coach.
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Check } from 'lucide-react-native';
+import { Check } from '@/ui/icones';
 import { Platform, View } from 'react-native';
 
 import { abonnements } from '@/data/abonnements';

@@ -1,6 +1,6 @@
 // Suivis.tsx, CycleDialog.tsx et CycleProgrammeDialog.tsx d'origine (C13, C14) : un suivi de plusieurs mois par
 // client, découpé en cycles préparés puis activés par le coach. Un seul cycle actif ; activer termine le précédent.
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ExternalLink, Library, Pencil, Play, Plus } from 'lucide-react-native';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ExternalLink, Library, Pencil, Play, Plus } from '@/ui/icones';
 import { useCallback, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 

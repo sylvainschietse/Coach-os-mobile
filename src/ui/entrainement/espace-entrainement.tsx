@@ -6,7 +6,7 @@
 //   par page (app/client/seance-bloc).
 // La vue « historique » montre les séances enregistrées (U06). Repos entre les séries : bandeau en bas de l'écran.
 import { router, useFocusEffect } from 'expo-router';
-import { CalendarRange, ChevronLeft, Lock, PlayCircle, RefreshCw, Timer } from 'lucide-react-native';
+import { CalendarRange, ChevronLeft, Lock, PlayCircle, RefreshCw, Timer } from '@/ui/icones';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { BackHandler, Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 

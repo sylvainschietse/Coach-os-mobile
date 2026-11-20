@@ -1,6 +1,6 @@
 // MyWeekly.tsx d'origine (U07) : bilan de la semaine du client, synthèse automatique, priorité de la semaine suivante,
 // brouillon gardé sur l'appareil par semaine, et bilans précédents.
-import { CheckCircle2, MessageCircle, RefreshCw } from 'lucide-react-native';
+import { CheckCircle2, MessageCircle, RefreshCw } from '@/ui/icones';
 import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 

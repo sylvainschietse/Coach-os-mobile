@@ -8,13 +8,19 @@ import type { PersonalRecipe } from '@/domain/nutrition/personnel';
 import type { Aliment, AvisRecetteClient, Contient, EntreeRepas, Ingredient, Macros, OrigineRecette, ProfilNutrition, Recette, Regime } from '@/domain/types';
 import { nouvelId } from '@/lib/identifiant';
 
-import alimentsBase from './aliments-base.json';
 import { PROFILS_DEMO, RECETTES_DEMO, REPAS_DEMO } from './demo';
 import { supabase } from './supabase';
 
 /** Table Ciqual 2025 (Anses, Licence Ouverte Etalab 2.0), embarquée dans l'app : la même pour tous, sans réseau. */
-const BASE = alimentsBase as Aliment[];
-const IDS_BASE = new Set(BASE.map((a) => a.id));
+// Chargée à la première demande seulement (0,8 Mo) : la version web ne la télécharge plus avant le premier écran.
+let base: Promise<{ aliments: Aliment[]; ids: Set<string> }> | null = null;
+function chargerBase() {
+  base ??= import('./aliments-base.json').then((m) => {
+    const aliments = m.default as Aliment[];
+    return { aliments, ids: new Set(aliments.map((a) => a.id)) };
+  });
+  return base;
+}
 export const CREDIT_CIQUAL = 'Valeurs nutritionnelles : table Ciqual 2025 de l’Anses (Licence Ouverte Etalab 2.0).';
 
 /** Ce que la photo d'un repas laisse estimer : à vérifier par le client avant d'enregistrer. */
@@ -94,7 +100,7 @@ const depotDemo: DepotAlimentation = {
   },
   enregistrerProfil: (p) => remplacer(profilsDemo, { ...p, majLe: new Date().toISOString() }, (x) => x.clientId === p.clientId),
   async aliments() {
-    return [...BASE, ...(await alimentsDemo.lire())];
+    return [...(await chargerBase()).aliments, ...(await alimentsDemo.lire())];
   },
   async alimentParCode(code) {
     const connu = (await alimentsDemo.lire()).find((a) => a.codeBarres === code);
@@ -326,7 +332,7 @@ function creerDepotSupabase(db: SupabaseClient): DepotAlimentation {
         tous.push(...page);
         if (page.length < 1000) break;
       }
-      return [...BASE, ...tous.map(versAliment)];
+      return [...(await chargerBase()).aliments, ...tous.map(versAliment)];
     },
 
     async alimentParCode(code, coachId) {
@@ -443,6 +449,7 @@ function creerDepotSupabase(db: SupabaseClient): DepotAlimentation {
     },
 
     async ajouterRepas(entrees) {
+      const { ids: IDS_BASE } = await chargerBase();
       verifier(
         await db.from('repas').insert(
           entrees.map((e) => ({
@@ -501,6 +508,7 @@ export const alimentation: DepotAlimentation = supabase ? creerDepotSupabase(sup
  */
 export async function publierRecettesPerso(clientId: string, avant: PersonalRecipe[], apres: PersonalRecipe[]) {
   const pareil = (a: PersonalRecipe | undefined, b: PersonalRecipe) => !!a && JSON.stringify(a) === JSON.stringify(b);
+  const { aliments: BASE } = await chargerBase();
   for (const p of apres) {
     if (!pareil(avant.find((a) => a.id === p.id), p)) await alimentation.enregistrerRecette(recetteDepuisPerso(p, clientId, BASE));
   }

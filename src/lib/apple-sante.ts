@@ -14,8 +14,9 @@ function charger(): Module | null {
   if (module !== undefined) return module;
   if (Platform.OS !== 'ios') return (module = null);
   try {
+    // Condition écrite sur place : à la fabrication, la version web la tranche et n'embarque pas le module.
     // eslint-disable-next-line @typescript-eslint/no-require-imports -- chargement à la demande, voir plus haut
-    module = require('@kingstinct/react-native-healthkit') as Module;
+    module = Platform.OS === 'ios' ? (require('@kingstinct/react-native-healthkit') as Module) : null;
   } catch {
     // Appli fabriquée avant l'ajout du module : il faut installer la nouvelle version.
     module = null;

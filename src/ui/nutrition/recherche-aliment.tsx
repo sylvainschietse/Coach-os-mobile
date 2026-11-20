@@ -1,6 +1,6 @@
 // CiqualSearch.tsx d'origine : aliments courants Ciqual pendant la saisie, produits de marque Open Food Facts sur
 // « Rechercher », et un code-barres tapé dans le champ ouvre directement la fiche produit.
-import { Search } from 'lucide-react-native';
+import { Search } from '@/ui/icones';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 

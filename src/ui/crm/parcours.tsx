@@ -3,7 +3,7 @@
 // 2. Séance Booster (planifier, préparer, compte rendu)
 // 3. Accès à l'appli (création du compte et message avec le mot de passe provisoire)
 import { router } from 'expo-router';
-import { Check } from 'lucide-react-native';
+import { Check } from '@/ui/icones';
 import { useState, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 

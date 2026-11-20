@@ -1,7 +1,7 @@
 // C02 — Liste Contacts reprise de CRMWorkspace.tsx : recherche, filtre de statut, Nouveau contact,
 // « Inclure les dossiers archivés », cartes à initiales et, sous chaque contact, le bouton de la prochaine étape du parcours.
 import { useFocusEffect } from 'expo-router';
-import { Plus } from 'lucide-react-native';
+import { Plus } from '@/ui/icones';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 

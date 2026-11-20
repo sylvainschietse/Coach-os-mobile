@@ -8,7 +8,7 @@ import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo
 import { File } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { Mic, Pause, Play, RefreshCw, Square, Trash2, Video, X } from 'lucide-react-native';
+import { Mic, Pause, Play, RefreshCw, Square, Trash2, Video, X } from '@/ui/icones';
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 

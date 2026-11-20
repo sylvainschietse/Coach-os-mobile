@@ -1,7 +1,7 @@
 // Éléments communs des dossiers CRM repris de CRMWorkspace.tsx d'origine : modale `max-w-3xl` à pied collant,
 // grille de champs deux colonnes (`sm:grid-cols-2`, champs longs pleine largeur), `<select>` avec « Non renseigné »,
 // cases à cocher, badges, initiales (`premium-avatar`) et volet repliable (`<details>`).
-import { Check, ChevronDown, ChevronRight, Search, X } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronRight, Search, X } from '@/ui/icones';
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

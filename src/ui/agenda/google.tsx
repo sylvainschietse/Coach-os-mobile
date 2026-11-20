@@ -1,7 +1,7 @@
 // Connexion du coach à son Google Agenda : connecter, synchroniser maintenant, déconnecter.
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
-import { RefreshCw } from 'lucide-react-native';
+import { RefreshCw } from '@/ui/icones';
 import { useState } from 'react';
 import { Platform, View } from 'react-native';
 

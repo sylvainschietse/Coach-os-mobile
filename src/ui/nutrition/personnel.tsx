@@ -1,7 +1,7 @@
 // PersonalFood.tsx d'origine (N04, N05) : « Mon journal alimentaire » par jour et par repas, comparé aux objectifs,
 // et « Mes recettes personnelles » dont les macros par portion se calculent depuis les ingrédients.
 // Aliments : Ciqual, produits de marque et code-barres Open Food Facts, ou saisie de l'étiquette.
-import { Camera, Plus, RefreshCw, Trash2 } from 'lucide-react-native';
+import { Camera, Plus, RefreshCw, Trash2 } from '@/ui/icones';
 import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 

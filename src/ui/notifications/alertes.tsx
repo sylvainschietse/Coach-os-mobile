@@ -1,6 +1,6 @@
 // « Alertes sur mon téléphone » : ce que le serveur envoie (messages, séances, programmes, paiements…).
 // Chaque case s'enregistre aussitôt ; tout est actif par défaut.
-import { BellRing } from 'lucide-react-native';
+import { BellRing } from '@/ui/icones';
 import { useState } from 'react';
 import { Linking, Platform, View } from 'react-native';
 import * as Notifications from 'expo-notifications';

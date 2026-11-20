@@ -1,7 +1,7 @@
 // Mon profil › Mes relances : le texte de chaque relance prête à l'emploi (modifiable, texte d'origine à un toucher),
 // les relances coupées, et les relances du coach (quand ? pour qui ? quel message ?). Les relances arrivent le jour venu
 // dans « À faire » de l'Accueil, message prêt ; le coach l'envoie en un toucher.
-import { Plus } from 'lucide-react-native';
+import { Plus } from '@/ui/icones';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 

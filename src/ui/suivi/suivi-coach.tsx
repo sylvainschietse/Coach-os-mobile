@@ -1,7 +1,7 @@
 // Fiche client › Suivi : les progrès du client domaine par domaine (séances, force, corps, bien-être, nutrition, pas),
 // sur un jour, une semaine, un mois ou une année qu'on remonte avec ‹ ›, puis l'historique semaine par semaine.
 // Toucher une semaine de l'historique l'ouvre. Chaque source se lit à part : une source en panne n'efface pas les autres.
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight } from '@/ui/icones';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 

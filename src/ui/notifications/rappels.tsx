@@ -2,7 +2,7 @@
 // AlertesTelephone ; ses rappels sont recalculés à chaque ouverture de l'appli (séances prévues, rendez-vous,
 // repas notés, bilan rempli) et il les règle depuis « Moi › Mes notifications ».
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Bell } from 'lucide-react-native';
+import { Bell } from '@/ui/icones';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Linking, Platform, View } from 'react-native';
 import * as Notifications from 'expo-notifications';

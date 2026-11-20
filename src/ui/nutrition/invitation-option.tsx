@@ -1,7 +1,7 @@
 // Client sans l'option nutrition : un aperçu de ce qu'elle apporte (une semaine de repas en photos), et un mot à son
 // coach. Aucun prix ni achat dans l'appli (règles Apple et Google) : le coach en parle de vive voix.
 import { Image } from 'expo-image';
-import { Lock, MessageCircle } from 'lucide-react-native';
+import { Lock, MessageCircle } from '@/ui/icones';
 import { ScrollView, Text, View } from 'react-native';
 
 import { monCoach } from '@/data/acces-client';

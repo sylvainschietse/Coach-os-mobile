@@ -1,7 +1,7 @@
 // Dictée vocale : le coach parle au lieu d'écrire. La reconnaissance du téléphone (ou du navigateur) transcrit en
 // français ; le texte dicté s'ajoute à ce qui est déjà écrit, et reste modifiable au clavier.
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
-import { Mic, Square } from 'lucide-react-native';
+import { Mic, Square } from '@/ui/icones';
 import { useRef, useState } from 'react';
 import { Pressable, Text } from 'react-native';
 

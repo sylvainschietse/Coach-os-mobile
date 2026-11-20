@@ -1,7 +1,7 @@
 // Coque reprise de l'app d'origine : en-tête sombre à ligne rouge, onglets coach (`wellness-tabs`),
 // sous-navigation (`premium-subnav`), menu CRM (`wellness-sidebar` / sélecteur « Rubrique »),
 // barre du bas client (`client-bottom-nav`), hero, statistiques et états vides.
-import { ChevronDown, ChevronRight, Eye, type LucideIcon } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, Eye, type LucideIcon } from '@/ui/icones';
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, type PressableStateCallbackType, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
