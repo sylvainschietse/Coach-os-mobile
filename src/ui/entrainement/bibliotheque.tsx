@@ -1,6 +1,6 @@
 // AirtableLibrary.tsx d'origine (C09) : « Mes programmes et séances », recherche, collection, niveau, objectif,
 // séances par semaine, cartes à badges, sélection pour supprimer (50 au plus) et corbeille.
-import { ChevronRight } from '@/ui/icones';
+import { ChevronRight, MoreHorizontal, SlidersHorizontal } from '@/ui/icones';
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
@@ -33,6 +33,9 @@ export function Bibliotheque({ coachId, onOuvrir }: { coachId: string; onOuvrir:
   const { donnee, erreur, recharger } = useCharger(() => entrainement.bibliotheque(coachId), `bibliotheque-${coachId}`);
   const [creation, setCreation] = useState<'programme' | 'seance'>();
   const [libres, setLibres] = useState(false);
+  // Filtres et actions rares rangés : les programmes arrivent tout de suite (audit design, point 4).
+  const [filtres, setFiltres] = useState(false);
+  const [plus, setPlus] = useState(false);
   const [selection, setSelection] = useState(false);
   const [choisis, setChoisis] = useState<string[]>([]);
   const [suppression, setSuppression] = useState<ElementCorbeille[]>();
@@ -60,6 +63,7 @@ export function Bibliotheque({ coachId, onOuvrir }: { coachId: string; onOuvrir:
     [donnee, q, collection, niveau, objectif, frequence],
   );
   const deuxColonnes = width >= 768;
+  const actifs = [collection, niveau, objectif, frequence].filter(Boolean).length;
 
   return (
     <View>
@@ -67,8 +71,22 @@ export function Bibliotheque({ coachId, onOuvrir }: { coachId: string; onOuvrir:
       <Ligne style={{ marginTop: 12 }}>
         <Action libelle="Créer un programme" onPress={() => setCreation('programme')} />
         <Action libelle="Créer une séance seule" variante="contour" onPress={() => setCreation('seance')} />
-        <Action libelle={libres ? 'Fermer les séances libres des clients' : 'Séances libres des clients'} variante="contour" onPress={() => setLibres(!libres)} />
+        <Action variante="fantome" icone={MoreHorizontal} libelle={plus || selection || libres ? 'Moins d’actions' : 'Plus d’actions'} onPress={() => setPlus(!plus)} />
       </Ligne>
+      {(plus || selection || libres) && (
+        <Ligne style={{ marginTop: 8 }}>
+          <Action petit libelle={libres ? 'Fermer les séances libres des clients' : 'Séances libres des clients'} variante="contour" onPress={() => setLibres(!libres)} />
+          <Action
+            petit
+            variante="contour"
+            libelle={selection ? 'Fin de sélection' : 'Sélectionner pour supprimer'}
+            onPress={() => {
+              setSelection(!selection);
+              setChoisis([]);
+            }}
+          />
+        </Ligne>
+      )}
       {libres && (
         <View style={{ marginTop: 16 }}>
           <SeancesLibresClients
@@ -80,17 +98,8 @@ export function Bibliotheque({ coachId, onOuvrir }: { coachId: string; onOuvrir:
           />
         </View>
       )}
-      <Ligne style={{ marginTop: 12 }}>
-        <Action
-          petit
-          variante="contour"
-          libelle={selection ? 'Fin de sélection' : 'Sélectionner pour supprimer'}
-          onPress={() => {
-            setSelection(!selection);
-            setChoisis([]);
-          }}
-        />
-        {selection && (
+      {selection && (
+        <Ligne style={{ marginTop: 12 }}>
           <>
             <Action petit variante="fantome" libelle="Sélectionner les éléments affichés (max. 50)" onPress={() => setChoisis(liste.slice(0, 50).map((p) => p.id))} />
             <Action
@@ -101,8 +110,8 @@ export function Bibliotheque({ coachId, onOuvrir }: { coachId: string; onOuvrir:
               onPress={() => setSuppression((donnee ?? []).filter((p) => choisis.includes(p.id)).map((p) => ({ kind: 'programme', id: p.id, nom: p.titre })))}
             />
           </>
-        )}
-      </Ligne>
+        </Ligne>
+      )}
       {message ? (
         <Text {...roleWeb('status')} style={[ts.doux, { color: couleurs.vert, marginTop: 8 }]}>
           {message}
@@ -116,11 +125,21 @@ export function Bibliotheque({ coachId, onOuvrir }: { coachId: string; onOuvrir:
         <View style={{ flexGrow: 1, flexBasis: 180, minWidth: 0, flexDirection: 'row' }}>
           <Recherche valeur={q} onChange={setQ} libelle="Rechercher un programme" placeholder="Rechercher un programme…" />
         </View>
-        <Filtre libelle="Collection" valeur={collection} options={COLLECTIONS} onChange={setCollection} />
-        <Filtre libelle="Niveau" valeur={niveau} options={options('niveau')} onChange={setNiveau} />
-        <Filtre libelle="Objectif" valeur={objectif} options={options('objectif')} onChange={setObjectif} />
-        <Filtre libelle="Séances/sem." valeur={frequence} options={options('seancesParSemaine')} onChange={setFrequence} />
+        <Action
+          variante="contour"
+          icone={SlidersHorizontal}
+          libelle={actifs ? `Filtrer (${actifs})` : 'Filtrer'}
+          onPress={() => setFiltres(!filtres)}
+        />
       </View>
+      {filtres && (
+        <View style={{ marginTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <Filtre libelle="Collection" valeur={collection} options={COLLECTIONS} onChange={setCollection} />
+          <Filtre libelle="Niveau" valeur={niveau} options={options('niveau')} onChange={setNiveau} />
+          <Filtre libelle="Objectif" valeur={objectif} options={options('objectif')} onChange={setObjectif} />
+          <Filtre libelle="Séances/sem." valeur={frequence} options={options('seancesParSemaine')} onChange={setFrequence} />
+        </View>
+      )}
 
       {erreur && (
         <Text accessibilityRole="alert" style={[ts.erreur, { marginTop: 20, borderWidth: 1, borderColor: 'rgba(195,24,30,0.4)', borderRadius: 12, padding: 16, fontSize: 14 }]}>

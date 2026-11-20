@@ -59,6 +59,7 @@ export function VueEnsemble({
   onBilansSemaine: () => void;
 }) {
   const { width } = useWindowDimensions();
+  const large = width >= 1280;
   const { profil } = useSession();
   const reglagesRelances = useReglagesRelances();
   const coachId = profil?.role === 'coach' ? profil.coachId : '';
@@ -182,29 +183,10 @@ export function VueEnsemble({
         </View>
       </Carte>
       <CeQuiSestPasse onOuvrirContact={onOuvrirContact} onAgenda={onAgenda} onPaiements={() => onRubrique('Paiements')} />
-      <View style={{ flexDirection: width >= 1280 ? 'row' : 'column', gap: 20 }}>
-        <Carte style={{ flex: 1, padding: 20 }}>
-          <Text style={titreCarte}>Prochains Boosters</Text>
-          {prochains.slice(0, 6).map((b, i) => (
-            <Pressable
-              key={b.id}
-              accessibilityRole="button"
-              onPress={() => onOuvrirBooster(b)}
-              style={[ligne, i < Math.min(prochains.length, 6) - 1 && bordure]}
-            >
-              <View style={{ flexShrink: 1 }}>
-                <Text style={ligneTexte}>{nomComplet(b.contact)}</Text>
-                <Text style={ligneDoux}>{dateCourte(b.date)}</Text>
-              </View>
-              <View style={badge}>
-                <Text style={badgeTexte}>{statutBooster(b)}</Text>
-              </View>
-            </Pressable>
-          ))}
-          {!prochains.length && <Text style={ligneDoux}>Aucun Booster à venir.</Text>}
-        </Carte>
+      <View style={{ flexDirection: large ? 'row' : 'column', alignItems: large ? 'flex-start' : 'stretch', gap: 20 }}>
+        {/* À faire d'abord : c'est l'action du jour. Les cartes gardent leur hauteur (plus de grand vide sous les Boosters). */}
         {/* Relances automatiques et tâches ajoutées à la main, en une liste : chaque message part d'un appui. */}
-        <Carte style={{ flex: 1, padding: 20 }}>
+        <Carte style={{ flex: large ? 1 : undefined, padding: 20 }}>
           <View style={[ligne, { paddingVertical: 0, marginBottom: 16 }]}>
             <Text style={[titreCarte, { marginBottom: 0 }]}>À faire</Text>
             <BoutonContour libelle="+ Tâche" onPress={onNouvelleTache} />
@@ -243,6 +225,26 @@ export function VueEnsemble({
           <View style={{ marginTop: 16 }}>
             <BoutonContour libelle="Programmes des clients" onPress={onCycles} />
           </View>
+        </Carte>
+        <Carte style={{ flex: large ? 1 : undefined, padding: 20 }}>
+          <Text style={titreCarte}>Prochains Boosters</Text>
+          {prochains.slice(0, 6).map((b, i) => (
+            <Pressable
+              key={b.id}
+              accessibilityRole="button"
+              onPress={() => onOuvrirBooster(b)}
+              style={[ligne, i < Math.min(prochains.length, 6) - 1 && bordure]}
+            >
+              <View style={{ flexShrink: 1 }}>
+                <Text style={ligneTexte}>{nomComplet(b.contact)}</Text>
+                <Text style={ligneDoux}>{dateCourte(b.date)}</Text>
+              </View>
+              <View style={badge}>
+                <Text style={badgeTexte}>{statutBooster(b)}</Text>
+              </View>
+            </Pressable>
+          ))}
+          {!prochains.length && <Text style={ligneDoux}>Aucun Booster à venir.</Text>}
         </Carte>
       </View>
     </View>
