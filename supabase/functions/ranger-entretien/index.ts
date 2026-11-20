@@ -8,6 +8,8 @@ import { betaZodOutputFormat } from 'npm:@anthropic-ai/sdk@0.135.0/helpers/beta/
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import * as z from 'npm:zod@4';
 
+import { appelIaPermis, MESSAGE_PLAFOND_IA } from '../_shared/plafond-ia.ts';
+
 const champ = (description: string) => z.string().describe(`${description} Vide si la dictée n'en parle pas.`);
 
 const EntretienRange = z.object({
@@ -57,6 +59,7 @@ Deno.serve(async (req) => {
   const { data: coach } = await db.rpc('mon_coach_id');
   if (!coach) return repondre({ erreur: 'Réservé au coach connecté.' }, 401);
 
+  if (!(await appelIaPermis(db))) return repondre({ erreur: MESSAGE_PLAFOND_IA }, 429);
   const cle = Deno.env.get('ANTHROPIC_API_KEY');
   if (!cle) return repondre({ erreur: 'Le rangement automatique n’est pas encore activé : la clé Claude manque sur le serveur.' }, 503);
   const claude = new Anthropic({ apiKey: cle });

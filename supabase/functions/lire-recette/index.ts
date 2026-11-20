@@ -8,6 +8,8 @@ import { betaZodOutputFormat } from 'npm:@anthropic-ai/sdk@0.135.0/helpers/beta/
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import * as z from 'npm:zod@4';
 
+import { appelIaPermis, MESSAGE_PLAFOND_IA } from '../_shared/plafond-ia.ts';
+
 // Les noms de la table Ciqual de l'app (scripts/noms-ciqual.mjs), lus sur le dépôt public à une version figée : le fichier
 // ne peut pas changer sous la fonction. Lus une fois par démarrage ; sans eux, la dictée marche quand même, les
 // ingrédients sont alors seulement estimés.
@@ -98,6 +100,7 @@ Deno.serve(async (req) => {
     if (!accord?.analyse_ia) return repondre({ erreur: 'Active d’abord l’analyse par l’IA dans « Mes données ».' }, 403);
   }
 
+  if (!(await appelIaPermis(db))) return repondre({ erreur: MESSAGE_PLAFOND_IA }, 429);
   const cle = Deno.env.get('ANTHROPIC_API_KEY');
   if (!cle) return repondre({ erreur: 'Le remplissage automatique n’est pas encore activé : la clé Claude manque sur le serveur.' }, 503);
   const claude = new Anthropic({ apiKey: cle });

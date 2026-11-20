@@ -9,6 +9,8 @@ import { betaZodOutputFormat } from 'npm:@anthropic-ai/sdk@0.135.0/helpers/beta/
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import * as z from 'npm:zod@4';
 
+import { appelIaPermis, MESSAGE_PLAFOND_IA } from '../_shared/plafond-ia.ts';
+
 const PHASES = ['Échauffement', 'Principal', 'Finisher', 'Retour au calme'] as const;
 
 const Proposition = z.object({
@@ -155,6 +157,7 @@ Deno.serve(async (req) => {
   });
   const { data: coachId } = await db.rpc('mon_coach_id');
   if (!coachId) return repondre({ erreur: 'Réservé au coach connecté.' }, 403);
+  if (!(await appelIaPermis(db))) return repondre({ erreur: MESSAGE_PLAFOND_IA }, 429);
   if (corps.plan === true) return planProgramme(claude, demande);
 
   const exercices: ExerciceBase[] = [];

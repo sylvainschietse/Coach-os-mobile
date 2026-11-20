@@ -7,6 +7,8 @@ import { betaZodOutputFormat } from 'npm:@anthropic-ai/sdk@0.135.0/helpers/beta/
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import * as z from 'npm:zod@4';
 
+import { appelIaPermis, MESSAGE_PLAFOND_IA } from '../_shared/plafond-ia.ts';
+
 const Estimation = z.object({
   aliments: z
     .array(
@@ -66,6 +68,7 @@ Deno.serve(async (req) => {
     if (!accord?.analyse_ia) return repondre({ erreur: 'Active d’abord l’analyse des photos par l’IA dans « Mes données ».' }, 403);
   }
 
+  if (!(await appelIaPermis(db))) return repondre({ erreur: MESSAGE_PLAFOND_IA }, 429);
   const cle = Deno.env.get('ANTHROPIC_API_KEY');
   if (!cle) return repondre({ erreur: 'L’analyse des photos n’est pas encore activée : la clé Claude manque sur le serveur.' }, 503);
   const claude = new Anthropic({ apiKey: cle });
