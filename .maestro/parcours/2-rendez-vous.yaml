@@ -1,0 +1,13 @@
+# Parcours client : confirmer le rendez-vous en attente du lundi 23 novembre.
+appId: com.coachgo.app
+name: Rendez-vous
+---
+- runFlow: _lea.yaml
+- scrollUntilVisible:
+    element: 'Je confirme'
+    timeout: 30000
+- takeScreenshot: 2-rendez-vous-a-en-attente
+- tapOn: 'Je confirme'
+- assertNotVisible: 'Je confirme'
+- assertVisible: 'Lundi 23 novembre.*'
+- takeScreenshot: 2-rendez-vous-b-confirme

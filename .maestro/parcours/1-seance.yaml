@@ -1,0 +1,34 @@
+# Parcours client : démarrer la séance du jour, valider chaque bloc, terminer et enregistrer.
+appId: com.coachgo.app
+name: Séance
+---
+- runFlow: _lea.yaml
+- takeScreenshot: 1-seance-a-accueil
+- tapOn: 'Démarrer, je note au fur et à mesure'
+- extendedWaitUntil:
+    visible: 'Bloc 1 sur 5'
+    timeout: 15000
+- takeScreenshot: 1-seance-b-bloc1
+- repeat:
+    while:
+      notVisible: 'Valider et terminer'
+    times: 6
+    commands:
+      - tapOn: 'Valider le bloc.*'
+- tapOn: 'Valider et terminer'
+- extendedWaitUntil:
+    visible: 'Séance terminée'
+    timeout: 10000
+- takeScreenshot: 1-seance-c-terminee
+- scrollUntilVisible:
+    element: 'Enregistrer la séance'
+- tapOn: 'Enregistrer la séance'
+- extendedWaitUntil:
+    visible: 'Retour à l’accueil'
+    timeout: 15000
+- takeScreenshot: 1-seance-d-enregistree
+- tapOn: 'Retour à l’accueil'
+- scrollUntilVisible:
+    element: '3 / 4.*'
+    timeout: 20000
+- takeScreenshot: 1-seance-e-accueil-apres

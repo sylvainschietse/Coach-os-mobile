@@ -1,0 +1,32 @@
+# Parcours coach puis client : la facture de Léa est visible dans sa fiche (coach) et dans « Mes factures » (client).
+appId: com.coachgo.app
+name: Facture
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'Je suis Sylvain, coach'
+    timeout: 60000
+- tapOn: 'Je suis Sylvain, coach'
+- tapOn: 'Activité'
+- tapOn: 'Paiements'
+- extendedWaitUntil:
+    visible: 'Créer la facture'
+    timeout: 15000
+- takeScreenshot: 3-facture-a-coach-paiements
+- tapOn: 'Créer la facture'
+- assertVisible: '.*indisponible en démo.*'
+- tapOn: 'Clients'
+- tapOn: 'Léa Martin'
+- tapOn: 'Voir la fiche'
+- tapOn: 'Abonnement'
+- scrollUntilVisible:
+    element: 'F1 · Abonnement 11/2026'
+    timeout: 30000
+- takeScreenshot: 3-facture-b-coach-fiche
+- runFlow: _lea.yaml
+- tapOn: 'Mon compte'
+- scrollUntilVisible:
+    element: 'F1 · Abonnement 11/2026'
+    timeout: 30000
+- takeScreenshot: 3-facture-c-client-mes-factures

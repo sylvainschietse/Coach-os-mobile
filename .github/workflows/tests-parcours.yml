@@ -1,0 +1,120 @@
+# Tests des parcours clés (séance, rendez-vous, facture, paiement) sur l'appli installée, version démo
+# (données fictives, sans la vraie base ni Stripe) : émulateur Android (Pixel) et simulateurs iPhone (SE et Pro Max),
+# en mode clair puis sombre. Gratuit sur les serveurs de GitHub (dépôt public), sans compte Expo.
+# Captures et résultats dans les pièces jointes du lancement (« parcours-android », « parcours-iphone »).
+name: Tests des parcours
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [prototype, tests-parcours-cles]
+    paths: ['.maestro/parcours/**', 'scripts/parcours-maestro.sh', '.github/workflows/tests-parcours.yml']
+
+concurrency:
+  group: tests-parcours-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Version démo : le fichier .env du dépôt (base réelle) est ignoré.
+  EXPO_NO_DOTENV: 1
+
+jobs:
+  logique:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run
+
+  android:
+    needs: logique
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install
+      - name: Compilation (x86_64 pour l'émulateur)
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=x86_64 -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g"
+      - name: Accélération de l'émulateur
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - run: curl -Ls https://get.maestro.mobile.dev | bash
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_7
+          disable-animations: true
+          script: |
+            adb install android/app/build/outputs/apk/release/app-release.apk
+            scripts/parcours-maestro.sh android-pixel android
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parcours-android
+          path: resultats
+
+  iphone:
+    needs: logique
+    runs-on: macos-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode le plus récent
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)" && xcodebuild -version
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npx expo prebuild --platform ios
+      - name: Compilation pour le simulateur
+        run: |
+          WS=$(ls -d ios/*.xcworkspace | head -1); SCHEME=$(basename "$WS" .xcworkspace)
+          set -o pipefail
+          xcodebuild -workspace "$WS" -scheme "$SCHEME" -configuration Release -sdk iphonesimulator \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO | tail -40
+          ls -d build/Build/Products/Release-iphonesimulator/*.app
+      - run: curl -Ls https://get.maestro.mobile.dev | bash
+      - name: Parcours sur iPhone SE puis iPhone Pro Max
+        run: |
+          APP=$(ls -d build/Build/Products/Release-iphonesimulator/*.app | head -1)
+          ECHECS=0
+          for MODELE in 'iPhone SE' 'Pro Max'; do
+            UDID=$(xcrun simctl list devices available -j | jq -r --arg m "$MODELE" '[.devices[][] | select(.name | contains($m))] | last | .udid')
+            NOM=$(xcrun simctl list devices available -j | jq -r --arg u "$UDID" '.devices[][] | select(.udid == $u) | .name')
+            echo "::group::$NOM"
+            xcrun simctl boot "$UDID"; xcrun simctl bootstatus "$UDID"
+            xcrun simctl install "$UDID" "$APP"
+            CLE=$([ "$MODELE" = 'iPhone SE' ] && echo iphone-se || echo iphone-pro-max)
+            scripts/parcours-maestro.sh "$CLE" ios || ECHECS=$((ECHECS + $?))
+            xcrun simctl shutdown "$UDID"
+            echo '::endgroup::'
+          done
+          exit $ECHECS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parcours-iphone
+          path: resultats
