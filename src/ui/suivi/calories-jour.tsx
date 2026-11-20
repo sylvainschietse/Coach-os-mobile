@@ -18,6 +18,7 @@ import { useCharger } from '@/lib/useCharger';
 import { ts } from '../entrainement/commun';
 import { Jauge } from '../motivation/badges';
 import { couleurs, polices } from '../theme';
+import { useUnivers } from '../univers';
 import { etatA11y } from '@/lib/accessibilite';
 
 const JOURS_EN_ARRIERE = 30;
@@ -180,6 +181,7 @@ function Chiffre({ libelle, valeur, detail, accent }: { libelle: string; valeur:
 
 /** Accueil : deux tuiles en couleur, ce qui est mangé face à l'objectif et ce qui est dépensé (avec les pas). */
 export function TuilesDuJour({ clientId, onOuvrir }: { clientId: string; onOuvrir?: () => void }) {
+  const u = useUnivers();
   const jour = aujourdhuiParis();
   const base = useCharger(() => chargerBase(clientId), `calories-base-${clientId}`);
   const duJour = useCharger(() => chargerJour(clientId, jour), `calories-jour-${clientId}-${jour}`);
@@ -199,34 +201,34 @@ export function TuilesDuJour({ clientId, onOuvrir }: { clientId: string; onOuvri
   });
   const nombre = (n: number) => new Intl.NumberFormat('fr-FR').format(Math.round(n));
   const tuile = (fond: string, encre: string, kicker: string, valeur: string, detail: string, part: number | undefined, jauge: string, pied: string) => (
-    <Pressable accessibilityRole={onOuvrir ? 'button' : undefined} accessibilityLabel={`${kicker} : ${valeur}, ${detail}`} disabled={!onOuvrir} onPress={onOuvrir} style={{ flex: 1, minWidth: 0, borderRadius: 22, padding: 14, gap: 6, backgroundColor: fond }}>
+    <Pressable accessibilityRole={onOuvrir ? 'button' : undefined} accessibilityLabel={`${kicker} : ${valeur}, ${detail}`} disabled={!onOuvrir} onPress={onOuvrir} style={{ flex: 1, minWidth: 0, borderRadius: 22, padding: 14, gap: 6, backgroundColor: fond, borderWidth: 1, borderColor: couleurs.bordure }}>
       <Text style={{ fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', color: jauge }}>{kicker}</Text>
       <Text style={{ fontFamily: polices.texteGras, fontSize: 24, color: encre }}>{valeur}</Text>
       <Text style={{ fontFamily: polices.texte, fontSize: 12.5, color: encre, marginTop: -4 }}>{detail}</Text>
-      {part !== undefined && <Jauge part={part} couleur={jauge} fond="rgba(255,255,255,0.7)" hauteur={8} />}
+      {part !== undefined && <Jauge part={part} couleur={jauge} fond={couleurs.discret} hauteur={8} />}
       <Text style={{ fontFamily: polices.texteMoyen, fontSize: 12.5, color: encre }}>{pied}</Text>
     </Pressable>
   );
   return (
     <View style={{ flexDirection: 'row', gap: 12 }}>
       {tuile(
-        '#DDF3E5',
-        '#0F4D2A',
+        couleurs.carte,
+        couleurs.texte,
         'Mangé',
         b.mange !== undefined ? nombre(b.mange) : '0',
         b.objectif !== undefined ? `sur ${nombre(b.objectif)} kcal` : 'kcal',
         b.objectif ? (b.mange ?? 0) / b.objectif : undefined,
-        '#1B7A45',
+        u.fonce,
         onOuvrir ? '+ Noter un repas' : 'Note tes repas ci-dessous',
       )}
       {tuile(
-        '#E2E8FF',
-        '#1A2D73',
+        couleurs.carte,
+        couleurs.texte,
         'Dépensé',
         b.depense !== undefined ? nombre(b.depense) : nombre(b.mouvement),
         b.depense !== undefined ? `kcal, dont ${nombre(b.mouvement)} en bougeant` : 'kcal en bougeant',
         undefined,
-        '#2F4CC0',
+        couleurs.texteDoux,
         duJour.donnee.pas ? `${nombre(duJour.donnee.pas)} pas` : 'Pas : synchronise ta montre',
       )}
     </View>

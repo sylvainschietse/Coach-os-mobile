@@ -58,15 +58,21 @@ export const UNIVERS_CLIENT: Record<OngletClient, CleUnivers> = {
 };
 const universDe = (o: OngletClient) => univers[UNIVERS_CLIENT[o]];
 
-/** Les cartes de Progrès, chacune dans sa couleur. */
+/**
+ * Les cartes de Progrès. Une seule couleur pour la page (le bleu de l'univers Progrès) : « Ma semaine », l'action
+ * à faire, est pleine ; les autres sont blanches, avec l'icône en bleu (audit design, point 2).
+ */
+const BLEU = univers.bleu;
+const PLEINE = { fond: BLEU.fonce, encre: '#FFFFFF', accent: '#FFFFFF' };
+const BLANCHE = { fond: couleurs.carte, encre: couleurs.texte, accent: BLEU.fonce };
 const RUBRIQUES: { cle: Exclude<RubriqueProgres, 'badges'>; titre: string; detail: string; icone: LucideIcon; fond: string; encre: string; accent: string }[] = [
-  { cle: 'hebdo', titre: 'Ma semaine', detail: 'Le bilan à remplir pour ton coach', icone: CalendarCheck, fond: '#2F4CC0', encre: '#FFFFFF', accent: '#C4D0FA' },
-  { cle: 'mesures', titre: 'Mon corps', detail: 'Mesures, courbes et photos', icone: Ruler, fond: '#E2E8FF', encre: '#1A2D73', accent: '#2F4CC0' },
-  { cle: 'pr', titre: 'Mes records', detail: 'Tes meilleures perfs', icone: Award, fond: '#FFF1CC', encre: '#5C3800', accent: '#8A5A00' },
-  { cle: 'quotidien', titre: 'Ma journée', detail: 'Sommeil, eau, stress, énergie…', icone: Moon, fond: '#EFEAFF', encre: '#33236E', accent: '#6B4BC9' },
-  { cle: 'objectifs', titre: 'Mes objectifs', detail: 'Tes défis perso, avec une date', icone: Target, fond: '#DDF3E5', encre: '#0F4D2A', accent: '#1B7A45' },
-  { cle: 'cycle', titre: 'Mon cycle', detail: 'Prochaines règles, énergie et séances selon ta phase', icone: Flower2, fond: '#FFE6E7', encre: '#6E1013', accent: '#B3141A' },
-  { cle: 'sport', titre: 'Synchroniser ma montre', detail: 'Pas, sommeil et sorties', icone: Watch, fond: '#1B1D24', encre: '#FFFFFF', accent: '#8FA8FF' },
+  { cle: 'hebdo', titre: 'Ma semaine', detail: 'Le bilan à remplir pour ton coach', icone: CalendarCheck, ...PLEINE },
+  { cle: 'mesures', titre: 'Mon corps', detail: 'Mesures, courbes et photos', icone: Ruler, ...BLANCHE },
+  { cle: 'pr', titre: 'Mes records', detail: 'Tes meilleures perfs', icone: Award, ...BLANCHE },
+  { cle: 'quotidien', titre: 'Ma journée', detail: 'Sommeil, eau, stress, énergie…', icone: Moon, ...BLANCHE },
+  { cle: 'objectifs', titre: 'Mes objectifs', detail: 'Tes défis perso, avec une date', icone: Target, ...BLANCHE },
+  { cle: 'cycle', titre: 'Mon cycle', detail: 'Prochaines règles, énergie et séances selon ta phase', icone: Flower2, ...BLANCHE },
+  { cle: 'sport', titre: 'Synchroniser ma montre', detail: 'Pas, sommeil et sorties', icone: Watch, ...BLANCHE },
 ];
 const PLEINE_LARGEUR: RubriqueProgres[] = ['hebdo', 'cycle', 'sport'];
 const TITRES: Record<RubriqueProgres, string> = {
@@ -289,16 +295,18 @@ function CarteRubrique({
         flexDirection: large ? 'row' : 'column',
         alignItems: large ? 'center' : 'flex-start',
         backgroundColor: fond,
+        borderWidth: fond === couleurs.carte ? 1 : 0,
+        borderColor: couleurs.bordure,
         opacity: pressed ? 0.85 : 1,
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
-      <View style={{ width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: encre === '#FFFFFF' ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.75)' }}>
+      <View style={{ width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: encre === '#FFFFFF' ? 'rgba(255,255,255,0.15)' : univers.bleu.clair }}>
         <Icone size={22} color={accent} />
       </View>
       <View style={{ flex: large ? 1 : undefined, gap: 2 }}>
         <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: encre }}>{titre}</Text>
-        <Text style={{ fontFamily: polices.texte, fontSize: 13, color: encre, opacity: 0.8 }}>{detail}</Text>
+        <Text style={{ fontFamily: polices.texte, fontSize: 13, color: encre === '#FFFFFF' ? 'rgba(255,255,255,0.85)' : couleurs.texteDoux }}>{detail}</Text>
       </View>
       {large && <ChevronRight size={20} color={accent} />}
     </Pressable>

@@ -9,10 +9,11 @@ import { formaterValeur, indicateursDuClient } from '@/domain/quotidien';
 import { useCharger } from '@/lib/useCharger';
 
 import { couleurs, polices } from '../theme';
+import { useUnivers } from '../univers';
 
-const FONDS = ['#EFEAFF', '#E3F3FB', '#FFF1DC', '#E8F6EE', '#FFE6E7', '#EEF3FF'];
 
 export function MaJournee({ clientId, onNoter }: { clientId: string; onNoter: () => void }) {
+  const u = useUnivers();
   const jour = aujourdhuiParis();
   const { donnee } = useCharger(async () => {
     const [reglages, releves] = await Promise.all([quotidien.reglages(clientId), quotidien.releves(clientId, jour)]);
@@ -22,9 +23,9 @@ export function MaJournee({ clientId, onNoter }: { clientId: string; onNoter: ()
   const suivis = donnee.suivis.slice(0, 6);
   const notes = suivis.filter((s) => donnee.releves.some((r) => r.indicateur === s.def.cle)).length;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel="Ma journée : noter mon sommeil, mon eau, mon stress…" onPress={onNoter} style={{ borderRadius: 22, padding: 16, gap: 12, backgroundColor: couleurs.carte }}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Ma journée : noter mon sommeil, mon eau, mon stress…" onPress={onNoter} style={{ borderRadius: 22, padding: 16, gap: 12, backgroundColor: couleurs.carte, borderWidth: 1, borderColor: couleurs.bordure }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', color: '#6B4BC9' }}>Ma journée</Text>
+        <Text style={{ fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', color: u.fonce }}>Ma journée</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
           <Text style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux }}>
             {notes === suivis.length ? 'Tout est noté' : `${notes} sur ${suivis.length} · 20 s`}
@@ -46,16 +47,16 @@ export function MaJournee({ clientId, onNoter }: { clientId: string; onNoter: ()
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 3,
-                  backgroundColor: r ? FONDS[i % FONDS.length] : couleurs.carte,
+                  backgroundColor: r ? couleurs.discret : couleurs.carte,
                   borderWidth: r ? 0 : 2,
                   borderStyle: 'dashed',
-                  borderColor: '#D2CBEA',
+                  borderColor: couleurs.saisie,
                 }}
               >
                 <Text numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux }}>
                   {s.def.libelle}
                 </Text>
-                <Text numberOfLines={1} style={{ fontFamily: polices.texteGras, fontSize: 15, color: r ? couleurs.texte : '#6B4BC9' }}>
+                <Text numberOfLines={1} style={{ fontFamily: polices.texteGras, fontSize: 15, color: r ? couleurs.texte : u.fonce }}>
                   {r ? formaterValeur(s.def, r.valeur) : 'Noter'}
                 </Text>
               </View>

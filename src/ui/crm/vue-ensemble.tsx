@@ -170,7 +170,7 @@ export function VueEnsemble({
           {/* Flèches : feuilleter les mois passés, sans quitter l'accueil. */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
             <FlecheMois sens="‹" nom="Mois précédent" onPress={() => setMois(decalerMois(mois, -1))} />
-            <Text style={{ fontFamily: polices.texteGras, fontSize: 14, color: univers.ambre.fonce, textTransform: 'capitalize' }}>{nomMois(mois)}</Text>
+            <Text style={{ fontFamily: polices.texteGras, fontSize: 14, color: couleurs.texte, textTransform: 'capitalize' }}>{nomMois(mois)}</Text>
             <FlecheMois sens="›" nom="Mois suivant" desactive={mois >= moisCourant} onPress={() => setMois(decalerMois(mois, 1))} />
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -250,8 +250,8 @@ export function VueEnsemble({
 }
 
 /**
- * Une case de la carte « En bref » : libellé discret, chiffre en gras ; rouge quand il demande une action. Le fond pâle
- * et le halo dans le coin donnent la couleur de son univers (ambre l'argent, bleu les rendez-vous…).
+ * Une case de la carte « En bref » : fond blanc, libellé discret, chiffre en gras ; rouge seulement quand il demande
+ * une action (audit design, point 2 : une seule couleur par page).
  */
 function FlecheMois({ sens, nom, desactive, onPress }: { sens: string; nom: string; desactive?: boolean; onPress: () => void }) {
   return (
@@ -262,15 +262,15 @@ function FlecheMois({ sens, nom, desactive, onPress }: { sens: string; nom: stri
       disabled={desactive}
       onPress={onPress}
       hitSlop={6}
-      style={{ width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: univers.ambre.clair, opacity: desactive ? 0.35 : 1 }}
+      style={{ width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: couleurs.discret, opacity: desactive ? 0.35 : 1 }}
     >
-      <Text style={{ fontFamily: polices.texteGras, fontSize: 18, color: univers.ambre.fonce }}>{sens}</Text>
+      <Text style={{ fontFamily: polices.texteGras, fontSize: 18, color: couleurs.texte }}>{sens}</Text>
     </Pressable>
   );
 }
 
-function Chiffre({ libelle, valeur, onPress, alerte, teinte }: { libelle: string; valeur: string; onPress?: () => void; alerte?: boolean; teinte: CleUnivers }) {
-  const u = univers[teinte];
+/** `teinte` : l'univers de la case, gardé pour la lecture du code ; le fond reste blanc. */
+function Chiffre({ libelle, valeur, onPress, alerte }: { libelle: string; valeur: string; onPress?: () => void; alerte?: boolean; teinte?: CleUnivers }) {
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
@@ -287,7 +287,6 @@ function Chiffre({ libelle, valeur, onPress, alerte, teinte }: { libelle: string
         paddingHorizontal: 10,
         paddingVertical: 8,
         backgroundColor: couleurs.carte,
-        backgroundImage: `radial-gradient(circle at 100% 0%, ${u.accent}38 0%, ${u.accent}00 45%), linear-gradient(140deg, ${u.clair} 0%, #FFFFFF 80%)`,
         opacity: pressed ? 0.7 : 1,
       })}
     >
