@@ -368,7 +368,7 @@ export default function EspaceCoach() {
                 {/* Client qui commence directement (abonnement à l'appli ou coaching en présence), sans Booster. */}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>
                   <Action petit icone={UserPlus} libelle="Nouveau client" onPress={() => router.setParams({ ...FERME, contact: 'nouveau-client' })} />
-                  <Action petit icone={Video} libelle="Faire un test" onPress={() => setChoixTest(true)} />
+                  <Action petit variante="contour" icone={Video} libelle="Faire un test" onPress={() => setChoixTest(true)} />
                 </View>
                 {choixTest && (
                   <ChoisirClientTest

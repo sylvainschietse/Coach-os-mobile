@@ -1,6 +1,6 @@
 // Suivis.tsx, CycleDialog.tsx et CycleProgrammeDialog.tsx d'origine (C13, C14) : un suivi de plusieurs mois par
 // client, découpé en cycles préparés puis activés par le coach. Un seul cycle actif ; activer termine le précédent.
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ExternalLink, Library, Pencil, Play, Plus } from '@/ui/icones';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ExternalLink, Library, Pencil, Play, Plus, SlidersHorizontal } from '@/ui/icones';
 import { useCallback, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
@@ -440,6 +440,15 @@ function DialogueProgrammeCycle({
   );
 }
 
+/** « Léa Martin » → « LM » : repère visuel de la ligne client, en attendant les photos. */
+const initiales = (nom: string) =>
+  nom
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((m) => m[0]!.toUpperCase())
+    .join('');
+
 function ProfilSuivi({
   coachId,
   p,
@@ -491,6 +500,9 @@ function ProfilSuivi({
         onPress={() => setOuvert((o) => !o)}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 }}
       >
+        <View aria-hidden style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: couleurs.rougeClair, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ fontFamily: polices.texteGras, fontSize: 15, color: couleurs.rougeTexte }}>{initiales(p.nom)}</Text>
+        </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text numberOfLines={1} style={{ fontFamily: polices.texteGras, fontSize: 16, color: couleurs.texte }}>
             {p.nom}
@@ -610,11 +622,14 @@ export function CyclesClients({
   const [recherche, setRecherche] = useState('');
   const [filtre, setFiltre] = useState<FiltreSuivis>('tous');
   const [tri, setTri] = useState<TriSuivis>('nom');
+  // Filtres et tri rangés derrière « Filtrer » : la liste des clients arrive tout de suite (audit design, point 4).
+  const [filtres, setFiltres] = useState(false);
+  const reglages = (filtre !== 'tous' ? 1 : 0) + (tri !== 'nom' ? 1 : 0);
   const visibles = profils.donnee ? listeSuivis(profils.donnee, { recherche, filtre, tri, jour: aujourdhuiParis() }) : undefined;
   return (
     <View>
-      <TitreDisplay taille={30}>Programmes des clients</TitreDisplay>
-      <Text style={[ts.doux, { fontSize: 14, marginTop: 4 }]}>Les programmes de chaque client, découpés en cycles. Tu prépares et actives les cycles.</Text>
+      <TitreDisplay taille={30}>Mes clients actifs</TitreDisplay>
+      <Text style={[ts.doux, { fontSize: 14, marginTop: 4 }]}>Touche un client pour voir et préparer ses programmes.</Text>
       {profils.erreur && (
         <Text accessibilityRole="alert" style={[ts.erreur, { marginTop: 16 }]}>
           Chargement impossible : {profils.erreur}
@@ -629,15 +644,25 @@ export function CyclesClients({
       {!!profils.donnee?.length && (
         <View style={{ marginTop: 16, gap: 10 }}>
           {/* En ligne : la recherche prend la largeur, pas une hauteur de 192 px. */}
-          <View style={{ flexDirection: 'row' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Recherche valeur={recherche} onChange={setRecherche} libelle="Rechercher un client" placeholder="Rechercher un client…" />
+            <Action
+              variante="contour"
+              icone={SlidersHorizontal}
+              libelle={reglages ? `Filtrer (${reglages})` : 'Filtrer'}
+              onPress={() => setFiltres((o) => !o)}
+            />
           </View>
-          <Puces>
-            {FILTRES_SUIVIS.map((f) => (
-              <Puce key={f.cle} libelle={f.libelle} actif={filtre === f.cle} onPress={() => setFiltre(f.cle)} />
-            ))}
-          </Puces>
-          <Selecteur libelle="Trier par" options={TRIS_SUIVIS} valeur={tri} onChange={setTri} />
+          {filtres && (
+            <>
+              <Puces>
+                {FILTRES_SUIVIS.map((f) => (
+                  <Puce key={f.cle} libelle={f.libelle} actif={filtre === f.cle} onPress={() => setFiltre(f.cle)} />
+                ))}
+              </Puces>
+              <Selecteur libelle="Trier par" options={TRIS_SUIVIS} valeur={tri} onChange={setTri} />
+            </>
+          )}
         </View>
       )}
       <View style={{ marginTop: 20, gap: 8 }}>
