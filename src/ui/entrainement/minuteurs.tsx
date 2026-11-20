@@ -38,6 +38,7 @@ import { maintenantMs } from '@/lib/temps';
 import { BoutonIcone } from '../coque';
 import { couleurs, polices, univers } from '../theme';
 import { Action, Confirmation, ts } from './commun';
+import { etatA11y } from '@/lib/accessibilite';
 
 interface Contexte {
   actif: boolean;
@@ -507,7 +508,7 @@ function Liste({
                 <Text numberOfLines={1} style={s.doux}>
                   {resume(f.reglage)} · {horloge(dureeTotale(compiler(f.reglage, f.son)))}
                 </Text>
-                <Text numberOfLines={1} style={[s.doux, { fontSize: 12 }]}>
+                <Text numberOfLines={1} style={[s.doux, { fontSize: 13 }]}>
                   {resumeSon(f.son)}
                 </Text>
               </Pressable>
@@ -526,7 +527,7 @@ function Liste({
           {FORMATS.map((f) => (
             <Pressable key={f.cle} accessibilityRole="button" onPress={() => onNouveau(f.defaut)} style={({ pressed }) => [s.format, pressed && { borderColor: C.rouge }]}>
               <Text style={s.nomFormat}>{f.nom}</Text>
-              <Text style={[s.doux, { fontSize: 12.5 }]}>{f.quoi}</Text>
+              <Text style={[s.doux, { fontSize: 13 }]}>{f.quoi}</Text>
             </Pressable>
           ))}
         </View>
@@ -586,7 +587,7 @@ function Reglages({
               <Pressable
                 key={x}
                 accessibilityRole="button"
-                accessibilityState={{ selected: choisi }}
+                {...etatA11y({ selected: choisi })}
                 accessibilityHint="Fait entendre la sonnerie"
                 onPress={() => {
                   onSon({ ...son, sonnerie: x });
@@ -608,7 +609,7 @@ function Reglages({
               <Pressable
                 key={v}
                 accessibilityRole="button"
-                accessibilityState={{ selected: son.preparationS === v }}
+                {...etatA11y({ selected: son.preparationS === v })}
                 onPress={() => onSon({ ...son, preparationS: v })}
                 style={[s.option, son.preparationS === v && { backgroundColor: C.texte }]}
               >
@@ -631,7 +632,7 @@ function Reglages({
         )}
         <Bouton libelle="Démarrer" onPress={onDemarrer} />
         <Bouton libelle={edition ? 'Mettre à jour ce format' : 'Enregistrer ce format'} contour onPress={onEnregistrer} />
-        <Text style={[s.doux, { fontSize: 12.5, textAlign: 'center' }]}>
+        <Text style={[s.doux, { fontSize: 13, textAlign: 'center' }]}>
           Écran verrouillé ou sur une autre appli, la sonnerie et les bips passent par les notifications : autorise-les quand le téléphone le demande. En mode Ne
           pas déranger, elles restent muettes.
         </Text>
@@ -743,7 +744,7 @@ function Reglette({ champ, valeur, onChange }: { champ: Champ; valeur: number; o
     <View style={s.ligne}>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={s.libelle}>{champ.libelle}</Text>
-        {!!champ.aide && <Text style={[s.doux, { fontSize: 12 }]}>{champ.aide}</Text>}
+        {!!champ.aide && <Text style={[s.doux, { fontSize: 13 }]}>{champ.aide}</Text>}
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel={`${champ.libelle} : moins`} onPress={() => onChange(borne(valeur - champ.pas))} style={s.pas}>
         <Text style={s.textePas}>−</Text>
@@ -758,10 +759,10 @@ function Reglette({ champ, valeur, onChange }: { champ: Champ; valeur: number; o
 
 function Interrupteur({ libelle, aide, valeur, onChange }: { libelle: string; aide?: string; valeur: boolean; onChange: (v: boolean) => void }) {
   return (
-    <Pressable accessibilityRole="switch" accessibilityState={{ checked: valeur }} accessibilityLabel={aide ? `${libelle} ${aide}` : libelle} onPress={() => onChange(!valeur)} style={s.ligne}>
+    <Pressable accessibilityRole="switch" {...etatA11y({ checked: valeur })} accessibilityLabel={aide ? `${libelle} ${aide}` : libelle} onPress={() => onChange(!valeur)} style={s.ligne}>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={s.libelle}>{libelle}</Text>
-        {!!aide && <Text style={[s.doux, { fontSize: 12 }]}>{aide}</Text>}
+        {!!aide && <Text style={[s.doux, { fontSize: 13 }]}>{aide}</Text>}
       </View>
       <View style={[s.bascule, valeur && { backgroundColor: C.vert }]}>
         <View style={[s.pastille, valeur && { transform: [{ translateX: 18 }], backgroundColor: '#FFFFFF' }]} />
@@ -791,7 +792,7 @@ function Bouton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!desactive }}
+      {...etatA11y({ disabled: !!desactive })}
       disabled={desactive}
       onPress={onPress}
       style={({ pressed }) => [
@@ -826,7 +827,7 @@ const s = StyleSheet.create({
   barre: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 40 },
   grandTitre: { fontFamily: polices.titre, fontSize: 34, letterSpacing: 1.2, color: C.texte },
   lien: { fontFamily: polices.texteMoyen, fontSize: 15, color: C.doux },
-  kicker: { fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: C.kicker, marginTop: 8 },
+  kicker: { fontFamily: polices.texteGras, fontSize: 13, letterSpacing: 1.4, textTransform: 'uppercase', color: C.kicker, marginTop: 8 },
   doux: { fontFamily: polices.texte, fontSize: 13.5, color: C.doux, lineHeight: 19 },
   erreur: { fontFamily: polices.texteMoyen, fontSize: 14, color: '#FF7A7E' },
   perso: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.carte, borderWidth: 1, borderColor: C.trait, borderRadius: 14, padding: 12 },

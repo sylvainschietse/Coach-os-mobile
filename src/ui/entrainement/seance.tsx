@@ -305,7 +305,7 @@ export function EditeurSeance({
                     <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                       {casesLigne(l).map(([k, v]) => (
                         <View key={k} style={{ flexBasis: `${100 / colonnes - 2}%`, flexGrow: 0, minWidth: 0, borderRadius: 8, backgroundColor: 'rgba(237,239,242,0.7)', paddingHorizontal: 8, paddingVertical: 6 }}>
-                          <Text style={{ fontFamily: polices.texteGras, fontSize: 10, textTransform: 'uppercase', color: couleurs.texteDoux }}>{k}</Text>
+                          <Text style={{ fontFamily: polices.texteGras, fontSize: 13, textTransform: 'uppercase', color: couleurs.texteDoux }}>{k}</Text>
                           <Text numberOfLines={1} style={{ fontFamily: polices.chiffres, fontSize: 13, color: couleurs.texte }}>
                             {v || '—'}
                           </Text>
@@ -313,7 +313,7 @@ export function EditeurSeance({
                       ))}
                     </View>
                     <View style={{ marginTop: 8 }}>
-                      <TexteLong texte={l.progression} libelle="Progression" style={{ fontSize: 12, color: couleurs.texteDoux }} />
+                      <TexteLong texte={l.progression} libelle="Progression" style={{ fontSize: 13, color: couleurs.texteDoux }} />
                     </View>
                     <Ligne style={{ marginTop: 12 }}>
                       <Action petit variante="contour" icone={Pencil} libelle="Modifier" desactive={verrouCycle} onPress={() => ouvrir({ mode: 'edit', ligne: brute, bloc: bloc.id })} />

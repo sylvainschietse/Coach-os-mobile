@@ -8,6 +8,7 @@ import type { Pastille, SemaineSuivi, StatutPastille } from '@/domain/suivi-entr
 
 import { couleurs, polices } from '../theme';
 import { ts } from './commun';
+import { etatA11y } from '@/lib/accessibilite';
 
 export const STATUTS: Record<StatutPastille, { libelle: string; couleur: string; fond: string; Icone: typeof Check }> = {
   faite: { libelle: 'Faite', couleur: couleurs.vert, fond: couleurs.vertClair, Icone: Check },
@@ -30,7 +31,7 @@ function Rond({ p, choisi, onPress }: { p: Pastille; choisi: boolean; onPress: (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${titreClient(p.titre)}, ${quand} : ${s.libelle.toLowerCase()}`}
-      accessibilityState={{ selected: choisi }}
+      {...etatA11y({ selected: choisi })}
       onPress={onPress}
       style={{ alignItems: 'center', gap: 2, width: 46 }}
     >
@@ -48,7 +49,7 @@ function Rond({ p, choisi, onPress }: { p: Pastille; choisi: boolean; onPress: (
       >
         <s.Icone size={16} color={plein ? '#FFFFFF' : s.couleur} />
       </View>
-      <Text numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }}>
+      <Text numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux }}>
         {p.date ? jourMois(p.date) : '—'}
       </Text>
     </Pressable>

@@ -8,6 +8,7 @@ import { ajouterJours, cleJour, grilleMois } from '@/domain/agenda';
 
 import { Libelle } from './crm/dossier';
 import { couleurs, espace, polices } from './theme';
+import { etatA11y } from '@/lib/accessibilite';
 
 const deux = (n: number) => String(n).padStart(2, '0');
 /** « jeudi 12 novembre 2026 ». */
@@ -40,7 +41,7 @@ export function ChampDate({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${libelle} : ${valide ? dateLongue(jour) : 'choisir une date'}`}
-          accessibilityState={{ expanded: ouvert }}
+          {...etatA11y({ expanded: ouvert })}
           onPress={() => setOuvert((o) => !o)}
           style={[styles.champ, { flex: 1 }, ouvert && styles.champOuvert, !!erreur && { borderColor: couleurs.rouge }]}
         >
@@ -109,7 +110,7 @@ export function MiniCalendrier({ jour, onChoisir }: { jour?: string; onChoisir: 
                 key={cle}
                 accessibilityRole="button"
                 accessibilityLabel={dateLongue(cle)}
-                accessibilityState={{ selected: choisi }}
+                {...etatA11y({ selected: choisi })}
                 onPress={() => onChoisir(cle)}
                 style={({ pressed }) => [styles.case, pressed && { backgroundColor: couleurs.rougeClair }]}
               >
@@ -167,7 +168,7 @@ export function ChampHeure({ libelle, heure, onChange, erreur, aide }: { libelle
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${libelle} : ${m ? heure : 'choisir une heure'}`}
-        accessibilityState={{ expanded: ouvert }}
+        {...etatA11y({ expanded: ouvert })}
         onPress={() => setOuvert((o) => !o)}
         style={[styles.champ, ouvert && styles.champOuvert, !!erreur && { borderColor: couleurs.rouge }]}
       >
@@ -223,7 +224,7 @@ function Pastille({ libelle, actif, desactive, onPress }: { libelle: string; act
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected: actif, disabled: desactive }}
+      {...etatA11y({ selected: actif, disabled: desactive })}
       onPress={onPress}
       style={({ pressed }) => [styles.pastille, actif && styles.pastilleActive, pressed && !actif && { backgroundColor: couleurs.rougeClair }, desactive && { opacity: 0.4 }]}
     >

@@ -37,6 +37,7 @@ import { Bouton, Carte, ChampNombre, ChampTexte, Erreur, Puce, Puces, SousTitre,
 import { BoutonDictee } from '../dictee';
 import { ChoixExercice } from '../programmes/choix-exercice';
 import { couleurs, espace, polices } from '../theme';
+import { etatA11y } from '@/lib/accessibilite';
 
 /** Suggestions quand le champ est vide : les activités qu'on déclare le plus souvent. */
 const RAPIDES = ['Séance de musculation', 'Body Pump', 'RPM', 'Course à pied', 'Yoga Vinyasa', 'Pilates au sol', 'Aquagym', 'Padel'];
@@ -405,7 +406,7 @@ export function FormulaireActiviteLibre({
               key={n}
               accessibilityRole="button"
               accessibilityLabel={`Effort ${n} sur 10, ${RESSENTIS[n]}`}
-              accessibilityState={{ selected: ressenti === n }}
+              {...etatA11y({ selected: ressenti === n })}
               onPress={() => setRessenti(ressenti === n ? undefined : n)}
               style={{
                 width: 36,

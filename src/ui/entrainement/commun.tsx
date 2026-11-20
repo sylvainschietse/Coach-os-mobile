@@ -24,6 +24,7 @@ import { useUnivers } from '../univers';
 import { photoProgramme, type ProgrammeIllustre } from '@/data/photos-programmes';
 import { roleWeb } from '@/lib/role-web';
 import { usePression } from '@/lib/usePression';
+import { etatA11y } from '@/lib/accessibilite';
 
 const survol = (e: PressableStateCallbackType) => !!(e as { hovered?: boolean }).hovered;
 
@@ -58,7 +59,7 @@ export function Action({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={nom ?? libelle}
-      accessibilityState={{ disabled: !!(desactive || attente), busy: attente }}
+      {...etatA11y({ disabled: !!(desactive || attente), busy: attente })}
       disabled={desactive || attente}
       onPress={presser}
       style={(e) => [
@@ -94,7 +95,7 @@ export function TexteLong({ texte, libelle, style }: { texte?: string; libelle?:
         {texte}
       </Text>
       {long && (
-        <Pressable accessibilityRole="button" accessibilityState={{ expanded: ouvert }} onPress={() => setOuvert(!ouvert)} style={styles.lienLigne}>
+        <Pressable accessibilityRole="button" {...etatA11y({ expanded: ouvert })} onPress={() => setOuvert(!ouvert)} style={styles.lienLigne}>
           <Text style={styles.lien}>{ouvert ? 'Replier' : 'Lire la suite'}</Text>
           <ChevronDown size={12} color={couleurs.rouge} style={ouvert ? { transform: [{ rotate: '180deg' }] } : undefined} />
         </Pressable>
@@ -216,7 +217,7 @@ export function ListeChoix<T>({
             <Pressable
               key={cle(x)}
               {...roleWeb('option')}
-              accessibilityState={{ selected: actif }}
+              {...etatA11y({ selected: actif })}
               onPress={() => onChoisir(x)}
               style={(e) => [styles.option, survol(e) && { backgroundColor: couleurs.discret }, actif && { backgroundColor: couleurs.rougeClair }]}
             >
@@ -274,13 +275,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
-  actionPetite: { minHeight: 36, paddingHorizontal: 12, borderRadius: 9 },
+  actionPetite: { minHeight: 44, paddingHorizontal: 12, borderRadius: 9 },
   actionTexte: { fontFamily: polices.texteMoyen, fontSize: 14 },
   texte: { fontFamily: polices.texte, fontSize: 14, lineHeight: 20, color: couleurs.texte },
   texteDoux: { fontFamily: polices.texte, fontSize: 14, lineHeight: 20, color: couleurs.texteDoux },
   libelleLong: { fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.texte },
   lien: { fontFamily: polices.texteMoyen, fontSize: 12, color: couleurs.rouge },
-  lienLigne: { flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', minHeight: 24 },
+  lienLigne: { flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', minHeight: 44 },
   puce: { borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2, alignSelf: 'flex-start' },
   puceTexte: { fontFamily: polices.texteGras, fontSize: 12, color: couleurs.texte },
   voile: { flex: 1, backgroundColor: 'rgba(17,18,22,0.55)', alignItems: 'center', justifyContent: 'center', padding: 16 },
@@ -301,7 +302,7 @@ export function CaseSelection({ nom, valeur, desactive, onChange }: { nom: strin
     <Pressable
       accessibilityRole="checkbox"
       accessibilityLabel={nom}
-      accessibilityState={{ checked: valeur, disabled: desactive }}
+      {...etatA11y({ checked: valeur, disabled: desactive })}
       disabled={desactive}
       onPress={() => onChange(!valeur)}
       style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', opacity: desactive ? 0.4 : 1 }}

@@ -10,6 +10,7 @@ import type { Contact, IssueBooster } from '@/domain/crm';
 import { Bouton } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { Modale } from './dossier';
+import { etatA11y } from '@/lib/accessibilite';
 
 const OPTIONS: { issue: IssueBooster; titre: string; texte: (prenom: string) => string }[] = [
   {
@@ -83,7 +84,7 @@ export function ConclusionBooster({
             <Pressable
               key={o.issue}
               accessibilityRole="radio"
-              accessibilityState={{ checked: choisi }}
+              {...etatA11y({ checked: choisi })}
               onPress={() => setIssue(o.issue)}
               style={[styles.option, choisi && styles.optionChoisie]}
             >

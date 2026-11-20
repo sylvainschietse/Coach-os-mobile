@@ -150,7 +150,7 @@ export function PlanSemaine({ clientId, modifiable }: { clientId: string; modifi
                   <View key={r.id} style={{ borderTopWidth: 1, borderTopColor: couleurs.bordure, paddingTop: espace(2), gap: espace(1) }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: espace(2) }}>
                       <View style={{ flexShrink: 1 }}>
-                        <Text style={{ fontSize: 11, fontFamily: polices.texteGras, letterSpacing: 1, textTransform: 'uppercase', color: couleurs.rouge }}>
+                        <Text style={{ fontSize: 12, fontFamily: polices.texteGras, letterSpacing: 1, textTransform: 'uppercase', color: couleurs.rouge }}>
                           {libelleMoment(r.moment)}
                         </Text>
                         <Texte style={{ fontSize: 15 }}>{r.titre}</Texte>

@@ -241,7 +241,7 @@ function PanneauCloche({ onFermer, ...options }: OptionsCloche & { onFermer: () 
 }
 
 const styles = StyleSheet.create({
-  bouton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  bouton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   pastille: {
     position: 'absolute',
     top: 3,
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pastilleTexte: { fontFamily: polices.texteGras, fontSize: 10, color: '#FFFFFF' },
+  pastilleTexte: { fontFamily: polices.texteGras, fontSize: 12, color: '#FFFFFF' },
   voile: { flex: 1, backgroundColor: 'rgba(17,18,22,0.45)', alignItems: 'flex-end', paddingHorizontal: espace(3) },
   panneau: {
     width: '100%',

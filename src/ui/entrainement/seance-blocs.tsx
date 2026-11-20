@@ -42,6 +42,7 @@ import { DefilementClavier } from '../clavier';
 import { polices } from '../theme';
 import { champsSaisie, DIFFICULTES, invalide, proposition, sale, seriesDuBrouillon, validerSeries, vide, type Brouillon, type Enregistrement } from './seance-log';
 import { VideoIntegree } from './video-integree';
+import { etatA11y } from '@/lib/accessibilite';
 
 /** Couleurs du mode séance : sombre, rouge vif pour l'action, vert pour ce qui est fait. */
 export const nuit = {
@@ -317,7 +318,7 @@ export function SeanceParBloc({
               </View>
             ))}
             {fautifBloc(b) && (
-              <Text accessibilityRole="alert" style={{ fontFamily: polices.texte, fontSize: 12, color: nuit.rougeDoux }}>
+              <Text accessibilityRole="alert" style={{ fontFamily: polices.texte, fontSize: 13, color: nuit.rougeDoux }}>
                 Charge : de 0 à 1 000 kg. Répétitions, durée en secondes et calories : nombres entiers. Distance en mètres.
               </Text>
             )}
@@ -447,7 +448,7 @@ export function Principal({ libelle, onPress, desactive, couleur = nuit.rouge, f
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!desactive }}
+      {...etatA11y({ disabled: !!desactive })}
       disabled={desactive}
       onPress={onPress}
       style={({ pressed }) => [styles.principal, { backgroundColor: couleur, shadowColor: couleur }, desactive && { opacity: 0.45 }, pressed && { opacity: 0.85 }]}
@@ -464,7 +465,7 @@ function Separateur({ texte }: { texte: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       <View style={{ flex: 1, height: 1, backgroundColor: '#2A2D36' }} />
-      <Text style={[styles.doux, { fontSize: 12 }]}>{texte}</Text>
+      <Text style={[styles.doux, { fontSize: 13 }]}>{texte}</Text>
       <View style={{ flex: 1, height: 1, backgroundColor: '#2A2D36' }} />
     </View>
   );
@@ -517,7 +518,7 @@ function CarteExercice({
           {tag && !l.exercice.videoUrl && <Text style={styles.tag}>{tag}</Text>}
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
             <Text style={styles.nom}>{l.exercice.nom}</Text>
-            {prevu && <Text style={{ fontFamily: polices.texte, fontSize: 12, color: nuit.orange }}>⇄ À la place de {prevu}</Text>}
+            {prevu && <Text style={{ fontFamily: polices.texte, fontSize: 13, color: nuit.orange }}>⇄ À la place de {prevu}</Text>}
           </View>
           <Pressable
             accessibilityRole="button"
@@ -527,7 +528,7 @@ function CarteExercice({
             style={({ pressed }) => [styles.remplacer, pressed && { opacity: 0.7 }]}
           >
             <ArrowLeftRight size={13} color={nuit.rougeDoux} />
-            <Text style={{ fontFamily: polices.texteMoyen, fontSize: 12, color: nuit.rougeDoux }}>Remplacer</Text>
+            <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: nuit.rougeDoux }}>Remplacer</Text>
           </Pressable>
         </View>
         <View style={styles.puces}>
@@ -548,18 +549,18 @@ function CarteExercice({
         )}
         {suggestion?.rm != null && suggestion.chargeMin !== null && (
           <Pressable accessibilityRole="button" onPress={() => onRemplir(suggestion.chargeMin!)} style={styles.suggestion}>
-            <Text style={{ fontFamily: polices.texte, fontSize: 12, color: '#D9DBE0', flex: 1 }}>
+            <Text style={{ fontFamily: polices.texte, fontSize: 13, color: '#D9DBE0', flex: 1 }}>
               Suggestion : {suggestion.chargeMin}
               {suggestion.chargeMax !== suggestion.chargeMin ? `–${suggestion.chargeMax}` : ''} kg ({suggestion.pourcentMin} % de ton 1RM)
             </Text>
-            <Text style={{ fontFamily: polices.texteMoyen, fontSize: 12, color: nuit.rougeDoux }}>Utiliser</Text>
+            <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: nuit.rougeDoux }}>Utiliser</Text>
           </Pressable>
         )}
 
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 2 }}>
           <View style={{ width: 28 }} />
           {champs.map((c) => (
-            <Text key={c.m} numberOfLines={1} style={[styles.doux, { flex: 1, fontSize: 11 }]}>
+            <Text key={c.m} numberOfLines={1} style={[styles.doux, { flex: 1, fontSize: 13 }]}>
               {titre(c)}
             </Text>
           ))}
@@ -623,7 +624,7 @@ function BandeauRepos({ repos, onFin, onPasser }: { repos: Repos; onFin: () => v
   return (
     <View accessibilityRole={'timer' as never} style={styles.repos}>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.doux, { fontSize: 12 }]}>Repos · {repos.libelle}</Text>
+        <Text style={[styles.doux, { fontSize: 13 }]}>Repos · {repos.libelle}</Text>
         <Text style={{ fontFamily: polices.chiffres, fontSize: 26, color: nuit.texte }}>
           {Math.floor(restant / 60)}:{String(restant % 60).padStart(2, '0')}
         </Text>
@@ -682,7 +683,7 @@ function Bilan({
                 <Text style={{ flex: 1, fontFamily: polices.texte, fontSize: 14, color: '#D9DBE0' }} numberOfLines={1}>
                   {i + 1} · {titreBloc(b.titre) || b.lignes.map((l) => l.exercice.nom).join(' + ')}
                 </Text>
-                {ok ? <CheckCircle2 size={18} color={nuit.vert} /> : <Text style={{ fontFamily: polices.texteMoyen, fontSize: 12, color: nuit.rougeDoux }}>à faire</Text>}
+                {ok ? <CheckCircle2 size={18} color={nuit.vert} /> : <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: nuit.rougeDoux }}>à faire</Text>}
               </Pressable>
               {b.lignes
                 .filter((l) => d.remplacements?.[l.id])
@@ -700,14 +701,14 @@ function Bilan({
           <Text style={styles.nom}>
             Ressenti (effort perçu) <Text style={{ fontFamily: polices.chiffres, color: nuit.doux }}>{d.note ?? '—'}/10</Text>
           </Text>
-          <Text style={[styles.doux, { fontSize: 12 }]}>1 = très facile · 10 = effort maximal. Facultatif.</Text>
+          <Text style={[styles.doux, { fontSize: 13 }]}>1 = très facile · 10 = effort maximal. Facultatif.</Text>
           <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'space-between' }}>
             {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
               <Pressable
                 key={n}
                 accessibilityRole="radio"
                 accessibilityLabel={`Ressenti ${n} sur 10`}
-                accessibilityState={{ checked: d.note === n }}
+                {...etatA11y({ checked: d.note === n })}
                 onPress={() => onNote(n)}
                 style={[styles.note, d.note === n && { backgroundColor: nuit.rouge, borderColor: nuit.rouge }]}
               >
@@ -750,7 +751,7 @@ function Stat({ valeur, libelle }: { valeur: string; libelle: string }) {
       <Text style={{ fontFamily: polices.titre, fontSize: 26, color: nuit.texte, letterSpacing: 0.5 }} numberOfLines={1} adjustsFontSizeToFit>
         {valeur}
       </Text>
-      <Text style={[styles.doux, { fontSize: 11.5 }]}>{libelle}</Text>
+      <Text style={[styles.doux, { fontSize: 13 }]}>{libelle}</Text>
     </View>
   );
 }
@@ -785,13 +786,13 @@ function FeuilleRemplacement({
         <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#3A3E49', alignSelf: 'center' }} />
         <Text style={[styles.nom, { fontSize: 17 }]}>Remplacer « {l.exercice.nom} »</Text>
         <View style={{ gap: 6 }}>
-          <Text style={[styles.doux, { fontSize: 12.5 }]}>Pourquoi ?</Text>
+          <Text style={[styles.doux, { fontSize: 13 }]}>Pourquoi ?</Text>
           <View style={styles.puces}>
             {RAISONS_REMPLACEMENT.map((x) => (
               <Pressable
                 key={x}
                 accessibilityRole="radio"
-                accessibilityState={{ checked: raison === x }}
+                {...etatA11y({ checked: raison === x })}
                 onPress={() => setRaison(x)}
                 style={[styles.choix, raison === x && { backgroundColor: nuit.rouge, borderColor: nuit.rouge }]}
               >
@@ -817,7 +818,7 @@ function FeuilleRemplacement({
             </Pressable>
           )}
         </View>
-        <Text style={[styles.doux, { fontSize: 12.5 }]}>
+        <Text style={[styles.doux, { fontSize: 13 }]}>
           {catalogue.erreur
             ? catalogue.erreur
             : !catalogue.donnee
@@ -833,13 +834,13 @@ function FeuilleRemplacement({
             <Pressable
               key={e.id}
               accessibilityRole="radio"
-              accessibilityState={{ checked: choisi?.id === e.id }}
+              {...etatA11y({ checked: choisi?.id === e.id })}
               onPress={() => setChoisi(e)}
               style={[styles.alternative, choisi?.id === e.id && { borderColor: nuit.rouge, backgroundColor: '#2A1416' }]}
             >
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={[styles.nom, { fontSize: 14 }]}>{e.nom}</Text>
-                <Text style={[styles.doux, { fontSize: 12 }]} numberOfLines={1}>
+                <Text style={[styles.doux, { fontSize: 13 }]} numberOfLines={1}>
                   {[e.famille, ...(e.materiel ?? [])].filter(Boolean).join(' · ')}
                 </Text>
               </View>
@@ -877,13 +878,13 @@ function FeuilleRemplacement({
 const styles = StyleSheet.create({
   enTeteDoux: { fontFamily: polices.texte, fontSize: 13.5, color: '#B7BAC3' },
   titreSeance: { fontFamily: polices.titre, fontSize: 20, letterSpacing: 0.8, color: '#FFFFFF' },
-  kicker: { fontFamily: polices.texteGras, fontSize: 11, letterSpacing: 0.9, textTransform: 'uppercase', color: '#FF5A5F' },
+  kicker: { fontFamily: polices.texteGras, fontSize: 13, letterSpacing: 0.9, textTransform: 'uppercase', color: '#FF5A5F' },
   titreBloc: { fontFamily: polices.titre, fontSize: 32, letterSpacing: 0.6, lineHeight: 34, color: '#FFFFFF' },
   doux: { fontFamily: polices.texte, fontSize: 13, color: nuit.doux },
   puces: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  puce: { fontFamily: polices.texteMoyen, fontSize: 12, color: '#D9DBE0', backgroundColor: '#262932', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, overflow: 'hidden' },
+  puce: { fontFamily: polices.texteMoyen, fontSize: 13, color: '#D9DBE0', backgroundColor: '#262932', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, overflow: 'hidden' },
   carte: { backgroundColor: nuit.carte, borderWidth: 1, borderColor: nuit.bordure, borderRadius: 14, overflow: 'hidden' },
-  tag: { fontFamily: polices.texteGras, fontSize: 12, color: '#fff', backgroundColor: nuit.rouge, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
+  tag: { fontFamily: polices.texteGras, fontSize: 13, color: '#fff', backgroundColor: nuit.rouge, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
   nom: { fontFamily: polices.texteGras, fontSize: 15.5, color: '#FFFFFF' },
   remplacer: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: '#5A2427', borderRadius: 8, paddingHorizontal: 8, minHeight: 30 },
   champ: {
@@ -899,7 +900,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
   },
-  coche: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: '#3A3E49', alignItems: 'center', justifyContent: 'center' },
+  coche: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#3A3E49', alignItems: 'center', justifyContent: 'center' },
   suggestion: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, borderWidth: 1, borderColor: '#5A2427', backgroundColor: '#2A1416', padding: 10 },
   pied: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 14, paddingTop: 12, gap: 10, backgroundColor: 'rgba(14,15,19,0.96)', borderTopWidth: 1, borderTopColor: '#1E2027' },
   principal: {
@@ -920,11 +921,11 @@ const styles = StyleSheet.create({
   secondaireTexte: { fontFamily: polices.texteGras, fontSize: 15, color: nuit.texte },
   repos: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: nuit.carte, borderWidth: 1, borderColor: nuit.bordure, borderRadius: 14, padding: 12 },
   note: { width: '18%', height: 38, borderRadius: 8, borderWidth: 1, borderColor: nuit.bordureChamp, alignItems: 'center', justifyContent: 'center' },
-  choix: { borderWidth: 1, borderColor: '#3A3E49', borderRadius: 18, paddingHorizontal: 12, minHeight: 34, justifyContent: 'center' },
+  choix: { borderWidth: 1, borderColor: '#3A3E49', borderRadius: 18, paddingHorizontal: 12, minHeight: 44, justifyContent: 'center' },
   choixTexte: { fontFamily: polices.texteMoyen, fontSize: 13, color: '#D9DBE0' },
-  changement: { fontFamily: polices.texte, fontSize: 12, color: nuit.orange, backgroundColor: '#2B1C10', borderRadius: 8, padding: 8, overflow: 'hidden' },
+  changement: { fontFamily: polices.texte, fontSize: 13, color: nuit.orange, backgroundColor: '#2B1C10', borderRadius: 8, padding: 8, overflow: 'hidden' },
   feuille: { backgroundColor: nuit.carte, borderTopWidth: 1, borderTopColor: '#2A2D36', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 16, gap: 12 },
   recherche: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: '#3A3E49', backgroundColor: nuit.champ, borderRadius: 10, paddingHorizontal: 12 },
   alternative: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#2A2D36', backgroundColor: nuit.champ, borderRadius: 12, padding: 10, minHeight: 52 },
-  info: { fontFamily: polices.texte, fontSize: 12, color: '#7FDCA4', backgroundColor: '#11281B', borderRadius: 10, padding: 10, overflow: 'hidden' },
+  info: { fontFamily: polices.texte, fontSize: 13, color: '#7FDCA4', backgroundColor: '#11281B', borderRadius: 10, padding: 10, overflow: 'hidden' },
 });

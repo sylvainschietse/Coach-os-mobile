@@ -28,6 +28,7 @@ import { BoutonPanneauMinuteurs, useMinuteurs } from './minuteurs';
 import { useModeSeance } from './seance-libre';
 import { SeanceLog } from './seance-log';
 import { MesSeances } from '../suivi/mes-seances';
+import { etatA11y } from '@/lib/accessibilite';
 
 /** Garde des brouillons (GardeBrouillon d'origine), montée une fois dans l'espace client. */
 export function GardeBrouillon() {
@@ -453,7 +454,7 @@ function ProchaineSeance({
           Sans téléphone : tu t’entraînes tranquille et tu racontes ta séance à la fin, en 30 secondes.
         </Text>
       )}
-      <Text accessibilityRole="button" onPress={onProgramme} style={{ alignSelf: 'center', paddingVertical: 6, fontFamily: polices.texte, fontSize: 13, color: 'rgba(255,255,255,0.9)', textDecorationLine: 'underline' }}>
+      <Text accessibilityRole="button" onPress={onProgramme} style={{ alignSelf: 'center', paddingVertical: 13, paddingHorizontal: 8, fontFamily: polices.texte, fontSize: 14, color: 'rgba(255,255,255,0.9)', textDecorationLine: 'underline' }}>
         Choisir une autre séance
       </Text>
     </View>
@@ -465,7 +466,7 @@ function ActionSurSombre({ libelle, icone: Icone, onPress, desactive }: { libell
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!desactive }}
+      {...etatA11y({ disabled: !!desactive })}
       disabled={desactive}
       onPress={onPress}
       style={({ pressed }) => [styles.surSombre, { opacity: desactive ? 0.45 : pressed ? 0.7 : 1 }]}

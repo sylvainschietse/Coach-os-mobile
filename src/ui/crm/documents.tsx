@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
   detail: { fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux, flexShrink: 1 },
   ligne: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: espace(2) },
   supprimer: { paddingHorizontal: 12, lineHeight: 44, fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.rouge },
-  raison: { marginTop: 2, fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux },
+  raison: { marginTop: 2, fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux },
   retour: { fontFamily: polices.texte, fontSize: 13, color: couleurs.vert },
   erreur: { fontFamily: polices.texte, fontSize: 13, color: couleurs.rouge },
   valeur: { fontFamily: polices.texte, fontSize: 14, color: couleurs.texte, lineHeight: 44 },

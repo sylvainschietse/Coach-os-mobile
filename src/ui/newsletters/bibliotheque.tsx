@@ -10,6 +10,7 @@ import type { Cible, Theme } from '@/domain/newsletters';
 import { Puce, Puces } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { imageIllustration } from './illustrations';
+import { etatA11y } from '@/lib/accessibilite';
 
 export type ArticleBibliotheque = Theme & { categorie?: string; /** Temps de lecture, en minutes. */ lecture?: number };
 
@@ -103,7 +104,7 @@ function TuileCategorie({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected: active }}
+      {...etatA11y({ selected: active })}
       accessibilityLabel={`Catégorie ${c.nom}, ${nombre} article${nombre > 1 ? 's' : ''}`}
       onPress={onPress}
       style={({ pressed }) => [styles.tuile, { width: largeur, height: Math.round(largeur / (large ? 2.4 : 1.45)), opacity: estompee ? 0.45 : pressed ? 0.85 : 1 }, active && { borderWidth: 3, borderColor: c.couleur }]}
@@ -168,7 +169,7 @@ const styles = StyleSheet.create({
   compte: { fontFamily: polices.chiffres, fontSize: 13, color: couleurs.texteDoux },
   carte: { width: 232 },
   couverture: { width: '100%', aspectRatio: 1.5, borderRadius: 14, overflow: 'hidden', backgroundColor: couleurs.discret },
-  rubrique: { fontFamily: polices.texteGras, fontSize: 10.5, letterSpacing: 1.4, textTransform: 'uppercase' },
+  rubrique: { fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase' },
   titre: { fontFamily: polices.texteGras, fontSize: 15, lineHeight: 20, color: couleurs.texte },
   meta: { fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux },
 });

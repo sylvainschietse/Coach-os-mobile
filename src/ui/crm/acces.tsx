@@ -19,6 +19,7 @@ import { BoutonContour } from '../coque';
 import { Puce, Puces, Texte } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { EnvoiMessage, useCoachNom } from './commun';
+import { etatA11y } from '@/lib/accessibilite';
 
 /** Lien d'installation pour Android (l'APK de test, ou la fiche du store une fois publiée). */
 export const LIEN_APPLI = process.env.EXPO_PUBLIC_LIEN_APPLI || adresseWeb('/');
@@ -158,7 +159,7 @@ export function BoutonEtape({ libelle, onPress, desactive }: { libelle: string; 
   return (
     <Text
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!desactive }}
+      {...etatA11y({ disabled: !!desactive })}
       onPress={desactive ? undefined : onPress}
       style={{
         minHeight: 44,

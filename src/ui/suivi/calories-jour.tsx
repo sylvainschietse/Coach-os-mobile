@@ -18,6 +18,7 @@ import { useCharger } from '@/lib/useCharger';
 import { ts } from '../entrainement/commun';
 import { Jauge } from '../motivation/badges';
 import { couleurs, polices } from '../theme';
+import { etatA11y } from '@/lib/accessibilite';
 
 const JOURS_EN_ARRIERE = 30;
 const kcal = (n: number) => `${new Intl.NumberFormat('fr-FR').format(Math.round(n))} kcal`;
@@ -153,7 +154,7 @@ function Fleche({ sens, desactive, onPress }: { sens: 'avant' | 'apres'; desacti
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={sens === 'avant' ? 'Jour précédent' : 'Jour suivant'}
-      accessibilityState={{ disabled: desactive }}
+      {...etatA11y({ disabled: desactive })}
       disabled={desactive}
       onPress={onPress}
       hitSlop={8}
@@ -199,7 +200,7 @@ export function TuilesDuJour({ clientId, onOuvrir }: { clientId: string; onOuvri
   const nombre = (n: number) => new Intl.NumberFormat('fr-FR').format(Math.round(n));
   const tuile = (fond: string, encre: string, kicker: string, valeur: string, detail: string, part: number | undefined, jauge: string, pied: string) => (
     <Pressable accessibilityRole={onOuvrir ? 'button' : undefined} accessibilityLabel={`${kicker} : ${valeur}, ${detail}`} disabled={!onOuvrir} onPress={onOuvrir} style={{ flex: 1, minWidth: 0, borderRadius: 22, padding: 14, gap: 6, backgroundColor: fond }}>
-      <Text style={{ fontFamily: polices.texteGras, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: jauge }}>{kicker}</Text>
+      <Text style={{ fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', color: jauge }}>{kicker}</Text>
       <Text style={{ fontFamily: polices.texteGras, fontSize: 24, color: encre }}>{valeur}</Text>
       <Text style={{ fontFamily: polices.texte, fontSize: 12.5, color: encre, marginTop: -4 }}>{detail}</Text>
       {part !== undefined && <Jauge part={part} couleur={jauge} fond="rgba(255,255,255,0.7)" hauteur={8} />}

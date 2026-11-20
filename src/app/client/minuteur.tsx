@@ -10,6 +10,7 @@ import { annulerSonneries, ecouter, jouer, preparerSons, programmerAlertes, useS
 import { maintenantMs } from '@/lib/temps';
 import { Bouton, Carte, Ecran, Texte } from '@/ui/composants';
 import { couleurs, espace, polices } from '@/ui/theme';
+import { etatA11y } from '@/lib/accessibilite';
 
 type Marche = { debutMs: number; pausesMs: number; pauseDepuisMs?: number; alertes: (string | null)[] };
 
@@ -113,7 +114,7 @@ export default function Minuteur() {
               <Pressable
                 key={x}
                 accessibilityRole="button"
-                accessibilityState={{ selected: son.sonnerie === x }}
+                {...etatA11y({ selected: son.sonnerie === x })}
                 onPress={() => {
                   const s = { ...son, sonnerie: x };
                   setSon(s);

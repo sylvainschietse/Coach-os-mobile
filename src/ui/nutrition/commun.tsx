@@ -24,8 +24,8 @@ export function Valeurs({ n, cible }: { n: Nutrition; cible?: Nutrition | null }
       ).map(([k, libelle]) => (
         <View key={k} style={{ flex: 1, minWidth: 0, borderRadius: 8, backgroundColor: 'rgba(237,239,242,0.6)', paddingHorizontal: 4, paddingVertical: 8, alignItems: 'center' }}>
           <Text style={{ fontFamily: polices.texteGras, fontSize: 14, color: couleurs.texte }}>{k === 'kcal' ? Math.round(n[k]) : round(n[k])}</Text>
-          <Text style={{ fontFamily: polices.texte, fontSize: 10, color: couleurs.texteDoux }}>{libelle}</Text>
-          {cible && <Text style={{ marginTop: 4, fontFamily: polices.texte, fontSize: 10, color: couleurs.texteDoux }}>/ {Math.round(cible[k])}</Text>}
+          <Text style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux }}>{libelle}</Text>
+          {cible && <Text style={{ marginTop: 4, fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux }}>/ {Math.round(cible[k])}</Text>}
         </View>
       ))}
     </View>
@@ -39,9 +39,9 @@ export function Bloc({ children, style }: { children: ReactNode; style?: StylePr
 /** Lien `target=_blank` d'origine, souligné. */
 export function Lien({ url, children, icone, petit }: { url: string; children: string; icone?: boolean; petit?: boolean }) {
   return (
-    <Pressable accessibilityRole="link" onPress={() => Linking.openURL(url)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: petit ? 20 : 32 }}>
+    <Pressable accessibilityRole="link" onPress={() => Linking.openURL(url)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 32 }}>
       {icone && <ExternalLink size={16} color={couleurs.rouge} />}
-      <Text style={{ fontFamily: icone ? polices.texteMoyen : polices.texte, fontSize: petit ? 11 : icone ? 14 : 12, color: icone ? couleurs.rouge : couleurs.texte, textDecorationLine: 'underline' }}>
+      <Text style={{ fontFamily: icone ? polices.texteMoyen : polices.texte, fontSize: icone ? 14 : 12, color: icone ? couleurs.rouge : couleurs.texte, textDecorationLine: 'underline' }}>
         {children}
       </Text>
     </Pressable>

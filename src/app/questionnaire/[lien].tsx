@@ -21,6 +21,7 @@ import { Bouton, Carte, ChampTexte, Ecran, Erreur, Puce, Puces, Texte, Titre } f
 import { LienPolitique } from '@/ui/consentement';
 import { CaseACocher } from '@/ui/crm/dossier';
 import { couleurs, espace, polices } from '@/ui/theme';
+import { etatA11y } from '@/lib/accessibilite';
 
 const normaliser = { telephone: normaliserTelephone, email: normaliserEmail };
 
@@ -210,7 +211,7 @@ function ChampQuestion({ question: q, valeur, erreur, onChange }: { question: Qu
                 key={n}
                 accessibilityRole="button"
                 accessibilityLabel={`${n} sur 10`}
-                accessibilityState={{ selected: actif }}
+                {...etatA11y({ selected: actif })}
                 onPress={() => onChange(n)}
                 style={{
                   flex: 1,

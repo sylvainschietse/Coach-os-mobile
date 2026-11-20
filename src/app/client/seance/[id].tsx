@@ -19,6 +19,7 @@ import { vibrer } from '@/lib/vibrer';
 import { Bouton, Carte, Chargement, ChampNombre, Ecran, Erreur, SousTitre, Texte, Titre } from '@/ui/composants';
 import { VignetteVideo } from '@/ui/entrainement/vignette-video';
 import { couleurs, espace, polices } from '@/ui/theme';
+import { etatA11y } from '@/lib/accessibilite';
 
 type Repos = { finMs: number; libelle: string; alerte: string | null };
 
@@ -163,7 +164,7 @@ export default function RealiserSeance() {
                       ))}
                       <Pressable
                         accessibilityRole="checkbox"
-                        accessibilityState={{ checked: serie.validee }}
+                        {...etatA11y({ checked: serie.validee })}
                         accessibilityLabel={`Valider la série ${serie.index + 1}`}
                         onPress={() => {
                           if (serie.validee) changer(ligne.id, serie.index, annulerValidation);

@@ -29,6 +29,7 @@ import { AVERTISSEMENT, constats, pistes, type BilanPostural, type Constat, type
 import { Bouton } from '../composants';
 import { Modale } from '../crm/dossier';
 import { couleurs, espace, polices } from '../theme';
+import { etatA11y } from '@/lib/accessibilite';
 
 export const COULEUR_NIVEAU: Record<Niveau, { fond: string; texte: string; plein: string; libelle: string }> = {
   normal: { fond: couleurs.vertClair, texte: couleurs.vert, plein: couleurs.vert, libelle: 'Dans la norme' },
@@ -423,7 +424,7 @@ function CarteMesure({
   const cote = coteDe(c.id);
   return (
     <View style={[styles.carte, { gap: espace(2), borderLeftWidth: 0 }]}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: ouvert }} onPress={() => setOuvert(!ouvert)} style={{ gap: espace(2) }}>
+      <Pressable accessibilityRole="button" {...etatA11y({ expanded: ouvert })} onPress={() => setOuvert(!ouvert)} style={{ gap: espace(2) }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: espace(2), alignItems: 'flex-start' }}>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={styles.gras}>{c.titre}</Text>
@@ -712,11 +713,11 @@ const styles = StyleSheet.create({
   texteClair: { fontFamily: polices.texte, fontSize: 13, lineHeight: 19, color: '#DFE2E7' },
   doux: { fontFamily: polices.texte, fontSize: 13, lineHeight: 18, color: couleurs.texteDoux },
   aide: { fontFamily: polices.texte, fontSize: 12, lineHeight: 17, color: couleurs.texteDoux },
-  surtitre: { fontFamily: polices.texteGras, fontSize: 11, letterSpacing: 0.6, textTransform: 'uppercase', color: couleurs.texteDoux },
+  surtitre: { fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 0.6, textTransform: 'uppercase', color: couleurs.texteDoux },
   chiffres: { fontFamily: polices.chiffres, fontSize: 12, color: couleurs.texte },
   chiffresDoux: { fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.rougeTexte },
   valeur: { fontFamily: polices.chiffres, fontSize: 20 },
-  badge: { fontFamily: polices.texteMoyen, fontSize: 11, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
+  badge: { fontFamily: polices.texteMoyen, fontSize: 12, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
   pastille: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   pastilleTexte: { fontFamily: polices.chiffres, fontSize: 14, color: '#FFFFFF' },
   rail: { height: 12, borderRadius: 6, backgroundColor: couleurs.discret, overflow: 'hidden' },
@@ -727,7 +728,7 @@ const styles = StyleSheet.create({
   tuile: { flex: 1, backgroundColor: couleurs.fond, borderRadius: 12, padding: 10, alignItems: 'center', gap: 2 },
   tuileValeur: { fontFamily: polices.chiffres, fontSize: 18, color: couleurs.texte },
   tuileLibelle: { fontFamily: polices.texteMoyen, fontSize: 12, color: couleurs.texte },
-  tuileAide: { fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux, textAlign: 'center' },
+  tuileAide: { fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux, textAlign: 'center' },
   encadreSombre: { backgroundColor: couleurs.secondaire, borderRadius: 12, padding: 12, gap: 6 },
   encadreOrange: { fontFamily: polices.texte, fontSize: 13, lineHeight: 18, color: '#7A2A08', backgroundColor: couleurs.orangeClair, borderRadius: 10, padding: 10, overflow: 'hidden' },
   puces: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },

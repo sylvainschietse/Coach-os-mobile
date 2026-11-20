@@ -19,6 +19,7 @@ import { BoutonContour } from '../coque';
 import { Carte } from '../composants';
 import { couleurs, espace, polices, univers, type CleUnivers } from '../theme';
 import { adresseQuestionnaire, CarteRelance, useReglagesRelances, dateCourte, EnvoiMessage, jourLisible, nomComplet, useCoachNom } from './commun';
+import { etatA11y } from '@/lib/accessibilite';
 
 export type DonneesVueEnsemble = {
   contacts: ContactResume[];
@@ -257,11 +258,11 @@ function FlecheMois({ sens, nom, desactive, onPress }: { sens: string; nom: stri
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={nom}
-      accessibilityState={{ disabled: !!desactive }}
+      {...etatA11y({ disabled: !!desactive })}
       disabled={desactive}
       onPress={onPress}
       hitSlop={6}
-      style={{ width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: univers.ambre.clair, opacity: desactive ? 0.35 : 1 }}
+      style={{ width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: univers.ambre.clair, opacity: desactive ? 0.35 : 1 }}
     >
       <Text style={{ fontFamily: polices.texteGras, fontSize: 18, color: univers.ambre.fonce }}>{sens}</Text>
     </Pressable>
