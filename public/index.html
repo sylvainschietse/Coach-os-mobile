@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>%WEB_TITLE%</title>
+    <script>
+      // Lien « Répondre » des mails de rendez-vous (…/rdv/<jeton>) : on l'ouvre sur la page légère rdv.html,
+      // qui s'affiche tout de suite même en 4G faible ou sur un vieil iPhone, au lieu de charger l'appli complète.
+      // Ce fichier sert aussi de 404.html sur GitHub Pages : les anciens liens déjà envoyés passent par ici.
+      (function () {
+        var m = /^(.*)\/rdv\/([0-9a-fA-F-]{36})\/?$/.exec(window.location.pathname);
+        if (m) window.location.replace(m[1] + '/rdv.html?j=' + m[2] + window.location.search.replace(/^\?/, '&') + window.location.hash);
+      })();
+    </script>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+      #attente {
+        margin: auto;
+        padding: 24px;
+        text-align: center;
+        color: #636a75;
+        font: 16px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      }
+      #attente button {
+        margin-top: 12px;
+        padding: 12px 18px;
+        border: 0;
+        border-radius: 10px;
+        background: #c3181e;
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript> Active JavaScript pour ouvrir l'appli. </noscript>
+    <!-- The root element for your Expo app. Le texte d'attente est remplacé dès que l'appli s'affiche. -->
+    <div id="root"><div id="attente">Chargement…</div></div>
+    <script>
+      // Plutôt qu'une page blanche : si l'appli ne s'est pas affichée au bout de 20 s (réseau faible), on le dit.
+      setTimeout(function () {
+        var a = document.getElementById('attente');
+        if (a) a.innerHTML = 'Le chargement prend plus de temps que prévu.<br />Vérifie ta connexion puis réessaie.<br /><button onclick="window.location.reload()">Réessayer</button>';
+      }, 20000);
+    </script>
+  </body>
+</html>

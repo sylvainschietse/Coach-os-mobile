@@ -20,7 +20,10 @@ SplashScreen.preventAutoHideAsync();
 
 function Navigation() {
   const { pret } = useSession();
-  const [policesPretes] = useFonts({ JetBrainsMono_500Medium, BebasNeue_400Regular, Jost_400Regular, Jost_500Medium, Jost_600SemiBold });
+  const [policesChargees, erreurPolices] = useFonts({ JetBrainsMono_500Medium, BebasNeue_400Regular, Jost_400Regular, Jost_500Medium, Jost_600SemiBold });
+  // Polices trop lentes ou bloquées (4G faible, mode Isolement de l'iPhone) : on affiche quand même, avec la police du système,
+  // au lieu de rester sur une page blanche.
+  const policesPretes = policesChargees || !!erreurPolices;
 
   useEffect(() => {
     if (pret && policesPretes) SplashScreen.hideAsync();
