@@ -1,6 +1,6 @@
 // Création et modification d'un rendez-vous : une ou plusieurs personnes (duo, couple), jour, heure, durée, lieu,
 // répétition chaque semaine. Pour un rendez-vous existant : son statut et ce qui a été compté (pack ou paiement).
-import { X } from 'lucide-react-native';
+import { X } from '@/ui/icones';
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 

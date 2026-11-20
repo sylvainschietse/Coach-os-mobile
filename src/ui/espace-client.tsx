@@ -2,7 +2,7 @@
 // depuis l'avatar de l'en-tête. Progrès est une page de cartes : chacune ouvre sa rubrique, avec un retour.
 // Sert aussi à l'aperçu « Vue client » du coach.
 import { useFocusEffect } from 'expo-router';
-import { Award, CalendarCheck, ChevronLeft, ChevronRight, Dumbbell, Flower2, Home, Moon, Ruler, Target, TrendingUp, Utensils, Watch, type LucideIcon } from 'lucide-react-native';
+import { Award, CalendarCheck, ChevronLeft, ChevronRight, Dumbbell, Flower2, Home, Moon, Ruler, Target, TrendingUp, Utensils, Watch, type LucideIcon } from '@/ui/icones';
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -20,7 +20,7 @@ import { EntrainementClient } from './entrainement/espace-entrainement';
 import { useMinuteurs } from './entrainement/minuteurs';
 import { CarteMessages } from './messagerie/conversation';
 import { MonCompte } from './mon-compte';
-import { NutritionProfil } from './nutrition/nutrition';
+import { NutritionProfil } from './nutrition/nutrition-differee';
 import { BandeauDemo, BarreClient, Hero, useMargeBarre, Selecteur, type OngletDef } from './coque';
 import { Carte, Texte } from './composants';
 import { CarteBadges, CarteSerie, FeteBadges, MesBadges } from './motivation/badges';

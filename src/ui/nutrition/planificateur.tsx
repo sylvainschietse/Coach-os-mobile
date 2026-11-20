@@ -3,7 +3,7 @@
 // versionné) et la liste de courses. Ajout : quand le coach a composé la semaine (onglet Nutrition coach), elle
 // s'affiche en lecture seule et la liste de courses en est tirée.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ChefHat, ChevronLeft, ChevronRight, Flame, Leaf, Plus, RefreshCw, ShoppingBasket, Trash2 } from 'lucide-react-native';
+import { ChefHat, ChevronLeft, ChevronRight, Flame, Leaf, Plus, RefreshCw, ShoppingBasket, Trash2 } from '@/ui/icones';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { ActivityIndicator, Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';

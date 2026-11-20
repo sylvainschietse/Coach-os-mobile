@@ -1,6 +1,6 @@
 // Accueil du coach : « Ce qui s'est passé » chez ses clients et ses prospects, sur une période au choix.
 // Chaque ligne mène à la page concernée : la fiche du contact, l'agenda (séance en duo) ou les paiements.
-import { CalendarCheck, ClipboardList, Dumbbell, Euro, Footprints, NotebookPen, type LucideIcon } from 'lucide-react-native';
+import { CalendarCheck, ClipboardList, Dumbbell, Euro, Footprints, NotebookPen, type LucideIcon } from '@/ui/icones';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 

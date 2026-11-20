@@ -1,7 +1,7 @@
 // Entraînement d'un client vu par le coach : où il en est dans son cycle, ses séances semaine par semaine
 // (vert faite, rouge manquée, orange à venir), le détail d'une séance faite comparé à la fois précédente,
 // et les évolutions par exercice et par semaine.
-import { ArrowDown, ArrowRight, ArrowUp, Video } from 'lucide-react-native';
+import { ArrowDown, ArrowRight, ArrowUp, Video } from '@/ui/icones';
 import { useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 

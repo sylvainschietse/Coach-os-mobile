@@ -1,6 +1,6 @@
 // Bilan du mois du coach : où il en est (encaissé, à encaisser, abonnements, packs, séances, clients) et l'évolution
 // mois par mois et année par année. Paiements du carnet, rendez-vous de l'agenda.
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight } from '@/ui/icones';
 import { useState, type ReactNode } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 

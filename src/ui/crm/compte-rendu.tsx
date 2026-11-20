@@ -13,7 +13,7 @@ import type { Booster, FicheContact } from '@/domain/crm';
 import { TESTS } from '@/domain/evaluation';
 import { appliquerRedaction, prioritesAuto, redactionModele, type Redaction } from '@/domain/redaction';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
-import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
+import { policeTitrePdf } from '@/lib/police-pdf';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { envoyerFichierWhatsApp, whatsAppAvecFichier } from '@/lib/whatsapp-fichier';
 
@@ -116,7 +116,7 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
         await deposer(f);
       } else {
         // A4 en points (72 par pouce).
-        const { base64 } = await Print.printToFileAsync({ html: compteRenduHtml(cr, { police: BEBAS_NEUE_BASE64 }), width: 595, height: 842, base64: true });
+        const { base64 } = await Print.printToFileAsync({ html: compteRenduHtml(cr, { police: await policeTitrePdf() }), width: 595, height: 842, base64: true });
         if (!base64) throw new Error('Le PDF n’a pas pu être créé.');
         const donnees = depuisBase64(base64);
         await deposer({ nom: 'compte-rendu-booster.pdf', type: 'application/pdf', taille: donnees.byteLength, donnees });
@@ -129,13 +129,14 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
   }
 
   /** Web : la fenêtre d'impression du navigateur propose « Enregistrer au format PDF ». */
-  function imprimer() {
+  async function imprimer() {
+    const police = await policeTitrePdf();
     const cadre = document.createElement('iframe');
     cadre.style.position = 'fixed';
     cadre.style.width = '0';
     cadre.style.height = '0';
     cadre.style.border = '0';
-    cadre.srcdoc = compteRenduHtml(cr, { police: BEBAS_NEUE_BASE64 });
+    cadre.srcdoc = compteRenduHtml(cr, { police });
     cadre.onload = () => {
       cadre.contentWindow?.print();
       setTimeout(() => cadre.remove(), 60000);

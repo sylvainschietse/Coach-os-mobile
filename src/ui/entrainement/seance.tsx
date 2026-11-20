@@ -1,7 +1,7 @@
 // AirtableSeance.tsx d'origine (C12) : blocs (ajout avec propositions, monter, descendre), exercices par bloc
 // (monter, descendre, Modifier, Remplacer, Retirer restaurable), cases de prescription et aperçu des cycles 2 à 4.
 // Chaque action enregistre la séance entière ; tant que l'enregistrement n'a pas réussi, rien ne change à l'écran.
-import { ArrowDown, ArrowLeft, ArrowUp, Pencil, PlayCircle, Plus, Replace, RotateCcw, Sparkles, Unlink } from 'lucide-react-native';
+import { ArrowDown, ArrowLeft, ArrowUp, Pencil, PlayCircle, Plus, Replace, RotateCcw, Sparkles, Unlink } from '@/ui/icones';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Text, View, useWindowDimensions } from 'react-native';
 

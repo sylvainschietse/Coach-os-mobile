@@ -1,6 +1,6 @@
 // Une offre telle que le client la voit : nom, accroche, prix et ce qu'elle comprend.
 // Sert d'aperçu au coach pendant qu'il la crée, sur la page publique de l'offre et dans l'espace client.
-import { Check } from 'lucide-react-native';
+import { Check } from '@/ui/icones';
 import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 

@@ -21,7 +21,7 @@ import { Selecteur } from '../coque';
 import { CaseACocher, Saisie } from '../crm/dossier';
 import { couleurs, espace, polices } from '../theme';
 import { CarteOffre } from './carte-offre';
-import { coachDeLaBrochure, MaBrochure, VISUELS_BROCHURE } from './ma-brochure';
+import { chargerVisuelsBrochure, coachDeLaBrochure, MaBrochure } from './ma-brochure';
 
 export const lienOffre = (id: string) => adresseWeb(`/offre/${id}`);
 
@@ -329,9 +329,9 @@ function Brochure({ liste, onPersonnaliser }: { liste: Offre[]; onPersonnaliser:
     setErreur(undefined);
     setOccupe(quoi);
     try {
-      const [entete, reglages] = await Promise.all([factures.entete().catch(() => undefined), brochure.lire()]);
+      const [entete, reglages, visuels] = await Promise.all([factures.entete().catch(() => undefined), brochure.lire(), chargerVisuelsBrochure()]);
       const coach = coachDeLaBrochure(profil, entete);
-      const html = brochureHtml(enVente, coach, { ...VISUELS_BROCHURE, logo: entete?.logo, lien: lienOffre, reglages });
+      const html = brochureHtml(enVente, coach, { ...visuels, logo: entete?.logo, lien: lienOffre, reglages });
       if (quoi === 'voir') await voirPdf(html);
       else await ouvrirPdf(html, `Les offres de ${coach.nom}`);
     } catch (e) {

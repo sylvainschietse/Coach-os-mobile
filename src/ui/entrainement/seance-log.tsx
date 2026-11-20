@@ -4,7 +4,7 @@
 // Écart corrigé : un exercice au temps (gainage) ou à l'objectif (cardio) se saisit en durée, distance, calories ou
 // watts au lieu de « charge × répétitions ».
 import { router } from 'expo-router';
-import { AlertCircle, CheckCircle2, ChevronDown, PlayCircle, Timer } from 'lucide-react-native';
+import { AlertCircle, CheckCircle2, ChevronDown, PlayCircle, Timer } from '@/ui/icones';
 import { Fragment, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 

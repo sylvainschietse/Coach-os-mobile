@@ -1,6 +1,6 @@
 // Suivis du quotidien (objectifs secondaires) : une saisie rapide par jour, une cible et une courbe sur 30 jours
 // par indicateur. Le client choisit ses suivis ; le coach voit la même chose et peut régler les cibles.
-import { Activity, ChevronLeft, ChevronRight, Minus, Plus, RefreshCw, Watch } from 'lucide-react-native';
+import { Activity, ChevronLeft, ChevronRight, Minus, Plus, RefreshCw, Watch } from '@/ui/icones';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import Svg, { Line, Path } from 'react-native-svg';

@@ -2,7 +2,7 @@
 // son accord, choisit ce que voit sa coach (rien par défaut) et indique ses dernières règles. Ensuite : phase du jour,
 // prochaines règles, « Mes règles ont commencé » pour noter un décalage, énergie et symptômes du jour, et son
 // entraînement comparé phase par phase. En aperçu, la coach ne voit que ce que la cliente partage.
-import { ChevronLeft, ChevronRight, Lock } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Lock } from '@/ui/icones';
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 

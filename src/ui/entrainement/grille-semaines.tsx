@@ -1,6 +1,6 @@
 // Le tableau « Semaine par semaine » : une ligne par semaine du cycle, une pastille par séance (vert faite, rouge
 // manquée, orange à venir, bleu activité libre). Le même tableau sert au coach (fiche du client) et au client (Suivi).
-import { Check, Clock, Plus, X } from 'lucide-react-native';
+import { Check, Clock, Plus, X } from '@/ui/icones';
 import { Pressable, Text, View } from 'react-native';
 
 import { titreClient } from '@/domain/entrainement';

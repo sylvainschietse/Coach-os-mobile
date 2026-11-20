@@ -1,6 +1,6 @@
 // Coach : la liste des fils, un par client qui a l'appli, les messages non lus en premier.
 import { router } from 'expo-router';
-import { MessageCircle } from 'lucide-react-native';
+import { MessageCircle } from '@/ui/icones';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 

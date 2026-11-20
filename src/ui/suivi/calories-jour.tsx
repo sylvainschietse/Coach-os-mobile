@@ -1,7 +1,7 @@
 // Calories du jour : ce que le client a dépensé (métabolisme de base, digestion, pas, séances du programme,
 // activités ajoutées ou venues de la montre), comparé à ce qu'il a mangé (journal alimentaire) et à son objectif.
 // Le même écran sert au client (Suivi) et au coach (fiche › Suivi), en lecture seule.
-import { ChevronLeft, ChevronRight, Flame } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Flame } from '@/ui/icones';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 

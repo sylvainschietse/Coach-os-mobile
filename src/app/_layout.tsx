@@ -5,7 +5,7 @@ import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AppState, Platform, View } from 'react-native';
 
 import { envoyerEnAttente } from '@/data/file-envoi';
@@ -23,7 +23,15 @@ function Navigation() {
   const [policesChargees, erreurPolices] = useFonts({ JetBrainsMono_500Medium, BebasNeue_400Regular, Jost_400Regular, Jost_500Medium, Jost_600SemiBold });
   // Polices trop lentes ou bloquées (4G faible, mode Isolement de l'iPhone) : on affiche quand même, avec la police du système,
   // au lieu de rester sur une page blanche.
-  const policesPretes = policesChargees || !!erreurPolices;
+  // Sur le web, on n'attend pas plus de 1,5 s : le texte s'affiche avec la police du système et prend la bonne police
+  // dès qu'elle arrive (gain d'environ une seconde en 4G faible).
+  const [attenteFinie, setAttenteFinie] = useState(Platform.OS !== 'web');
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const minuterie = setTimeout(() => setAttenteFinie(true), 1500);
+    return () => clearTimeout(minuterie);
+  }, []);
+  const policesPretes = policesChargees || !!erreurPolices || attenteFinie;
 
   useEffect(() => {
     if (pret && policesPretes) SplashScreen.hideAsync();

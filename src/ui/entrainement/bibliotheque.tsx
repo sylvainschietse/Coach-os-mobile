@@ -1,6 +1,6 @@
 // AirtableLibrary.tsx d'origine (C09) : « Mes programmes et séances », recherche, collection, niveau, objectif,
 // séances par semaine, cartes à badges, sélection pour supprimer (50 au plus) et corbeille.
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronRight } from '@/ui/icones';
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 

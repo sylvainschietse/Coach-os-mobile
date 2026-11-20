@@ -1,6 +1,6 @@
 // AirtableProgramme.tsx d'origine (C10) : en-tête du programme, actions, badges, adaptation d'une référence publique,
 // descriptif (répartition des séances, matériel, consignes) et « Séances type de la semaine ».
-import { ArrowLeft, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight } from '@/ui/icones';
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 

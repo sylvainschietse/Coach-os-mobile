@@ -1,6 +1,6 @@
 // Agenda du coach : vues Jour, Semaine et Mois (sur téléphone comme sur ordinateur), création d'un rendez-vous en touchant
 // un créneau, alertes « fin de pack » et « client inactif », réglages de l'agenda.
-import { CalendarPlus, ChevronLeft, ChevronRight, Settings, Zap } from 'lucide-react-native';
+import { CalendarPlus, ChevronLeft, ChevronRight, Settings, Zap } from '@/ui/icones';
 import { useCallback, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 

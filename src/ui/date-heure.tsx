@@ -1,6 +1,6 @@
 // Choix d'une date et d'une heure sans rien écrire : un appui sur le champ ouvre, juste en dessous, un mini calendrier
 // (date) ou une grille d'heures et de minutes (heure). En pur React Native : même rendu sur iPhone, Android et ordinateur.
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, X } from 'lucide-react-native';
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, X } from '@/ui/icones';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 

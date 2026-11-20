@@ -3,7 +3,7 @@
 // Écart : la planification s'ouvre dans une fenêtre (séance, jour en un appui, heure facultative) au lieu d'un
 // formulaire replié en bas de carte, où l'erreur s'affichait hors de l'écran et le jour se tapait en jj/mm/aaaa.
 // Seuls les jours qui ont une séance s'affichent : l'accueil reste court.
-import { CalendarDays, CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { CalendarDays, CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight } from '@/ui/icones';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 

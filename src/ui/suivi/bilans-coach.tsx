@@ -1,6 +1,6 @@
 // WeeklyCoach.tsx d'origine (C16) : file des bilans hebdomadaires des clients, à vérifier d'abord, et retour du coach
 // publié dans l'espace client. Le brouillon de retour reste sur l'appareil et retient la version des réponses lues.
-import { MessageCircle, RefreshCw } from 'lucide-react-native';
+import { MessageCircle, RefreshCw } from '@/ui/icones';
 import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 

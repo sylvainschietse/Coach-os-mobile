@@ -23,9 +23,8 @@ import {
 } from '@/domain/brochure';
 import { COULEURS_FACTURE, estCouleur, type EnteteFacture } from '@/domain/factures';
 import { libellePrix, type Offre } from '@/domain/offres';
-import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
+import { policeTitrePdf } from '@/lib/police-pdf';
 import { messageErreur } from '@/lib/useCharger';
-import { JOST_400_BASE64, JOST_600_BASE64, PHOTO_BROCHURE_BASE64 } from '@/lib/visuels-brochure-pdf';
 
 import { Bouton, Carte, Chargement, ChampTexte, SousTitre, Texte } from '../composants';
 import { Selecteur } from '../coque';
@@ -34,11 +33,16 @@ import { couleurs, espace, polices } from '../theme';
 import { DefilementClavier } from '../clavier';
 import { ApercuHtml } from './apercu-html';
 
-export const VISUELS_BROCHURE: VisuelsBrochure = {
-  police: BEBAS_NEUE_BASE64,
-  texte: { normal: JOST_400_BASE64, gras: JOST_600_BASE64 },
-  photo: PHOTO_BROCHURE_BASE64,
-};
+// Photo et polices en base64 (0,25 Mo) : chargées seulement quand le coach ouvre ou envoie sa brochure.
+let visuels: Promise<VisuelsBrochure> | null = null;
+export function chargerVisuelsBrochure(): Promise<VisuelsBrochure> {
+  visuels ??= Promise.all([import('@/lib/visuels-brochure-pdf'), policeTitrePdf()]).then(([v, police]) => ({
+    police,
+    texte: { normal: v.JOST_400_BASE64, gras: v.JOST_600_BASE64 },
+    photo: v.PHOTO_BROCHURE_BASE64,
+  }));
+  return visuels;
+}
 
 /** Largeur d'une page A4 en pixels CSS (210 mm à 96 points par pouce). */
 const LARGEUR_A4 = 793.7;
@@ -94,11 +98,13 @@ export function MaBrochure({ liste, lien, onFini }: { liste: Offre[]; lien: (id:
   const [grand, setGrand] = useState(false);
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string>();
+  const [visuelsCharges, setVisuels] = useState<VisuelsBrochure>();
 
   useEffect(() => {
     let actif = true;
-    void Promise.all([brochure.lire(), factures.entete().catch(() => undefined)]).then(([reglages, e]) => {
+    void Promise.all([brochure.lire(), factures.entete().catch(() => undefined), chargerVisuelsBrochure()]).then(([reglages, e, v]) => {
       if (!actif) return;
+      setVisuels(v);
       setR(reglages);
       setEntete(e);
       setSaisieCouleur(reglages.couleur ?? '');
@@ -110,7 +116,7 @@ export function MaBrochure({ liste, lien, onFini }: { liste: Offre[]; lien: (id:
 
   // L'aperçu suit avec un temps de retard pendant la frappe, pour que la saisie reste fluide.
   const differe = useDeferredValue(r);
-  if (!r || !differe) return <Chargement />;
+  if (!r || !differe || !visuelsCharges) return <Chargement />;
 
   const enVente = offresDeLaBrochure(liste);
   const maj = (m: Partial<ReglagesBrochure>) => setR({ ...r, ...m });
@@ -133,7 +139,7 @@ export function MaBrochure({ liste, lien, onFini }: { liste: Offre[]; lien: (id:
   const largeurApercu = large ? Math.min(420, Math.round(width * 0.36)) : Math.round(Math.min(width * 0.3, 150));
   const largeurGrand = Math.min(width - 32, ((height - marges.top - marges.bottom - 120) * 210) / 297);
   const page = (l: number) =>
-    brochureHtml(enVente, coachDeLaBrochure(profil, entete), { ...VISUELS_BROCHURE, logo: entete?.logo, lien, reglages: differe, apercu: l / LARGEUR_A4 });
+    brochureHtml(enVente, coachDeLaBrochure(profil, entete), { ...visuelsCharges, logo: entete?.logo, lien, reglages: differe, apercu: l / LARGEUR_A4 });
   const groupes = groupesBrochure(enVente, r);
   const cachees = r.parBlocs ? enVente.filter((o) => !groupes.some((g) => g.offres.includes(o))) : [];
 

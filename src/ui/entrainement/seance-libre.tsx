@@ -3,7 +3,7 @@
 // ou juste « séance faite ». Il relit et valide bloc par bloc avant d'enregistrer. Même brouillon que la séance guidée :
 // on peut passer de l'une à l'autre. Une notification le relance s'il oublie de noter.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Check, ChevronLeft, Flag, Mic, PencilLine, RotateCcw, Square, X } from 'lucide-react-native';
+import { Check, ChevronLeft, Flag, Mic, PencilLine, RotateCcw, Square, X } from '@/ui/icones';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

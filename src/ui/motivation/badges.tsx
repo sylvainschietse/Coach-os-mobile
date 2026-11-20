@@ -1,7 +1,7 @@
 // Badges, série et grade côté client : la carte de l'accueil, celle de Progrès, la page qui explique chaque badge
 // et la fête quand un nouveau badge tombe (au retour d'une séance, par exemple).
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ChevronRight, Flame, Lock } from 'lucide-react-native';
+import { ChevronRight, Flame, Lock } from '@/ui/icones';
 import { useEffect, useState } from 'react';
 import { Animated, Easing, Modal, Pressable, Text, View } from 'react-native';
 

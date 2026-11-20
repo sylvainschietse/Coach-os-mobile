@@ -1,6 +1,6 @@
 // « Ma journée » sur l'accueil : les suivis du quotidien du client (sommeil, eau, stress…) en pastilles. Ce qui est
 // noté s'affiche, le reste invite à noter ; un appui ouvre la saisie complète dans Progrès.
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronRight } from '@/ui/icones';
 import { Pressable, Text, View } from 'react-native';
 
 import { quotidien } from '@/data/quotidien';

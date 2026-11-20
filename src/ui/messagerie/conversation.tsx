@@ -4,7 +4,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { router } from 'expo-router';
-import { Camera as IconeCamera, Clock, ImageIcon, MessageCircle, Send, Trash2, Video, X } from 'lucide-react-native';
+import { Camera as IconeCamera, Clock, ImageIcon, MessageCircle, Send, Trash2, Video, X } from '@/ui/icones';
 import { useCallback, useEffect, useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 

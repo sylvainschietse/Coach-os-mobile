@@ -1,6 +1,6 @@
 // MyGoals.tsx d'origine (U10) : objectifs personnels du client, progression calculée à partir de ses valeurs,
 // archivage, et « Mes petites victoires » tirées des réussites racontées dans le bilan de la semaine.
-import { RefreshCw, Target, Trophy } from 'lucide-react-native';
+import { RefreshCw, Target, Trophy } from '@/ui/icones';
 import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 

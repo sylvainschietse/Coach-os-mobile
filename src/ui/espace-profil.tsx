@@ -1,6 +1,6 @@
 // Mon profil (bouton en haut de l'espace coach) : tout ce qui concerne le coach lui-même et ses réglages. Une seule liste
 // rangée par thème, comme Mon compte côté client ; toucher une ligne ouvre sa rubrique, « Mon profil » ramène à la liste.
-import { ArrowLeft, Bell, CalendarDays, ChevronRight, CreditCard, LogOut, Newspaper, RefreshCw, Tag, UserRound, type LucideIcon } from 'lucide-react-native';
+import { ArrowLeft, Bell, CalendarDays, ChevronRight, CreditCard, LogOut, Newspaper, RefreshCw, Tag, UserRound, type LucideIcon } from '@/ui/icones';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { demanderSortie } from '@/lib/brouillon';
@@ -11,7 +11,7 @@ import { Automatisations } from './crm/automatisations';
 import { MesRelances } from './crm/mes-relances';
 import { EnteteFactures } from './factures';
 import { MesOffres } from './offres/mes-offres';
-import { MesNewsletters } from './newsletters/mes-newsletters';
+import { MesNewsletters } from './newsletters/mes-newsletters-differee';
 import { AlertesTelephone } from './notifications/alertes';
 import { MonProfilCoach } from './profil-coach';
 import { couleurs, espace, polices } from './theme';

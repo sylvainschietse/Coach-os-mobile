@@ -1,7 +1,7 @@
 // Briques communes des écrans d'entraînement, reprises de shadcn tel que l'app d'origine les utilisait :
 // boutons (plein, contour, fantôme, destructif), LongText, confirmation (AlertDialog), liste de choix et message
 // d'état (à la place des toasts : un résultat reste lisible tant qu'on ne fait pas autre chose).
-import { Check, ChevronDown, type LucideIcon } from 'lucide-react-native';
+import { Check, ChevronDown, type LucideIcon } from '@/ui/icones';
 import { useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,

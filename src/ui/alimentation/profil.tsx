@@ -1,4 +1,4 @@
-import { FileText } from 'lucide-react-native';
+import { FileText } from '@/ui/icones';
 import { useState } from 'react';
 import { Linking, View } from 'react-native';
 

@@ -28,7 +28,7 @@ import {
   type Facture,
 } from '@/domain/factures';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
-import { BEBAS_NEUE_BASE64 } from '@/lib/police-titre-pdf';
+import { policeTitrePdf } from '@/lib/police-pdf';
 import { useCharger } from '@/lib/useCharger';
 
 import { Bouton, Carte, Chargement, ChampTexte, Erreur, SousTitre, Texte } from './composants';
@@ -45,7 +45,8 @@ type StyleFacture = {
 };
 
 /** Web : la fenêtre d'impression du navigateur (« Enregistrer au format PDF »). */
-function imprimerFacture(f: Facture, style: StyleFacture) {
+async function imprimerFacture(f: Facture, style: StyleFacture) {
+  const police = await policeTitrePdf();
   const cadre = document.createElement('iframe');
   Object.assign(cadre.style, {
     position: 'fixed',
@@ -53,7 +54,7 @@ function imprimerFacture(f: Facture, style: StyleFacture) {
     height: '0',
     border: '0',
   });
-  cadre.srcdoc = factureHtml(f, { ...style, police: BEBAS_NEUE_BASE64 });
+  cadre.srcdoc = factureHtml(f, { ...style, police });
   cadre.onload = () => {
     cadre.contentWindow?.print();
     setTimeout(() => cadre.remove(), 60000);
@@ -65,7 +66,7 @@ function imprimerFacture(f: Facture, style: StyleFacture) {
 async function pdfFacture(f: Facture, style: StyleFacture): Promise<File> {
   // A4 en points (72 par pouce).
   const { uri } = await Print.printToFileAsync({
-    html: factureHtml(f, { ...style, police: BEBAS_NEUE_BASE64 }),
+    html: factureHtml(f, { ...style, police: await policeTitrePdf() }),
     width: 595,
     height: 842,
   });
@@ -89,7 +90,7 @@ export async function ouvrirFacture(f: Facture, style: StyleFacture) {
 /** Enregistre le PDF sur l'appareil : Android demande le dossier, l'iPhone passe par « Enregistrer dans Fichiers ». */
 async function telechargerSurAppareil(f: Facture, style: StyleFacture): Promise<string | undefined> {
   if (Platform.OS === 'web') {
-    imprimerFacture(f, style);
+    await imprimerFacture(f, style);
     return undefined;
   }
   const pdf = await pdfFacture(f, style);
@@ -168,7 +169,7 @@ export function BoutonToutesFactures({ clientId, nom }: { clientId?: string; nom
     setErreur(undefined);
     setRetour(undefined);
     try {
-      const style = { ...(await factures.style()), police: BEBAS_NEUE_BASE64 };
+      const style = { ...(await factures.style()), police: await policeTitrePdf() };
       const liste = clientId ? await factures.liste(clientId) : await factures.toutes();
       const groupes = clientId ? [{ nom: nom || liste[0]?.destinataire.nom || 'Client', factures: liste }] : facturesParClient(liste);
       const fichiers = groupes
@@ -209,7 +210,7 @@ function BoutonsRecapAnnuel({ liste, nom }: { liste: Facture[]; nom: string }) {
     setErreur(undefined);
     setRetour(undefined);
     try {
-      const style = { ...(await factures.style()), police: BEBAS_NEUE_BASE64 };
+      const style = { ...(await factures.style()), police: await policeTitrePdf() };
       const recent = [...liste].sort((a, b) => b.date.localeCompare(a.date))[0];
       const html = recapAnnuelHtml(liste, annee, { nom: recent?.destinataire.nom || nom, adresse: recent?.destinataire.adresse }, style);
       const r = await enregistrerPdfs([{ nom: `Récapitulatif ${annee} - ${nomFichierFacturesClient(nom).replace(/^Factures - /, '')}`, html }]);

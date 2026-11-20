@@ -1,7 +1,7 @@
 // NutritionProfile.tsx d'origine (N01) : « Ma nutrition », sous-rubriques Mon profil / Recettes / Ma semaine / Journal /
 // Mes recettes, estimation Mifflin–St Jeor, profil alimentaire et, pour le coach, ajustement des objectifs.
 // Le brouillon du formulaire reste sur l'appareil ; Recettes et Ma semaine utilisent le dernier profil enregistré.
-import { FileText, Lock, RefreshCw, SlidersHorizontal } from 'lucide-react-native';
+import { FileText, Lock, RefreshCw, SlidersHorizontal } from '@/ui/icones';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Text, View } from 'react-native';
 

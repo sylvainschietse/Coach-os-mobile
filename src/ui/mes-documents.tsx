@@ -1,6 +1,6 @@
 // U11 — Mes documents repris de coach-os-espace-client/App.tsx : titre, actualisation, cartes nom · type · date
 // et « Ouvrir le PDF » ; « Vos documents arriveront ici » quand rien n'est partagé, distinct d'une erreur.
-import { FileText, RefreshCw } from 'lucide-react-native';
+import { FileText, RefreshCw } from '@/ui/icones';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 

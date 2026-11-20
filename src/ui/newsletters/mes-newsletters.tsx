@@ -5,7 +5,7 @@
 import { decode, encode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import { Eye, FolderInput, ImagePlus, Mail, MessageCircle, Send, Trash2 } from 'lucide-react-native';
+import { Eye, FolderInput, ImagePlus, Mail, MessageCircle, Send, Trash2 } from '@/ui/icones';
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 

@@ -2,7 +2,7 @@
 // cartes avec Ouvrir le fichier, « Partager dans l'espace client » et badge d'envoi. « Envoyer par e-mail » n'est actif
 // que si un service d'envoi est renseigné ; « Envoi confirmé » n'apparaît que si Brevo ou Make confirme l'e-mail (lot 6).
 import { useFocusEffect } from 'expo-router';
-import { ArrowUpRight } from 'lucide-react-native';
+import { ArrowUpRight } from '@/ui/icones';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 

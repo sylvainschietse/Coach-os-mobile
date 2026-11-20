@@ -5,7 +5,7 @@ import { View } from 'react-native';
 
 import { BoutonContour, LibelleSection } from '../coque';
 import { espace } from '../theme';
-import { NutritionProfil } from '../nutrition/nutrition';
+import { NutritionProfil } from '../nutrition/nutrition-differee';
 import { AnalyseAssiette } from './analyse-assiette';
 import { BanqueRecettes } from './recettes';
 import { RecettesClients } from './recettes-clients';

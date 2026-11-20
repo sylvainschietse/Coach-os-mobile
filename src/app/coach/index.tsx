@@ -21,7 +21,7 @@ import {
   Video,
   Wallet,
   Workflow,
-} from 'lucide-react-native';
+} from '@/ui/icones';
 import { useCallback, useEffect, useState } from 'react';
 import { View, useWindowDimensions } from 'react-native';
 
