@@ -23,6 +23,8 @@ for MODE in clair sombre; do
     else
       echo "$APPAREIL $MODE $NOM : ÉCHEC" | tee -a "$RACINE/resultats/resume.txt"
       tail -25 "$SORTIE/$NOM.log"
+      # Ce que l'écran montrait au moment de l'échec, pour comprendre sans les pièces jointes.
+      echo "Textes à l'écran :"; "$MAESTRO" hierarchy 2>/dev/null | grep -oE '"(text|accessibilityText)" : "[^"]+"' | head -60
       ECHECS=$((ECHECS + 1))
     fi
   done

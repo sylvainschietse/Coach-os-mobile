@@ -9,15 +9,21 @@ name: Facture
     timeout: 60000
 - tapOn: 'Je suis Sylvain, coach'
 - tapOn: 'Activité'
+- scrollUntilVisible:
+    element: 'Paiements'
 - tapOn: 'Paiements'
-- extendedWaitUntil:
-    visible: 'Créer la facture'
-    timeout: 15000
+- scrollUntilVisible:
+    element: 'Créer la facture'
+    timeout: 20000
 - takeScreenshot: 3-facture-a-coach-paiements
 - tapOn: 'Créer la facture'
 - assertVisible: '.*indisponible en démo.*'
 - tapOn: 'Clients'
+- scrollUntilVisible:
+    element: 'Léa Martin'
 - tapOn: 'Léa Martin'
+- scrollUntilVisible:
+    element: 'Voir la fiche'
 - tapOn: 'Voir la fiche'
 - tapOn: 'Abonnement'
 - scrollUntilVisible:

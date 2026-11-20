@@ -7,7 +7,11 @@ appId: com.coachgo.app
     visible: 'Je suis Léa, client'
     timeout: 60000
 - tapOn: 'Je suis Léa, client'
+- scrollUntilVisible:
+    element: 'J’accepte que mes données de santé.*'
 - tapOn: 'J’accepte que mes données de santé.*'
+- scrollUntilVisible:
+    element: 'Continuer'
 - tapOn: 'Continuer'
 - extendedWaitUntil:
     visible: 'Bonjour, Léa'
