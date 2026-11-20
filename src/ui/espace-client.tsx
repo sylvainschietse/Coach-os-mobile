@@ -35,7 +35,7 @@ import { Quotidien } from './suivi/quotidien';
 import { Records } from './suivi/records';
 import { Sport } from './suivi/sport';
 import { AjoutActiviteLibre } from './suivi/activite-libre';
-import { couleurs, espace, LARGEUR_CLIENT, polices, univers, type CleUnivers } from './theme';
+import { couleurs, espace, LARGEUR_CLIENT, polices, titreSection, univers, type CleUnivers } from './theme';
 import { UniversPage } from './univers';
 
 /** « moi » n'est plus dans la barre : c'est la page Mon compte, ouverte depuis l'avatar (ou un lien qui la demande). */
@@ -195,7 +195,13 @@ export function EspaceClient({
                 onProgramme={() => aller('programme')}
                 milieu={
                   onglet === 'accueil' && (
+                    // Audit design, point 5 : d'abord ce que je dois faire (séance, rendez-vous à confirmer),
+                    // puis où j'en suis, puis le reste (messages, calendrier).
                     <>
+                      {!apercu && <MesRendezVous clientId={clientId} />}
+                      <Text accessibilityRole="header" style={[titreSection, { marginTop: 8 }]}>
+                        Où j’en suis
+                      </Text>
                       <CarteSerie clientId={clientId} onOuvrir={() => ouvrir('badges')} />
                       <TuilesDuJour clientId={clientId} onOuvrir={() => demanderSortie(() => aller('nutrition'))} />
                       <MaJournee clientId={clientId} onNoter={() => ouvrir('quotidien')} />
@@ -205,7 +211,6 @@ export function EspaceClient({
                   )
                 }
               />
-              {onglet === 'accueil' && !apercu && <MesRendezVous clientId={clientId} />}
               {/* Un cours de RPM, une séance à lui : le client déclare ce qu'il a fait en dehors du programme. */}
               {onglet === 'accueil' && !apercu && <AjoutActiviteLibre clientId={clientId} />}
               {onglet === 'accueil' && <SeancesRestantes clientId={clientId} />}
