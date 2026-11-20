@@ -1,0 +1,237 @@
+/// <reference types="node" />
+// Abonnements : accès appli, option nutrition et packs de séances, vérifiés dans un vrai Postgres (PGlite).
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { PGlite } from '@electric-sql/pglite';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+const ids = {
+  userCoach1: '10000000-0000-4000-8000-000000000001',
+  userCoach2: '10000000-0000-4000-8000-000000000002',
+  userClientA: '10000000-0000-4000-8000-0000000000a1',
+  userClientB: '10000000-0000-4000-8000-0000000000b1',
+  coach1: '20000000-0000-4000-8000-000000000001',
+  coach2: '20000000-0000-4000-8000-000000000002',
+  clientA: '30000000-0000-4000-8000-0000000000a1',
+  clientB: '30000000-0000-4000-8000-0000000000b1',
+  clientSeances: '30000000-0000-4000-8000-0000000000c1',
+};
+
+let db: PGlite;
+
+async function en(userId: string, sql: string, params: unknown[] = []) {
+  await db.exec(`reset role; set role authenticated; select set_config('test.uid', '${userId}', false);`);
+  try {
+    return await db.query<Record<string, unknown>>(sql, params);
+  } finally {
+    await db.exec('reset role;');
+  }
+}
+
+beforeAll(async () => {
+  db = new PGlite();
+  await db.exec(`
+    create schema auth;
+    create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
+    create function auth.uid() returns uuid language sql stable as
+      $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
+    create role authenticated;
+    create role anon;
+    create schema storage;
+    create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+    create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);
+    alter table storage.objects enable row level security;
+    create function storage.foldername(name text) returns text[] language sql immutable as
+      $$ select (string_to_array(name, '/'))[1:array_length(string_to_array(name, '/'), 1) - 1] $$;
+    grant usage on schema storage to authenticated;
+    grant select, insert on storage.objects to authenticated;
+  `);
+  const dossier = join(__dirname, '../supabase/migrations');
+  for (const f of readdirSync(dossier)
+    .filter((x) => x.endsWith('.sql'))
+    .sort())
+    await db.exec(readFileSync(join(dossier, f), 'utf8'));
+  await db.exec(`
+    insert into auth.users (id) values ('${ids.userCoach1}'), ('${ids.userCoach2}'), ('${ids.userClientA}'), ('${ids.userClientB}');
+    insert into public.coachs (id, user_id, nom, lien_questionnaire) values
+      ('${ids.coach1}', '${ids.userCoach1}', 'Sylvain', 'sylvain'), ('${ids.coach2}', '${ids.userCoach2}', 'Autre', 'autre');
+    insert into public.clients (id, coach_id, prenom, user_id) values
+      ('${ids.clientA}', '${ids.coach1}', 'Inès', '${ids.userClientA}'), ('${ids.clientB}', '${ids.coach1}', 'Bruno', '${ids.userClientB}');
+    insert into public.clients (id, coach_id, prenom, acces_appli) values ('${ids.clientSeances}', '${ids.coach1}', 'Marc', false);
+    insert into public.recettes (coach_id, titre, statut) values ('${ids.coach1}', 'Bowl poulet', 'approuvee');
+  `);
+});
+
+afterAll(async () => {
+  await db.close();
+});
+
+describe('accès appli et option nutrition', () => {
+  it('un nouveau client a l’appli sans l’option nutrition', async () => {
+    const { rows } = await en(ids.userCoach1, `select acces_appli, option_nutrition from public.clients where id = $1`, [ids.clientSeances]);
+    expect(rows[0]).toEqual({ acces_appli: false, option_nutrition: false });
+  });
+
+  it('sans l’option nutrition, le client ne lit ni n’ajoute de recettes', async () => {
+    expect((await en(ids.userClientA, `select id from public.recettes`)).rows).toHaveLength(0);
+    await expect(
+      en(ids.userClientA, `insert into public.recettes (coach_id, client_id, titre) values ($1, $2, 'Perso')`, [ids.coach1, ids.clientA]),
+    ).rejects.toThrow();
+    await en(ids.userCoach1, `update public.clients set option_nutrition = true where id = $1`, [ids.clientA]);
+    expect((await en(ids.userClientA, `select titre from public.recettes`)).rows).toEqual([{ titre: 'Bowl poulet' }]);
+    expect((await en(ids.userClientA, `select public.mon_option_nutrition() as o`)).rows[0].o).toBe(true);
+  });
+
+  it('le client ne peut pas s’ouvrir l’option lui-même', async () => {
+    await en(ids.userClientB, `update public.clients set option_nutrition = true, acces_appli = true where id = $1`, [ids.clientB]);
+    const { rows } = await en(ids.userCoach1, `select option_nutrition from public.clients where id = $1`, [ids.clientB]);
+    expect(rows[0].option_nutrition).toBe(false);
+  });
+
+  it('accès coupé : le client ne lit plus sa fiche, mais sait que son accès est suspendu', async () => {
+    await en(ids.userCoach1, `update public.clients set acces_appli = false where id = $1`, [ids.clientA]);
+    expect((await en(ids.userClientA, `select id from public.clients`)).rows).toHaveLength(0);
+    expect((await en(ids.userClientA, `select id from public.recettes`)).rows).toHaveLength(0);
+    expect((await en(ids.userClientA, `select public.mon_acces_suspendu() as p`)).rows[0].p).toBe('Inès');
+    expect((await en(ids.userClientB, `select public.mon_acces_suspendu() as p`)).rows[0].p).toBeNull();
+    await en(ids.userCoach1, `update public.clients set acces_appli = true where id = $1`, [ids.clientA]);
+    expect((await en(ids.userClientA, `select id from public.clients`)).rows).toHaveLength(1);
+  });
+});
+
+describe('numéro du coach', () => {
+  it('le client lit le prénom et le numéro de son coach, pas ceux des autres', async () => {
+    await db.exec(
+      `update public.coachs set telephone = '33648640845' where id = '${ids.coach1}'; update public.coachs set telephone = '33600000000' where id = '${ids.coach2}';`,
+    );
+    expect((await en(ids.userClientA, `select * from public.mon_coach()`)).rows).toEqual([{ nom: 'Sylvain', telephone: '33648640845', photo: null }]);
+    expect((await en(ids.userCoach2, `select * from public.mon_coach()`)).rows).toHaveLength(0);
+  });
+});
+
+describe('profil du coach', () => {
+  it('le coach modifie son prénom, son numéro et sa photo, pas ceux des autres coachs', async () => {
+    const photo = 'data:image/jpeg;base64,AAAA';
+    const maj = await en(ids.userCoach1, `update public.coachs set nom = 'Sylvain', telephone = '33648640845', photo = $1 returning id`, [photo]);
+    expect(maj.rows).toHaveLength(1);
+    expect((await en(ids.userCoach1, `update public.coachs set nom = 'Pirate' where id = $1 returning id`, [ids.coach2])).rows).toHaveLength(0);
+    expect((await en(ids.userClientA, `select photo from public.mon_coach()`)).rows).toEqual([{ photo }]);
+    await en(ids.userCoach1, `update public.coachs set photo = null`);
+  });
+
+  it('refuse un prénom vide, une photo qui n’est pas une image, et un client qui modifie son coach', async () => {
+    await expect(en(ids.userCoach1, `update public.coachs set nom = '  '`)).rejects.toThrow();
+    await expect(en(ids.userCoach1, `update public.coachs set photo = 'javascript:alert(1)'`)).rejects.toThrow();
+    expect((await en(ids.userClientA, `update public.coachs set nom = 'X' returning id`)).rows).toHaveLength(0);
+  });
+});
+
+describe('packs de séances', () => {
+  it('le coach vend un pack de 10 + 1 offerte et décompte les séances, même pour un client sans appli', async () => {
+    const { rows } = await en(ids.userCoach1, `insert into public.packs_seances (client_id, seances_total, prix) values ($1, 11, 600) returning id, coach_id`, [
+      ids.clientSeances,
+    ]);
+    expect(rows[0].coach_id).toBe(ids.coach1);
+    const maj = await en(ids.userCoach1, `update public.packs_seances set seances_faites = seances_faites + 1 where id = $1 returning seances_faites`, [
+      rows[0].id,
+    ]);
+    expect(maj.rows[0].seances_faites).toBe(1);
+  });
+
+  it('refuse de décompter plus de séances que le pack n’en contient', async () => {
+    await expect(
+      en(ids.userCoach1, `insert into public.packs_seances (client_id, seances_total, seances_faites) values ($1, 1, 2)`, [ids.clientA]),
+    ).rejects.toThrow();
+  });
+
+  it('le client voit ses packs sans pouvoir les modifier, les autres ne voient rien', async () => {
+    await en(ids.userCoach1, `insert into public.packs_seances (client_id, seances_total, prix) values ($1, 11, 600)`, [ids.clientA]);
+    expect((await en(ids.userClientA, `select seances_total from public.packs_seances`)).rows).toEqual([{ seances_total: 11 }]);
+    expect((await en(ids.userClientA, `update public.packs_seances set seances_faites = 0 returning id`)).rows).toHaveLength(0);
+    expect((await en(ids.userClientB, `select id from public.packs_seances`)).rows).toHaveLength(0);
+    expect((await en(ids.userCoach2, `select id from public.packs_seances`)).rows).toHaveLength(0);
+    await expect(en(ids.userCoach2, `insert into public.packs_seances (client_id, seances_total) values ($1, 1)`, [ids.clientA])).rejects.toThrow();
+  });
+});
+
+describe('formule, remise et prélèvement Stripe', () => {
+  it('le coach règle la formule et une remise de 100 % pour un testeur', async () => {
+    const { rows } = await en(
+      ids.userCoach1,
+      `update public.clients set formule = 'appli_nutrition', remise_type = 'pourcent', remise_valeur = 100, remise_motif = 'Merci d’être testeur', paiement = 'stripe'
+       where id = $1 returning formule, remise_valeur`,
+      [ids.clientA],
+    );
+    expect(rows).toEqual([{ formule: 'appli_nutrition', remise_valeur: '100.00' }]);
+  });
+
+  it('refuse une formule inconnue, une remise au-delà de 100 % et une remise sans montant', async () => {
+    await expect(en(ids.userCoach1, `update public.clients set formule = 'gratuit' where id = $1`, [ids.clientA])).rejects.toThrow();
+    await expect(en(ids.userCoach1, `update public.clients set remise_type = 'pourcent', remise_valeur = 120 where id = $1`, [ids.clientA])).rejects.toThrow();
+    await expect(en(ids.userCoach1, `update public.clients set remise_type = 'montant', remise_valeur = null where id = $1`, [ids.clientA])).rejects.toThrow();
+  });
+
+  it('seul Stripe écrit l’état du prélèvement, ni le coach ni le client', async () => {
+    await expect(en(ids.userCoach1, `update public.clients set statut_stripe = 'active' where id = $1`, [ids.clientA])).rejects.toThrow();
+    await expect(en(ids.userCoach1, `update public.clients set stripe_abonnement = 'sub_x' where id = $1`, [ids.clientA])).rejects.toThrow();
+    // Côté serveur (fonction stripe-webhook), l'écriture passe.
+    await db.query(`update public.clients set statut_stripe = 'active', stripe_abonnement = 'sub_1' where id = $1`, [ids.clientA]);
+    // Le coach peut toujours changer la formule d'un client prélevé.
+    expect((await en(ids.userCoach1, `update public.clients set formule = 'hybride_leger' where id = $1 returning id`, [ids.clientA])).rows).toHaveLength(1);
+    // Le client lit sa formule et sa remise, sans pouvoir les changer.
+    expect((await en(ids.userClientA, `select formule, remise_motif from public.clients`)).rows).toEqual([{ formule: 'hybride_leger', remise_motif: 'Merci d’être testeur' }]);
+    expect((await en(ids.userClientA, `update public.clients set remise_valeur = 100 returning id`)).rows).toHaveLength(0);
+  });
+
+  it('les séances de la formule ne sont créditées qu’une fois par mois', async () => {
+    const credit = `insert into public.packs_seances (client_id, seances_total, prix, reference) values ($1, 1, 0, 'formule:2026-11')`;
+    await en(ids.userCoach1, credit, [ids.clientA]);
+    await expect(en(ids.userCoach1, credit, [ids.clientA])).rejects.toThrow();
+  });
+
+  it('les événements Stripe déjà traités restent invisibles pour l’appli', async () => {
+    await db.query(`insert into public.stripe_evenements (id, type) values ('evt_1', 'invoice.paid')`);
+    await expect(db.query(`insert into public.stripe_evenements (id, type) values ('evt_1', 'invoice.paid')`)).rejects.toThrow();
+    await expect(en(ids.userCoach1, `select id from public.stripe_evenements`)).rejects.toThrow();
+  });
+});
+
+describe('offres créées par chaque coach', () => {
+  let offre1 = '';
+  let offre2 = '';
+
+  it('chaque coach crée ses offres ; un autre coach ne les voit pas', async () => {
+    offre1 = (await en(ids.userCoach1, `insert into public.offres (nom, prix, seances) values ('Hybride', 149, 1) returning id`)).rows[0].id as string;
+    offre2 = (await en(ids.userCoach2, `insert into public.offres (nom, prix) values ('Suivi', 79) returning id`)).rows[0].id as string;
+    expect((await en(ids.userCoach1, `select nom from public.offres`)).rows).toEqual([{ nom: 'Hybride' }]);
+    expect((await en(ids.userCoach2, `update public.offres set prix = 1 where id = $1 returning id`, [offre1])).rows).toHaveLength(0);
+  });
+
+  it('le client voit les offres proposées par son coach, pas les autres, et ne les modifie pas', async () => {
+    await en(ids.userCoach1, `insert into public.offres (nom, prix, active) values ('Ancienne', 50, false)`);
+    expect((await en(ids.userClientB, `select nom from public.offres`)).rows).toEqual([{ nom: 'Hybride' }]);
+    expect((await en(ids.userClientB, `update public.offres set prix = 1 returning id`)).rows).toHaveLength(0);
+  });
+
+  it('le coach ne rattache un client qu’à ses propres offres', async () => {
+    await en(ids.userCoach1, `update public.clients set offre_id = $1, offre_prix = 149 where id = $2`, [offre1, ids.clientB]);
+    await expect(en(ids.userCoach1, `update public.clients set offre_id = $1 where id = $2`, [offre2, ids.clientB])).rejects.toThrow(/pas à toi/);
+  });
+
+  it('le produit Stripe et le compte Stripe du coach ne s’écrivent que côté serveur', async () => {
+    await expect(en(ids.userCoach1, `update public.offres set stripe_prix = 'price_x' where id = $1`, [offre1])).rejects.toThrow();
+    await expect(en(ids.userCoach1, `update public.coachs set stripe_compte = 'acct_x', stripe_pret = true where id = $1`, [ids.coach1])).rejects.toThrow();
+  });
+
+  it('un pack payé en une fois contient des séances et n’ouvre pas l’appli', async () => {
+    await expect(en(ids.userCoach1, `insert into public.offres (nom, prix, periodicite, seances) values ('Pack', 550, 'unique', 10)`)).rejects.toThrow();
+    const { rows } = await en(ids.userCoach1, `insert into public.offres (nom, prix, periodicite, seances, acces_appli, messagerie) values ('Pack', 550, 'unique', 10, false, false) returning id`);
+    expect(rows).toHaveLength(1);
+  });
+
+  it('une offre retirée garde ses clients', async () => {
+    await en(ids.userCoach1, `update public.offres set active = false where id = $1`, [offre1]);
+    expect((await en(ids.userCoach1, `select offre_id from public.clients where id = $1`, [ids.clientB])).rows[0].offre_id).toBe(offre1);
+  });
+});
