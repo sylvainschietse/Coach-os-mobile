@@ -6,6 +6,8 @@ import { Pressable, Text, View } from 'react-native';
 import { consentements } from '@/data/consentement';
 import { useSession } from '@/data/session';
 import { accordAttendu, type Consentement } from '@/domain/consentement';
+import { estErreurReseau } from '@/domain/reseau';
+import { ecrireMemoire, lireMemoire, lireTelephone } from '@/lib/memoire';
 import { messageErreur } from '@/lib/useCharger';
 import { AccesSuspendu } from '@/ui/abonnement';
 import { DefilementClavier } from '@/ui/clavier';
@@ -131,25 +133,48 @@ function Avatar({ prenom, actif, onPress }: { prenom: string; actif: boolean; on
 
 /** undefined : en cours de lecture ; null : aucun accord encore donné. */
 function useAccord(clientId: string) {
-  const [donnee, setDonnee] = useState<Consentement | null | undefined>(undefined);
+  const cle = `accord-${clientId}`;
+  const [donnee, setDonnee] = useState<Consentement | null | undefined>(() => lireMemoire<Consentement | null>(cle));
   const [erreur, setErreur] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
     if (!clientId) return;
     let annule = false;
+    // L'accord déjà donné sur ce téléphone ouvre l'espace tout de suite ; la réponse du serveur suit et l'emporte.
+    if (lireMemoire(cle) === undefined)
+      lireTelephone<Consentement | null>(cle).then((garde) => {
+        if (!annule && garde && !accordAttendu(garde)) setDonnee((avant) => (avant === undefined ? garde : avant));
+      });
     consentements.lire(clientId).then(
-      (c) => !annule && setDonnee(c),
-      (e: unknown) => !annule && setErreur(messageErreur(e)),
+      (c) => {
+        if (annule) return;
+        ecrireMemoire(cle, c, true);
+        setDonnee(c);
+      },
+      async (e: unknown) => {
+        // Sans réseau, l'accord déjà donné sur ce téléphone suffit pour ouvrir l'espace (la séance en salle).
+        const garde = estErreurReseau(e) ? await lireTelephone<Consentement | null>(cle) : undefined;
+        if (annule) return;
+        if (garde !== undefined && garde !== null && !accordAttendu(garde)) setDonnee(garde);
+        else setErreur(messageErreur(e));
+      },
     );
     return () => {
       annule = true;
     };
-  }, [clientId, version]);
+  }, [clientId, cle, version]);
 
   const recharger = useCallback(() => {
     setErreur(null);
     setVersion((v) => v + 1);
   }, []);
-  return { donnee, erreur, recharger, definir: setDonnee };
+  const definir = useCallback(
+    (c: Consentement | null) => {
+      ecrireMemoire(cle, c, true);
+      setDonnee(c);
+    },
+    [cle],
+  );
+  return { donnee, erreur, recharger, definir };
 }
