@@ -15,7 +15,7 @@ import { nouvelId } from '@/lib/identifiant';
 
 import { Puce, Puces } from '../composants';
 import { Saisie } from '../crm/dossier';
-import { couleurs, polices } from '../theme';
+import { couleurs, polices, titreSection } from '../theme';
 import { Action, Confirmation, Etat, Ligne, ts } from './commun';
 
 type Formulaire = { id?: string; seanceId: string; date: string; heure: string; envoiId: string };
@@ -116,7 +116,7 @@ export function MonCalendrier({
     <View style={[ts.carte, { borderRadius: 16, padding: 18, gap: 14 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <CalendarDays size={20} color={couleurs.rouge} />
-        <Text style={ts.titre}>Mon calendrier</Text>
+        <Text accessibilityRole="header" style={titreSection}>Mon calendrier</Text>
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>

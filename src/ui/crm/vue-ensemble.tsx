@@ -17,7 +17,7 @@ import { AgendaCoach } from '../agenda/agenda-coach';
 import { CeQuiSestPasse } from '../accueil/ce-qui-s-est-passe';
 import { BoutonContour } from '../coque';
 import { Carte } from '../composants';
-import { couleurs, espace, polices, univers, type CleUnivers } from '../theme';
+import { titreSection, couleurs, espace, polices, univers, type CleUnivers } from '../theme';
 import { adresseQuestionnaire, CarteRelance, useReglagesRelances, dateCourte, EnvoiMessage, jourLisible, nomComplet, useCoachNom } from './commun';
 import { etatA11y } from '@/lib/accessibilite';
 
@@ -299,7 +299,7 @@ function Chiffre({ libelle, valeur, onPress, alerte, teinte }: { libelle: string
   );
 }
 
-const titreCarte = { fontSize: 16, fontFamily: polices.texteGras, color: couleurs.texte, marginBottom: 16 } as const;
+const titreCarte = { ...titreSection, marginBottom: 16 } as const;
 const ligne = { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 12 } as const;
 const bordure = { borderBottomWidth: 1, borderBottomColor: couleurs.bordure } as const;
 const ligneTexte = { fontSize: 14, fontFamily: polices.texte, color: couleurs.texte } as const;

@@ -39,6 +39,14 @@ export const polices = {
 
 export const espace = (n: number) => n * 4;
 
+/**
+ * Règle des titres (audit design, point 3) :
+ * - Bebas Neue (`polices.titre`) : titre de page, nom mis en avant, grand chiffre ;
+ * - Jost semi-gras (`titreSection`) : tous les titres de section, toujours à cette taille ;
+ * - JetBrains Mono (`polices.chiffres`) : minuteur et heures.
+ */
+export const titreSection = { fontFamily: polices.texteGras, fontSize: 18, lineHeight: 24, color: couleurs.texte } as const;
+
 /** Arrondis d'origine (rem × 16) : global .9rem, cartes 1.1 à 1.25rem. */
 export const arrondi = { controle: 11, global: 14, carte: 18, hero: 20 };
 

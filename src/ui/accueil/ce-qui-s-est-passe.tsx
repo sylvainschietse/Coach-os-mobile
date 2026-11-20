@@ -9,7 +9,7 @@ import { bornesPeriode, PERIODES_ACTIVITE, quandCourt, type EvenementActivite, t
 import { useCharger } from '@/lib/useCharger';
 
 import { Carte, Chargement, Erreur, Puce, Puces } from '../composants';
-import { couleurs, polices } from '../theme';
+import { couleurs, polices, titreSection } from '../theme';
 
 const ICONES: Record<GenreActivite, LucideIcon> = {
   seance: Dumbbell,
@@ -40,7 +40,7 @@ export function CeQuiSestPasse({ onOuvrirContact, onAgenda, onPaiements }: { onO
 
   return (
     <Carte style={{ padding: 16 }}>
-      <Text style={{ fontSize: 16, fontFamily: polices.texteGras, color: couleurs.texte, marginBottom: 10 }}>Ce qui s’est passé</Text>
+      <Text accessibilityRole="header" style={[titreSection, { marginBottom: 10 }]}>Ce qui s’est passé</Text>
       <Puces>
         {PERIODES_ACTIVITE.map((p) => (
           <Puce

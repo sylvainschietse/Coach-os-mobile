@@ -10,7 +10,7 @@ import type { ElementCorbeille, ProgrammeDetail } from '@/domain/entrainement-et
 
 import { Kicker, TitreDisplay } from '../coque';
 import { Repliable } from '../crm/dossier';
-import { couleurs, polices } from '../theme';
+import { couleurs, polices, titreSection } from '../theme';
 import { AttributionClient } from './attribution';
 import { Action, CaseSelection, Etat, Ligne, Puce, TexteLong, ts, PhotoProgramme } from './commun';
 import { SuppressionEntrainement } from './corbeille';
@@ -150,7 +150,7 @@ export function DetailProgramme({
       )}
 
       <View accessibilityLabel="Descriptif du programme" style={[ts.carte, { marginTop: 20, maxWidth: 768, gap: 8 }]}>
-        <Text style={{ fontFamily: polices.titre, fontSize: 20, letterSpacing: 0.7, color: couleurs.texte }}>Descriptif du programme</Text>
+        <Text accessibilityRole="header" style={titreSection}>Descriptif du programme</Text>
         <Text style={[ts.texte, { lineHeight: 22 }]}>{descriptif}</Text>
         {!!p.priorites?.length && (
           <Text style={ts.texte}>

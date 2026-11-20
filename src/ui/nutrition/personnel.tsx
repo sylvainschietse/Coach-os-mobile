@@ -15,13 +15,13 @@ import { food, foodTotal, NOTE_PHOTO, recipeFood, type Entry, type PersonalRecip
 import { brouillonsOuverts, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { nouvelId } from '@/lib/identifiant';
 
-import { BoutonContour, Selecteur, TitreDisplay } from '../coque';
+import { BoutonContour, Selecteur } from '../coque';
 import { Cellule, Grille, Modale, Repliable, Saisie } from '../crm/dossier';
 import { Action, Confirmation, Etat, ts } from '../entrainement/commun';
 import { DicteeRecette } from '../alimentation/dictee-recette';
 import { PhotoRepas } from '../alimentation/photo';
 import { BoutonDictee } from '../dictee';
-import { couleurs, polices } from '../theme';
+import { couleurs, polices, titreSection } from '../theme';
 import { Bloc, doux, Lien } from './commun';
 import { RechercheAliment } from './recherche-aliment';
 import { ScannerCode } from './scanner-code';
@@ -378,7 +378,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
     <View style={{ gap: 20 }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <View style={{ flexShrink: 1 }}>
-          <TitreDisplay taille={24}>{vue === 'journal' ? 'Mon journal alimentaire' : 'Mes recettes personnelles'}</TitreDisplay>
+          <Text accessibilityRole="header" style={titreSection}>{vue === 'journal' ? 'Mon journal alimentaire' : 'Mes recettes personnelles'}</Text>
           <Text style={[ts.texte, { marginTop: 4, color: couleurs.texteDoux }]}>
             {vue === 'journal'
               ? 'Note ce que tu as mangé et compare ta journée à tes objectifs.'

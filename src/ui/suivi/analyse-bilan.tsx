@@ -28,7 +28,7 @@ import { AVERTISSEMENT, constats, pistes, type BilanPostural, type Constat, type
 
 import { Bouton } from '../composants';
 import { Modale } from '../crm/dossier';
-import { couleurs, espace, polices } from '../theme';
+import { couleurs, espace, polices, titreSection } from '../theme';
 import { etatA11y } from '@/lib/accessibilite';
 
 export const COULEUR_NIVEAU: Record<Niveau, { fond: string; texte: string; plein: string; libelle: string }> = {
@@ -705,7 +705,7 @@ function SyntheseClientModale({ bilan, prenom, onFermer }: { bilan: BilanPostura
 }
 
 const styles = StyleSheet.create({
-  titreSection: { fontFamily: polices.titre, fontSize: 24, letterSpacing: 0.8, color: couleurs.texte },
+  titreSection,
   carte: { backgroundColor: couleurs.carte, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: couleurs.bordure },
   carteAxe: { borderRadius: 14, padding: 14, gap: espace(2) },
   gras: { fontFamily: polices.texteGras, fontSize: 14, color: couleurs.texte },
