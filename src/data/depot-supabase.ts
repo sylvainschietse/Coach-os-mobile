@@ -16,6 +16,7 @@ import type {
 } from '@/domain/types';
 import type { TestClient } from '@/domain/tests-client';
 import { attribuerModele } from '@/domain/programmes';
+import { estErreurReseau } from '@/domain/reseau';
 import { nouvelId } from '@/lib/identifiant';
 
 import { derniersParExercice, type Depot, type Profil } from './depot';
@@ -580,22 +581,39 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
   };
 }
 
-/** Après connexion : est-ce un coach ou un client ? */
-export async function profilConnecte(db: SupabaseClient): Promise<Profil | null> {
-  const { data: auth } = await db.auth.getUser();
-  const userId = auth.user?.id;
-  if (!userId) return null;
-  const coach = await db.from('coachs').select('id, nom').eq('user_id', userId).maybeSingle();
+/**
+ * Après connexion : est-ce un coach ou un client ?
+ * Une coupure réseau lève une erreur (au lieu de répondre « personne ») : l'appli garde alors le dernier profil connu.
+ * `userId` évite de redemander au serveur qui est connecté quand la session du téléphone le dit déjà.
+ */
+export async function profilConnecte(db: SupabaseClient, userId?: string): Promise<Profil | null> {
+  let id = userId;
+  if (!id) {
+    const { data: auth, error } = await db.auth.getUser();
+    if (error && estErreurReseau(error)) throw error;
+    id = auth.user?.id;
+  }
+  if (!id) return null;
+  // Les deux questions partent en même temps : un aller-retour au lieu de deux en 4G.
+  const [coach, clientActif] = await Promise.all([
+    db.from('coachs').select('id, nom').eq('user_id', id).maybeSingle(),
+    db.from('clients').select('id, prenom').eq('user_id', id).eq('actif', true).maybeSingle(),
+  ]);
+  if (coach.error && estErreurReseau(coach.error)) throw coach.error;
+  if (clientActif.error && estErreurReseau(clientActif.error)) throw clientActif.error;
   if (coach.data) return { role: 'coach', coachId: coach.data.id, nom: coach.data.nom };
-  let client = await db.from('clients').select('id, prenom').eq('user_id', userId).eq('actif', true).maybeSingle();
+  let client = clientActif;
   if (!client.data) {
     // Première connexion avec Google, Microsoft ou un e-mail vérifié : on cherche sa fiche client.
-    const { data: rattache } = await db.rpc('rattacher_mon_compte');
+    const { data: rattache, error } = await db.rpc('rattacher_mon_compte');
+    if (error && estErreurReseau(error)) throw error;
     if (rattache) client = await db.from('clients').select('id, prenom').eq('id', rattache).maybeSingle();
+    if (client.error && estErreurReseau(client.error)) throw client.error;
   }
   if (client.data) return { role: 'client', clientId: client.data.id, prenom: client.data.prenom };
   // Abonnement appli arrêté : la base ne lui montre plus sa fiche, seulement son prénom.
-  const { data: prenom } = await db.rpc('mon_acces_suspendu');
+  const { data: prenom, error } = await db.rpc('mon_acces_suspendu');
+  if (error && estErreurReseau(error)) throw error;
   if (typeof prenom === 'string') return { role: 'client', clientId: '', prenom, suspendu: true };
   return null;
 }

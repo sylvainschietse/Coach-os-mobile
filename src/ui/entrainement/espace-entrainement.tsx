@@ -133,8 +133,8 @@ export function EntrainementClient({
   /** Remonte en haut de l'écran quand on change de page. */
   onHaut?: () => void;
 }) {
-  const { donnee: espace, erreur, recharger } = useCharger(() => entrainement.espaceClient(clientId), `espace-${clientId}`);
-  const records = useCharger(() => depot.records(clientId), `records-${clientId}`);
+  const { donnee: espace, erreur, recharger } = useCharger(() => entrainement.espaceClient(clientId), `espace-${clientId}`, { surLeTelephone: true });
+  const records = useCharger(() => depot.records(clientId), `records-${clientId}`, { surLeTelephone: true });
   const cycleId = espace?.cycle?.id;
   const calendrier = useCharger(() => (cycleId ? entrainement.calendrier(clientId, cycleId) : Promise.resolve([])), `calendrier-${clientId}-${cycleId}`);
   const [page, setPage] = useState<Page>({ nom: 'accueil' });
