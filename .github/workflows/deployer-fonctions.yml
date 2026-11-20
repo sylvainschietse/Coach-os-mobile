@@ -1,0 +1,54 @@
+# Met en ligne les fonctions serveur Supabase (supabase/functions) depuis la branche prototype, à la demande :
+# Actions › « Déployer les fonctions Supabase » › Run workflow, puis choisir les fonctions (ou « toutes »).
+# Il faut une seule fois le secret SUPABASE_ACCESS_TOKEN (jeton personnel créé sur supabase.com › Account › Access Tokens),
+# rangé dans Settings › Secrets and variables › Actions du dépôt.
+name: Déployer les fonctions Supabase
+
+on:
+  workflow_dispatch:
+    inputs:
+      fonctions:
+        description: Fonctions à déployer, séparées par des espaces (« toutes » pour toutes)
+        type: string
+        default: acces-client analyser-repas creer-seance lire-recette lire-seance ranger-entretien rediger-compte-rendu
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deployer-fonctions
+  cancel-in-progress: false
+
+jobs:
+  deployer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJET: rxkclcytevhtbpcdozdv
+      FONCTIONS: ${{ inputs.fonctions }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Déploiement
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::error::Le secret SUPABASE_ACCESS_TOKEN manque (Settings › Secrets and variables › Actions)."
+            exit 1
+          fi
+          if [ "$FONCTIONS" = "toutes" ]; then
+            FONCTIONS=$(ls -d supabase/functions/*/ | xargs -n1 basename | grep -v '^_')
+          fi
+          for f in $FONCTIONS; do
+            case "$f" in *[!a-z0-9-]*) echo "::error::Nom de fonction invalide : $f"; exit 1;; esac
+            if [ ! -f "supabase/functions/$f/index.ts" ]; then echo "::error::Fonction inconnue : $f"; exit 1; fi
+            # Les webhooks (Stripe, Tally) et les appels de la base n'ont pas de jeton de connexion : ils gardent la vérification coupée.
+            case "$f" in
+              stripe-webhook|tally|envoyer-notification|agenda-mails|agenda-google|envoyer-newsletters|notifier-questionnaire) option="--no-verify-jwt" ;;
+              *) option="" ;;
+            esac
+            echo "→ $f $option"
+            supabase functions deploy "$f" --project-ref "$PROJET" $option
+          done
