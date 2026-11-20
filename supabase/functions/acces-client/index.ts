@@ -45,7 +45,10 @@ Deno.serve(async (req) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return repondre({ erreur: 'Ajoute d’abord son e-mail sur sa fiche.' }, 400);
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  const { data: client } = await admin.from('clients').select('id, user_id').eq('id', contact.client_id).single();
+  const { data: client } = await admin.from('clients').select('id, user_id, coach_id').eq('id', contact.client_id).single();
+  // Cloisonnement : la fiche client doit être celle de ce coach, pas seulement le contact qui y renvoie.
+  const { data: coachId } = await coach.rpc('mon_coach_id');
+  if (!client || !coachId || client.coach_id !== coachId) return repondre({ erreur: 'Contact introuvable.' }, 404);
   const motDePasse = motDePasseProvisoire();
   const meta = { mot_de_passe_provisoire: true };
 
@@ -64,7 +67,7 @@ Deno.serve(async (req) => {
       existe ? 409 : 500,
     );
   }
-  const { error: lien } = await admin.from('clients').update({ user_id: cree.user.id, email }).eq('id', client!.id);
+  const { error: lien } = await admin.from('clients').update({ user_id: cree.user.id, email }).eq('id', client.id);
   if (lien) {
     await admin.auth.admin.deleteUser(cree.user.id);
     return repondre({ erreur: 'Impossible de rattacher le compte à ce client.' }, 500);

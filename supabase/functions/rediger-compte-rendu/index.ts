@@ -7,6 +7,8 @@ import { betaZodOutputFormat } from 'npm:@anthropic-ai/sdk@0.135.0/helpers/beta/
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import * as z from 'npm:zod@4';
 
+import { appelIaPermis, MESSAGE_PLAFOND_IA } from '../_shared/plafond-ia.ts';
+
 const TESTS = ['poussee', 'tirage', 'jambes', 'cardio', 'mobilite', 'posture'] as const;
 
 const Redaction = z.object({
@@ -64,6 +66,7 @@ Deno.serve(async (req) => {
   });
   const { data: booster } = await db.from('boosters').select('id').eq('id', corps.boosterId).maybeSingle();
   if (!booster) return repondre({ erreur: 'Booster introuvable.' }, 404);
+  if (!(await appelIaPermis(db))) return repondre({ erreur: MESSAGE_PLAFOND_IA }, 429);
 
   try {
     const reponse = await claude.beta.messages.parse({
