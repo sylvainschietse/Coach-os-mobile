@@ -18,8 +18,8 @@ export default function SeanceBloc() {
   const { seance: seanceId, plan } = useLocalSearchParams<{ seance: string; plan?: string }>();
   const { profil } = useSession();
   const clientId = profil?.role === 'client' ? profil.clientId : '';
-  const espace = useCharger(() => (clientId ? entrainement.espaceClient(clientId) : Promise.resolve(null)), `espace-${clientId}`);
-  const records = useCharger(() => (clientId ? depot.records(clientId) : Promise.resolve([])), `records-${clientId}`);
+  const espace = useCharger(() => (clientId ? entrainement.espaceClient(clientId) : Promise.resolve(null)), `espace-${clientId}`, { surLeTelephone: true });
+  const records = useCharger(() => (clientId ? depot.records(clientId) : Promise.resolve([])), `records-${clientId}`, { surLeTelephone: true });
   const quitter = () => (router.canGoBack() ? router.back() : router.replace('/client'));
 
   // Écran allumé pendant la séance. Sur navigateur le verrou peut être refusé : sans conséquence.

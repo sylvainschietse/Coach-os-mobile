@@ -4,6 +4,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { estErreurReseau, profilApresVerification, type ProfilGarde } from '@/domain/reseau';
+import { viderMemoire } from '@/lib/memoire';
 import { annulerRappels, oublierCeTelephone } from '@/lib/rappels';
 
 import type { Profil } from './depot';
@@ -11,6 +13,21 @@ import { profilConnecte } from './depot-supabase';
 import { supabase, type Fournisseur } from './supabase';
 
 const CLE = 'coachos.demo.profil';
+/** Dernier profil connu du compte connecté : l'appli s'ouvre avec, même sans réseau (en salle, au sous-sol). */
+const CLE_GARDE = 'coachos.profil-garde';
+
+async function lireGarde(): Promise<ProfilGarde<Profil> | null> {
+  try {
+    const brut = await AsyncStorage.getItem(CLE_GARDE);
+    return brut ? (JSON.parse(brut) as ProfilGarde<Profil>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function garder(g: ProfilGarde<Profil> | null) {
+  (g ? AsyncStorage.setItem(CLE_GARDE, JSON.stringify(g)) : AsyncStorage.removeItem(CLE_GARDE)).catch(() => {});
+}
 
 interface ValeurSession {
   profil: Profil | null;
@@ -51,27 +68,47 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      try {
-        if (supabase) {
-          const p = await profilConnecte(supabase);
-          setProfil(p);
-          await lireProvisoire();
-          const { data } = await supabase.auth.getSession();
-          setSansDossier(!p && !!data.session);
-        }
-        else {
+      if (!supabase) {
+        try {
           const brut = await AsyncStorage.getItem(CLE);
           if (brut) setProfil(JSON.parse(brut) as Profil);
+        } finally {
+          setPret(true);
         }
-      } catch {
-        setProfil(null);
+        return;
+      }
+      const db = supabase;
+      // 1. Le dernier profil connu s'affiche tout de suite, sans attendre le réseau.
+      const garde = await lireGarde();
+      if (garde) {
+        setProfil(garde.profil);
+        setEmail(garde.email);
+        setProvisoire(garde.provisoire === true);
+        setPret(true);
+      }
+      // 2. Puis on vérifie auprès du serveur. Sans réseau, on garde le profil connu au lieu de déconnecter.
+      try {
+        const { data, error } = await db.auth.getSession();
+        const user = data.session?.user;
+        if (!user && error && estErreurReseau(error)) throw error;
+        const p = user ? await profilConnecte(db, user.id) : null;
+        const resultat = profilApresVerification(garde, { ok: true, profil: p });
+        if (garde && (!resultat || resultat.role !== garde.profil.role)) await viderMemoire();
+        setProfil(resultat);
+        setEmail(user?.email ?? undefined);
+        setProvisoire(user?.user_metadata?.mot_de_passe_provisoire === true);
+        setSansDossier(!p && !!user);
+        garder(resultat ? { profil: resultat, email: user?.email ?? undefined, provisoire: user?.user_metadata?.mot_de_passe_provisoire === true } : null);
+      } catch (e) {
+        setProfil(profilApresVerification(garde, { ok: false, erreur: e }));
       } finally {
         setPret(true);
       }
     })();
-  }, [lireProvisoire]);
+  }, []);
 
   const choisirProfilDemo = useCallback(async (p: Profil) => {
+    await viderMemoire();
     await AsyncStorage.setItem(CLE, JSON.stringify(p));
     setProfil(p);
   }, []);
@@ -89,7 +126,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setSansDossier(!p);
     if (!p) return null;
     await lireProvisoire();
+    await viderMemoire();
     setProfil(p);
+    garder({ profil: p, email: data.user.email ?? undefined, provisoire: data.user.user_metadata?.mot_de_passe_provisoire === true });
     return null;
   }, [lireProvisoire]);
 
@@ -143,6 +182,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.updateUser({ password: nouveau, data: { mot_de_passe_provisoire: false } });
     if (error) return 'Le mot de passe n’a pas pu être enregistré. Réessaie.';
     setProvisoire(false);
+    lireGarde().then((g) => g && garder({ ...g, provisoire: false }));
     return null;
   }, []);
 
@@ -152,6 +192,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await annulerRappels().catch(() => undefined);
     if (supabase) await supabase.auth.signOut();
     await AsyncStorage.removeItem(CLE);
+    await AsyncStorage.removeItem(CLE_GARDE).catch(() => undefined);
+    await viderMemoire();
     setProfil(null);
     setProvisoire(false);
     setSansDossier(false);

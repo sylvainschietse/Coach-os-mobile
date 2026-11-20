@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { estMessageReseau } from '@/domain/reseau';
+import { toutReessayer } from '@/lib/memoire';
 import { usePression } from '@/lib/usePression';
 
 import { DefilementClavier } from './clavier';
@@ -203,20 +205,40 @@ export function Puces({ children }: { children: ReactNode }) {
   return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>{children}</View>;
 }
 
+/** Après ce délai sans réponse, la roue laisse place à « La connexion est lente » et à un bouton « Réessayer ». */
+const ATTENTE_LENTE_MS = 10_000;
+
 export function Chargement() {
+  const [lent, setLent] = useState(false);
+  useEffect(() => {
+    const minuterie = setTimeout(() => setLent(true), ATTENTE_LENTE_MS);
+    return () => clearTimeout(minuterie);
+  }, []);
   return (
-    <View style={{ padding: espace(10), alignItems: 'center' }}>
-      <ActivityIndicator color={couleurs.rouge} />
+    <View style={{ padding: espace(10), alignItems: 'center', gap: espace(3) }} accessibilityLiveRegion="polite">
+      <ActivityIndicator color={couleurs.rouge} accessibilityLabel="Chargement" />
+      {lent && (
+        <>
+          <Texte doux style={{ textAlign: 'center' }}>
+            La connexion est lente. Tu peux attendre encore un peu ou réessayer.
+          </Texte>
+          <Bouton libelle="Réessayer" variante="secondaire" onPress={toutReessayer} />
+        </>
+      )}
     </View>
   );
 }
 
-/** Message d'erreur ; avec `onReessayer`, un chargement raté se distingue d'une liste vide et se relance. */
+/**
+ * Message d'erreur ; avec `onReessayer`, un chargement raté se distingue d'une liste vide et se relance.
+ * Une coupure réseau propose toujours « Réessayer », qui relance tous les chargements de l'écran.
+ */
 export function Erreur({ message, onReessayer }: { message: string; onReessayer?: () => void }) {
+  const reessayer = onReessayer ?? (estMessageReseau(message) ? toutReessayer : undefined);
   return (
     <Carte style={{ borderColor: couleurs.rouge }}>
       <Texte>{message}</Texte>
-      {onReessayer && <Bouton libelle="Réessayer" variante="secondaire" onPress={onReessayer} />}
+      {reessayer && <Bouton libelle="Réessayer" variante="secondaire" onPress={reessayer} />}
     </Carte>
   );
 }
