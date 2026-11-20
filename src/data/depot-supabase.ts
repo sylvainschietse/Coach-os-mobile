@@ -604,7 +604,7 @@ export async function profilConnecte(db: SupabaseClient, userId?: string): Promi
   if (coach.data) return { role: 'coach', coachId: coach.data.id, nom: coach.data.nom };
   let client = clientActif;
   if (!client.data) {
-    // Première connexion avec Google, Microsoft ou un e-mail vérifié : on cherche sa fiche client.
+    // Fiche reliée par le coach (« Créer l’accès ») : la base ne relie plus un compte tout seul par son e-mail.
     const { data: rattache, error } = await db.rpc('rattacher_mon_compte');
     if (error && estErreurReseau(error)) throw error;
     if (rattache) client = await db.from('clients').select('id, prenom').eq('id', rattache).maybeSingle();
