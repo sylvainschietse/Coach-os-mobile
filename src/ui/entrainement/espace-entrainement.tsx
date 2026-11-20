@@ -8,7 +8,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { CalendarRange, ChevronLeft, Lock, PlayCircle, RefreshCw, Timer } from '@/ui/icones';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { BackHandler, Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { BackHandler, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
 
 import { depot } from '@/data';
 import { entrainement } from '@/data/entrainement';
@@ -247,10 +247,11 @@ export function EntrainementClient({
           kicker="Mon entraînement"
           titre="Mon programme"
           sousTitre="Ton cycle, ses séances et tout ce que tu as déjà fait."
+          compact
           droite={
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <BoutonMinuteurs />
-              <BoutonContour nom="Actualiser" icone={RefreshCw} onPress={() => demanderSortie(() => (recharger(), setVersionSeances((v) => v + 1)))} />
+              <BoutonContour libelle="Actualiser" nom="Actualiser" icone={RefreshCw} iconeAGauche onPress={() => demanderSortie(() => (recharger(), setVersionSeances((v) => v + 1)))} />
             </View>
           }
         />
@@ -326,6 +327,7 @@ export function EntrainementClient({
           <Hero
             kicker="Ton entraînement"
             titre={`Bonjour, ${prenom.trim().split(/\s+/)[0]}`}
+            compact
             droite={
               <BoutonContour
                 nom="Actualiser mon programme"
@@ -481,6 +483,8 @@ const etatCycle = (e: 'a_venir' | 'en_cours' | 'depasse') => (e === 'a_venir' ? 
 
 /** En tête de la page du programme : photo, cycle, dates, objectif et avancement. */
 function CarteCycle({ espace }: { espace: EspaceEntrainement }) {
+  // Sur téléphone, une photo plus basse laisse voir les séances dès le premier écran.
+  const petit = useWindowDimensions().width <= 640;
   const c = espace.cycle;
   if (!c)
     return (
@@ -491,7 +495,7 @@ function CarteCycle({ espace }: { espace: EspaceEntrainement }) {
     );
   return (
     <View style={[ts.carte, { borderRadius: 16, gap: 4 }]}>
-      {espace.programme && <PhotoProgramme programme={espace.programme} hauteur={220} style={{ marginBottom: 8 }} />}
+      {espace.programme && <PhotoProgramme programme={espace.programme} hauteur={petit ? 130 : 220} style={{ marginBottom: 8 }} />}
       <Text style={ts.kicker}>{etatCycle(c.etat)}</Text>
       <Text style={{ fontFamily: polices.titre, fontSize: 24, letterSpacing: 0.5, color: couleurs.texte }}>{c.nom}</Text>
       <Text style={ts.texte}>
@@ -561,5 +565,5 @@ const styles = StyleSheet.create({
 /** Les minuteurs (Tabata, EMOM, AMRAP…) depuis la page du programme, à côté d'Actualiser. */
 function BoutonMinuteurs() {
   const m = useMinuteurs();
-  return m ? <BoutonContour nom="Ouvrir les minuteurs" icone={Timer} onPress={m.ouvrir} /> : null;
+  return m ? <BoutonContour libelle="Minuteur" nom="Ouvrir les minuteurs" icone={Timer} iconeAGauche onPress={m.ouvrir} /> : null;
 }

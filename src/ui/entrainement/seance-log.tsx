@@ -66,8 +66,10 @@ const WATTS: Champ = { m: 'watts', titre: 'Puissance (W)', unite: 'W', decimal: 
 /** Les cases d'une série selon le format de travail prescrit par le coach. */
 export function champsSaisie(l: LignePrescription): Champ[] {
   const format = formatDeLigne(l, typeDeLigne(l));
-  if (format === 'reps') return [CHARGE, REPS];
-  if (format === 'temps') return [DUREE, CHARGE];
+  // Pas de case « kg » sur un exercice sans charge (mobilité, poids du corps), sauf si le coach en a prescrit une.
+  const avecCharge = !l.exercice.mesures?.length || l.exercice.mesures.includes('charge') || !!l.chargeIndicative;
+  if (format === 'reps') return avecCharge ? [CHARGE, REPS] : [REPS];
+  if (format === 'temps') return avecCharge ? [DUREE, CHARGE] : [DUREE];
   const objectif = lireObjectif(l).type;
   return [DUREE, DISTANCE, ...(objectif === 'calories' ? [CALORIES] : objectif === 'watts' ? [WATTS] : [])];
 }
