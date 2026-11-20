@@ -717,7 +717,7 @@ export function CarteCycleAccueil({ clientId, onOuvrir }: { clientId: string; on
       accessibilityRole="button"
       accessibilityLabel={`Mon cycle : jour ${s.jourCycle}, ${PHASES[s.phase].libelle}. Prochaines règles ${phrasePrevision(s)}.`}
       onPress={onOuvrir}
-      style={{ borderRadius: 22, padding: 16, gap: 6, backgroundColor: PHASES[s.phase].fond }}
+      style={{ borderRadius: 22, padding: 16, gap: 6, backgroundColor: couleurs.carte, borderWidth: 1, borderColor: couleurs.bordure }}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text style={{ fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', color: PHASES[s.phase].couleur }}>Mon cycle</Text>

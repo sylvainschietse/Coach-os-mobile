@@ -21,7 +21,7 @@ import { Action, Confirmation, Etat, ts } from '../entrainement/commun';
 import { DicteeRecette } from '../alimentation/dictee-recette';
 import { PhotoRepas } from '../alimentation/photo';
 import { BoutonDictee } from '../dictee';
-import { couleurs, polices, titreSection } from '../theme';
+import { couleurs, polices, titreSection, univers } from '../theme';
 import { Bloc, doux, Lien } from './commun';
 import { RechercheAliment } from './recherche-aliment';
 import { ScannerCode } from './scanner-code';
@@ -408,7 +408,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
             {nutrientLabels.map(([k, label, unit]) => {
               const goal = k === 'kcal' ? cible?.calories : k === 'protein' ? goals?.proteines : k === 'carbs' ? goals?.glucides : goals?.lipides;
               return (
-                <View key={k} style={{ width: '48%', flexGrow: 1, borderRadius: 12, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: 'rgba(195,24,30,0.05)', padding: 12 }}>
+                <View key={k} style={{ width: '48%', flexGrow: 1, borderRadius: 12, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.carte, padding: 12 }}>
                   <Text style={doux}>{label}</Text>
                   <Text style={{ marginTop: 4, fontFamily: polices.texteGras, fontSize: 20, color: couleurs.texte }}>
                     {round(totalJour[k])} {unit}
@@ -427,7 +427,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
                         accessibilityLabel={label + ' par rapport à l’objectif'}
                         style={{ marginTop: 8, height: 8, borderRadius: 4, backgroundColor: couleurs.discret, overflow: 'hidden' }}
                       >
-                        <View style={{ height: 8, width: `${Math.min(100, (totalJour[k] / (goal || 1)) * 100)}%`, backgroundColor: couleurs.rouge }} />
+                        <View style={{ height: 8, width: `${Math.min(100, (totalJour[k] / (goal || 1)) * 100)}%`, backgroundColor: univers.vert.fonce }} />
                       </View>
                     </>
                   )}

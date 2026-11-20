@@ -129,7 +129,8 @@ export const univers: Record<CleUnivers, Univers> = {
     fonce: '#86650F',
     clair: '#FBF5E6',
     kickerScene: '#E9C877',
-    degrade: 'linear-gradient(135deg, #E0262C 0%, #B8862A 100%)',
+    // Boutons pleins en rouge de marque : le doré reste pour l'onglet actif et les accents (audit design, point 2).
+    degrade: 'linear-gradient(135deg, #E0262C 0%, #B3161C 100%)',
     scene: scene('224, 38, 44', '201, 151, 43'),
     uni: '#B81B21',
   },

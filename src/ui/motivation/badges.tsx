@@ -112,22 +112,22 @@ export function CarteSerie({ clientId, onOuvrir }: { clientId: string; onOuvrir:
       accessibilityRole="button"
       accessibilityLabel={`Ma série : ${pluriel(p.serie, 'semaine')} d’affilée, grade ${p.grade.nom}. Voir mes badges`}
       onPress={onOuvrir}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, padding: 14, backgroundColor: '#FFF1DC' }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, padding: 14, backgroundColor: couleurs.carte, borderWidth: 1, borderColor: couleurs.bordure }}
     >
-      <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: '#FFDDA8', alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: '#FFF1DC', alignItems: 'center', justifyContent: 'center' }}>
         <Flame size={26} color="#E07800" fill="#F59E0B" />
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
-        <Text style={{ fontFamily: polices.texteGras, fontSize: 15, color: '#5C3300' }}>
+        <Text style={{ fontFamily: polices.texteGras, fontSize: 15, color: couleurs.texte }}>
           {p.serie ? `${pluriel(p.serie, 'semaine')} d’affilée` : 'Lance ta série cette semaine'}
-          <Text style={{ fontFamily: polices.texte, color: '#8A5A1A' }}> · {p.grade.nom}</Text>
+          <Text style={{ fontFamily: polices.texte, color: couleurs.texteDoux }}> · {p.grade.nom}</Text>
         </Text>
-        <Jauge part={faites / objectif} couleur="#F08A00" fond="#FFE2B8" hauteur={8} />
-        <Text style={{ fontFamily: polices.texte, fontSize: 12.5, color: '#8A5A1A' }}>
+        <Jauge part={faites / objectif} couleur="#F08A00" fond={couleurs.discret} hauteur={8} />
+        <Text style={{ fontFamily: polices.texte, fontSize: 12.5, color: couleurs.texteDoux }}>
           {faites >= objectif ? 'Semaine complète, bravo !' : `${faites} séance${faites > 1 ? 's' : ''} sur ${objectif} cette semaine`}
         </Text>
       </View>
-      <ChevronRight size={20} color="#B07A2A" />
+      <ChevronRight size={20} color={couleurs.texteDoux} />
     </Pressable>
   );
 }
