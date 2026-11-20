@@ -292,7 +292,7 @@ function Chiffre({ libelle, valeur, onPress, alerte }: { libelle: string; valeur
         opacity: pressed ? 0.7 : 1,
       })}
     >
-      <Text numberOfLines={1} style={{ fontSize: 12, fontFamily: polices.texte, color: couleurs.texteDoux }}>{libelle}</Text>
+      <Text numberOfLines={2} style={{ fontSize: 12, fontFamily: polices.texte, color: couleurs.texteDoux }}>{libelle}</Text>
       <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 20, fontFamily: polices.texteGras, color: alerte ? couleurs.rouge : couleurs.texte, marginTop: 2 }}>
         {valeur}
       </Text>
