@@ -14,14 +14,15 @@ export const couleurs = {
   secondaire: '#262931',
   texte: '#1A1C23',
   texteDoux: '#636874',
-  suggestion: '#A3A7B0',
+  /** Charges suggérées, dates vides, « Libre » : plus clair que le texte, mais lisible (contraste 4,5:1 sur fond clair). */
+  suggestion: '#686C76',
   bordure: '#DFE2E7',
   saisie: '#CCCFD7',
   fond: '#F6F7F9',
   /** `--muted` : fond des sous-navigations. */
   discret: '#EDEFF2',
   carte: '#FFFFFF',
-  vert: '#1E8E4E',
+  vert: '#187A42',
   vertClair: '#E7F5EC',
   bleu: '#2563EB',
   orange: '#C2410C',
@@ -107,7 +108,7 @@ export const univers: Record<CleUnivers, Univers> = {
   vert: {
     cle: 'vert',
     accent: '#1FA35C',
-    fonce: '#16864A',
+    fonce: '#13773F',
     clair: '#E8F6EE',
     kickerScene: '#7FDCA6',
     degrade: 'linear-gradient(135deg, #1FA35C 0%, #16864A 100%)',
@@ -117,7 +118,7 @@ export const univers: Record<CleUnivers, Univers> = {
   rougeDore: {
     cle: 'rougeDore',
     accent: '#B8862A',
-    fonce: '#9C7621',
+    fonce: '#86650F',
     clair: '#FBF5E6',
     kickerScene: '#E9C877',
     degrade: 'linear-gradient(135deg, #E0262C 0%, #B8862A 100%)',
@@ -127,7 +128,7 @@ export const univers: Record<CleUnivers, Univers> = {
   ambre: {
     cle: 'ambre',
     accent: '#D9850A',
-    fonce: '#B36C06',
+    fonce: '#9A5D05',
     clair: '#FFF5E5',
     kickerScene: '#FFC36B',
     degrade: 'linear-gradient(135deg, #F2A72E 0%, #D9850A 100%)',

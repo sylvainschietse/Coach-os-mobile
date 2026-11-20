@@ -14,6 +14,7 @@ import { Bouton, Carte, Chargement, ChampTexte, Erreur, Puce, Puces, SousTitre, 
 import { ChoixExercice } from '../programmes/choix-exercice';
 import { couleurs, espace } from '../theme';
 import { Courbe } from './courbe';
+import { etatA11y } from '@/lib/accessibilite';
 
 type Brouillon = {
   libelle: string;
@@ -120,7 +121,7 @@ function Saisie({ clientId, onAjoute, parCoach }: { clientId: string; onAjoute: 
       {b.unite === 'kg' && (
         <Pressable
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: b.reference, disabled: !b.exerciceId }}
+          {...etatA11y({ checked: b.reference, disabled: !b.exerciceId })}
           disabled={!b.exerciceId}
           onPress={() => setB({ ...b, reference: !b.reference })}
           style={{ flexDirection: 'row', gap: espace(2), alignItems: 'flex-start', opacity: b.exerciceId ? 1 : 0.6 }}

@@ -71,8 +71,8 @@ export function Courbe({ points, unite, libelle, couleur = couleurs.rouge }: { p
         )}
         {/* Dates de début et de fin sous l'axe. */}
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Text style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }}>{dateCourte(points[0].date)}</Text>
-          <Text style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }}>{dateCourte(points[points.length - 1].date)}</Text>
+          <Text style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux }}>{dateCourte(points[0].date)}</Text>
+          <Text style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux }}>{dateCourte(points[points.length - 1].date)}</Text>
         </View>
         {/* Zones à toucher : une bande verticale par point. */}
         {largeur > 0 &&

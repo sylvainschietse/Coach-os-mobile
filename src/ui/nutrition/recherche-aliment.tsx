@@ -35,7 +35,7 @@ function Resultat({ titre, detail, note, desactive, onPress }: { titre: string; 
     >
       <Text style={ts.titreChamp}>{titre}</Text>
       <Text style={[doux, { marginTop: 4 }]}>{detail}</Text>
-      {note && <Text style={[doux, { fontSize: 11, marginTop: 4 }]}>{note}</Text>}
+      {note && <Text style={[doux, { fontSize: 12, marginTop: 4 }]}>{note}</Text>}
     </Pressable>
   );
 }
@@ -186,7 +186,7 @@ export function RechercheAliment({
         </View>
       </Repliable>
       <View style={{ gap: 2 }}>
-        <Text style={[doux, { fontSize: 11 }]}>
+        <Text style={[doux, { fontSize: 12 }]}>
           {ciqualFoods.length.toLocaleString('fr-FR')} aliments · Anses · Ciqual 2025. Quantités en grammes de partie comestible, y compris les liquides.
           Choisis le bon état cru/cuit ; les poids ne sont pas convertis automatiquement. Marques : Open Food Facts (ODbL).
         </Text>

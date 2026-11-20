@@ -41,7 +41,7 @@ export function InvitationOptionNutrition({ compacte, onDecouvrir }: { compacte?
     return (
       <View style={{ borderRadius: 18, backgroundColor: couleurs.noir, padding: 18, gap: 14, overflow: 'hidden' }}>
         <View style={{ gap: 4 }}>
-          <Text style={[ts.kicker, { fontSize: 11, letterSpacing: 1.6 }]}>Option nutrition</Text>
+          <Text style={[ts.kicker, { fontSize: 12, letterSpacing: 1.6 }]}>Option nutrition</Text>
           <Text style={{ fontFamily: polices.texteGras, fontSize: 18, color: '#FFFFFF' }}>Ta semaine de repas, prête à cuisiner</Text>
           <Text style={{ fontFamily: polices.texte, fontSize: 13, color: '#B9BEC6' }}>Un plan construit sur tes macros, avec des recettes à ton goût.</Text>
         </View>
@@ -80,7 +80,7 @@ export function InvitationOptionNutrition({ compacte, onDecouvrir }: { compacte?
               <View key={titre} style={{ borderRadius: 12, overflow: 'hidden', backgroundColor: couleurs.discret }}>
                 {photo(titre) !== undefined && <Image source={photo(titre)!} style={{ width: '100%', height: 92 }} contentFit="cover" transition={120} accessibilityIgnoresInvertColors />}
                 <View style={{ padding: 8, gap: 2 }}>
-                  <Text style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.rouge, textTransform: 'uppercase', letterSpacing: 0.5 }}>{moment}</Text>
+                  <Text style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.rouge, textTransform: 'uppercase', letterSpacing: 0.5 }}>{moment}</Text>
                   <Text numberOfLines={2} style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.texte }}>
                     {titre}
                   </Text>

@@ -11,6 +11,7 @@ import { usePression } from '@/lib/usePression';
 import { useHauteurClavier } from './clavier';
 import { arrondi, couleurs, espace, espacementTitre, polices, type Univers } from './theme';
 import { useUnivers } from './univers';
+import { etatA11y } from '@/lib/accessibilite';
 
 /** Fond sombre sous la lueur de l'en-tête et des scènes. */
 const FOND_SCENE = '#15161B';
@@ -49,7 +50,7 @@ export function EnTete({
   const petit = width <= 640;
   return (
     <View style={[styles.entete, { paddingTop: top }, univers && { backgroundColor: FOND_SCENE, backgroundImage: univers.scene, borderBottomWidth: 0 }]}>
-      <View style={[styles.enteteLigne, { maxWidth: largeur }]}>
+      <View style={[styles.enteteLigne, { maxWidth: largeur }, petit && { gap: espace(2) }]}>
         <Pressable
           accessibilityRole={onLogo ? 'button' : undefined}
           accessibilityLabel={onLogo ? 'CoachGo, revenir à l’accueil' : undefined}
@@ -61,7 +62,7 @@ export function EnTete({
           <Logo />
           <View>
             <Text style={[styles.marque, { fontSize: petit ? 22 : sousTitre ? 24 : 20 }]}>CoachGo</Text>
-            {sousTitre && <Text style={styles.marqueSous}>{sousTitre}</Text>}
+            {sousTitre && <Text style={[styles.marqueSous, petit && { letterSpacing: 0.8 }]}>{sousTitre}</Text>}
           </View>
         </Pressable>
         {badge && !petit && (
@@ -69,7 +70,7 @@ export function EnTete({
             <Text style={styles.badgeTexte}>{badge}</Text>
           </View>
         )}
-        <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: espace(1) }}>{droite}</View>
+        <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: petit ? 0 : espace(1) }}>{droite}</View>
       </View>
       {email !== undefined && <Text style={[styles.email, { maxWidth: largeur }, univers && { color: 'rgba(255,255,255,0.75)' }]}>{email}</Text>}
     </View>
@@ -83,7 +84,7 @@ export function BoutonIcone({ icone: Icone, nom, onPress }: { icone: LucideIcon;
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={nom}
-      accessibilityState={{ busy: enCours }}
+      {...etatA11y({ busy: enCours })}
       disabled={enCours}
       onPress={presser}
       style={(e) => [styles.boutonIcone, (e.pressed || survol(e)) && { backgroundColor: '#3a3a3a' }]}
@@ -105,7 +106,7 @@ export function CommutateurApercu({ valeur, onChange }: { valeur: 'coach' | 'cli
         <Pressable
           key={m}
           accessibilityRole="button"
-          accessibilityState={{ selected: valeur === m }}
+          {...etatA11y({ selected: valeur === m })}
           onPress={() => m !== valeur && onChange(m)}
           style={[styles.apercuBouton, valeur === m && { backgroundColor: couleurs.secondaire }]}
         >
@@ -141,7 +142,7 @@ export function OngletsCoach<T extends string>({
             <Pressable
               key={o.cle}
               accessibilityRole="tab"
-              accessibilityState={{ selected: actif }}
+              {...etatA11y({ selected: actif }, 'tab')}
               aria-selected={actif}
               aria-current={actif ? 'page' : undefined}
               onPress={() => onChange(o.cle)}
@@ -188,7 +189,7 @@ export function SousNav<T extends string>({
       <Pressable
         key={o.cle}
         accessibilityRole="tab"
-        accessibilityState={{ selected: actif }}
+        {...etatA11y({ selected: actif }, 'tab')}
         aria-selected={actif}
         aria-current={actif ? 'page' : undefined}
         onPress={() => onChange(o.cle)}
@@ -202,7 +203,7 @@ export function SousNav<T extends string>({
           <Text
             style={[
               styles.sousOngletTexte,
-              { fontSize: grille === 'nutrition' ? 11.5 : petit ? 12 : 12.8 },
+              { fontSize: petit ? 12 : 12.8 },
               actif && { color: u.fonce },
             ]}
           >
@@ -408,7 +409,7 @@ export function BoutonContour({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={nom ?? libelle}
-      accessibilityState={{ disabled: !!(desactive || enCours), busy: enCours }}
+      {...etatA11y({ disabled: !!(desactive || enCours), busy: enCours })}
       disabled={desactive || enCours}
       onPress={presser}
       style={(e) => [
@@ -454,7 +455,6 @@ export function BarreClient<T extends string>({
   nom?: string;
 }) {
   const { bottom } = useSafeAreaInsets();
-  const petit = useWindowDimensions().width < 640;
   return (
     <View accessibilityRole="tablist" aria-label={nom} style={[styles.barre, { paddingBottom: bottom }]}>
       <View style={styles.barreLigne}>
@@ -467,7 +467,7 @@ export function BarreClient<T extends string>({
             <Pressable
               key={o.cle}
               accessibilityRole="tab"
-              accessibilityState={{ selected: actif }}
+              {...etatA11y({ selected: actif }, 'tab')}
               aria-selected={actif}
               aria-current={actif ? 'page' : undefined}
               // Toucher l'onglet ouvert ramène à son début (Progrès : la page des cartes).
@@ -476,7 +476,7 @@ export function BarreClient<T extends string>({
             >
               {actif && <View style={[styles.barreTrait, { backgroundColor: teinte, backgroundImage: u?.degrade }]} />}
               {Icone && <Icone size={20} color={actif ? teinte : couleurs.texteDoux} />}
-              <Text numberOfLines={1} style={[styles.barreTexte, { fontSize: petit ? 11 : 12 }, actif && { color: u?.fonce ?? couleurs.rouge, fontFamily: polices.texteGras }]}>
+              <Text numberOfLines={1} style={[styles.barreTexte, { fontSize: 12 }, actif && { color: u?.fonce ?? couleurs.rouge, fontFamily: polices.texteGras }]}>
                 {o.libelle}
               </Text>
             </Pressable>
@@ -614,11 +614,11 @@ const styles = StyleSheet.create({
     paddingVertical: espace(3),
   },
   marque: { fontFamily: polices.titre, color: '#FFFFFF', letterSpacing: espacementTitre(24) },
-  marqueSous: { fontFamily: polices.texte, fontSize: 10, letterSpacing: 1.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)' },
+  marqueSous: { fontFamily: polices.texte, fontSize: 12, letterSpacing: 1.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)' },
   badge: { borderWidth: 1, borderColor: '#687384', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2 },
   badgeTexte: { color: '#E0E5EB', fontSize: 12, fontFamily: polices.texteGras },
   email: { width: '100%', alignSelf: 'center', paddingHorizontal: espace(4), paddingBottom: espace(2), fontSize: 12, fontFamily: polices.texte, color: '#C1C6CD' },
-  boutonIcone: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  boutonIcone: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   apercu: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -698,7 +698,7 @@ const styles = StyleSheet.create({
     color: couleurs.texte,
   },
   listeLigne: { minHeight: 46, borderRadius: 12, paddingHorizontal: 12, justifyContent: 'center' },
-  libelleSection: { fontSize: 11.5, fontFamily: polices.texteGras, textTransform: 'uppercase', letterSpacing: 1.15, color: couleurs.texteDoux },
+  libelleSection: { fontSize: 12, fontFamily: polices.texteGras, textTransform: 'uppercase', letterSpacing: 1.15, color: couleurs.texteDoux },
   rubrique: { minHeight: 46, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
   puceRubrique: {
     flexDirection: 'row',
@@ -749,9 +749,9 @@ const styles = StyleSheet.create({
     boxShadow: '0 14px 30px -18px rgba(17, 18, 22, 0.55)',
   } as ViewStyle,
   heroLueur: { backgroundImage: 'radial-gradient(circle at 0% 0%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 60%)' } as ViewStyle,
-  heroKicker: { fontSize: 11.5, fontFamily: polices.texteGras, letterSpacing: 2, textTransform: 'uppercase' },
+  heroKicker: { fontSize: 12, fontFamily: polices.texteGras, letterSpacing: 2, textTransform: 'uppercase' },
   heroSous: { marginTop: 8, fontSize: 14, lineHeight: 20, fontFamily: polices.texte, color: 'rgba(255,255,255,0.84)' },
-  kicker: { fontSize: 10.9, fontFamily: polices.texteGras, letterSpacing: 1.75, textTransform: 'uppercase', color: couleurs.rouge },
+  kicker: { fontSize: 12, fontFamily: polices.texteGras, letterSpacing: 1.75, textTransform: 'uppercase', color: couleurs.rouge },
   stat: {
     flexGrow: 1,
     flexBasis: 200,

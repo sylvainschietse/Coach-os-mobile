@@ -26,6 +26,7 @@ import { Jauge, useProgression } from '../motivation/badges';
 import { polices } from '../theme';
 import { Lueur, nuit, Principal } from './seance-blocs';
 import { champsSaisie, invalide, seriesDuBrouillon, validerSeries, vide, type Brouillon, type Champ, type SaisieLibre } from './seance-log';
+import { etatA11y } from '@/lib/accessibilite';
 
 /** Délai du rappel après le début : une séance dure souvent une heure, on relance une heure plus tard. */
 const RAPPEL_S = 2 * 3600;
@@ -297,7 +298,7 @@ function Pendant({
             return (
               <View key={b.id} style={{ flexDirection: 'row', gap: 12, paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: nuit.bordure }}>
                 <View style={styles.numero}>
-                  <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: '#C9CBD3' }}>{i + 1}</Text>
+                  <Text style={{ fontFamily: polices.texteGras, fontSize: 13, color: '#C9CBD3' }}>{i + 1}</Text>
                 </View>
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={styles.nom}>{titreBloc(b.titre) || b.lignes.map((l) => l.exercice.nom).join(' + ')}</Text>
@@ -372,7 +373,7 @@ function Raconter({
               <Pressable
                 key={r.note}
                 accessibilityRole="radio"
-                accessibilityState={{ checked: d.note === r.note }}
+                {...etatA11y({ checked: d.note === r.note })}
                 onPress={() => onNote(r.note)}
                 style={[styles.ressenti, d.note === r.note && { backgroundColor: nuit.rouge }]}
               >
@@ -445,7 +446,7 @@ function Choix({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!desactive }}
+      {...etatA11y({ disabled: !!desactive })}
       disabled={desactive}
       onPress={onPress}
       style={({ pressed }) => [
@@ -708,7 +709,7 @@ function Valider({
       </DefilementClavier>
       <Pied marges={marges}>
         {fautif && (
-          <Text accessibilityRole="alert" style={{ fontFamily: polices.texte, fontSize: 12, color: nuit.rougeDoux }}>
+          <Text accessibilityRole="alert" style={{ fontFamily: polices.texte, fontSize: 13, color: nuit.rougeDoux }}>
             Charge : de 0 à 1 000 kg. Répétitions, durée en secondes et calories : nombres entiers.
           </Text>
         )}
@@ -718,7 +719,7 @@ function Valider({
           </Text>
         )}
         <PrincipalLigne libelle={envoi ? 'Enregistrement…' : 'Tout valider et enregistrer'} desactive={envoi || fautif} onPress={onTout} />
-        <Text style={[styles.doux, { textAlign: 'center', fontSize: 12 }]}>Ce qui n’est pas encore validé est enregistré comme prévu.</Text>
+        <Text style={[styles.doux, { textAlign: 'center', fontSize: 13 }]}>Ce qui n’est pas encore validé est enregistré comme prévu.</Text>
       </Pied>
     </>
   );
@@ -791,7 +792,7 @@ function Fin({
 function Stat({ libelle, valeur }: { libelle: string; valeur: string }) {
   return (
     <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 16, padding: 12, alignItems: 'center', gap: 2 }}>
-      <Text style={{ fontFamily: polices.texte, fontSize: 11, color: nuit.doux }}>{libelle}</Text>
+      <Text style={{ fontFamily: polices.texte, fontSize: 13, color: nuit.doux }}>{libelle}</Text>
       <Text style={{ fontFamily: polices.texteGras, fontSize: 17, color: '#FFFFFF' }}>{valeur}</Text>
     </View>
   );
@@ -799,7 +800,7 @@ function Stat({ libelle, valeur }: { libelle: string; valeur: string }) {
 
 const styles = StyleSheet.create({
   enTete: { fontFamily: polices.texte, fontSize: 14, color: '#B7BAC3' },
-  kicker: { fontFamily: polices.texteGras, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase', color: '#FF8A8E' },
+  kicker: { fontFamily: polices.texteGras, fontSize: 13, letterSpacing: 1.4, textTransform: 'uppercase', color: '#FF8A8E' },
   titre: { fontFamily: polices.titre, fontSize: 40, lineHeight: 40, letterSpacing: 0.5, color: '#FFFFFF' },
   doux: { fontFamily: polices.texte, fontSize: 13, lineHeight: 18, color: nuit.doux },
   nom: { fontFamily: polices.texteGras, fontSize: 15.5, color: '#FFFFFF' },
@@ -808,7 +809,7 @@ const styles = StyleSheet.create({
   ressenti: { flex: 1, minHeight: 44, borderRadius: 12, backgroundColor: '#2A2C34', alignItems: 'center', justifyContent: 'center' },
   micro: { width: 104, height: 104, borderRadius: 52, backgroundColor: nuit.rouge, alignItems: 'center', justifyContent: 'center' },
   carre: { width: 52, height: 52, borderRadius: 12, borderWidth: 1, borderColor: '#3A3C45', backgroundColor: nuit.carte, alignItems: 'center', justifyContent: 'center' },
-  statut: { fontFamily: polices.texteGras, fontSize: 12, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: 'hidden' },
+  statut: { fontFamily: polices.texteGras, fontSize: 13, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: 'hidden' },
   serie: { fontFamily: polices.texteMoyen, fontSize: 13, color: '#FFFFFF', backgroundColor: '#2A2C34', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, overflow: 'hidden' },
   champ: {
     flex: 1,

@@ -25,6 +25,7 @@ import { couleurs, polices } from '../theme';
 import { Action, Ligne, TexteLong, ts } from './commun';
 import { VideosExercice } from './videos-mouvement';
 import { VignetteVideo } from './vignette-video';
+import { etatA11y } from '@/lib/accessibilite';
 
 export type Champ = { m: Mesure; titre: string; unite: string; decimal: boolean; max: number };
 export type Brouillon = {
@@ -280,7 +281,7 @@ export function SeanceLog({
     <View nativeID={`seance-${seance.id}`} style={[ts.carte, { padding: 0, gap: 0, borderRadius: 16 }]}>
       <Pressable
         accessibilityRole="button"
-        accessibilityState={guidee ? undefined : { expanded: ouvert }}
+        {...etatA11y(guidee ? {} : { expanded: ouvert })}
         accessibilityLabel={guidee ? `Démarrer ${titreClient(seance.titre)}` : undefined}
         onPress={() => (guidee ? onDemarrer!() : ouvert ? fermer() : setOuvert(true))}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 56 }}
@@ -393,7 +394,7 @@ export function SeanceLog({
                     key={n}
                     accessibilityRole="radio"
                     accessibilityLabel={`Ressenti ${n} sur 10`}
-                    accessibilityState={{ checked: choisi, disabled: apercu }}
+                    {...etatA11y({ checked: choisi, disabled: apercu })}
                     disabled={apercu || etat === 'envoi'}
                     onPress={() => {
                       setEtat('repos');
@@ -433,7 +434,7 @@ export function SeanceLog({
             />
           </View>
           {fautif && (
-            <Text accessibilityRole="alert" style={[ts.erreur, { fontSize: 12 }]}>
+            <Text accessibilityRole="alert" style={[ts.erreur, { fontSize: 13 }]}>
               Charge : de 0 à 1 000 kg. Répétitions, durée en secondes et calories : nombres entiers. Distance en mètres.
             </Text>
           )}
@@ -463,7 +464,7 @@ function Statut({ ok, texte }: { ok?: boolean; texte: string }) {
   return (
     <View accessibilityRole={ok ? ('status' as never) : 'alert'} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
       <Icone size={16} color={ok ? couleurs.vert : couleurs.rouge} />
-      <Text style={{ flexShrink: 1, fontFamily: polices.texte, fontSize: 12, color: ok ? couleurs.vert : couleurs.rouge }}>{texte}</Text>
+      <Text style={{ flexShrink: 1, fontFamily: polices.texte, fontSize: 13, color: ok ? couleurs.vert : couleurs.rouge }}>{texte}</Text>
     </View>
   );
 }
@@ -520,7 +521,7 @@ function LigneSaisie({
         </View>
         {l.exercice.videoUrl && <VignetteVideo url={l.exercice.videoUrl} nom={l.exercice.nom} largeur={96} />}
       </View>
-      <TexteLong texte={l.consignes} style={{ fontSize: 12, color: couleurs.texteDoux }} />
+      <TexteLong texte={l.consignes} style={{ fontSize: 13, color: couleurs.texteDoux }} />
       <Ligne style={{ marginTop: 8 }}>
         <Action
           petit
@@ -561,7 +562,7 @@ function LigneSaisie({
               </Text>
               {suggestion.chargeMin !== null ? (
                 <>
-                  <Text style={[ts.texte, { fontSize: 12 }]}>
+                  <Text style={[ts.texte, { fontSize: 13 }]}>
                     Suggestion : {fourchette(suggestion.chargeMin, suggestion.chargeMax)} kg · arrondi inférieur par {String(suggestion.pas).replace('.', ',')} kg. Ajuste selon le
                     matériel et les consignes du coach.
                   </Text>
@@ -570,11 +571,11 @@ function LigneSaisie({
                   </View>
                 </>
               ) : (
-                <Text style={[ts.texte, { fontSize: 12 }]}>Charge calculée trop faible pour un arrondi par 2,5 kg. Saisis la charge adaptée à ton matériel.</Text>
+                <Text style={[ts.texte, { fontSize: 13 }]}>Charge calculée trop faible pour un arrondi par 2,5 kg. Saisis la charge adaptée à ton matériel.</Text>
               )}
             </>
           ) : (
-            <Text style={[ts.texte, { fontSize: 12 }]}>
+            <Text style={[ts.texte, { fontSize: 13 }]}>
               Ajoute une référence pour cet exercice dans Mon suivi → Performances & PR pour calculer {fourchette(suggestion.pourcentMin, suggestion.pourcentMax)} % du 1RM.
             </Text>
           )}
@@ -641,7 +642,7 @@ function LigneSaisie({
 
 const styles = StyleSheet.create({
   jour: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(195,24,30,0.05)', alignItems: 'center', justifyContent: 'center' },
-  jourTexte: { fontFamily: polices.texteGras, fontSize: 12, color: couleurs.rouge },
+  jourTexte: { fontFamily: polices.texteGras, fontSize: 13, color: couleurs.rouge },
   saisie: {
     height: 44,
     minWidth: 0,

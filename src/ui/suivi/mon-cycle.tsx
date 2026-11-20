@@ -40,6 +40,7 @@ import { Bouton, Carte, Chargement, ChampTexte, Erreur, Puce, Puces, Texte } fro
 import { CaseACocher } from '../crm/dossier';
 import { ChampDate } from '../date-heure';
 import { couleurs, espace, polices } from '../theme';
+import { etatA11y } from '@/lib/accessibilite';
 
 const VIOLET = '#6B4BC9';
 const fmtJour = (j: string) => new Date(`${j}T12:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
@@ -82,7 +83,7 @@ function ChoixPartage({ valeur, onChange }: { valeur: PartageCycle; onChange: (p
           <Pressable
             key={p.cle}
             accessibilityRole="radio"
-            accessibilityState={{ checked: actif }}
+            {...etatA11y({ checked: actif })}
             onPress={() => onChange(p.cle)}
             style={{ borderRadius: 14, borderWidth: actif ? 2 : 1, borderColor: actif ? VIOLET : couleurs.bordure, backgroundColor: actif ? '#F6F3FF' : couleurs.carte, padding: 12, gap: 2 }}
           >
@@ -441,7 +442,7 @@ function MaJourneeCycle({ clientId, notes, energie, onFait }: { clientId: string
               key={n}
               accessibilityRole="radio"
               accessibilityLabel={`Énergie ${n} sur 5`}
-              accessibilityState={{ checked: niveau === n }}
+              {...etatA11y({ checked: niveau === n })}
               onPress={() => setNiveau(niveau === n ? undefined : n)}
               style={{ flex: 1, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: niveau === n ? VIOLET : couleurs.bordure, backgroundColor: niveau === n ? VIOLET : couleurs.carte }}
             >
@@ -533,7 +534,7 @@ function Historique({ clientId, regles, onFait }: { clientId: string; regles: Re
   if (!liste.length) return null;
   return (
     <Carte style={{ gap: espace(2) }}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: ouvert }} onPress={() => setOuvert(!ouvert)} style={{ minHeight: 32, justifyContent: 'center' }}>
+      <Pressable accessibilityRole="button" {...etatA11y({ expanded: ouvert })} onPress={() => setOuvert(!ouvert)} style={{ minHeight: 32, justifyContent: 'center' }}>
         <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: couleurs.texte }}>
           Mes règles notées ({liste.length}) {ouvert ? '▴' : '▾'}
         </Text>
@@ -578,7 +579,7 @@ function Reglages({ clientId, donnees, onFait }: { clientId: string; donnees: Do
   };
   return (
     <Carte style={{ gap: espace(3) }}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: ouvert }} onPress={() => setOuvert(!ouvert)} style={{ minHeight: 32, justifyContent: 'center' }}>
+      <Pressable accessibilityRole="button" {...etatA11y({ expanded: ouvert })} onPress={() => setOuvert(!ouvert)} style={{ minHeight: 32, justifyContent: 'center' }}>
         <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: couleurs.texte }}>Confidentialité et réglages {ouvert ? '▴' : '▾'}</Text>
       </Pressable>
       {ouvert && (
@@ -658,7 +659,7 @@ function ResumeCoach({ vue, energieDuJour, analyse, prenom, complet }: { vue: Vu
   return (
     <View style={{ borderRadius: 18, padding: 14, gap: 8, backgroundColor: s ? PHASES[s.phase].fond : '#F6F3FF' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <Text style={{ fontFamily: polices.texteGras, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: VIOLET }}>Cycle{prenom ? ` de ${prenom}` : ''}</Text>
+        <Text style={{ fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', color: VIOLET }}>Cycle{prenom ? ` de ${prenom}` : ''}</Text>
         <Text style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux }}>Partagé : {vue.partage === 'tout' ? 'tout' : 'phase seule'}</Text>
       </View>
       {s ? (
@@ -719,7 +720,7 @@ export function CarteCycleAccueil({ clientId, onOuvrir }: { clientId: string; on
       style={{ borderRadius: 22, padding: 16, gap: 6, backgroundColor: PHASES[s.phase].fond }}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontFamily: polices.texteGras, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: PHASES[s.phase].couleur }}>Mon cycle</Text>
+        <Text style={{ fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', color: PHASES[s.phase].couleur }}>Mon cycle</Text>
         <ChevronRight size={16} color={couleurs.texteDoux} />
       </View>
       <Text style={{ fontFamily: polices.texteGras, fontSize: 17, color: couleurs.texte }}>

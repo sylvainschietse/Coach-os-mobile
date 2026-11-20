@@ -241,7 +241,7 @@ export function AgendaDuJour({ onOuvrirAgenda }: { onOuvrirAgenda: () => void })
 function Fleche({ nom, gauche, onPress }: { nom: string; gauche?: boolean; onPress: () => void }) {
   const Icone = gauche ? ChevronLeft : ChevronRight;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={nom} onPress={onPress} style={{ padding: espace(2), borderRadius: 10, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.carte }}>
+    <Pressable accessibilityRole="button" accessibilityLabel={nom} onPress={onPress} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', padding: espace(2), borderRadius: 10, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.carte }}>
       <Icone size={18} color={couleurs.texte} />
     </Pressable>
   );
@@ -490,7 +490,7 @@ function GrilleSemaine({
               .filter((o) => o.journee)
               .slice(0, 2)
               .map((o) => (
-                <Text key={o.id} numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux, paddingHorizontal: 4 }}>
+                <Text key={o.id} numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux, paddingHorizontal: 4 }}>
                   {o.titre}
                 </Text>
               ))}
@@ -500,7 +500,7 @@ function GrilleSemaine({
       <View style={{ flexDirection: 'row' }}>
         <View style={{ width: 52 }}>
           {plage.map((h) => (
-            <Text key={h} style={{ height: HAUTEUR_HEURE, fontFamily: polices.chiffres, fontSize: 11, color: couleurs.texteDoux, textAlign: 'right', paddingRight: 6, paddingTop: 2 }}>
+            <Text key={h} style={{ height: HAUTEUR_HEURE, fontFamily: polices.chiffres, fontSize: 12, color: couleurs.texteDoux, textAlign: 'right', paddingRight: 6, paddingTop: 2 }}>
               {String(h).padStart(2, '0')}:00
             </Text>
           ))}
@@ -546,7 +546,7 @@ function GrilleSemaine({
                       overflow: 'hidden',
                     }}
                   >
-                    <Text style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }} numberOfLines={2}>
+                    <Text style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux }} numberOfLines={2}>
                       {o.titre}
                     </Text>
                   </View>
@@ -581,7 +581,7 @@ function GrilleSemaine({
                       {heureDe(r.debut)} {nomsParticipants(r)}
                     </Text>
                     {hauteur > 40 && (
-                      <Text style={{ fontFamily: polices.texte, fontSize: 11, color: c.texte }} numberOfLines={1}>
+                      <Text style={{ fontFamily: polices.texte, fontSize: 12, color: c.texte }} numberOfLines={1}>
                         {TYPES_RDV[r.type]}
                         {r.lieu ? ` · ${r.lieu}` : ''}
                       </Text>
@@ -617,7 +617,7 @@ function GrilleSemaine({
                     <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: couleurs.texte }} numberOfLines={hauteur > 40 ? 2 : 1}>
                       {heureDe(b.debut)} {b.titre.replace(/^Booster · /, '')}
                     </Text>
-                    {hauteur > 40 && <Text style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.rougeTexte }}>{b.fait ? 'Booster fait' : 'Booster'}</Text>}
+                    {hauteur > 40 && <Text style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.rougeTexte }}>{b.fait ? 'Booster fait' : 'Booster'}</Text>}
                   </Pressable>
                 );
               })}
@@ -692,13 +692,13 @@ function GrilleMois({
                 {large ? (
                   <>
                     {lignes.slice(0, 3).map((l) => (
-                      <Text key={l.cle} numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 11, color: l.couleur }}>
+                      <Text key={l.cle} numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 12, color: l.couleur }}>
                         {l.texte}
                       </Text>
                     ))}
-                    {lignes.length > 3 && <Text style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }}>+{lignes.length - 3}</Text>}
+                    {lignes.length > 3 && <Text style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux }}>+{lignes.length - 3}</Text>}
                     {occupes.slice(0, lignes.length >= 3 ? 0 : 3 - lignes.length).map((o) => (
-                      <Text key={`g-${o.id}`} numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux }}>
+                      <Text key={`g-${o.id}`} numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux }}>
                         {o.journee ? '' : `${heureDe(o.debut)} `}
                         {o.titre}
                       </Text>
@@ -708,7 +708,7 @@ function GrilleMois({
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                     {siens.length > 0 && (
                       <View style={{ minWidth: 20, paddingHorizontal: 5, borderRadius: 999, backgroundColor: couleurs.rouge }}>
-                        <Text style={{ fontFamily: polices.texteGras, fontSize: 11, color: '#FFFFFF', textAlign: 'center' }}>{siens.length}</Text>
+                        <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: '#FFFFFF', textAlign: 'center' }}>{siens.length}</Text>
                       </View>
                     )}
                     {sesBoosters.length > 0 && <Zap accessibilityLabel="Booster" size={12} color={couleurs.rouge} fill={couleurs.rouge} />}

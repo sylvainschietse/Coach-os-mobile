@@ -80,7 +80,7 @@ function LigneAliment({ e, desactive, onRetirer }: { e: Entry; desactive: boolea
           {round(t.fat)} g
         </Text>
         {e.food.source === 'ciqual' && <Lien petit url="https://doi.org/10.57745/RDMHWY">{`Source : Anses · Ciqual 2025 · ${e.food.reference}`}</Lien>}
-        {!!e.food.note && <Text style={[doux, { fontSize: 11 }]}>{e.food.note}</Text>}
+        {!!e.food.note && <Text style={[doux, { fontSize: 12 }]}>{e.food.note}</Text>}
         {e.food.source === 'off' && !!e.food.barcode && <Lien petit url={'https://world.openfoodfacts.org/product/' + e.food.barcode}>Source : Open Food Facts</Lien>}
       </View>
       <Action variante="fantome" icone={Trash2} nom={'Retirer ' + e.food.name} desactive={desactive} onPress={onRetirer} />

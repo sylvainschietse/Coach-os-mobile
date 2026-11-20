@@ -287,7 +287,7 @@ export function ChoixAliment({
             ))}
           </View>
         )}
-        {trouves.some((a) => a.codeCiqual) && <Texte doux style={{ fontSize: 11 }}>{CREDIT_CIQUAL}</Texte>}
+        {trouves.some((a) => a.codeCiqual) && <Texte doux style={{ fontSize: 12 }}>{CREDIT_CIQUAL}</Texte>}
         {recherche.trim() !== '' && aliments && trouves.length === 0 && (
           <Texte doux style={{ fontSize: 14 }}>Rien trouvé. Scanne le paquet, ou crée l’aliment.</Texte>
         )}

@@ -17,6 +17,7 @@ import { Camera, choisirDansGalerie, lireLocal } from '../entrainement/videos-mo
 import { ApercuAnnote, obtenirMedia, PointeurReperes, type CadreReperes } from '../pointeur-reperes';
 import { couleurs, espace, polices } from '../theme';
 import { AnalyseBilan, COULEUR_NIVEAU } from './analyse-bilan';
+import { etatA11y } from '@/lib/accessibilite';
 
 export function BilanPosturalSection({
   bilan,
@@ -263,7 +264,7 @@ function MediaRevu({ bilan, vue, largeur, reperes }: { bilan: BilanPostural; vue
 
 function Bascule({ libelle, actif, onPress }: { libelle: string; actif: boolean; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="switch" accessibilityState={{ checked: actif }} onPress={onPress} style={[styles.bascule, actif && styles.basculeActive]}>
+    <Pressable accessibilityRole="switch" {...etatA11y({ checked: actif })} onPress={onPress} style={[styles.bascule, actif && styles.basculeActive]}>
       <Text style={[styles.basculeTexte, actif && { color: '#FFFFFF' }]}>{`${actif ? '✓ ' : ''}${libelle}`}</Text>
     </Pressable>
   );

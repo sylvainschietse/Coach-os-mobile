@@ -42,6 +42,7 @@ import { DetailSeanceModale, type SeanceOuverte } from '../entrainement/suivi-cl
 import { Courbe } from './courbe';
 import { CycleCoach } from './mon-cycle';
 import { couleurs, espace, polices } from '../theme';
+import { etatA11y } from '@/lib/accessibilite';
 
 const TEINTES: Record<Domaine, string> = {
   seances: '#B3141A',
@@ -137,7 +138,7 @@ export function SuiviCoach({ clientId, prenom }: { clientId: string; prenom: str
           <Pressable
             key={p.cle}
             accessibilityRole="tab"
-            accessibilityState={{ selected: periode === p.cle }}
+            {...etatA11y({ selected: periode === p.cle }, 'tab')}
             onPress={() => setPeriode(p.cle)}
             style={[styles.segment, periode === p.cle && styles.segmentActif]}
           >
@@ -162,7 +163,7 @@ export function SuiviCoach({ clientId, prenom }: { clientId: string; prenom: str
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Période suivante"
-          accessibilityState={{ disabled: !avancer }}
+          {...etatA11y({ disabled: !avancer })}
           disabled={!avancer}
           onPress={() => setAncre(decaler(periode, ancre, 1))}
           style={[styles.fleche, !avancer && { opacity: 0.35 }]}
@@ -175,7 +176,7 @@ export function SuiviCoach({ clientId, prenom }: { clientId: string; prenom: str
           <Pressable
             key={x.cle}
             accessibilityRole="button"
-            accessibilityState={{ selected: domaine === x.cle }}
+            {...etatA11y({ selected: domaine === x.cle })}
             onPress={() => setDomaine(x.cle)}
             style={[styles.bulle, domaine === x.cle && { backgroundColor: x.cle === 'tout' ? couleurs.noir : TEINTES[x.cle], borderColor: 'transparent' }]}
           >
@@ -381,7 +382,7 @@ function BlocForce({ d, f }: { d: Donnees; f: Fenetre }) {
             <Pressable
               key={c.exerciceId}
               accessibilityRole="button"
-              accessibilityState={{ selected: c.exerciceId === courbe.exerciceId }}
+              {...etatA11y({ selected: c.exerciceId === courbe.exerciceId })}
               onPress={() => setChoix(c.exerciceId)}
               style={[styles.choixPuce, c.exerciceId === courbe.exerciceId && styles.choixActif]}
             >
@@ -425,7 +426,7 @@ function BlocCorps({ d, f }: { d: Donnees; f: Fenetre }) {
             <Pressable
               key={c.cle}
               accessibilityRole="button"
-              accessibilityState={{ selected: c.cle === champ }}
+              {...etatA11y({ selected: c.cle === champ })}
               onPress={() => setChamp(c.cle)}
               style={[styles.tuile, c.cle === champ && styles.tuileActive]}
             >
@@ -664,7 +665,7 @@ const blanc = (a: number) => `rgba(255,255,255,${a})`;
 const styles = StyleSheet.create({
   titre: { fontFamily: polices.titre, fontSize: 30, color: couleurs.texte, letterSpacing: 1 },
   segments: { flexDirection: 'row', backgroundColor: couleurs.discret, borderRadius: 14, padding: 4, gap: 4 },
-  segment: { flex: 1, minHeight: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  segment: { flex: 1, minHeight: 44, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   segmentActif: { backgroundColor: couleurs.noir },
   segmentTexte: { fontFamily: polices.texteGras, fontSize: 13, color: couleurs.texte },
   navigation: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -672,11 +673,11 @@ const styles = StyleSheet.create({
   periode: { fontFamily: polices.texteGras, fontSize: 16, color: couleurs.texte, textAlign: 'center' },
   lien: { fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.rouge, marginTop: 2 },
   bulles: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  bulle: { minHeight: 36, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.carte, justifyContent: 'center' },
+  bulle: { minHeight: 44, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.carte, justifyContent: 'center' },
   bulleTexte: { fontFamily: polices.texteGras, fontSize: 13, color: couleurs.texte },
   doux: { fontFamily: polices.texte, fontSize: 14, color: couleurs.texteDoux },
   bloc: { borderRadius: 22, padding: 16, gap: 10 },
-  kicker: { fontFamily: polices.texteGras, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: blanc(0.85) },
+  kicker: { fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', color: blanc(0.85) },
   chiffre: { fontFamily: polices.titre, fontSize: 40, lineHeight: 42, color: couleurs.carte, letterSpacing: 1 },
   detailBloc: { fontFamily: polices.texte, fontSize: 13, color: blanc(0.9), flexShrink: 1 },
   sousTitre: { fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.carte },
@@ -685,9 +686,9 @@ const styles = StyleSheet.create({
   seance: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 34 },
   point: { width: 8, height: 8, borderRadius: 4 },
   vide: { fontFamily: polices.texte, fontSize: 13, color: blanc(0.9), fontStyle: 'italic' },
-  axe: { flex: 1, fontFamily: polices.texte, fontSize: 10, color: blanc(0.8), textAlign: 'center' },
+  axe: { flex: 1, fontFamily: polices.texte, fontSize: 12, color: blanc(0.8), textAlign: 'center' },
   axeMois: { position: 'absolute', width: 24, marginLeft: -12, flex: undefined },
-  legende: { fontFamily: polices.texte, fontSize: 11, color: blanc(0.8) },
+  legende: { fontFamily: polices.texte, fontSize: 12, color: blanc(0.8) },
   cible: { position: 'absolute', left: 0, right: 0, height: 0, borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: blanc(0.85) },
   caseVide: { height: 3, borderRadius: 2, backgroundColor: blanc(0.2) },
   choix: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },

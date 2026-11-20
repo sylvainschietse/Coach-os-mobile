@@ -14,6 +14,7 @@ import { arrondi, couleurs, espace, polices } from '../theme';
 
 import { roleWeb } from '@/lib/role-web';
 import { usePression } from '@/lib/usePression';
+import { etatA11y } from '@/lib/accessibilite';
 
 /** Largeur `sm` de Tailwind : en dessous, une seule colonne. */
 const SM = 640;
@@ -144,7 +145,7 @@ export function BoutonPied({ libelle, onPress, danger, desactive }: { libelle: s
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!(desactive || enCours), busy: enCours }}
+      {...etatA11y({ disabled: !!(desactive || enCours), busy: enCours })}
       disabled={desactive || enCours}
       onPress={presser}
       style={({ pressed }) => [
@@ -225,7 +226,7 @@ export function ChoixMultiple({
             <Pressable
               key={c}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: actif }}
+              {...etatA11y({ checked: actif })}
               onPress={() => onChange(actif ? valeurs.filter((x) => x !== c) : choix.filter((x) => x === c || valeurs.includes(x)))}
               style={[
                 styles.multi,
@@ -258,7 +259,7 @@ export function CaseACocher({
   return (
     <Pressable
       accessibilityRole="checkbox"
-      accessibilityState={{ checked: valeur }}
+      {...etatA11y({ checked: valeur })}
       onPress={() => onChange(!valeur)}
       style={{
         flexDirection: 'row',
@@ -382,7 +383,7 @@ export function Repliable({
   const Icone = ouvert ? ChevronDown : ChevronRight;
   return (
     <View style={style}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: ouvert }} onPress={() => setOuvert(!ouvert)} style={styles.resume}>
+      <Pressable accessibilityRole="button" {...etatA11y({ expanded: ouvert })} onPress={() => setOuvert(!ouvert)} style={styles.resume}>
         <Icone size={14} color={couleurs.texteDoux} />
         {typeof resume === 'string' ? <Text style={styles.resumeTexte}>{resume}</Text> : resume}
       </Pressable>

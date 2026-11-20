@@ -33,6 +33,7 @@ import { Stat } from '../coque';
 import { Carte, Chargement, Erreur, Puce, Puces } from '../composants';
 import { Modale } from './dossier';
 import { couleurs, polices } from '../theme';
+import { etatA11y } from '@/lib/accessibilite';
 
 /** Tous les rendez-vous depuis la première activité, trimestre par trimestre (une lecture rend 1 000 lignes au plus). */
 async function toutLAgenda(depuis: number, maintenant: Date): Promise<RendezVous[]> {
@@ -405,7 +406,7 @@ function Fleche({ sens, onPress, desactive }: { sens: 'avant' | 'apres'; onPress
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={sens === 'avant' ? 'Mois précédent' : 'Mois suivant'}
-      accessibilityState={{ disabled: desactive }}
+      {...etatA11y({ disabled: desactive })}
       disabled={desactive}
       onPress={onPress}
       style={{ width: 44, height: 44, borderRadius: 999, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.carte, alignItems: 'center', justifyContent: 'center', opacity: desactive ? 0.35 : 1 }}
@@ -452,7 +453,7 @@ function Barres({
             onPress={() => onChoisir(p.cle)}
             style={{ flex: 1, maxWidth: 72, alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}
           >
-            <Text numberOfLines={1} style={{ fontFamily: actif ? polices.texteGras : polices.texte, fontSize: 10, color: actif ? couleurs.rouge : couleurs.texteDoux, marginBottom: 4 }}>
+            <Text numberOfLines={1} style={{ fontFamily: actif ? polices.texteGras : polices.texte, fontSize: 12, color: actif ? couleurs.rouge : couleurs.texteDoux, marginBottom: 4 }}>
               {v ? (mesure === 'encaisse' && v >= 1000 ? `${nombre(Math.round(v / 100) / 10)} k` : lisible(v, mesure).replace(/\s?€/, '')) : ''}
             </Text>
             <View
@@ -465,7 +466,7 @@ function Barres({
                 opacity: actif || !v ? 1 : 0.55,
               }}
             />
-            <Text numberOfLines={1} style={{ fontFamily: actif ? polices.texteGras : polices.texte, fontSize: 11, color: actif ? couleurs.texte : couleurs.texteDoux, marginTop: 6 }}>
+            <Text numberOfLines={1} style={{ fontFamily: actif ? polices.texteGras : polices.texte, fontSize: 12, color: actif ? couleurs.texte : couleurs.texteDoux, marginTop: 6 }}>
               {libelle(p)}
             </Text>
           </Pressable>

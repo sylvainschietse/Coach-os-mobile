@@ -53,6 +53,7 @@ import { CaseACocher, Modale, Repliable, Saisie } from '../crm/dossier';
 import { Action, Confirmation, Etat, ts } from '../entrainement/commun';
 import { couleurs, polices } from '../theme';
 import { Bloc, choixPortions, doux, Lien, Valeurs } from './commun';
+import { etatA11y } from '@/lib/accessibilite';
 
 const blank = (): Plan => Array.from({ length: 7 }, () => []);
 const SLOTS = Object.entries(slotLabels).map(([cle, libelle]) => ({ cle: cle as Slot, libelle }));
@@ -454,7 +455,7 @@ export function Planificateur({
                   )}
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <View style={{ flexShrink: 1, borderRadius: 999, backgroundColor: 'rgba(195,24,30,0.1)', paddingHorizontal: 8, paddingVertical: 4 }}>
-                      <Text style={{ fontFamily: polices.texteGras, fontSize: 10, textTransform: 'uppercase', color: couleurs.rouge }}>{r.cuisine}</Text>
+                      <Text style={{ fontFamily: polices.texteGras, fontSize: 12, textTransform: 'uppercase', color: couleurs.rouge }}>{r.cuisine}</Text>
                     </View>
                     <Text style={doux}>{r.minutes || '—'} min</Text>
                   </View>
@@ -538,7 +539,7 @@ export function Planificateur({
                     <View key={i} style={{ width: width >= 640 ? `${100 / 7}%` : '25%', padding: 4 }}>
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityState={{ selected: day === i }}
+                        {...etatA11y({ selected: day === i })}
                         onPress={() => setDay(i)}
                         style={{
                           minHeight: 64,
@@ -710,7 +711,7 @@ export function Planificateur({
                           setSwaps(next);
                         }}
                       />
-                      <Text style={[doux, { fontSize: 11 }]}>
+                      <Text style={[doux, { fontSize: 12 }]}>
                         Quantité d’origine : {i.proteinApprox ? '≈ ' : ''}
                         {round(i.proteinGrams!)} g comestibles par portion{i.proteinApprox ? ' · poids ou référence nutritionnelle estimés' : ''}.
                       </Text>
@@ -774,7 +775,7 @@ export function Planificateur({
               <View key={n} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 8, borderTopWidth: n ? 1 : 0, borderTopColor: couleurs.bordure }}>
                 <View style={{ flexShrink: 1 }}>
                   <Text style={ts.texte}>{i.foodName || i.descriptionFr || i.label}</Text>
-                  <Text style={[doux, { fontSize: 10, marginTop: 2 }]}>
+                  <Text style={[doux, { fontSize: 12, marginTop: 2 }]}>
                     {i.purchaseBasis}
                     {i.amountApprox ? ' · quantité estimée à partir d’un poids moyen' : ''}
                   </Text>

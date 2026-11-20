@@ -6,6 +6,7 @@ import { useRef, useState } from 'react';
 import { Pressable, Text } from 'react-native';
 
 import { couleurs, polices } from './theme';
+import { etatA11y } from '@/lib/accessibilite';
 
 // Une seule dictée à la fois : les événements arrivent à tous les boutons affichés, seul celui qui l'a lancée les lit.
 let proprietaire = 0;
@@ -79,7 +80,7 @@ export function BoutonDictee({ valeur, onChange, desactive }: { valeur: string; 
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={ecoute ? 'Arrêter la dictée' : 'Dicter au lieu d’écrire'}
-        accessibilityState={{ disabled: desactive }}
+        {...etatA11y({ disabled: desactive })}
         disabled={desactive}
         onPress={basculer}
         hitSlop={6}

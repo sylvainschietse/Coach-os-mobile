@@ -48,6 +48,7 @@ import { adresseQuestionnaire, EnvoiMessage, nomComplet, useCoachNom } from './c
 import { BoutonPrincipal, carteDossier } from './contacts';
 import { Badge, BoutonPied, CaseACocher, Cellule, Choix, Grille, Libelle, Modale, PiedEditeur, Recherche, Saisie, useBlocNomCarte } from './dossier';
 import { ReglerPlusieurs } from './regler-groupe';
+import { etatA11y } from '@/lib/accessibilite';
 
 export type ModuleGestion = 'Coachings' | 'Taches' | 'Paiements';
 export type ASupprimer = { module: ModuleGestion; id: string; nom: string; contact?: string };
@@ -254,7 +255,7 @@ export function Gestion({
                 <View key={g.cle || 'sans-contact'} style={{ gap: espace(2) }}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityState={{ expanded: ouvert }}
+                    {...etatA11y({ expanded: ouvert })}
                     onPress={() =>
                       setOuverts((o) => {
                         const n = new Set(o);
@@ -744,7 +745,7 @@ function DetailSeances({ notes, onChange }: { notes: string; onChange: (notes: s
 }
 
 const styles = StyleSheet.create({
-  puce: { borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 999, paddingHorizontal: 12, minHeight: 36, justifyContent: 'center' },
+  puce: { borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 999, paddingHorizontal: 12, minHeight: 44, justifyContent: 'center' },
   puceTexte: { fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.texte },
   outils: { flexDirection: 'row', flexWrap: 'wrap', gap: espace(3), alignItems: 'flex-start' },
   filtre: { fontFamily: polices.texte, fontSize: 14, color: couleurs.texte },

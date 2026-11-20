@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   raison: {
     marginTop: 2,
     fontFamily: polices.texte,
-    fontSize: 11,
+    fontSize: 12,
     color: couleurs.texteDoux,
   },
 });

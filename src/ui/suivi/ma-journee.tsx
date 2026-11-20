@@ -24,7 +24,7 @@ export function MaJournee({ clientId, onNoter }: { clientId: string; onNoter: ()
   return (
     <Pressable accessibilityRole="button" accessibilityLabel="Ma journée : noter mon sommeil, mon eau, mon stress…" onPress={onNoter} style={{ borderRadius: 22, padding: 16, gap: 12, backgroundColor: couleurs.carte }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontFamily: polices.texteGras, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#6B4BC9' }}>Ma journée</Text>
+        <Text style={{ fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', color: '#6B4BC9' }}>Ma journée</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
           <Text style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux }}>
             {notes === suivis.length ? 'Tout est noté' : `${notes} sur ${suivis.length} · 20 s`}
@@ -52,7 +52,7 @@ export function MaJournee({ clientId, onNoter }: { clientId: string; onNoter: ()
                   borderColor: '#D2CBEA',
                 }}
               >
-                <Text numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 11.5, color: couleurs.texteDoux }}>
+                <Text numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux }}>
                   {s.def.libelle}
                 </Text>
                 <Text numberOfLines={1} style={{ fontFamily: polices.texteGras, fontSize: 15, color: r ? couleurs.texte : '#6B4BC9' }}>

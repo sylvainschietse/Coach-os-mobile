@@ -12,6 +12,7 @@ import { Bouton } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { carteDossier } from './contacts';
 import { CaseACocher, Libelle } from './dossier';
+import { etatA11y } from '@/lib/accessibilite';
 
 /** Stripe se règle tout seul : ici, ce que le coach encaisse lui-même. */
 const MOYENS: MoyenPaiement[] = ['Espèces', 'Virement', 'Chèque', 'Carte bancaire'];
@@ -92,7 +93,7 @@ export function ReglerPlusieurs({ prenom, lignes, onFait }: { prenom: string; li
               <Pressable
                 key={m}
                 accessibilityRole="radio"
-                accessibilityState={{ checked: actif }}
+                {...etatA11y({ checked: actif })}
                 onPress={() => setMoyen(m)}
                 style={[styles.puce, actif && { backgroundColor: couleurs.rouge, borderColor: couleurs.rouge }]}
               >

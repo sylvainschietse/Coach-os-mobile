@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
   bulleMienne: { backgroundColor: couleurs.rouge, borderBottomRightRadius: 4 },
   bulleAutre: { backgroundColor: couleurs.carte, borderWidth: 1, borderColor: couleurs.bordure, borderBottomLeftRadius: 4 },
   texteBulle: { fontFamily: polices.texte, fontSize: 15, lineHeight: 21, color: couleurs.texte },
-  heure: { fontFamily: polices.texte, fontSize: 11, color: couleurs.texteDoux, marginHorizontal: 4 },
+  heure: { fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux, marginHorizontal: 4 },
   photo: { width: 220, height: 220, borderRadius: 10, backgroundColor: couleurs.discret },
   saisieZone: { gap: 8, borderTopWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.fond, padding: espace(3) },
   saisieLigne: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 8,
   },
-  boutonEntete: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  boutonEntete: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   pastille: {
     position: 'absolute',
     top: 3,
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#18191D',
   },
-  pastilleTexte: { fontFamily: polices.texteGras, fontSize: 10, color: '#FFFFFF' },
+  pastilleTexte: { fontFamily: polices.texteGras, fontSize: 12, color: '#FFFFFF' },
   carte: {
     flexDirection: 'row',
     alignItems: 'center',

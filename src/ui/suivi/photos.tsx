@@ -194,7 +194,7 @@ function Vignette({ clientId, id, proprietaire, grande, onPress }: { clientId: s
       {image ? (
         <Image source={{ uri: image }} style={grande ? { width: '100%', aspectRatio: 3 / 4, maxHeight: 520 } : { width: 64, height: 85 }} resizeMode={grande ? 'contain' : 'cover'} />
       ) : (
-        <Text style={[ts.doux, { padding: 6, fontSize: 11 }]}>{erreur ? 'Indisponible' : '…'}</Text>
+        <Text style={[ts.doux, { padding: 6, fontSize: 12 }]}>{erreur ? 'Indisponible' : '…'}</Text>
       )}
     </Pressable>
   );

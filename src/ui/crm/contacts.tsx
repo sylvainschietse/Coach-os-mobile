@@ -16,6 +16,7 @@ import { arrondi, couleurs, espace, polices } from '../theme';
 import { BoutonEtape } from './acces';
 import { EnvoiMessage, nomComplet, useMessageQuestionnaire } from './commun';
 import { Badge, CaseACocher, Choix, Initiales, Recherche, useBlocNomCarte } from './dossier';
+import { etatA11y } from '@/lib/accessibilite';
 
 export function Contacts({
   prospects,
@@ -97,7 +98,7 @@ export function BoutonPrincipal({ libelle, onPress }: { libelle: string; onPress
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ busy: enCours }}
+      {...etatA11y({ busy: enCours })}
       disabled={enCours}
       onPress={presser}
       style={({ pressed }) => [styles.principal, pressed && { opacity: 0.7 }]}

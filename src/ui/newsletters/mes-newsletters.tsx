@@ -41,6 +41,7 @@ import { couleurs, espace, polices } from '../theme';
 import { Bibliotheque, type ArticleBibliotheque } from './bibliotheque';
 import { CLES_ILLUSTRATIONS, imageIllustration, octetsIllustration } from './illustrations';
 import { aUnPdf, octetsPdf, uriPdf, voirPdfArticle } from './pdf-newsletters';
+import { etatA11y } from '@/lib/accessibilite';
 
 /** Une image du texte livrée avec l'appli (pas encore rangée en ligne). */
 const estLivree = (src: string) => CLES_ILLUSTRATIONS.includes(src);
@@ -357,7 +358,7 @@ function ChoixContacts({ choisis, onChanger }: { choisis: string[]; onChanger: (
             <Pressable
               key={c.id}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: coche }}
+              {...etatA11y({ checked: coche })}
               onPress={() => onChanger(coche ? choisis.filter((x) => x !== c.id) : [...choisis, c.id])}
               style={({ pressed }) => [styles.ligneChoix, pressed && { backgroundColor: couleurs.discret }]}
             >
@@ -955,7 +956,7 @@ const styles = StyleSheet.create({
   carte: { padding: 18, gap: espace(2) },
   ligne: { flexDirection: 'row', gap: 12, backgroundColor: couleurs.carte, borderRadius: 18, borderWidth: 1, borderColor: couleurs.bordure, padding: 12 },
   vignette: { width: 104, height: 66, borderRadius: 10 },
-  rubrique: { fontFamily: polices.texteGras, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase', color: couleurs.rouge },
+  rubrique: { fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: couleurs.rouge },
   titre: { fontFamily: polices.texteGras, fontSize: 15, color: couleurs.texte },
   detail: { fontFamily: polices.texte, fontSize: 13, lineHeight: 18, color: couleurs.texteDoux, flexShrink: 1 },
   aide: { fontFamily: polices.texte, fontSize: 12, lineHeight: 17, color: couleurs.texteDoux },

@@ -111,7 +111,7 @@ function Avatar({ prenom, actif, onPress }: { prenom: string; actif: boolean; on
       accessibilityLabel="Mon compte"
       onPress={onPress}
       hitSlop={6}
-      style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
+      style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
     >
       <View
         style={{

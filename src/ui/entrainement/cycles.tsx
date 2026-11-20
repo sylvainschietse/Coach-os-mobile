@@ -18,6 +18,7 @@ import { Puce, Puces } from '../composants';
 import { Choix, Modale, Recherche, Saisie } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
 import { Action, Confirmation, Etat, jourCourt, Ligne, ListeChoix, TexteLong, ts, PhotoProgramme } from './commun';
+import { etatA11y } from '@/lib/accessibilite';
 
 const STATUTS: StatutCycle[] = ['Brouillon', 'Prêt', 'Terminé'];
 
@@ -485,7 +486,7 @@ function ProfilSuivi({
       {/* Une ligne par client (nom + flèche) : la liste reste courte, le détail s'ouvre au toucher. */}
       <Pressable
         accessibilityRole="button"
-        accessibilityState={{ expanded: ouvert }}
+        {...etatA11y({ expanded: ouvert })}
         accessibilityLabel={`${p.nom} · ${resume}`}
         onPress={() => setOuvert((o) => !o)}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 }}

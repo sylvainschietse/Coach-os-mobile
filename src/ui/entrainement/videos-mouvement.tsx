@@ -588,7 +588,7 @@ function Statut({ statut, coach }: { statut: keyof typeof STATUTS; coach?: boole
   const libelle = coach ? (statut === 'nouvelle' ? 'Nouvelle' : statut === 'vue' ? 'Vue, sans réponse' : 'Répondue') : s.libelle;
   return (
     <View style={{ backgroundColor: s.fond, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
-      <Text style={{ fontFamily: polices.texteGras, fontSize: 11, color: s.couleur }}>{libelle}</Text>
+      <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: s.couleur }}>{libelle}</Text>
     </View>
   );
 }
@@ -607,7 +607,7 @@ export function VideosMouvementCoach({ videos: liste, realisations, onChange }: 
         <Text style={ts.titreSection}>Vidéos de mouvement</Text>
         {attente > 0 && (
           <View style={{ backgroundColor: couleurs.rouge, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 1 }}>
-            <Text style={{ fontFamily: polices.texteGras, fontSize: 11, color: '#FFFFFF' }}>{attente} à regarder</Text>
+            <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: '#FFFFFF' }}>{attente} à regarder</Text>
           </View>
         )}
       </View>

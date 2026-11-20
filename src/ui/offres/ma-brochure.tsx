@@ -291,7 +291,7 @@ export function MaBrochure({ liste, lien, onFini }: { liste: Offre[]; lien: (id:
               <View pointerEvents="none">
                 <ApercuHtml html={page(largeurApercu)} largeur={largeurApercu} hauteur={hauteurA4(largeurApercu)} />
               </View>
-              <Text style={{ textAlign: 'center', fontFamily: polices.texteMoyen, fontSize: 11, color: couleurs.texteDoux, marginTop: 2 }}>Voir en grand</Text>
+              <Text style={{ textAlign: 'center', fontFamily: polices.texteMoyen, fontSize: 12, color: couleurs.texteDoux, marginTop: 2 }}>Voir en grand</Text>
             </Pressable>
           )}
         </View>

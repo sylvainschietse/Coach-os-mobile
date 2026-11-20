@@ -143,7 +143,7 @@ export function CarteBadges({ clientId, onOuvrir }: { clientId: string; onOuvrir
     <Pressable accessibilityRole="button" accessibilityLabel="Voir mes badges et mon grade" onPress={onOuvrir} style={{ borderRadius: 22, padding: 16, gap: 12, backgroundColor: '#1B1D24' }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <View style={{ flexShrink: 1 }}>
-          <Text style={{ fontFamily: polices.texteGras, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#FFC85C' }}>Mon grade</Text>
+          <Text style={{ fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', color: '#FFC85C' }}>Mon grade</Text>
           <Text style={{ fontFamily: polices.titre, fontSize: 32, color: '#FFFFFF', marginTop: 2 }}>{p.grade.nom}</Text>
         </View>
         <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: '#C9CCD3' }}>{pluriel(p.gagnes.length, 'badge')} ›</Text>
@@ -222,7 +222,7 @@ export function MesBadges({ clientId }: { clientId: string }) {
 
       {FAMILLES.map((f) => (
         <View key={f.cle} style={{ borderRadius: 22, padding: 16, gap: 12, backgroundColor: couleurs.carte }}>
-          <Text style={{ fontFamily: polices.texteGras, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: f.cle === 'progres' ? '#8A5A00' : TEINTE[f.cle].fond }}>{f.libelle}</Text>
+          <Text style={{ fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', color: f.cle === 'progres' ? '#8A5A00' : TEINTE[f.cle].fond }}>{f.libelle}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
             {BADGES.filter((b) => b.famille === f.cle).map((b) => (
               <Pressable
@@ -233,7 +233,7 @@ export function MesBadges({ clientId }: { clientId: string }) {
                 style={{ width: '25%', alignItems: 'center', gap: 6, paddingVertical: 6, borderRadius: 14, backgroundColor: choisi === b.cle ? TEINTE[b.famille].clair : undefined }}
               >
                 <PastilleBadge def={b} gagne={p.gagnes.includes(b.cle)} />
-                <Text numberOfLines={2} style={{ fontFamily: polices.texteMoyen, fontSize: 11.5, textAlign: 'center', color: couleurs.texte, paddingHorizontal: 2 }}>
+                <Text numberOfLines={2} style={{ fontFamily: polices.texteMoyen, fontSize: 12, textAlign: 'center', color: couleurs.texte, paddingHorizontal: 2 }}>
                   {b.nom}
                 </Text>
               </Pressable>

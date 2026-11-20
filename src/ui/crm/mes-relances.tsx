@@ -29,6 +29,7 @@ import { Bouton, Carte, Puce, Puces } from '../composants';
 import { BoutonContour } from '../coque';
 import { couleurs, espace, polices } from '../theme';
 import { useCoachNom, useReglagesRelances } from './commun';
+import { etatA11y } from '@/lib/accessibilite';
 
 type Ouvert = { quoi: 'auto'; cle: ModeleAuto } | { quoi: 'perso'; id: string | 'nouvelle' } | null;
 
@@ -70,7 +71,7 @@ export function MesRelances() {
           return (
             <View key={r.cle} style={[styles.ligne, i > 0 && styles.separee]}>
               <View style={styles.ligneHaut}>
-                <Pressable accessibilityRole="button" accessibilityState={{ expanded: estOuvert }} onPress={() => setOuvert(estOuvert ? null : { quoi: 'auto', cle: r.cle })} style={{ flex: 1, minWidth: 0 }}>
+                <Pressable accessibilityRole="button" {...etatA11y({ expanded: estOuvert })} onPress={() => setOuvert(estOuvert ? null : { quoi: 'auto', cle: r.cle })} style={{ flex: 1, minWidth: 0 }}>
                   <Text style={[styles.nom, !active && styles.coupee]}>{MODELES[r.cle].libelle}</Text>
                   <Text style={styles.detail}>
                     {r.quand}
@@ -109,7 +110,7 @@ export function MesRelances() {
           return (
             <View key={p.id} style={[styles.ligne, i > 0 && styles.separee]}>
               <View style={styles.ligneHaut}>
-                <Pressable accessibilityRole="button" accessibilityState={{ expanded: estOuvert }} onPress={() => setOuvert(estOuvert ? null : { quoi: 'perso', id: p.id })} style={{ flex: 1, minWidth: 0 }}>
+                <Pressable accessibilityRole="button" {...etatA11y({ expanded: estOuvert })} onPress={() => setOuvert(estOuvert ? null : { quoi: 'perso', id: p.id })} style={{ flex: 1, minWidth: 0 }}>
                   <Text style={[styles.nom, !p.active && styles.coupee]}>{p.nom}</Text>
                   <Text style={styles.detail}>
                     {libelleDeclencheur(p.declencheur)} · {p.pour.map((x) => PUBLICS.find((q) => q.cle === x)!.libelle).join(', ')}
@@ -155,7 +156,7 @@ export function MesRelances() {
 
 function Bascule({ libelle, valeur, onChange }: { libelle: string; valeur: boolean; onChange: () => void }) {
   return (
-    <Pressable accessibilityRole="switch" accessibilityLabel={libelle} accessibilityState={{ checked: valeur }} onPress={onChange} hitSlop={8} style={[styles.bascule, valeur && styles.basculeOn]}>
+    <Pressable accessibilityRole="switch" accessibilityLabel={libelle} {...etatA11y({ checked: valeur })} onPress={onChange} hitSlop={8} style={[styles.bascule, valeur && styles.basculeOn]}>
       <View style={[styles.rond, valeur && { alignSelf: 'flex-end' }]} />
     </Pressable>
   );

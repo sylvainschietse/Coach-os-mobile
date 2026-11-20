@@ -33,6 +33,7 @@ import { BoutonContour } from '../coque';
 import { Repliable, Saisie } from '../crm/dossier';
 import { Action, Etat, ts } from '../entrainement/commun';
 import { couleurs, polices } from '../theme';
+import { etatA11y } from '@/lib/accessibilite';
 
 const JOURS_GRAPHIQUE = 30;
 /** Jusqu'où on peut revenir pour compléter une journée oubliée. */
@@ -365,7 +366,7 @@ function CarteIndicateur({
           : ''}
       </Text>
       {resume.points.some((p) => p.valeur !== undefined) && <Graphique def={def} cible={def.hebdo ? undefined : cible} points={resume.points} />}
-      {saisie && <Text style={[ts.doux, { fontSize: 11 }]}>{def.aide}</Text>}
+      {saisie && <Text style={[ts.doux, { fontSize: 12 }]}>{def.aide}</Text>}
     </View>
   );
 }
@@ -381,7 +382,7 @@ function Champ({ def, texte, occupe, onTexte }: { def: DefinitionIndicateur; tex
             key={n}
             accessibilityRole="button"
             accessibilityLabel={`${def.libelle} : ${n} sur 5`}
-            accessibilityState={{ selected: choisie === n }}
+            {...etatA11y({ selected: choisie === n })}
             disabled={occupe}
             onPress={() => onTexte(choisie === n ? '' : String(n))}
             style={{
@@ -505,9 +506,9 @@ function Graphique({ def, cible, points }: { def: DefinitionIndicateur; cible?: 
         </View>
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={[ts.doux, { fontSize: 11 }]}>{fmtCourt(points[0].jour)}</Text>
-        {cible !== undefined && <Text style={[ts.doux, { fontSize: 11 }]}>- - - cible</Text>}
-        <Text style={[ts.doux, { fontSize: 11 }]}>{fmtCourt(points[points.length - 1].jour)}</Text>
+        <Text style={[ts.doux, { fontSize: 12 }]}>{fmtCourt(points[0].jour)}</Text>
+        {cible !== undefined && <Text style={[ts.doux, { fontSize: 12 }]}>- - - cible</Text>}
+        <Text style={[ts.doux, { fontSize: 12 }]}>{fmtCourt(points[points.length - 1].jour)}</Text>
       </View>
     </View>
   );

@@ -19,6 +19,7 @@ import { usePression } from '@/lib/usePression';
 import { DefilementClavier } from './clavier';
 import { arrondi, couleurs, espace, espacementTitre, polices } from './theme';
 import { useUnivers } from './univers';
+import { etatA11y } from '@/lib/accessibilite';
 
 export function Ecran({ children, largeurMax = 640 }: { children: ReactNode; largeurMax?: number }) {
   return (
@@ -71,7 +72,7 @@ export function Bouton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!(desactive || attente), busy: attente }}
+      {...etatA11y({ disabled: !!(desactive || attente), busy: attente })}
       onPress={presser}
       disabled={desactive || attente}
       style={({ pressed }) => [
@@ -187,7 +188,7 @@ export function Puce({ libelle, actif, onPress }: { libelle: string; actif?: boo
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected: !!actif }}
+      {...etatA11y({ selected: !!actif })}
       onPress={onPress}
       style={({ pressed }) => [
         styles.puce,
@@ -286,6 +287,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: espace(3.5),
     paddingVertical: espace(2),
+    minHeight: 44,
+    justifyContent: 'center',
   },
   puceActive: { backgroundColor: couleurs.rouge, borderColor: couleurs.rouge },
   puceTexte: { fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.texte },
