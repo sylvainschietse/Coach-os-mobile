@@ -207,7 +207,7 @@ export function EspaceClient({
           )}
           {onglet === 'suivi' && !rubrique && (
             <>
-              <Hero kicker="Ma progression" titre="Mes progrès" sousTitre="Tes badges, ton corps, tes records et ton quotidien, semaine après semaine." />
+              <Hero kicker="Ma progression" titre="Mes progrès" sousTitre="Tes badges, ton corps, tes records et ton quotidien, semaine après semaine." compact />
               <CarteBadges clientId={clientId} onOuvrir={() => ouvrir('badges')} />
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 }}>
                 {RUBRIQUES.filter((r) => r.cle !== 'cycle' || profilNutrition.donnee?.sexe !== 'homme').map((r) => (

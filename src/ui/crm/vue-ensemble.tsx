@@ -165,7 +165,7 @@ export function VueEnsemble({
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Chiffre teinte="rougeDore" libelle="Prospects" valeur={String(actifs.length)} onPress={() => onRubrique('Contacts')} />
             <Chiffre teinte="bleu" libelle="Boosters" valeur={String(prochains.length)} onPress={() => onRubrique('Boosters')} />
-            <Chiffre teinte="rouge" libelle="En retard" valeur={String(enRetard)} alerte={enRetard > 0} />
+            <Chiffre teinte="rouge" libelle="Relances en retard" valeur={String(enRetard)} alerte={enRetard > 0} />
           </View>
           {/* Flèches : feuilleter les mois passés, sans quitter l'accueil. */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>

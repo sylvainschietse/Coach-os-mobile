@@ -491,18 +491,34 @@ export function BarreClient<T extends string>({
  * `premium-hero` devenu la « scène » de la page : dégradé de la couleur de l'univers (le même que l'en-tête), lueur
  * douce en haut à gauche, kicker et titre display en blanc. Les actions à droite restent des boutons clairs.
  */
-export function Hero({ kicker, titre, sousTitre, droite, children }: { kicker: string; titre: string; sousTitre?: string; droite?: ReactNode; children?: ReactNode }) {
+export function Hero({
+  kicker,
+  titre,
+  sousTitre,
+  droite,
+  children,
+  compact,
+}: {
+  kicker: string;
+  titre: string;
+  sousTitre?: string;
+  droite?: ReactNode;
+  children?: ReactNode;
+  /** Bandeau réduit sur téléphone (onglets autres qu'« Aujourd'hui ») : l'action du jour reste dans le premier écran. */
+  compact?: boolean;
+}) {
   const petit = useWindowDimensions().width <= 640;
+  const serre = compact && petit;
   const u = useUnivers();
-  const t = petit ? 36 : 42;
+  const t = serre ? 28 : petit ? 36 : 42;
   return (
-    <View style={[styles.hero, { padding: petit ? 20 : 26, backgroundColor: FOND_SCENE, backgroundImage: u.scene }]}>
+    <View style={[styles.hero, { padding: serre ? 16 : petit ? 20 : 26, backgroundColor: FOND_SCENE, backgroundImage: u.scene }]}>
       <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.heroLueur]} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: espace(3) }}>
         <View style={{ flexShrink: 1, minWidth: 0 }}>
           <Text style={[styles.heroKicker, { color: u.kickerScene }]}>{kicker}</Text>
           <TitreDisplay taille={t} style={{ marginTop: 6, color: '#FFFFFF' } as never}>{titre}</TitreDisplay>
-          {sousTitre && <Text style={styles.heroSous}>{sousTitre}</Text>}
+          {sousTitre && !serre && <Text style={styles.heroSous}>{sousTitre}</Text>}
         </View>
         {droite}
       </View>

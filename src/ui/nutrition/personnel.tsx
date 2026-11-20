@@ -385,7 +385,7 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
               : 'Ajoute tes ingrédients et le nombre de portions : les macros se calculent automatiquement.'}
           </Text>
         </View>
-        <BoutonContour icone={RefreshCw} nom="Actualiser" desactive={loading || busy} onPress={load} />
+        <BoutonContour icone={RefreshCw} iconeAGauche libelle="Actualiser" nom="Actualiser" desactive={loading || busy} onPress={load} />
       </View>
       {!foodOpen && <Etat erreur={error || undefined} message={notice || undefined} />}
       {vue === 'journal' && (

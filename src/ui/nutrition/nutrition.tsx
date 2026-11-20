@@ -263,16 +263,20 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
         kicker="Ton équilibre au quotidien"
         titre={coach ? `Nutrition · ${data?.nom || 'Client'}` : 'Ma nutrition'}
         sousTitre="Tes objectifs, tes repas et tes recettes réunis au même endroit."
+        compact={!coach}
         droite={
           <View style={{ flexDirection: 'row', gap: 8 }}>
           {!coach && (
             <BoutonContour
               icone={SlidersHorizontal}
+              iconeAGauche
+              libelle={section === 'profil' ? 'Ma journée' : 'Mes objectifs'}
               nom={section === 'profil' ? 'Revenir à ma journée' : 'Mon profil et mes objectifs'}
               desactive={chargement || occupe}
               onPress={() => demanderSortie(() => setSection(section === 'profil' ? 'journal' : 'profil'))}
             />
           )}
+          {(coach || (section !== 'journal' && section !== 'personnelles')) && (
           <BoutonContour
             icone={RefreshCw}
             nom="Actualiser la nutrition"
@@ -286,6 +290,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
               }, [cle])
             }
           />
+          )}
           </View>
         }
       />

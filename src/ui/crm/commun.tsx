@@ -167,7 +167,7 @@ export function CarteRelance({
       <Pressable onPress={onOuvrirContact} disabled={!onOuvrirContact} accessibilityRole={onOuvrirContact ? 'link' : undefined}>
         <View style={styles.ligneTitre}>
           <Text style={styles.nom}>{nomComplet(contact)}</Text>
-          {enRetard && <Text style={styles.retard}>En retard</Text>}
+          {enRetard && <Text style={styles.retard}>Relance en retard</Text>}
         </View>
         {tache && <Text style={styles.message}>{relance.note}</Text>}
         <Text style={styles.motif}>
