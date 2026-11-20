@@ -101,13 +101,17 @@ jobs:
         run: |
           APP=$(ls -d build/Build/Products/Release-iphonesimulator/*.app | head -1)
           ECHECS=0
+          LISTE=$(xcrun simctl list -j)
+          RUNTIME=$(echo "$LISTE" | jq -r '[.runtimes[] | select(.isAvailable and .platform == "iOS")] | last | .identifier')
+          echo "Système iPhone : $RUNTIME"
           for MODELE in 'iPhone SE' 'Pro Max'; do
-            UDID=$(xcrun simctl list devices available -j | jq -r --arg m "$MODELE" '[.devices[][] | select(.name | contains($m))] | last | .udid')
-            NOM=$(xcrun simctl list devices available -j | jq -r --arg u "$UDID" '.devices[][] | select(.udid == $u) | .name')
-            echo "::group::$NOM"
+            # Le dernier modèle de ce nom pris en charge par ce système (simulateur créé pour l'occasion).
+            TYPE=$(echo "$LISTE" | jq -r --arg m "$MODELE" --arg r "$RUNTIME" '([.runtimes[] | select(.identifier == $r) | .supportedDeviceTypes[]] // [.devicetypes[]]) | map(select(.name | contains($m))) | last | .identifier')
+            CLE=$([ "$MODELE" = 'iPhone SE' ] && echo iphone-se || echo iphone-pro-max)
+            UDID=$(xcrun simctl create "$CLE" "$TYPE" "$RUNTIME")
+            echo "::group::$MODELE ($TYPE)"
             xcrun simctl boot "$UDID"; xcrun simctl bootstatus "$UDID"
             xcrun simctl install "$UDID" "$APP"
-            CLE=$([ "$MODELE" = 'iPhone SE' ] && echo iphone-se || echo iphone-pro-max)
             scripts/parcours-maestro.sh "$CLE" ios || ECHECS=$((ECHECS + $?))
             xcrun simctl shutdown "$UDID"
             echo '::endgroup::'
