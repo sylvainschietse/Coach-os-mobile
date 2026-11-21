@@ -23,7 +23,8 @@ import { couleurs, espace, polices } from '../theme';
 import { CarteOffre } from './carte-offre';
 import { chargerVisuelsBrochure, coachDeLaBrochure, MaBrochure } from './ma-brochure';
 
-export const lienOffre = (id: string) => adresseWeb(`/offre/${id}`);
+// « …/?offre=<id> » plutôt que « …/offre/<id> » : la page d'accueil du site répond sans erreur, donc le lien partagé a un aperçu.
+export const lienOffre = (id: string) => adresseWeb(`/?offre=${id}`);
 
 /** Compte Stripe du coach : où arrive l'argent de ses clients. */
 function CompteStripe({ etat, recharger }: { etat: EtatStripe | null; recharger: () => void }) {

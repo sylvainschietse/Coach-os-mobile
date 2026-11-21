@@ -1,4 +1,4 @@
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { Eye, EyeOff } from '@/ui/icones';
 import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -13,8 +13,17 @@ import { Bouton, Texte } from '@/ui/composants';
 import { LienPolitique } from '@/ui/consentement';
 import { couleurs, espace, polices } from '@/ui/theme';
 
+/** Liens partagés (offre, questionnaire) : envoyés sous la forme « …/?offre=<id> » pour que la page réponde sans erreur
+ * et que WhatsApp ou les SMS en affichent l'aperçu. On ouvre ensuite la vraie page. */
+const ID_OFFRE = /^[\w-]{1,64}$/;
+const LIEN_QUESTIONNAIRE = /^[\w-]{1,80}$/;
+
 export default function Accueil() {
   const { profil, motDePasseProvisoire, sansDossier } = useSession();
+  const { offre, questionnaire } = useLocalSearchParams<{ offre?: string; questionnaire?: string }>();
+  if (typeof offre === 'string' && ID_OFFRE.test(offre)) return <Redirect href={{ pathname: '/offre/[id]', params: { id: offre } }} />;
+  if (typeof questionnaire === 'string' && LIEN_QUESTIONNAIRE.test(questionnaire))
+    return <Redirect href={{ pathname: '/questionnaire/[lien]', params: { lien: questionnaire } }} />;
   if (profil && motDePasseProvisoire) return <Cadre><NouveauMotDePasse /></Cadre>;
   if (!profil && sansDossier) return <Cadre><SansDossier /></Cadre>;
   if (profil?.role === 'client') return <Redirect href="/client" />;

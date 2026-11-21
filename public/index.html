@@ -1,10 +1,30 @@
 <!doctype html>
-<html lang="%LANG_ISO_CODE%">
+<html lang="fr">
   <head>
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>%WEB_TITLE%</title>
+    <!-- Installation sur l'écran d'accueil (iPhone et Android) : icône CoachGo, plein écran, couleur de la barre d'état. -->
+    <meta name="theme-color" content="#111216" />
+    <meta name="description" content="Ton coaching sportif dans ta poche : programme sur mesure, séances guidées en vidéo, nutrition et messagerie avec ton coach." />
+    <link rel="manifest" href="/Coach-os-mobile/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/Coach-os-mobile/icones/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="CoachGo" />
+    <!-- Aperçu des liens partagés (WhatsApp, SMS, Instagram, Facebook) : offre, questionnaire, appli. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CoachGo" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:title" content="CoachGo · Ton coaching sportif, dans ta poche" />
+    <meta property="og:description" content="Programme sur mesure, séances guidées en vidéo, nutrition et messagerie avec ton coach." />
+    <meta property="og:image" content="https://sylvainschietse.github.io/Coach-os-mobile/apercu-partage.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="CoachGo : l'écran de séance guidée" />
+    <meta name="twitter:card" content="summary_large_image" />
     <script>
       // Lien « Répondre » des mails de rendez-vous (…/rdv/<jeton>) : on l'ouvre sur la page légère rdv.html,
       // qui s'affiche tout de suite même en 4G faible ou sur un vieil iPhone, au lieu de charger l'appli complète.
