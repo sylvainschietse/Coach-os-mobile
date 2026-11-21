@@ -26,7 +26,7 @@ import { Carte, Texte } from './composants';
 import { CarteBadges, CarteSerie, FeteBadges, MesBadges } from './motivation/badges';
 import { TuilesDuJour } from './suivi/calories-jour';
 import { MaJournee } from './suivi/ma-journee';
-import { CarteCycleAccueil, MonCycle } from './suivi/mon-cycle';
+import { MonCycle } from './suivi/mon-cycle';
 import { BilanSemaine } from './suivi/bilan-semaine';
 import { Mensurations } from './suivi/mensurations';
 import { Objectifs } from './suivi/objectifs';
@@ -193,6 +193,8 @@ export function EspaceClient({
                 onRepos={(secondes, libelle) => minuteurs?.repos(secondes, libelle)}
                 onHaut={enHaut}
                 onProgramme={() => aller('programme')}
+                // Un cours de RPM, une séance à lui : le client déclare ce qu'il a fait en dehors du programme.
+                apresCalendrier={!apercu && <AjoutActiviteLibre clientId={clientId} />}
                 milieu={
                   onglet === 'accueil' && (
                     // Audit design, point 5 : d'abord ce que je dois faire (séance, rendez-vous à confirmer),
@@ -205,14 +207,12 @@ export function EspaceClient({
                       <CarteSerie clientId={clientId} onOuvrir={() => ouvrir('badges')} />
                       <TuilesDuJour clientId={clientId} onOuvrir={() => demanderSortie(() => aller('nutrition'))} />
                       <MaJournee clientId={clientId} onNoter={() => ouvrir('quotidien')} />
-                      {!apercu && <CarteCycleAccueil clientId={clientId} onOuvrir={() => ouvrir('cycle')} />}
+                      {/* Le cycle (donnée intime) reste dans Progrès, pas sur l'écran d'ouverture (audit de Léo). */}
                       {!apercu && <CarteMessages clientId={clientId} />}
                     </>
                   )
                 }
               />
-              {/* Un cours de RPM, une séance à lui : le client déclare ce qu'il a fait en dehors du programme. */}
-              {onglet === 'accueil' && !apercu && <AjoutActiviteLibre clientId={clientId} />}
               {onglet === 'accueil' && <SeancesRestantes clientId={clientId} />}
             </>
           )}
