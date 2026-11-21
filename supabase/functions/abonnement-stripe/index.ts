@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
       const o = await lireOffre(corps.offreId);
       if (!o.active) throw new Refus('Cette offre n’est plus proposée.', 410);
       const coach = await lireCoach(o.coach_id);
-      const { data: photo } = await admin.from('coachs').select('photo').eq('id', coach.id).single();
+      const { data: vitrine } = await admin.from('coachs').select('photo, specialite, avis_client, avis_auteur').eq('id', coach.id).single();
       return repondre({
         offre: {
           id: o.id,
@@ -167,7 +167,12 @@ Deno.serve(async (req) => {
           seances: o.seances,
           essaiJours: o.essai_jours,
         },
-        coach: { nom: coach.nom, photo: photo?.photo ?? null },
+        coach: {
+          nom: coach.nom,
+          photo: vitrine?.photo ?? null,
+          specialite: vitrine?.specialite ?? null,
+          avis: vitrine?.avis_client ? { texte: vitrine.avis_client, auteur: vitrine.avis_auteur ?? null } : null,
+        },
         paiement: coach.id === COACH_DIRECT || (!!coach.stripe_compte && coach.stripe_pret),
       });
     }

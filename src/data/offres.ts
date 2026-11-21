@@ -3,6 +3,7 @@
 import { OFFRES_DEMO, type Offre, type Periodicite, type SaisieOffre, type ModeleOffre } from '@/domain/offres';
 import { nouvelId } from '@/lib/identifiant';
 
+import { profilCoach } from './profil-coach';
 import { supabase } from './supabase';
 
 export interface EtatStripe {
@@ -17,7 +18,14 @@ export interface EtatStripe {
 /** Ce que la page publique d'une offre affiche, sans compte. */
 export interface OffrePublique {
   offre: Omit<Offre, 'modele' | 'active' | 'ordre' | 'enLigne'>;
-  coach: { nom: string; photo: string | null };
+  coach: {
+    nom: string;
+    photo: string | null;
+    /** « Préparation physique, Lyon » : affichée sous le nom du coach. */
+    specialite?: string | null;
+    /** Un avis client choisi par le coach, et qui l'a écrit. */
+    avis?: { texte: string; auteur: string | null } | null;
+  };
   /** Le coach peut encaisser en ligne. */
   paiement: boolean;
 }
@@ -99,7 +107,13 @@ const demo: DepotOffres = {
   async voir(offreId) {
     const o = memoire.offres.find((x) => x.id === offreId);
     if (!o) throw new Error('Offre introuvable.');
-    return { offre: o, coach: { nom: 'Sylvain', photo: null }, paiement: false };
+    // Démo : la vitrine suit « Mon profil » du coach, pour voir tout de suite ce qu'il y écrit.
+    const p = await profilCoach.lire();
+    return {
+      offre: o,
+      coach: { nom: p.nom, photo: p.photo ?? null, specialite: p.specialite ?? null, avis: p.avisClient ? { texte: p.avisClient, auteur: p.avisAuteur ?? null } : null },
+      paiement: false,
+    };
   },
 };
 
