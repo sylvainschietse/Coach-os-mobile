@@ -28,7 +28,7 @@ import { choisirFichier, ouvrirFichier } from '../fichiers';
 import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
-import { Badge, BoutonPied, CaseACocher, Cellule, Choix, Grille, Libelle, Modale, PiedEditeur, Recherche, Saisie, useBlocNomCarte } from './dossier';
+import { Badge, BoutonPied, CaseACocher, Cellule, Choix, Grille, Libelle, FenetreModale, Modale, PiedEditeur, Recherche, Saisie, useBlocNomCarte } from './dossier';
 import { ConfirmerSuppression } from './suppression';
 
 const jour = (j: string) => new Date(`${j}T12:00:00Z`).toLocaleDateString('fr-FR');
@@ -295,7 +295,16 @@ const brouillonDe = (d: Document | undefined, contactId?: string): Brouillon => 
 });
 
 /** Éditeur RecordEditor de la table Documents : champs de Champs-CRM.json. */
-export function EditeurDocumentModale({ id, contactId, onFermer }: { id?: string; contactId?: string; onFermer: () => void }) {
+/** Chargement puis éditeur dans la même fenêtre : sur iPhone, l'éditeur ne s'ouvrait pas sinon. */
+export function EditeurDocumentModale(props: Parameters<typeof EditeurDocumentModaleContenu>[0]) {
+  return (
+    <FenetreModale>
+      <EditeurDocumentModaleContenu {...props} />
+    </FenetreModale>
+  );
+}
+
+function EditeurDocumentModaleContenu({ id, contactId, onFermer }: { id?: string; contactId?: string; onFermer: () => void }) {
   const charge = useDonnees();
   if (charge.erreur && !charge.donnee)
     return (

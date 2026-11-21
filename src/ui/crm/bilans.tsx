@@ -23,7 +23,7 @@ import { choisirFichier, ouvrirFichier } from '../fichiers';
 import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
-import { Badge, CaseACocher, Cellule, Grille, Libelle, Modale, PiedEditeur, Recherche, Saisie, useBlocNomCarte } from './dossier';
+import { Badge, CaseACocher, Cellule, Grille, Libelle, FenetreModale, Modale, PiedEditeur, Recherche, Saisie, useBlocNomCarte } from './dossier';
 
 const jourLong = (j: string) => new Date(j + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' });
 const nomBilan = (b: BilanCoach, c: Carnet) => {
@@ -242,7 +242,16 @@ function lireMesure(t: string): number | undefined | null {
   return Number.isFinite(n) && n >= 0 && n <= 500 ? Math.round(n * 10) / 10 : null;
 }
 
-export function EditeurBilan({ id, contactId, onFermer }: { id?: string; contactId?: string; onFermer: () => void }) {
+/** Chargement puis éditeur dans la même fenêtre : sur iPhone, l'éditeur ne s'ouvrait pas sinon. */
+export function EditeurBilan(props: Parameters<typeof EditeurBilanContenu>[0]) {
+  return (
+    <FenetreModale>
+      <EditeurBilanContenu {...props} />
+    </FenetreModale>
+  );
+}
+
+function EditeurBilanContenu({ id, contactId, onFermer }: { id?: string; contactId?: string; onFermer: () => void }) {
   const charge = useCharger(async () => {
     const tout = await chargerTout();
     const clientId = !id && contactId ? tout.carnet.contacts.find((c) => c.id === contactId)?.clientId : undefined;

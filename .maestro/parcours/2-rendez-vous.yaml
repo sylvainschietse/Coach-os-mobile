@@ -10,5 +10,9 @@ name: Rendez-vous
     centerElement: true
 - takeScreenshot: 2-rendez-vous-a-en-attente
 - tapOn: 'Je confirme'
-- assertVisible: 'Confirmé'
+# Le message « Moins de 24 h avant… » peut pousser la carte vers le haut sur un petit écran.
+- scrollUntilVisible:
+    element: 'Confirmé.*'
+    direction: UP
+    timeout: 10000
 - takeScreenshot: 2-rendez-vous-b-confirme

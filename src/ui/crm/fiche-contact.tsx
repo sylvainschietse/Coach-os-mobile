@@ -46,7 +46,7 @@ import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
 import { ParcoursContact } from './parcours';
 import { ReponsesQuestionnaire } from './reponses-questionnaire';
-import { Cellule, Choix, Grille, Initiales, Modale, PiedEditeur, Repliable, Saisie, Valeur } from './dossier';
+import { Cellule, Choix, FenetreModale, Grille, Initiales, Modale, PiedEditeur, Repliable, Saisie, Valeur } from './dossier';
 
 export type VoletFiche = 'fiche' | 'paiements' | 'messages' | 'boosters' | 'programme' | 'suivi' | 'tests' | 'nutrition' | 'documents';
 export const VOLETS_FICHE: VoletFiche[] = ['fiche', 'paiements', 'messages', 'boosters', 'programme', 'suivi', 'tests', 'nutrition', 'documents'];
@@ -146,26 +146,29 @@ export function FicheContactModale({
   if (fiche && depart?.id !== fiche.contact.id) setDepart({ id: fiche.contact.id, volet: voletAffiche(undefined, !!fiche.contact.clientId) });
   const voletDepart = depart && depart.id === id ? depart.volet : undefined;
 
-  if (id && !fiche)
-    return (
-      <Modale titre="Fiche client" onFermer={onFermer}>
-        {charge.erreur ? <Erreur message={charge.erreur} onReessayer={charge.recharger} /> : <Chargement />}
-      </Modale>
-    );
+  // Une seule fenêtre du chargement à la fiche : sur iPhone, la fiche ne s'ouvrait pas sinon.
   return (
-    <Editeur
-      key={fiche ? `${fiche.contact.id}` : 'nouveau'}
-      fiche={fiche ?? undefined}
-      volet={id ? voletAffiche(volet ?? voletDepart, !!fiche?.contact.clientId) : 'fiche'}
-      onVolet={onVolet}
-      onFermer={onFermer}
-      onOuvrirAutre={onOuvrirAutre}
-      onBooster={onBooster}
-      onNouveauBooster={onNouveauBooster}
-      onSupprimerBooster={onSupprimerBooster}
-      nouveauClient={!id && nouveauClient}
-      {...autres}
-    />
+    <FenetreModale>
+      {id && !fiche ? (
+        <Modale titre="Fiche client" onFermer={onFermer}>
+          {charge.erreur ? <Erreur message={charge.erreur} onReessayer={charge.recharger} /> : <Chargement />}
+        </Modale>
+      ) : (
+        <Editeur
+          key={fiche ? `${fiche.contact.id}` : 'nouveau'}
+          fiche={fiche ?? undefined}
+          volet={id ? voletAffiche(volet ?? voletDepart, !!fiche?.contact.clientId) : 'fiche'}
+          onVolet={onVolet}
+          onFermer={onFermer}
+          onOuvrirAutre={onOuvrirAutre}
+          onBooster={onBooster}
+          onNouveauBooster={onNouveauBooster}
+          onSupprimerBooster={onSupprimerBooster}
+          nouveauClient={!id && nouveauClient}
+          {...autres}
+        />
+      )}
+    </FenetreModale>
   );
 }
 

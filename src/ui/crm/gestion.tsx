@@ -46,7 +46,7 @@ import { BoutonFacture, BoutonToutesFactures, FactureDeLaFiche } from '../factur
 import { couleurs, espace, polices } from '../theme';
 import { adresseQuestionnaire, EnvoiMessage, nomComplet, useCoachNom } from './commun';
 import { BoutonPrincipal, carteDossier } from './contacts';
-import { Badge, BoutonPied, CaseACocher, Cellule, Choix, Grille, Libelle, Modale, PiedEditeur, Recherche, Saisie, useBlocNomCarte } from './dossier';
+import { Badge, BoutonPied, CaseACocher, Cellule, Choix, Grille, Libelle, FenetreModale, Modale, PiedEditeur, Recherche, Saisie, useBlocNomCarte } from './dossier';
 import { ReglerPlusieurs } from './regler-groupe';
 import { etatA11y } from '@/lib/accessibilite';
 
@@ -364,7 +364,16 @@ function lireMontant(t: string): number | undefined | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function EditeurGestion({
+/** Chargement puis éditeur dans la même fenêtre : sur iPhone, l'éditeur ne s'ouvrait pas sinon. */
+export function EditeurGestion(props: Parameters<typeof EditeurGestionContenu>[0]) {
+  return (
+    <FenetreModale>
+      <EditeurGestionContenu {...props} />
+    </FenetreModale>
+  );
+}
+
+function EditeurGestionContenu({
   module,
   id,
   contactId,

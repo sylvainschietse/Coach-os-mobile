@@ -35,7 +35,7 @@ import { Bouton, Chargement, Erreur } from '../composants';
 import { ChampDate, ChampHeure } from '../date-heure';
 import { BoutonDictee } from '../dictee';
 import { couleurs, espace, polices } from '../theme';
-import { BoutonPied, CaseACocher, Cellule, Choix, ChoixMultiple, Grille, Libelle, Modale, PiedEditeur, Saisie } from './dossier';
+import { BoutonPied, CaseACocher, Cellule, Choix, ChoixMultiple, Grille, Libelle, FenetreModale, Modale, PiedEditeur, Saisie } from './dossier';
 import { ConclusionBooster } from './conclusion-booster';
 import { ExercicesTest } from './exercices-test';
 import { MesuresVideoTest } from './mesures-video-test';
@@ -114,7 +114,16 @@ function saisieDe(b: Brouillon, initial: Brouillon, booster: Booster | undefined
   return s;
 }
 
-export function EditeurBoosterModale({
+/** Chargement puis éditeur dans la même fenêtre : sur iPhone, l'éditeur ne s'ouvrait pas sinon. */
+export function EditeurBoosterModale(props: Parameters<typeof EditeurBoosterModaleContenu>[0]) {
+  return (
+    <FenetreModale>
+      <EditeurBoosterModaleContenu {...props} />
+    </FenetreModale>
+  );
+}
+
+function EditeurBoosterModaleContenu({
   boosterId,
   contactId,
   onFermer,

@@ -2,7 +2,7 @@
 // grille de champs deux colonnes (`sm:grid-cols-2`, champs longs pleine largeur), `<select>` avec « Non renseigné »,
 // cases à cocher, badges, initiales (`premium-avatar`) et volet repliable (`<details>`).
 import { Check, ChevronDown, ChevronRight, Search, X } from '@/ui/icones';
-import { useState, type ReactNode } from 'react';
+import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -18,6 +18,23 @@ import { etatA11y } from '@/lib/accessibilite';
 
 /** Largeur `sm` de Tailwind : en dessous, une seule colonne. */
 const SM = 640;
+
+/**
+ * Fenêtre partagée : une Modale rendue dedans n'ouvre pas sa propre fenêtre native. Sur iPhone, une fenêtre qui en
+ * remplace une autre (chargement, puis fiche) ne s'affichait pas : iOS refuse d'en présenter une pendant qu'il en
+ * ferme une. Valeur : où la Modale range sa fermeture, pour la touche Retour d'Android.
+ */
+const FenetrePartagee = createContext<{ current: (() => void) | undefined } | null>(null);
+
+/** Une seule fenêtre native pour des Modales qui se suivent (chargement, puis contenu). */
+export function FenetreModale({ children }: { children: ReactNode }) {
+  const fermer = useRef<(() => void) | undefined>(undefined);
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={() => fermer.current?.()}>
+      <FenetrePartagee.Provider value={fermer}>{children}</FenetrePartagee.Provider>
+    </Modal>
+  );
+}
 
 export function Modale({
   titre,
@@ -42,33 +59,41 @@ export function Modale({
   // Clavier sorti : la fenêtre se rétrécit au-dessus, le pied (Enregistrer) reste visible.
   const clavier = useHauteurClavier();
   const bas = insets.bottom + (etroit ? 8 : 24);
+  const partagee = useContext(FenetrePartagee);
+  if (partagee) partagee.current = onFermer;
+  const contenu = (
+    <View
+      style={[
+        styles.voile,
+        {
+          paddingTop: insets.top + (etroit ? 8 : 24),
+          paddingBottom: clavier ? Math.max(bas, clavier + 8) : bas,
+        },
+      ]}
+    >
+      <View {...roleWeb('dialog')} accessibilityLabel={titre} style={[styles.boite, largeur ? { maxWidth: largeur } : null, etroit && { borderRadius: arrondi.global }]}>
+        <View style={styles.titreLigne}>
+          <Text style={styles.titre} numberOfLines={2}>
+            {titre}
+          </Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Fermer" onPress={onFermer} style={styles.croix}>
+            <X size={18} color={couleurs.texteDoux} />
+          </Pressable>
+        </View>
+        <DefilementClavier style={{ flexShrink: 1 }} contentContainerStyle={styles.corps}>
+          {enTete}
+          {children}
+        </DefilementClavier>
+        {pied && <View style={styles.pied}>{pied}</View>}
+      </View>
+    </View>
+  );
+  // Les Modales ouvertes depuis celle-ci (confirmations…) gardent leur propre fenêtre.
+  const interieur = <FenetrePartagee.Provider value={null}>{contenu}</FenetrePartagee.Provider>;
+  if (partagee) return interieur;
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onFermer}>
-      <View
-        style={[
-          styles.voile,
-          {
-            paddingTop: insets.top + (etroit ? 8 : 24),
-            paddingBottom: clavier ? Math.max(bas, clavier + 8) : bas,
-          },
-        ]}
-      >
-        <View {...roleWeb('dialog')} accessibilityLabel={titre} style={[styles.boite, largeur ? { maxWidth: largeur } : null, etroit && { borderRadius: arrondi.global }]}>
-          <View style={styles.titreLigne}>
-            <Text style={styles.titre} numberOfLines={2}>
-              {titre}
-            </Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Fermer" onPress={onFermer} style={styles.croix}>
-              <X size={18} color={couleurs.texteDoux} />
-            </Pressable>
-          </View>
-          <DefilementClavier style={{ flexShrink: 1 }} contentContainerStyle={styles.corps}>
-            {enTete}
-            {children}
-          </DefilementClavier>
-          {pied && <View style={styles.pied}>{pied}</View>}
-        </View>
-      </View>
+      {interieur}
     </Modal>
   );
 }
