@@ -97,8 +97,9 @@ jobs:
         run: |
           WS=$(ls -d ios/*.xcworkspace | head -1); SCHEME=$(basename "$WS" .xcworkspace)
           set -o pipefail
+          # Simulateur : signature locale « ad hoc » (sans compte Apple), sinon iOS refuse de charger l'appli.
           xcodebuild -workspace "$WS" -scheme "$SCHEME" -configuration Release -sdk iphonesimulator \
-            -derivedDataPath build CODE_SIGNING_ALLOWED=NO | tail -40
+            -derivedDataPath build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM= | tail -40
           ls -d build/Build/Products/Release-iphonesimulator/*.app
       - run: curl -Ls https://get.maestro.mobile.dev | bash
       - name: Parcours sur iPhone SE puis iPhone Pro Max
@@ -124,7 +125,7 @@ jobs:
             else
               echo "::error::L'appli se ferme au lancement sur $MODELE"
               xcrun simctl spawn "$UDID" log show --last 2m --style compact --predicate 'process == "CoachGo" OR eventMessage CONTAINS "com.coachgo.app"' | grep -iE "error|fault|exception|crash|terminat|abort|fatal" | head -80
-              for F in $(ls -t ~/Library/Logs/DiagnosticReports/*.ips 2>/dev/null | head -1); do echo "== $F"; head -c 6000 "$F"; done
+              for F in $(ls -t ~/Library/Logs/DiagnosticReports/*.ips 2>/dev/null | head -1); do echo "== $F"; grep -A12 '"termination"' "$F"; done
               ECHECS=$((ECHECS + 1))
             fi
             xcrun simctl shutdown "$UDID"
