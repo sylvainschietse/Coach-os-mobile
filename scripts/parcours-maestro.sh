@@ -31,7 +31,8 @@ for MODE in clair sombre; do
         # Messages de l'appli (erreurs JavaScript comprises) des 3 dernières minutes.
         echo "Journal de l'appli :"
         xcrun simctl spawn booted log show --last 3m --style compact \
-          --predicate 'process == "CoachGo" AND (subsystem == "com.facebook.react.log" OR eventMessage CONTAINS[c] "error" OR eventMessage CONTAINS[c] "warn")' 2>/dev/null | tail -40
+          --predicate 'process == "CoachGo" AND subsystem != "com.apple.dt.xctest" AND (subsystem BEGINSWITH "com.facebook.react" OR eventMessage CONTAINS[c] "error" OR eventMessage CONTAINS[c] "warn")' 2>/dev/null \
+          | grep -v 'error: (null)' | tail -40
         xcrun simctl io booted screenshot --type=jpeg /tmp/echec.jpg > /dev/null 2>&1 \
           && sips -Z 700 -s formatOptions 40 /tmp/echec.jpg > /dev/null 2>&1 \
           && echo "CAPTURE-BASE64 $APPAREIL-$MODE-$NOM $(base64 < /tmp/echec.jpg | tr -d '\n')"

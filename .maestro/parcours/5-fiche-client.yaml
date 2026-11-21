@@ -28,6 +28,7 @@ name: Fiche client
     element: 'Voir la fiche'
     centerElement: true
 - waitForAnimationToEnd
+- takeScreenshot: 5-fiche-client-b-avant-toucher
 - tapOn: 'Voir la fiche'
 - extendedWaitUntil:
     visible: 'Échanges'
