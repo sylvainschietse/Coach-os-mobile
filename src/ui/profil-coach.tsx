@@ -5,7 +5,7 @@ import { UserRound } from '@/ui/icones';
 import { useState } from 'react';
 import { Image, View } from 'react-native';
 
-import { erreursProfilCoach, HORAIRES_PAR_DEFAUT, MAX_HORAIRES, profilCoach, type ProfilCoach } from '@/data/profil-coach';
+import { erreursProfilCoach, HORAIRES_PAR_DEFAUT, MAX_AVIS, MAX_AVIS_AUTEUR, MAX_HORAIRES, MAX_SPECIALITE, profilCoach, type ProfilCoach } from '@/data/profil-coach';
 import { formaterTelephone } from '@/domain/crm';
 import { useCharger } from '@/lib/useCharger';
 
@@ -110,6 +110,31 @@ function Formulaire({ initial }: { initial: ProfilCoach }) {
         <Texte doux style={{ fontSize: 13 }}>
           Affiché en haut de la messagerie de tes clients, pour qu’ils sachent quand tu réponds. Vide : « {HORAIRES_PAR_DEFAUT} »
         </Texte>
+      </Carte>
+      <Carte>
+        <SousTitre>Ta page d’offre</SousTitre>
+        <Texte doux style={{ fontSize: 13 }}>
+          Ce que voient les futurs clients quand tu partages une offre. Laisse vide pour ne rien afficher.
+        </Texte>
+        <ChampTexte
+          libelle="Ma spécialité"
+          valeur={p.specialite ?? ''}
+          onChange={(specialite) => modifier({ specialite: specialite.slice(0, MAX_SPECIALITE) })}
+          placeholder="Ex. : Préparation physique et perte de poids, Lyon"
+        />
+        <ChampTexte
+          libelle="Un avis client"
+          valeur={p.avisClient ?? ''}
+          onChange={(avisClient) => modifier({ avisClient: avisClient.slice(0, MAX_AVIS) })}
+          placeholder="Copie ici un vrai message d’un client, avec son accord."
+          multiligne
+        />
+        <ChampTexte
+          libelle="Qui l’a écrit"
+          valeur={p.avisAuteur ?? ''}
+          onChange={(avisAuteur) => modifier({ avisAuteur: avisAuteur.slice(0, MAX_AVIS_AUTEUR) })}
+          placeholder="Ex. : Julie, cliente depuis 1 an"
+        />
         {erreurs.length > 0 && <Erreur message={erreurs.join('\n')} />}
         <Bouton libelle="Enregistrer" onPress={enregistrer} chargement={enCours} />
         {enregistre && <Texte style={{ fontSize: 14, color: couleurs.vert }}>Profil enregistré.</Texte>}

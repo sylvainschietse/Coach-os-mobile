@@ -1,52 +1,20 @@
 // Page publique d'une offre, ouverte depuis le lien que le coach partage (WhatsApp, Instagram, site…), sans compte.
 // La personne voit l'offre et le coach, puis paie sur la page Stripe du coach. Au retour, sa fiche est déjà créée chez lui.
 // Habillage (audit design, point 1) : marque CoachGo, photo, coach, prix et bouton visibles sans défiler, puis le contenu.
-import { Stack, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
-import {
-  Image,
-  ImageBackground,
-  Platform,
-  ScrollView,
-  Text,
-  View,
-  useWindowDimensions,
-  type ViewStyle,
-} from "react-native";
+import { Stack, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
+import { Image, ImageBackground, Platform, ScrollView, Text, View, useWindowDimensions, type ViewStyle } from 'react-native';
 
-import { offres } from "@/data/offres";
-import { useSession } from "@/data/session";
-import { ouvrirLien } from "@/lib/ouvrir-lien";
-import { messageErreur, useCharger } from "@/lib/useCharger";
-import { contenuOffre, libellePrix } from "@/domain/offres";
-import {
-  Bouton,
-  Carte,
-  Chargement,
-  Ecran,
-  Erreur,
-  Texte,
-  Titre,
-} from "@/ui/composants";
-import {
-  Check,
-  Clock,
-  Dumbbell,
-  MessageCircle,
-  Users,
-  Utensils,
-  Video,
-  type LucideIcon,
-} from "@/ui/icones";
-import {
-  Kicker,
-  LigneAvantage,
-  Marque,
-  SCENE_PROSPECT,
-  SUR_SCENE,
-} from "@/ui/offres/page-prospect";
-import { PhotoCoach } from "@/ui/profil-coach";
-import { couleurs, espacementTitre, polices, titreSection } from "@/ui/theme";
+import { offres } from '@/data/offres';
+import { useSession } from '@/data/session';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
+import { messageErreur, useCharger } from '@/lib/useCharger';
+import { contenuOffre, libellePrix } from '@/domain/offres';
+import { Bouton, Carte, Chargement, Ecran, Erreur, Texte, Titre } from '@/ui/composants';
+import { Check, Clock, Dumbbell, MessageCircle, Users, Utensils, Video, type LucideIcon } from '@/ui/icones';
+import { Kicker, LigneAvantage, Marque, SCENE_PROSPECT, SUR_SCENE } from '@/ui/offres/page-prospect';
+import { PhotoCoach } from '@/ui/profil-coach';
+import { couleurs, espacementTitre, polices, titreSection } from '@/ui/theme';
 
 export default function OffreParLien() {
   const { id, paiement } = useLocalSearchParams<{
@@ -65,8 +33,7 @@ export default function OffreParLien() {
     try {
       const lien = await offres.payer(id);
       // Sur le web, la page Stripe remplace celle-ci et revient ici une fois le paiement fait.
-      if (Platform.OS === "web" && typeof window !== "undefined")
-        window.location.assign(lien);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.assign(lien);
       else await ouvrirLien(lien);
     } catch (e) {
       setErreur(messageErreur(e));
@@ -84,20 +51,16 @@ export default function OffreParLien() {
   }
   if (!page.donnee) return <Chargement />;
   const { offre, coach } = page.donnee;
-  const unique = offre.periodicite === "unique";
+  const unique = offre.periodicite === 'unique';
 
-  if (paiement === "merci") {
+  if (paiement === 'merci') {
     return (
       <Ecran>
         <Carte>
           <Titre>Merci !</Titre>
           <Texte style={{ fontSize: 15 }}>
             {`Ton paiement pour « ${offre.nom} » est bien reçu. ${coach.nom} est prévenu${
-              unique
-                ? " et tes séances sont créditées."
-                : profil?.role === "client"
-                  ? " et ton accès est à jour."
-                  : " et va t’envoyer ton accès à l’appli."
+              unique ? ' et tes séances sont créditées.' : profil?.role === 'client' ? ' et ton accès est à jour.' : ' et va t’envoyer ton accès à l’appli.'
             }`}
           </Texte>
           <Texte doux style={{ fontSize: 14 }}>
@@ -112,13 +75,7 @@ export default function OffreParLien() {
   const large = width >= 900;
   const action = page.donnee.paiement ? (
     <Bouton
-      libelle={
-        unique
-          ? "Payer par carte"
-          : offre.essaiJours
-            ? `Commencer l’essai gratuit`
-            : "Commencer maintenant"
-      }
+      libelle={unique ? 'Payer par carte' : offre.essaiJours ? `Commencer l’essai gratuit` : 'Commencer maintenant'}
       onPress={payer}
       chargement={occupe}
     />
@@ -140,12 +97,10 @@ export default function OffreParLien() {
         fontFamily: polices.texte,
         fontSize: 13,
         color: SUR_SCENE.discret,
-        textAlign: large ? "left" : "center",
+        textAlign: large ? 'left' : 'center',
       }}
     >
-      {unique
-        ? `Paiement sécurisé par Stripe, versé directement à ${coach.nom}.`
-        : `Paiement sécurisé par Stripe · résiliable à tout moment.`}
+      {unique ? `Paiement sécurisé par Stripe, versé directement à ${coach.nom}.` : `Paiement sécurisé par Stripe · résiliable à tout moment.`}
     </Text>
   ) : null;
 
@@ -154,15 +109,11 @@ export default function OffreParLien() {
       source={PHOTO}
       accessibilityLabel="Coach et cliente à l’entraînement"
       resizeMode="cover"
-      style={
-        large
-          ? { flex: 1, minHeight: 420, borderRadius: 24, overflow: "hidden" }
-          : { height: 380 }
-      }
+      style={large ? { flex: 1, minHeight: 420, borderRadius: 24, overflow: 'hidden' } : { height: 380 }}
       // Sur le web, l'image garde sinon sa largeur d'origine (1024 px) et seul un morceau apparaît.
       imageStyle={{
-        width: "100%",
-        height: "100%",
+        width: '100%',
+        height: '100%',
         borderRadius: large ? 24 : 0,
       }}
     >
@@ -171,7 +122,7 @@ export default function OffreParLien() {
           style={{
             flex: 1,
             padding: 20,
-            justifyContent: "space-between",
+            justifyContent: 'space-between',
             ...VOILE,
           }}
         >
@@ -187,7 +138,7 @@ export default function OffreParLien() {
       <Stack.Screen
         options={{
           headerShown: false,
-          title: offre.nom || "Offre de coaching",
+          title: offre.nom || 'Offre de coaching',
         }}
       />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
@@ -204,16 +155,16 @@ export default function OffreParLien() {
         >
           <View
             style={{
-              width: "100%",
+              width: '100%',
               maxWidth: 1200,
-              alignSelf: "center",
+              alignSelf: 'center',
               gap: large ? 40 : 0,
             }}
           >
             {large && <Marque />}
             <View
               style={{
-                flexDirection: large ? "row" : "column",
+                flexDirection: large ? 'row' : 'column',
                 gap: large ? 56 : 0,
               }}
             >
@@ -221,13 +172,13 @@ export default function OffreParLien() {
                 style={{
                   flex: large ? 1 : undefined,
                   gap: 18,
-                  justifyContent: "center",
+                  justifyContent: 'center',
                 }}
               >
                 <View
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
+                    flexDirection: 'row',
+                    alignItems: 'center',
                     gap: 14,
                   }}
                 >
@@ -259,15 +210,10 @@ export default function OffreParLien() {
                     >
                       {coach.nom}
                     </Text>
+                    {coach.specialite ? <Text style={{ fontFamily: polices.texte, fontSize: 14, color: SUR_SCENE.doux }}>{coach.specialite}</Text> : null}
                   </View>
                 </View>
-                {large && (
-                  <EnTeteOffre
-                    nom={offre.nom}
-                    accroche={offre.accroche}
-                    taille={84}
-                  />
-                )}
+                {large && <EnTeteOffre nom={offre.nom} accroche={offre.accroche} taille={84} />}
                 <Text
                   style={{
                     fontFamily: polices.titre,
@@ -279,7 +225,7 @@ export default function OffreParLien() {
                 >
                   {libellePrix(offre)}
                 </Text>
-                {paiement === "annule" && (
+                {paiement === 'annule' && (
                   <Text
                     style={{
                       fontFamily: polices.texte,
@@ -287,8 +233,7 @@ export default function OffreParLien() {
                       color: SUR_SCENE.doux,
                     }}
                   >
-                    Paiement interrompu : rien n’a été prélevé. Tu peux
-                    reprendre quand tu veux.
+                    Paiement interrompu : rien n’a été prélevé. Tu peux reprendre quand tu veux.
                   </Text>
                 )}
                 <View style={{ maxWidth: large ? 420 : undefined, gap: 10 }}>
@@ -315,32 +260,25 @@ export default function OffreParLien() {
         <View style={{ paddingHorizontal: large ? 64 : 20, marginTop: 28 }}>
           <View
             style={{
-              width: "100%",
+              width: '100%',
               maxWidth: 1200,
-              alignSelf: "center",
+              alignSelf: 'center',
               gap: 32,
             }}
           >
             <View style={{ gap: 14 }}>
               <Text accessibilityRole="header" style={titreSection}>
-                {unique ? "Ce que tu reçois" : "Ce que tu reçois chaque mois"}
+                {unique ? 'Ce que tu reçois' : 'Ce que tu reçois chaque mois'}
               </Text>
               <View
                 style={{
-                  flexDirection: large ? "row" : "column",
-                  flexWrap: "wrap",
+                  flexDirection: large ? 'row' : 'column',
+                  flexWrap: 'wrap',
                   gap: 10,
                 }}
               >
                 {lignes.map((l) => (
-                  <LigneAvantage
-                    key={l}
-                    libelle={l}
-                    icone={iconeDe(l)}
-                    style={
-                      large ? { flexBasis: "48%", flexGrow: 1 } : undefined
-                    }
-                  />
+                  <LigneAvantage key={l} libelle={l} icone={iconeDe(l)} style={large ? { flexBasis: '48%', flexGrow: 1 } : undefined} />
                 ))}
               </View>
             </View>
@@ -352,8 +290,8 @@ export default function OffreParLien() {
                 </Text>
                 <View
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
+                    flexDirection: 'row',
+                    alignItems: 'center',
                     gap: 18,
                   }}
                 >
@@ -365,7 +303,7 @@ export default function OffreParLien() {
                       height: ((large ? 200 : 140) * 844) / 390,
                       borderRadius: 22,
                       borderWidth: 5,
-                      borderColor: "#111216",
+                      borderColor: '#111216',
                     }}
                   />
                   <Text
@@ -384,16 +322,32 @@ export default function OffreParLien() {
               </View>
             )}
 
+            {coach.avis ? (
+              <View style={{ gap: 14 }}>
+                <Text accessibilityRole="header" style={titreSection}>
+                  {`Ils s’entraînent avec ${coach.nom}`}
+                </Text>
+                <View
+                  style={{
+                    maxWidth: 640,
+                    backgroundColor: couleurs.carte,
+                    borderWidth: 1,
+                    borderColor: couleurs.bordure,
+                    borderRadius: 14,
+                    padding: 18,
+                    gap: 10,
+                  }}
+                >
+                  <Text style={{ fontFamily: polices.texte, fontSize: 17, lineHeight: 25, color: couleurs.texte }}>{`« ${coach.avis.texte} »`}</Text>
+                  {coach.avis.auteur ? <Text style={{ fontFamily: polices.texte, fontSize: 14, color: couleurs.texteDoux }}>{coach.avis.auteur}</Text> : null}
+                </View>
+              </View>
+            ) : null}
+
             {page.donnee.paiement && (
               <View style={{ maxWidth: large ? 420 : undefined, gap: 10 }}>
                 <Bouton
-                  libelle={
-                    unique
-                      ? "Payer par carte"
-                      : offre.essaiJours
-                        ? `Commencer l’essai gratuit`
-                        : `Commencer avec ${coach.nom}`
-                  }
+                  libelle={unique ? 'Payer par carte' : offre.essaiJours ? `Commencer l’essai gratuit` : `Commencer avec ${coach.nom}`}
                   onPress={payer}
                   chargement={occupe}
                 />
@@ -406,25 +360,16 @@ export default function OffreParLien() {
   );
 }
 
-const PHOTO = require("../../../assets/images/programmes/coaching.jpg");
-const APERCU_SEANCE = require("../../../assets/images/apercu-seance.jpg");
+const PHOTO = require('../../../assets/images/programmes/coaching.jpg');
+const APERCU_SEANCE = require('../../../assets/images/apercu-seance.jpg');
 
 /** Voile sombre sur la photo pour que le titre reste lisible (dégradé sur le web, uni sur téléphone). */
 const VOILE = {
-  backgroundColor: "rgba(17, 18, 22, 0.35)",
-  backgroundImage:
-    "linear-gradient(180deg, rgba(17,18,22,0.2) 0%, rgba(17,18,22,0.55) 50%, #111216 100%)",
+  backgroundColor: 'rgba(17, 18, 22, 0.35)',
+  backgroundImage: 'linear-gradient(180deg, rgba(17,18,22,0.2) 0%, rgba(17,18,22,0.55) 50%, #111216 100%)',
 } as ViewStyle;
 
-function EnTeteOffre({
-  nom,
-  accroche,
-  taille,
-}: {
-  nom: string;
-  accroche?: string | null;
-  taille: number;
-}) {
+function EnTeteOffre({ nom, accroche, taille }: { nom: string; accroche?: string | null; taille: number }) {
   return (
     <View style={{ gap: 6 }}>
       <Kicker>Coaching CoachGo</Kicker>
@@ -438,7 +383,7 @@ function EnTeteOffre({
           color: SUR_SCENE.texte,
         }}
       >
-        {nom || "Ton offre"}
+        {nom || 'Ton offre'}
       </Text>
       {accroche ? (
         <Text
@@ -446,7 +391,7 @@ function EnTeteOffre({
             fontFamily: polices.texte,
             fontSize: 17,
             lineHeight: 24,
-            color: "#E4E5E9",
+            color: '#E4E5E9',
           }}
         >
           {accroche}
