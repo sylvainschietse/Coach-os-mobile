@@ -110,13 +110,23 @@ jobs:
           echo "Système iPhone : $RUNTIME"
           for MODELE in 'iPhone SE' 'Pro Max'; do
             # Le dernier modèle de ce nom pris en charge par ce système (simulateur créé pour l'occasion).
-            TYPE=$(echo "$LISTE" | jq -r --arg m "$MODELE" --arg r "$RUNTIME" '([.runtimes[] | select(.identifier == $r) | .supportedDeviceTypes[]] // [.devicetypes[]]) | map(select(.name | contains($m))) | last | .identifier')
+            if [ "$MODELE" = 'iPhone SE' ]; then FILTRE='^iPhone SE'; else FILTRE='^iPhone [0-9]+ Pro Max$'; fi
+            TYPE=$(echo "$LISTE" | jq -r --arg f "$FILTRE" --arg r "$RUNTIME" '[.runtimes[] | select(.identifier == $r) | .supportedDeviceTypes[] | select(.name | test($f))] | sort_by([(.name | capture("(?<n>[0-9]+)") | .n | tonumber)] // [0]) | last | .identifier')
             CLE=$([ "$MODELE" = 'iPhone SE' ] && echo iphone-se || echo iphone-pro-max)
             UDID=$(xcrun simctl create "$CLE" "$TYPE" "$RUNTIME")
             echo "::group::$MODELE ($TYPE)"
             xcrun simctl boot "$UDID"; xcrun simctl bootstatus "$UDID"
             xcrun simctl install "$UDID" "$APP"
-            scripts/parcours-maestro.sh "$CLE" ios || ECHECS=$((ECHECS + $?))
+            # L'appli doit rester ouverte 20 s après son lancement ; sinon on montre pourquoi elle s'est fermée.
+            xcrun simctl launch "$UDID" com.coachgo.app; sleep 20
+            if xcrun simctl spawn "$UDID" launchctl list | grep -q com.coachgo.app; then
+              scripts/parcours-maestro.sh "$CLE" ios || ECHECS=$((ECHECS + $?))
+            else
+              echo "::error::L'appli se ferme au lancement sur $MODELE"
+              xcrun simctl spawn "$UDID" log show --last 2m --style compact --predicate 'process == "CoachGo" OR eventMessage CONTAINS "com.coachgo.app"' | grep -iE "error|fault|exception|crash|terminat|abort|fatal" | head -80
+              for F in $(ls -t ~/Library/Logs/DiagnosticReports/*.ips 2>/dev/null | head -1); do echo "== $F"; head -c 6000 "$F"; done
+              ECHECS=$((ECHECS + 1))
+            fi
             xcrun simctl shutdown "$UDID"
             echo '::endgroup::'
           done
