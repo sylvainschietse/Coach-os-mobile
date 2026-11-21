@@ -1,0 +1,19 @@
+# Sous-parcours : ouvrir l'appli démo en tant que Léa (cliente fictive) et accepter le consentement.
+appId: com.coachgo.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'Je suis Léa, client'
+    timeout: 60000
+- tapOn: 'Je suis Léa, client'
+- scrollUntilVisible:
+    element: 'J’accepte que mes données de santé.*'
+    centerElement: true
+- tapOn: 'J’accepte que mes données de santé.*'
+- scrollUntilVisible:
+    element: 'Continuer'
+- tapOn: 'Continuer'
+- extendedWaitUntil:
+    visible: 'Bonjour, Léa'
+    timeout: 15000
