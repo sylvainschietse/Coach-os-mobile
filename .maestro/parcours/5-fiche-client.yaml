@@ -15,9 +15,9 @@ name: Fiche client
     visible: 'Fermer les notifications'
     timeout: 15000
 - takeScreenshot: 5-fiche-client-a-notifications
+# Toucher le voile ferme le panneau.
 - tapOn:
-    text: 'Fermer'
-    index: 0
+    point: '50%,90%'
 - waitForAnimationToEnd
 - tapOn: 'Clients'
 - scrollUntilVisible:
