@@ -26,6 +26,12 @@ for MODE in clair sombre; do
       tail -25 "$SORTIE/$NOM.log"
       # Ce que l'écran montrait au moment de l'échec, pour comprendre sans les pièces jointes.
       echo "Textes à l'écran :"; "$MAESTRO" hierarchy 2>/dev/null | grep -oE '"(text|accessibilityText)" : "[^"]+"' | head -60
+      # iPhone : la capture d'écran réduite, en base64 dans le journal (les pièces jointes ne sont pas toujours lisibles).
+      if [ "$PLATEFORME" = ios ]; then
+        xcrun simctl io booted screenshot --type=jpeg /tmp/echec.jpg > /dev/null 2>&1 \
+          && sips -Z 700 -s formatOptions 40 /tmp/echec.jpg > /dev/null 2>&1 \
+          && echo "CAPTURE-BASE64 $APPAREIL-$MODE-$NOM $(base64 < /tmp/echec.jpg | tr -d '\n')"
+      fi
       ECHECS=$((ECHECS + 1))
     fi
   done
