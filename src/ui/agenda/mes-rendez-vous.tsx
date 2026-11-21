@@ -22,17 +22,24 @@ export function MesRendezVous({ clientId }: { clientId: string }) {
   const rdv = useCharger(() => agenda.mesRendezVous(clientId), `mes-rdv-${clientId}`);
   const coach = useCharger(() => monCoach(), 'mon-coach');
   const [maintenant] = useState(maintenantMs);
+  const [tous, setTous] = useState(false);
   const prochains = (rdv.donnee ?? []).filter((r) => A_VENIR.includes(r.statut) && new Date(r.fin).getTime() > maintenant).slice(0, 3);
   if (!prochains.length) return null;
   const telephone = normaliserTelephone(coach.donnee?.telephone);
+  // Accueil court (audit de Léo) : le prochain rendez-vous et ceux qui attendent une réponse ; les autres sur demande.
+  const visibles = tous ? prochains : prochains.filter((r, i) => i === 0 || r.statut === 'propose');
+  const caches = prochains.length - visibles.length;
   return (
     <Carte>
       <SousTitre>{prochains.length > 1 ? 'Mes prochains rendez-vous' : 'Mon prochain rendez-vous'}</SousTitre>
-      {prochains.map((r, i) => (
+      {visibles.map((r, i) => (
         <View key={r.id} style={{ gap: espace(2), paddingTop: i ? espace(3) : 0, borderTopWidth: i ? 1 : 0, borderTopColor: couleurs.bordure }}>
           <LigneRdv r={r} telephone={telephone} coach={coach.donnee?.nom} maintenant={maintenant} onChange={rdv.recharger} />
         </View>
       ))}
+      {(caches > 0 || tous) && prochains.length > 1 && (
+        <Bouton variante="discret" libelle={tous ? 'Voir moins' : `Voir ${caches > 1 ? `les ${caches} autres` : 'l’autre rendez-vous'}`} onPress={() => setTous(!tous)} />
+      )}
     </Carte>
   );
 }

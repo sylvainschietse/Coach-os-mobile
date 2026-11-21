@@ -1,12 +1,11 @@
 // ClientView.tsx d'origine (U02), en trois pages pour que l'accueil reste court :
-// - accueil : bonjour, « Ma prochaine séance » avec Démarrer, la photo du programme (un appui ouvre le programme)
-//   et le calendrier de la semaine ;
-// - programme : cycle et avancement, « Mes séances au programme », consignes, « Mon accompagnement » ;
+// - accueil : bonjour, « Ma prochaine séance » avec un seul bouton Démarrer, et un lien vers la semaine ;
+// - programme : calendrier de la semaine, cycle et avancement, « Mes séances au programme », consignes, « Mon accompagnement » ;
 // - séance : une activité (yoga, cours…) à valider sur place. Une séance d'exercices s'ouvre en plein écran, un bloc
 //   par page (app/client/seance-bloc).
 // La vue « historique » montre les séances enregistrées (U06). Repos entre les séries : bandeau en bas de l'écran.
 import { router, useFocusEffect } from 'expo-router';
-import { CalendarRange, ChevronLeft, Lock, PlayCircle, RefreshCw, Timer } from '@/ui/icones';
+import { CalendarRange, ChevronLeft, ChevronRight, Lock, PlayCircle, RefreshCw, Timer } from '@/ui/icones';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { BackHandler, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
 
@@ -120,10 +119,13 @@ export function EntrainementClient({
   onHaut,
   onProgramme,
   milieu,
+  apresCalendrier,
 }: {
   clientId: string;
   /** Accueil : ce qui s'affiche juste sous « Ma prochaine séance » (série, calories, ma journée). */
   milieu?: ReactNode;
+  /** Programme : ce qui s'affiche sous le calendrier de la semaine (déclarer une activité en plus). */
+  apresCalendrier?: ReactNode;
   prenom: string;
   apercu?: boolean;
   /** accueil : prochaine séance, cycle et calendrier ; programme : séances du cycle, consignes et séances faites. */
@@ -199,6 +201,31 @@ export function EntrainementClient({
     calendrier.recharger();
   };
 
+  // Séance ouverte ici (activité sans exercices, ou aperçu coach) : la même page sur l'accueil et dans l'onglet Programme.
+  const seanceOuverte =
+    espace &&
+    page.nom === 'seance' &&
+    (() => {
+      const s = espace.seances.find((x) => x.id === page.seanceId);
+      if (!s || !espace.cycle) return <Text style={ts.texte}>Cette séance n’est plus au programme.</Text>;
+      return (
+        <SeanceLog
+          key={`${s.id}:${clientId}:${espace.cycle.id}`}
+          clientId={clientId}
+          cycleId={espace.cycle.id}
+          seance={s}
+          historique={espace.realisations}
+          references={references}
+          planificationId={page.planificationId}
+          ouverture={page.jeton}
+          ouverteAuDepart
+          apercu={apercu}
+          onRepos={onRepos}
+          onEnregistre={apresEnregistrement}
+        />
+      );
+    })();
+
   const voirProgramme = () => (onProgramme ? demanderSortie(onProgramme) : aller({ nom: 'programme' }));
 
   const programme = espace && (
@@ -259,8 +286,27 @@ export function EntrainementClient({
           <ErreurChargement erreur={erreur} onReessayer={recharger} />
         ) : !espace ? (
           <View style={{ height: 256, borderRadius: 12, backgroundColor: couleurs.discret }} />
+        ) : page.nom === 'seance' ? (
+          <>
+            <Retour libelle="Retour au programme" onPress={accueil} />
+            <BoutonPanneauMinuteurs />
+            {seanceOuverte}
+          </>
         ) : (
           <>
+            {espace.cycle && (
+              <MonCalendrier
+                key={`${clientId}:${espace.cycle.id}`}
+                clientId={clientId}
+                espace={espace}
+                creneaux={calendrier.donnee}
+                erreurChargement={calendrier.erreur}
+                apercu={apercu}
+                onDemarrer={demarrer}
+                onChange={calendrier.recharger}
+              />
+            )}
+            {apresCalendrier}
             {programme}
             {/* Une seule liste de ce qui est fait : séances du programme et activités en plus, semaine par semaine. */}
             <Text style={ts.titreSection}>Mes séances faites</Text>
@@ -296,26 +342,7 @@ export function EntrainementClient({
         <>
           <Retour libelle="Retour à l’accueil" onPress={accueil} />
           <BoutonPanneauMinuteurs />
-          {(() => {
-            const s = espace.seances.find((x) => x.id === page.seanceId);
-            if (!s || !espace.cycle) return <Text style={ts.texte}>Cette séance n’est plus au programme.</Text>;
-            return (
-              <SeanceLog
-                key={`${s.id}:${clientId}:${espace.cycle.id}`}
-                clientId={clientId}
-                cycleId={espace.cycle.id}
-                seance={s}
-                historique={espace.realisations}
-                references={references}
-                planificationId={page.planificationId}
-                ouverture={page.jeton}
-                ouverteAuDepart
-                apercu={apercu}
-                onRepos={onRepos}
-                onEnregistre={apresEnregistrement}
-              />
-            );
-          })()}
+          {seanceOuverte}
         </>
       ) : page.nom === 'programme' ? (
         <>
@@ -360,16 +387,8 @@ export function EntrainementClient({
                 onProgramme={voirProgramme}
               />
               {milieu}
-              <MonCalendrier
-                key={`${clientId}:${espace.cycle.id}`}
-                clientId={clientId}
-                espace={espace}
-                creneaux={calendrier.donnee}
-                erreurChargement={calendrier.erreur}
-                apercu={apercu}
-                onDemarrer={demarrer}
-                onChange={calendrier.recharger}
-              />
+              {/* Audit de Léo : le calendrier de la semaine vit dans l'onglet Programme ; l'accueil n'en garde qu'un lien. */}
+              <LienSemaine onPress={voirProgramme} />
             </>
           )}
         </>
@@ -398,6 +417,17 @@ function Retour({ libelle, onPress }: { libelle: string; onPress: () => void }) 
   );
 }
 
+/** Sur l'accueil, à la place du calendrier : une ligne qui ouvre la semaine dans l'onglet Programme. */
+function LienSemaine({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [ts.carte, styles.lienSemaine, { opacity: pressed ? 0.7 : 1 }]}>
+      <CalendarRange size={20} color={couleurs.texteDoux} />
+      <Text style={[ts.texte, { flex: 1, fontFamily: polices.texteMoyen }]}>Ma semaine d’entraînement</Text>
+      <ChevronRight size={18} color={couleurs.texteDoux} />
+    </Pressable>
+  );
+}
+
 /** « Ma prochaine séance » : un seul gros bouton pour démarrer, sans chercher dans le programme. */
 function ProchaineSeance({
   clientId,
@@ -417,6 +447,7 @@ function ProchaineSeance({
   onProgramme: () => void;
 }) {
   const [mode, choisirMode] = useModeSeance(clientId);
+  const [options, setOptions] = useState(false);
   const p = prochaineSeance(espace, creneaux ?? []);
   if (!p) return null;
   const c = espace.cycle!;
@@ -450,15 +481,28 @@ function ProchaineSeance({
       <Text style={[ts.kicker, { color: '#FF7A7E' }]}>{p.creneau ? `Prévue aujourd’hui${p.creneau.heure ? ` à ${p.creneau.heure}` : ''}` : 'Ma prochaine séance'}</Text>
       <Text style={{ fontFamily: polices.titre, fontSize: 30, letterSpacing: 0.6, color: '#FFFFFF' }}>{titreClient(p.seance.titre)}</Text>
       <Text style={[ts.doux, { color: 'rgba(255,255,255,0.85)' }]}>{nbExercices ? `${nbExercices} exercice${nbExercices > 1 ? 's' : ''}` : 'Activité · à valider une fois faite'}</Text>
-      {guideeEnPremier ? [guidee, sansTelephone] : [sansTelephone, guidee]}
-      {libre && (
-        <Text style={[ts.doux, { color: 'rgba(255,255,255,0.75)' }]}>
-          Sans téléphone : tu t’entraînes tranquille et tu racontes ta séance à la fin, en 30 secondes.
-        </Text>
+      {/* Audit de Léo : un seul bouton pour démarrer (le mode choisi la dernière fois), le reste derrière « Autres options ». */}
+      {guideeEnPremier ? guidee : sansTelephone}
+      {options && (
+        <>
+          {guideeEnPremier ? sansTelephone : guidee}
+          {libre && (
+            <Text style={[ts.doux, { color: 'rgba(255,255,255,0.75)' }]}>
+              Sans téléphone : tu t’entraînes tranquille et tu racontes ta séance à la fin, en 30 secondes.
+            </Text>
+          )}
+        </>
       )}
-      <Text accessibilityRole="button" onPress={onProgramme} style={{ alignSelf: 'center', paddingVertical: 13, paddingHorizontal: 8, fontFamily: polices.texte, fontSize: 14, color: 'rgba(255,255,255,0.9)', textDecorationLine: 'underline' }}>
-        Choisir une autre séance
-      </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', columnGap: 16 }}>
+        {libre && (
+          <Text accessibilityRole="button" {...etatA11y({ expanded: options })} onPress={() => setOptions(!options)} style={styles.lienSombre}>
+            {options ? 'Moins d’options' : 'Autres options'}
+          </Text>
+        )}
+        <Text accessibilityRole="button" onPress={onProgramme} style={styles.lienSombre}>
+          Choisir une autre séance
+        </Text>
+      </View>
     </View>
   );
 }
@@ -551,6 +595,8 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 16,
   },
+  lienSemaine: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 12 },
+  lienSombre: { paddingVertical: 13, paddingHorizontal: 8, fontFamily: polices.texte, fontSize: 14, color: 'rgba(255,255,255,0.9)', textDecorationLine: 'underline' },
   prochaine: {
     borderRadius: 22,
     borderWidth: 0,
