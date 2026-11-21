@@ -22,7 +22,6 @@ import {
   totalRecette,
 } from '@/domain/alimentation';
 import { jourLocal } from '@/domain/crm';
-import { formaterNombre } from '@/domain/suivi';
 import type { MomentRepas, OrigineRecette, Recette, TypeRecette, VarianteRecette } from '@/domain/types';
 import { nouvelId } from '@/lib/identifiant';
 import { useCharger } from '@/lib/useCharger';
@@ -51,8 +50,8 @@ const TYPES: { cle: TypeRecette; libelle: string }[] = [
 ];
 const PAR_PAGE = 20;
 
-/** « Good Food · 4,2/5 (26 avis de lecteurs) » : l'avis des lecteurs de la source, pas une validation du coach. */
-const libelleOrigine = (o: OrigineRecette) => `${o.nom}${o.note ? ` · ${formaterNombre(o.note)}/5 (${o.votes} avis de lecteurs)` : ''}`;
+/** Le nom de la source seulement : les notes de ses lecteurs ne sont pas affichées (avis d'un autre site). */
+const libelleOrigine = (o: OrigineRecette) => o.nom;
 
 /** Recherche, type de repas et pagination : la banque compte des centaines de recettes. */
 function useFiltre() {
@@ -118,7 +117,7 @@ function CarteRecette({ r, note, onPress }: { r: Recette; note?: string; onPress
         )}
         {r.origine && (
           <Texte doux style={{ fontSize: 12 }}>
-            {libelleOrigine(r.origine)}
+            Inspirée de {libelleOrigine(r.origine)}
           </Texte>
         )}
         {note && <Texte style={{ fontSize: 13, color: couleurs.orange }}>{note}</Texte>}
@@ -508,7 +507,7 @@ export function BanqueRecettes({ coachId }: { coachId: string }) {
             </Texte>
             {r.origine && (
               <Texte doux style={{ fontSize: 12 }}>
-                {libelleOrigine(r.origine)}
+                Inspirée de {libelleOrigine(r.origine)}
               </Texte>
             )}
           </Pressable>

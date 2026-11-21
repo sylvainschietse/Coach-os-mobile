@@ -467,7 +467,7 @@ export function Planificateur({
                   <View style={{ marginTop: 'auto' }}>
                     <Valeurs n={choice.macros} />
                     <Text style={[doux, { marginTop: 12 }]}>
-                      ★ {r.rating}/5 · {r.votes.toLocaleString('fr-FR')} avis source
+                      {r.cuisine}
                       {choice.diet !== 'omnivore' ? ' · ' + (choice.diet === 'vegan' ? 'Vegan' : 'Végétarien') : ''}
                     </Text>
                   </View>
@@ -656,7 +656,7 @@ export function Planificateur({
             </View>
           )}
           <Text style={doux}>
-            {selected.cuisine} · {selected.minutes} min · ★ {selected.rating}/5 ({selected.votes} avis sur la recette source)
+            {selected.cuisine} · {selected.minutes} min
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {selected.variants.map((choice) => (
