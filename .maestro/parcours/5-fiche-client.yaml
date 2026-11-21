@@ -1,0 +1,25 @@
+# Parcours coach : ouvrir la fiche de Léa depuis Clients, tout de suite après l'arrivée (sans passer par Activité).
+# Il complète le parcours facture : sur iPhone, la fiche ne s'ouvrait pas après un passage par les paiements.
+appId: com.coachgo.app
+name: Fiche client
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'Je suis Sylvain, coach'
+    timeout: 60000
+- tapOn: 'Je suis Sylvain, coach'
+- tapOn: 'Clients'
+- scrollUntilVisible:
+    element: 'Léa Martin.*'
+    centerElement: true
+- tapOn: 'Léa Martin.*'
+- scrollUntilVisible:
+    element: 'Voir la fiche'
+    centerElement: true
+- waitForAnimationToEnd
+- tapOn: 'Voir la fiche'
+- extendedWaitUntil:
+    visible: 'Échanges'
+    timeout: 15000
+- takeScreenshot: 5-fiche-client
