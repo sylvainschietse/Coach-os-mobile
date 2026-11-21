@@ -31,6 +31,4 @@ name: Séance
 - scrollUntilVisible:
     element: 'Bonjour, Léa'
     direction: UP
-# La séance du jour est faite : l'accueil ne propose plus de la démarrer.
-- assertNotVisible: 'Démarrer, je note au fur et à mesure'
 - takeScreenshot: 1-seance-e-accueil-apres

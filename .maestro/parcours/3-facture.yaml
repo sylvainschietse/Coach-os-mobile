@@ -12,9 +12,11 @@ name: Facture
 - scrollUntilVisible:
     element: 'Paiements'
 - tapOn: 'Paiements'
+# Centré à l'écran, pour ne pas toucher la barre d'onglets du bas par erreur.
 - scrollUntilVisible:
     element: 'Créer la facture'
     timeout: 20000
+    centerElement: true
 - takeScreenshot: 3-facture-a-coach-paiements
 - tapOn: 'Créer la facture'
 - scrollUntilVisible:
