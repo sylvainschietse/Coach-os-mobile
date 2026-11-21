@@ -9,10 +9,6 @@ name: Facture
     timeout: 60000
 - tapOn: 'Je suis Sylvain, coach'
 - tapOn: 'Activité'
-- scrollUntilVisible:
-    element: 'Paiements'
-    centerElement: true
-- tapOn: 'Paiements'
 # Centré à l'écran, pour ne pas toucher la barre d'onglets du bas par erreur.
 - scrollUntilVisible:
     element: 'Créer la facture'
