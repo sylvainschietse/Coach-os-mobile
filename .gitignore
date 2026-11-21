@@ -42,3 +42,6 @@ example
 /ios
 /android
 __pycache__/
+
+# résultats des tests de parcours (Maestro)
+/resultats

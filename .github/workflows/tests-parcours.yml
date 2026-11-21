@@ -1,0 +1,139 @@
+# Tests des parcours clés (séance, rendez-vous, facture, paiement) sur l'appli installée, version démo
+# (données fictives, sans la vraie base ni Stripe) : émulateur Android (Pixel) et simulateurs iPhone (SE et Pro Max),
+# en mode clair puis sombre. Gratuit sur les serveurs de GitHub (dépôt public), sans compte Expo.
+# Captures et résultats dans les pièces jointes du lancement (« parcours-android », « parcours-iphone »).
+name: Tests des parcours
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [prototype, tests-parcours-cles]
+    paths: ['.maestro/parcours/**', 'scripts/parcours-maestro.sh', '.github/workflows/tests-parcours.yml']
+
+concurrency:
+  group: tests-parcours-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Version démo : le fichier .env du dépôt (base réelle) est ignoré.
+  EXPO_NO_DOTENV: 1
+
+jobs:
+  logique:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run
+
+  android:
+    needs: logique
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install
+      - name: Compilation (x86_64 pour l'émulateur)
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=x86_64 -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g"
+      - name: Accélération de l'émulateur
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - run: curl -Ls https://get.maestro.mobile.dev | bash
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_7
+          disable-animations: true
+          script: |
+            adb install android/app/build/outputs/apk/release/app-release.apk
+            # Pas de fenêtre « … ne répond pas » du système par-dessus l'appli (émulateur lent au démarrage).
+            adb shell settings put global hide_error_dialogs 1
+            adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS
+            sleep 30
+            scripts/parcours-maestro.sh android-pixel android
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parcours-android
+          path: resultats
+
+  iphone:
+    needs: logique
+    runs-on: macos-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode le plus récent
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)" && xcodebuild -version
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npx expo prebuild --platform ios
+      - name: Compilation pour le simulateur
+        run: |
+          WS=$(ls -d ios/*.xcworkspace | head -1); SCHEME=$(basename "$WS" .xcworkspace)
+          set -o pipefail
+          # Simulateur : signature locale « ad hoc » (sans compte Apple), sinon iOS refuse de charger l'appli.
+          xcodebuild -workspace "$WS" -scheme "$SCHEME" -configuration Release -sdk iphonesimulator \
+            -derivedDataPath build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM= | tail -40
+          ls -d build/Build/Products/Release-iphonesimulator/*.app
+      - run: curl -Ls https://get.maestro.mobile.dev | bash
+      - name: Parcours sur iPhone SE puis iPhone Pro Max
+        run: |
+          APP=$(ls -d build/Build/Products/Release-iphonesimulator/*.app | head -1)
+          ECHECS=0
+          LISTE=$(xcrun simctl list -j)
+          RUNTIME=$(echo "$LISTE" | jq -r '[.runtimes[] | select(.isAvailable and .platform == "iOS")] | last | .identifier')
+          echo "Système iPhone : $RUNTIME"
+          for MODELE in 'iPhone SE' 'Pro Max'; do
+            # Le dernier modèle de ce nom pris en charge par ce système (simulateur créé pour l'occasion).
+            if [ "$MODELE" = 'iPhone SE' ]; then FILTRE='^iPhone SE'; else FILTRE='^iPhone [0-9]+ Pro Max$'; fi
+            TYPE=$(echo "$LISTE" | jq -r --arg f "$FILTRE" --arg r "$RUNTIME" '[.runtimes[] | select(.identifier == $r) | .supportedDeviceTypes[] | select(.name | test($f))] | sort_by([(.name | capture("(?<n>[0-9]+)") | .n | tonumber)] // [0]) | last | .identifier')
+            CLE=$([ "$MODELE" = 'iPhone SE' ] && echo iphone-se || echo iphone-pro-max)
+            UDID=$(xcrun simctl create "$CLE" "$TYPE" "$RUNTIME")
+            echo "::group::$MODELE ($TYPE)"
+            xcrun simctl boot "$UDID"; xcrun simctl bootstatus "$UDID"
+            xcrun simctl install "$UDID" "$APP"
+            # L'appli doit rester ouverte 20 s après son lancement ; sinon on montre pourquoi elle s'est fermée.
+            xcrun simctl launch "$UDID" com.coachgo.app; sleep 20
+            if xcrun simctl spawn "$UDID" launchctl list | grep -q com.coachgo.app; then
+              scripts/parcours-maestro.sh "$CLE" ios || ECHECS=$((ECHECS + $?))
+            else
+              echo "::error::L'appli se ferme au lancement sur $MODELE"
+              xcrun simctl spawn "$UDID" log show --last 2m --style compact --predicate 'process == "CoachGo" OR eventMessage CONTAINS "com.coachgo.app"' | grep -iE "error|fault|exception|crash|terminat|abort|fatal" | head -80
+              for F in $(ls -t ~/Library/Logs/DiagnosticReports/*.ips 2>/dev/null | head -1); do echo "== $F"; grep -A12 '"termination"' "$F"; done
+              ECHECS=$((ECHECS + 1))
+            fi
+            xcrun simctl shutdown "$UDID"
+            echo '::endgroup::'
+          done
+          exit $ECHECS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parcours-iphone
+          path: resultats

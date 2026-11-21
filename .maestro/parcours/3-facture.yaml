@@ -1,0 +1,54 @@
+# Parcours coach puis client : la facture de Léa est visible dans sa fiche (coach) et dans « Mes factures » (client).
+appId: com.coachgo.app
+name: Facture
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'Je suis Sylvain, coach'
+    timeout: 60000
+- tapOn: 'Je suis Sylvain, coach'
+- tapOn: 'Activité'
+# Centré à l'écran, pour ne pas toucher la barre d'onglets du bas par erreur.
+- scrollUntilVisible:
+    element: 'Créer la facture'
+    timeout: 60000
+    centerElement: true
+- takeScreenshot: 3-facture-a-coach-paiements
+- tapOn: 'Créer la facture'
+- scrollUntilVisible:
+    element: '.*indisponible en démo.*'
+    timeout: 10000
+- tapOn: 'Clients'
+# Sur iPhone, la ligne entière est lue d'un bloc : « Léa Martin · Cycle 1 · … ».
+- scrollUntilVisible:
+    element: 'Léa Martin.*'
+    centerElement: true
+- tapOn: 'Léa Martin.*'
+- scrollUntilVisible:
+    element: 'Voir la fiche'
+    centerElement: true
+- waitForAnimationToEnd
+# Le détail vient de s'ouvrir : on retouche « Voir la fiche » si la fiche n'est pas encore affichée.
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: 'Voir la fiche'
+      - extendedWaitUntil:
+          visible: 'Échanges'
+          timeout: 15000
+# Les rubriques de la fiche défilent de côté : « Abonnement » est la dernière.
+- swipe:
+    from: 'Échanges'
+    direction: LEFT
+- tapOn: 'Abonnement'
+- scrollUntilVisible:
+    element: '.*F1 · Abonnement 11/2026.*'
+    timeout: 30000
+- takeScreenshot: 3-facture-b-coach-fiche
+- runFlow: _lea.yaml
+- tapOn: 'Mon compte'
+- scrollUntilVisible:
+    element: '.*F1 · Abonnement 11/2026.*'
+    timeout: 30000
+- takeScreenshot: 3-facture-c-client-mes-factures

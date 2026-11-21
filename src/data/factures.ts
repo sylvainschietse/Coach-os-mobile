@@ -4,6 +4,9 @@ import { COULEUR_FACTURE, erreursEntete, MENTIONS_FACTURE, nettoyerIban, nettoye
 
 import { supabase } from './supabase';
 
+/** Démo sans base : la facture ne peut pas être créée, on le dit au lieu de ne rien faire. */
+const FACTURE_DEMO = 'Création de facture indisponible en démo.';
+
 export interface Numerotation {
   prefixe?: string;
   prochain: number;
@@ -252,7 +255,7 @@ export const factures = {
 
   /** Coach : facture du mois (AAAA-MM) qui regroupe les séances du client pas encore facturées. */
   async facturerMois(clientId: string, mois: string): Promise<void> {
-    if (!supabase) return;
+    if (!supabase) throw new Error(FACTURE_DEMO);
     const { data, error } = await supabase.rpc('facturer_mois', { p_client: clientId, p_mois: mois });
     if (error) throw new Error(error.message || 'Facture non créée, réessaie dans un instant.');
     if (!data) throw new Error('Toutes les séances de ce mois sont déjà facturées.');
@@ -260,7 +263,7 @@ export const factures = {
 
   /** Coach : émet la facture d'un paiement payé ou en attente (prend le prochain numéro du client). */
   async facturer(paiementId: string): Promise<void> {
-    if (!supabase) return;
+    if (!supabase) throw new Error(FACTURE_DEMO);
     const { error } = await supabase.rpc('facturer_paiement', { p_paiement: paiementId });
     if (error) throw new Error(error.message || 'Facture non créée, réessaie dans un instant.');
   },
