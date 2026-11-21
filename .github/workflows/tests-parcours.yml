@@ -64,6 +64,10 @@ jobs:
           disable-animations: true
           script: |
             adb install android/app/build/outputs/apk/release/app-release.apk
+            # Pas de fenêtre « … ne répond pas » du système par-dessus l'appli (émulateur lent au démarrage).
+            adb shell settings put global hide_error_dialogs 1
+            adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS
+            sleep 30
             scripts/parcours-maestro.sh android-pixel android
       - uses: actions/upload-artifact@v4
         if: always()
