@@ -11,7 +11,7 @@ import { ajouterJours, aujourdhuiParis, correspondRecherche, dansDates, LIBELLES
 import type { CycleClient, ModeLien, ModeleResume, SuiviClient } from '@/domain/entrainement-etat';
 import { FILTRES_SUIVIS, listeSuivis, TRIS_SUIVIS, type FiltreSuivis, type TriSuivis } from '@/domain/liste-suivis';
 import { nouvelId } from '@/lib/identifiant';
-import { useCharger, useRechargerSur } from '@/lib/useCharger';
+import { messageErreur, useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { Selecteur, TitreDisplay } from '../coque';
 import { Puce, Puces } from '../composants';
@@ -463,7 +463,7 @@ function ProfilSuivi({
   modeles: ModeleResume[] | null;
   recharger: () => void;
   onOuvrir: (programmeId: string) => void;
-  onFiche: () => void;
+  onFiche: () => unknown;
   onEntrainement: () => void;
 }) {
   const { width } = useWindowDimensions();
@@ -471,6 +471,23 @@ function ProfilSuivi({
   const [activer, setActiver] = useState<CycleClient>();
   const [occupe, setOccupe] = useState(false);
   const [etat, setEtat] = useState<{ message?: string; erreur?: string }>({});
+  // « Voir la fiche » : une erreur ou une attente trop longue s'affiche au lieu d'un bouton qui semble ne rien faire.
+  const ouvrirFiche = async () => {
+    setEtat({});
+    let minuterie: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        Promise.resolve(onFiche()),
+        new Promise((_, refus) => {
+          minuterie = setTimeout(() => refus(new Error('la fiche ne répond pas, réessaie')), 10_000);
+        }),
+      ]);
+    } catch (e) {
+      setEtat({ erreur: `Fiche indisponible : ${messageErreur(e)}` });
+    } finally {
+      clearTimeout(minuterie);
+    }
+  };
   const executer = async (fn: () => Promise<unknown>, ok: string) => {
     setOccupe(true);
     setEtat({});
@@ -516,7 +533,7 @@ function ProfilSuivi({
       {ouvert && (
         <View style={{ paddingHorizontal: width >= 640 ? 20 : 16, paddingBottom: width >= 640 ? 20 : 16 }}>
           <Ligne style={{ marginBottom: 12 }}>
-            <Action petit variante="contour" icone={ExternalLink} libelle="Voir la fiche" onPress={onFiche} />
+            <Action petit variante="contour" icone={ExternalLink} libelle="Voir la fiche" onPress={ouvrirFiche} />
           </Ligne>
           <SuiviForm coachId={coachId} p={p} modeles={modeles} onEnregistre={recharger} />
       <>
@@ -610,7 +627,7 @@ export function CyclesClients({
 }: {
   coachId: string;
   onOuvrirProgramme: (id: string) => void;
-  onOuvrirFiche: (clientId: string) => void;
+  onOuvrirFiche: (clientId: string) => unknown;
   /** Séances faites, manquées et à venir du client, détail et évolutions. */
   onOuvrirEntrainement: (clientId: string) => void;
 }) {
