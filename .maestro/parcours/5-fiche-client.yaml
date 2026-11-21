@@ -20,6 +20,14 @@ name: Fiche client
     point: '50%,90%'
 - waitForAnimationToEnd
 - tapOn: 'Clients'
+# Contrôle : une fenêtre ouverte par l'adresse de la page (bouton « Nouveau client ») s'ouvre-t-elle ?
+- tapOn: 'Nouveau client'
+- extendedWaitUntil:
+    visible: 'Fermer'
+    timeout: 15000
+- takeScreenshot: 5-fiche-client-b-nouveau-client
+- tapOn: 'Fermer'
+- waitForAnimationToEnd
 - scrollUntilVisible:
     element: 'Léa Martin.*'
     centerElement: true
