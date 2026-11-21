@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { crm } from '@/data/crm';
 import { VERSION_POLITIQUE } from '@/domain/consentement';
@@ -20,7 +21,9 @@ import {
 import { Bouton, Carte, ChampTexte, Ecran, Erreur, Puce, Puces, Texte, Titre } from '@/ui/composants';
 import { LienPolitique } from '@/ui/consentement';
 import { CaseACocher } from '@/ui/crm/dossier';
-import { couleurs, espace, polices } from '@/ui/theme';
+import { Lock } from '@/ui/icones';
+import { Kicker, Marque, SCENE_PROSPECT, SUR_SCENE } from '@/ui/offres/page-prospect';
+import { couleurs, espace, espacementTitre, polices } from '@/ui/theme';
 import { etatA11y } from '@/lib/accessibilite';
 
 const normaliser = { telephone: normaliserTelephone, email: normaliserEmail };
@@ -88,16 +91,31 @@ export default function QuestionnaireAccueil() {
 
   if (!section) {
     return (
-      <Ecran>
-        <Stack.Screen options={{ title: TITRE_QUESTIONNAIRE }} />
-        <Text style={{ fontFamily: polices.texteGras, color: couleurs.rouge, textTransform: 'uppercase', letterSpacing: 1 }}>Bienvenue</Text>
-        <Titre>{TITRE_QUESTIONNAIRE}</Titre>
-        <Texte>{ACCUEIL}</Texte>
-        <Bouton libelle="Commencer" onPress={() => setPage(0)} />
-        <Texte doux style={{ fontSize: 12, textAlign: 'center' }}>
-          Tes réponses ne sont visibles que par ton coach.
-        </Texte>
-      </Ecran>
+      // Accueil plein écran aux couleurs de CoachGo, comme la page d'offre (audit design, point 1).
+      <SafeAreaView style={[SCENE_PROSPECT, { flex: 1 }]}>
+        <Stack.Screen options={{ headerShown: false, title: TITRE_QUESTIONNAIRE }} />
+        <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, paddingBottom: 28, justifyContent: 'space-between', gap: 40 }}>
+          <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center' }}>
+            <Marque />
+          </View>
+          <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center', gap: 22 }}>
+            <View style={{ gap: 10 }}>
+              <Kicker>Bienvenue</Kicker>
+              <Text accessibilityRole="header" style={{ fontFamily: polices.titre, fontSize: 54, lineHeight: 52, letterSpacing: espacementTitre(54), color: SUR_SCENE.texte }}>
+                {TITRE_QUESTIONNAIRE}
+              </Text>
+              <Text style={{ fontFamily: polices.texte, fontSize: 17, lineHeight: 25, color: '#E4E5E9' }}>{ACCUEIL}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Lock size={18} color={SUR_SCENE.kicker} />
+              <Text style={{ fontFamily: polices.texte, fontSize: 14, color: SUR_SCENE.doux }}>Tes réponses ne sont visibles que par ton coach.</Text>
+            </View>
+          </View>
+          <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center' }}>
+            <Bouton libelle="Commencer mon bilan" onPress={() => setPage(0)} />
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
