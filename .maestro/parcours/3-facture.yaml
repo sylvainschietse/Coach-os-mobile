@@ -31,7 +31,16 @@ name: Facture
 - tapOn: 'Léa Martin.*'
 - scrollUntilVisible:
     element: 'Voir la fiche'
-- tapOn: 'Voir la fiche'
+    centerElement: true
+- waitForAnimationToEnd
+# Le détail vient de s'ouvrir : on retouche « Voir la fiche » si la fiche n'est pas encore affichée.
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: 'Voir la fiche'
+      - extendedWaitUntil:
+          visible: 'Échanges'
+          timeout: 15000
 # Les rubriques de la fiche défilent de côté : « Abonnement » est la dernière.
 - swipe:
     from: 'Échanges'
