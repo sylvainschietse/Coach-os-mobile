@@ -18,6 +18,8 @@ for MODE in clair sombre; do
   for PARCOURS in "$RACINE"/.maestro/parcours/[0-9]*.yaml; do
     NOM="$(basename "$PARCOURS" .yaml)"
     [ "$PLATEFORME" = android ] && adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS > /dev/null
+    # iPhone : fermer Safari, dont la question « Open in CoachGo ? » pourrait rester affichée.
+    [ "$PLATEFORME" = ios ] && xcrun simctl terminate booted com.apple.mobilesafari > /dev/null 2>&1
     # Les captures (takeScreenshot) sont écrites dans le dossier courant.
     if (cd "$SORTIE" && "$MAESTRO" test "$PARCOURS" --format junit --output "$SORTIE/$NOM.xml" --test-output-dir "$SORTIE/$NOM-details" > "$SORTIE/$NOM.log" 2>&1); then
       echo "$APPAREIL $MODE $NOM : ok" | tee -a "$RACINE/resultats/resume.txt"

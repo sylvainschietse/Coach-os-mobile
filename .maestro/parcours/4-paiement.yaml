@@ -9,10 +9,13 @@ name: Paiement
     visible: 'Je suis Léa, client'
     timeout: 60000
 - openLink: 'coachos://offre/offre-appli'
+- waitForAnimationToEnd
 # iPhone : Safari demande « Open in “CoachGo” ? » avant d'ouvrir l'appli.
-- tapOn:
-    text: 'Open'
-    optional: true
+- runFlow:
+    when:
+      visible: 'Open'
+    commands:
+      - tapOn: 'Open'
 - extendedWaitUntil:
     visible: '59 € / mois'
     timeout: 30000
