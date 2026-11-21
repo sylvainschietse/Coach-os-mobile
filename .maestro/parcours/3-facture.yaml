@@ -17,7 +17,9 @@ name: Facture
     timeout: 20000
 - takeScreenshot: 3-facture-a-coach-paiements
 - tapOn: 'Créer la facture'
-- assertVisible: '.*indisponible en démo.*'
+- scrollUntilVisible:
+    element: '.*indisponible en démo.*'
+    timeout: 10000
 - tapOn: 'Clients'
 - scrollUntilVisible:
     element: 'Léa Martin'
@@ -25,6 +27,10 @@ name: Facture
 - scrollUntilVisible:
     element: 'Voir la fiche'
 - tapOn: 'Voir la fiche'
+# Les rubriques de la fiche défilent de côté : « Abonnement » est la dernière.
+- swipe:
+    from: 'Échanges'
+    direction: LEFT
 - tapOn: 'Abonnement'
 - scrollUntilVisible:
     element: 'F1 · Abonnement 11/2026'

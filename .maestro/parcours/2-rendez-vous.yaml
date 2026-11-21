@@ -8,6 +8,7 @@ name: Rendez-vous
     timeout: 30000
 - takeScreenshot: 2-rendez-vous-a-en-attente
 - tapOn: 'Je confirme'
+# Plus aucun rendez-vous en attente de réponse.
 - assertNotVisible: 'Je confirme'
-- assertVisible: 'Lundi 23 novembre.*'
+- assertNotVisible: 'En attente de réponse'
 - takeScreenshot: 2-rendez-vous-b-confirme

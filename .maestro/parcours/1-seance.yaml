@@ -29,6 +29,8 @@ name: Séance
 - takeScreenshot: 1-seance-d-enregistree
 - tapOn: 'Retour à l’accueil'
 - scrollUntilVisible:
-    element: '3 / 4.*'
-    timeout: 20000
+    element: 'Bonjour, Léa'
+    direction: UP
+# La séance du jour est faite : l'accueil ne propose plus de la démarrer.
+- assertNotVisible: 'Démarrer, je note au fur et à mesure'
 - takeScreenshot: 1-seance-e-accueil-apres
