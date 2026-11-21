@@ -9,6 +9,16 @@ name: Fiche client
     visible: 'Je suis Sylvain, coach'
     timeout: 60000
 - tapOn: 'Je suis Sylvain, coach'
+# Contrôle : une autre fenêtre (les notifications) s'ouvre-t-elle bien sur cet appareil ?
+- tapOn: 'Notifications.*'
+- extendedWaitUntil:
+    visible: 'Fermer les notifications'
+    timeout: 15000
+- takeScreenshot: 5-fiche-client-a-notifications
+- tapOn:
+    text: 'Fermer'
+    index: 0
+- waitForAnimationToEnd
 - tapOn: 'Clients'
 - scrollUntilVisible:
     element: 'Léa Martin.*'
