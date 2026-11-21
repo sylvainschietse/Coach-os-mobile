@@ -9,6 +9,7 @@ appId: com.coachgo.app
 - tapOn: 'Je suis Léa, client'
 - scrollUntilVisible:
     element: 'J’accepte que mes données de santé.*'
+    centerElement: true
 - tapOn: 'J’accepte que mes données de santé.*'
 - scrollUntilVisible:
     element: 'Continuer'

@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  caseTexte: { fontFamily: polices.texte, fontSize: 14, color: couleurs.texte },
+  caseTexte: { fontFamily: polices.texte, fontSize: 14, color: couleurs.texte, flexShrink: 1 },
   badge: {
     borderWidth: 1,
     borderColor: couleurs.bordure,
