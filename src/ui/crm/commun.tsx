@@ -33,7 +33,7 @@ export const jourLisible = (jour: string) => {
  * (ses réponses arrivent dans l'app par le webhook), sinon le questionnaire intégré à l'app.
  */
 export function adresseQuestionnaire(lien: string | null | undefined): string | undefined {
-  return process.env.EXPO_PUBLIC_QUESTIONNAIRE_TALLY || (lien ? adresseWeb(`/questionnaire/${lien}`) : undefined);
+  return process.env.EXPO_PUBLIC_QUESTIONNAIRE_TALLY || (lien ? adresseWeb(`/?questionnaire=${encodeURIComponent(lien)}`) : undefined);
 }
 
 export function useCoachNom() {
