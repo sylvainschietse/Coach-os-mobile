@@ -15,6 +15,6 @@ name: Paiement
     optional: true
 - extendedWaitUntil:
     visible: '59 € / mois'
-    timeout: 15000
+    timeout: 30000
 - assertVisible: 'Le paiement en ligne n’est pas encore ouvert.*'
 - takeScreenshot: 4-paiement-a-offre

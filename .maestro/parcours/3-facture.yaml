@@ -11,6 +11,7 @@ name: Facture
 - tapOn: 'Activité'
 - scrollUntilVisible:
     element: 'Paiements'
+    centerElement: true
 - tapOn: 'Paiements'
 # Centré à l'écran, pour ne pas toucher la barre d'onglets du bas par erreur.
 - scrollUntilVisible:
@@ -23,9 +24,11 @@ name: Facture
     element: '.*indisponible en démo.*'
     timeout: 10000
 - tapOn: 'Clients'
+# Sur iPhone, la ligne entière est lue d'un bloc : « Léa Martin · Cycle 1 · … ».
 - scrollUntilVisible:
-    element: 'Léa Martin'
-- tapOn: 'Léa Martin'
+    element: 'Léa Martin.*'
+    centerElement: true
+- tapOn: 'Léa Martin.*'
 - scrollUntilVisible:
     element: 'Voir la fiche'
 - tapOn: 'Voir la fiche'
@@ -35,12 +38,12 @@ name: Facture
     direction: LEFT
 - tapOn: 'Abonnement'
 - scrollUntilVisible:
-    element: 'F1 · Abonnement 11/2026'
+    element: '.*F1 · Abonnement 11/2026.*'
     timeout: 30000
 - takeScreenshot: 3-facture-b-coach-fiche
 - runFlow: _lea.yaml
 - tapOn: 'Mon compte'
 - scrollUntilVisible:
-    element: 'F1 · Abonnement 11/2026'
+    element: '.*F1 · Abonnement 11/2026.*'
     timeout: 30000
 - takeScreenshot: 3-facture-c-client-mes-factures
