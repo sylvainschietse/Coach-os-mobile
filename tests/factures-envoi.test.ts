@@ -8,15 +8,15 @@ const f: Facture = {
   numero: 'YC253',
   date: '2026-11-09',
   objet: "Séances d'octobre 2026",
-  emetteur: { nom: 'SCHIETSE Sylvain', telephone: '06 48 64 08 45' },
+  emetteur: { nom: 'DUPONT Sylvain', telephone: '06 00 00 00 01' },
   destinataire: { nom: 'Angelo Callegaro' },
   lignes: [],
   total: 400,
 };
 const sig = {
   prenom: 'Sylvain',
-  telephone: '06 48 64 08 45',
-  email: 'sylvain.schietse@gmail.com',
+  telephone: '06 00 00 00 01',
+  email: 'coach@exemple.fr',
 };
 
 describe('envoi des factures', () => {
@@ -26,7 +26,7 @@ describe('envoi des factures', () => {
   });
 
   it('retrouve le prénom du coach', () => {
-    expect(prenomEmetteur('SCHIETSE Sylvain')).toBe('Sylvain');
+    expect(prenomEmetteur('DUPONT Sylvain')).toBe('Sylvain');
     expect(prenomEmetteur('Sylvain Schietse')).toBe('Sylvain Schietse');
   });
 
@@ -37,7 +37,7 @@ describe('envoi des factures', () => {
     expect(m.corps).toContain("ta facture YC253 (séances d'octobre 2026), d’un montant de 400 €");
     expect(m.corps).toContain('à régler par virement');
     expect(m.corps).toContain('Très cordialement,');
-    expect(m.corps.endsWith('Sylvain\nCoach sportif\n06 48 64 08 45\nsylvain.schietse@gmail.com')).toBe(true);
+    expect(m.corps.endsWith('Sylvain\nCoach sportif\n06 00 00 00 01\ncoach@exemple.fr')).toBe(true);
   });
 
   it('dit quand la facture est déjà réglée ou offerte', () => {

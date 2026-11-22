@@ -24,7 +24,7 @@ export const MAX_AVIS = 400;
 export const MAX_AVIS_AUTEUR = 80;
 
 // Démo : le profil reste en mémoire le temps de la visite.
-let demo: ProfilCoach = { nom: 'Sylvain', telephone: '33648640845', horairesReponse: HORAIRES_PAR_DEFAUT };
+let demo: ProfilCoach = { nom: 'Sylvain', telephone: '33600000001', horairesReponse: HORAIRES_PAR_DEFAUT };
 
 /** Ce qui empêche d'enregistrer, en clair. */
 export function erreursProfilCoach(p: ProfilCoach): string[] {

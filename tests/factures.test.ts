@@ -7,7 +7,7 @@ const f: Facture = {
   numero: 'RT38',
   date: '2026-11-03',
   objet: 'Abonnement 11/2026',
-  emetteur: { nom: 'SCHIETSE Sylvain', adresse: '1763 rue Edouard Herriot\n01480 Jassans', siret: '51896650200016', mentions: 'TVA non applicable, art. 293 B du CGI' },
+  emetteur: { nom: 'DUPONT Sylvain', adresse: '12 rue de l’Exemple\n75001 Paris', siret: '12345678900012', mentions: 'TVA non applicable, art. 293 B du CGI' },
   destinataire: { nom: 'Romain <Tisseront>', adresse: 'Route de Saint Bel' },
   lignes: [
     { libelle: 'Abonnement 11/2026', quantite: 1, prixUnitaire: 269, montant: 269 },
@@ -37,7 +37,7 @@ describe('factures', () => {
     const html = factureHtml(f, { couleur: '#1F4E9E' });
     expect(html).toContain('#1F4E9E');
     expect(html).toContain('N° RT38');
-    expect(html).toContain('SIRET 518 966 502 00016');
+    expect(html).toContain('SIRET 123 456 789 00012');
     expect(html).toContain('Remise · Merci d’être testeur');
     expect(html).toContain('TVA non applicable');
     expect(html).toContain('Total HT');
@@ -50,7 +50,7 @@ describe('factures', () => {
     expect(factureHtml(f, { couleur: 'red;}' })).toContain('#D71920');
     const e = { nom: '', adresse: '', telephone: '', siret: '123', mentions: '', couleur: 'rouge', tarifBase: '60', iban: '', bic: '' };
     expect(erreursEntete(e)).toHaveLength(2);
-    expect(erreursEntete({ ...e, siret: '518 966 502 00016', couleur: '#000000' })).toEqual([]);
+    expect(erreursEntete({ ...e, siret: '123 456 789 00012', couleur: '#000000' })).toEqual([]);
   });
 
   it('IBAN : contrôlé, imprimé lisible avec le BIC et le titulaire', () => {

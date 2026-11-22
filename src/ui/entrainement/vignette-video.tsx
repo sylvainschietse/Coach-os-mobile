@@ -2,16 +2,17 @@
 // Sans miniature possible (lien d'un autre site, image en échec), on retombe sur un simple lien « Vidéo ».
 import { PlayCircle } from '@/ui/icones';
 import { useState } from 'react';
-import { Image, Linking, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 
 import { miniatureYoutube } from '@/domain/video';
 
 import { couleurs, polices } from '../theme';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
 
 export function VignetteVideo({ url, nom, largeur = 128 }: { url: string; nom: string; largeur?: number }) {
   const [echec, setEchec] = useState(false);
   const image = miniatureYoutube(url);
-  const ouvrir = () => Linking.openURL(url);
+  const ouvrir = () => ouvrirLien(url).catch(() => undefined);
 
   if (!image || echec) {
     return (
