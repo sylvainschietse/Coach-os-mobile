@@ -61,7 +61,7 @@ beforeAll(async () => {
     insert into public.clients (id, coach_id, prenom, nom, acces_appli) values ('${ids.clientSeances}', '${ids.coach1}', 'Marc', 'Durand', false);
     update public.clients set nom = 'Tisseront', facture_prefixe = 'RT', facture_prochain = 38, adresse = 'Route de Saint Bel' || chr(10) || '69160 Tassin',
       remise_type = 'pourcent', remise_valeur = 100, remise_motif = 'Merci d’être testeur' where id = '${ids.clientA}';
-    update public.coachs set facture_nom = 'SCHIETSE Sylvain', facture_siret = '51896650200016', facture_adresse = '1763 rue Edouard Herriot' where id = '${ids.coach1}';
+    update public.coachs set facture_nom = 'DUPONT Sylvain', facture_siret = '12345678900012', facture_adresse = '12 rue de l’Exemple' where id = '${ids.coach1}';
     insert into public.contacts (coach_id, prenom, nom, telephone, client_id) values ('${ids.coach1}', 'Inès', 'Tisseront', '33600000001', '${ids.clientA}');
   `);
 });
@@ -86,7 +86,7 @@ describe('factures', () => {
     expect(f.numero).toBe('RT38');
     expect(f.objet).toBe('Abonnement 11/2026');
     expect(Number(f.total)).toBe(0);
-    expect(f.emetteur).toMatchObject({ nom: 'SCHIETSE Sylvain', siret: '51896650200016' });
+    expect(f.emetteur).toMatchObject({ nom: 'DUPONT Sylvain', siret: '12345678900012' });
     expect(f.destinataire).toEqual({ nom: 'Inès Tisseront', adresse: 'Route de Saint Bel\n69160 Tassin' });
     expect(f.lignes).toEqual([
       { libelle: 'Abonnement 11/2026', quantite: 1, prix_unitaire: 269, montant: 269 },

@@ -1,10 +1,10 @@
 // Espace client : barre du bas Aujourd'hui / Entraînement / Progrès / Nutrition, sans sous-onglets. « Mon compte » s'ouvre
 // depuis l'avatar de l'en-tête. Progrès est une page de cartes : chacune ouvre sa rubrique, avec un retour.
 // Sert aussi à l'aperçu « Vue client » du coach.
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useIsFocused } from 'expo-router';
 import { Award, CalendarCheck, ChevronLeft, ChevronRight, Dumbbell, Flower2, Home, Moon, Ruler, Target, TrendingUp, Utensils, Watch, type LucideIcon } from '@/ui/icones';
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { BackHandler, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { depot } from '@/data';
 import { abonnements } from '@/data/abonnements';
@@ -159,6 +159,23 @@ export function EspaceClient({
       enHaut();
     });
   useEffect(() => onOnglet?.(onglet), [onglet, onOnglet]);
+
+  // Retour d'Android : il remonte d'un niveau dans l'appli (rubrique de Mes progrès, puis onglet, puis accueil),
+  // comme les boutons « Retour » de l'écran, au lieu de quitter l'app. Une séance ouverte dans l'onglet Programme
+  // a son propre Retour, qui passe avant celui-ci. En aperçu coach, c'est le Retour de l'espace coach qui décide.
+  const auPremierPlan = useIsFocused();
+  useEffect(() => {
+    if (Platform.OS !== 'android' || apercu || !auPremierPlan || onglet === 'accueil') return;
+    const abonnement = BackHandler.addEventListener('hardwareBackPress', () => {
+      demanderSortie(() => {
+        if (!(onglet === 'suivi' && rubrique)) setOnglet(onglet === 'moi' ? avantCompte : 'accueil');
+        setRubrique(null);
+        enHaut();
+      });
+      return true;
+    });
+    return () => abonnement.remove();
+  }, [apercu, auPremierPlan, onglet, rubrique, avantCompte, enHaut]);
 
   return (
     <UniversPage cle={UNIVERS_CLIENT[onglet]}>

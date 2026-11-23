@@ -3,7 +3,7 @@
 // Chaque action enregistre la séance entière ; tant que l'enregistrement n'a pas réussi, rien ne change à l'écran.
 import { ArrowDown, ArrowLeft, ArrowUp, Pencil, PlayCircle, Plus, Replace, RotateCcw, Sparkles, Unlink } from '@/ui/icones';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, Text, View, useWindowDimensions } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
 
 import { entrainement } from '@/data/entrainement';
 import { CONTRACTIONS, descriptifSeance, FORMATS_BLOC } from '@/domain/descriptif-seance';
@@ -21,6 +21,7 @@ import { SuppressionEntrainement } from './corbeille';
 import { AttributionClient } from './attribution';
 import { CreationEntrainement, type DemandeCreation } from './creation';
 import { DialogueLigne, type ModeLigne } from './ligne';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
 
 const PROPOSITIONS_BLOCS = ['Échauffement', 'Mobilité', 'Renforcement', 'Cardio', 'Abdos / gainage', 'Retour au calme'];
 const MESSAGE_CYCLE = 'Reviens au cycle 1 pour modifier le modèle, ou duplique-le avec le cycle souhaité.';
@@ -274,7 +275,7 @@ export function EditeurSeance({
                           {l.phase && <Badge libelle={l.phase} />}
                           {bloc.titre ? <Badge libelle={bloc.titre} variante="secondaire" /> : null}
                           {l.exercice.videoUrl && (
-                            <Text accessibilityRole="link" onPress={() => Linking.openURL(l.exercice.videoUrl!)} style={[ts.doux, { color: couleurs.rouge, fontFamily: polices.texteMoyen }]}>
+                            <Text accessibilityRole="link" onPress={() => ouvrirLien(l.exercice.videoUrl!).catch(() => undefined)} style={[ts.doux, { color: couleurs.rouge, fontFamily: polices.texteMoyen }]}>
                               <PlayCircle size={14} color={couleurs.rouge} /> Vidéo
                             </Text>
                           )}

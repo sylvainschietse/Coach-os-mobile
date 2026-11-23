@@ -3,10 +3,12 @@
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 
+import { lienAutorise } from '@/domain/liens';
 import { lienWhatsAppNatif, lireLienWhatsApp } from '@/domain/whatsapp';
 import { ouvrirConversationWhatsApp } from '@/lib/whatsapp-fichier';
 
 export async function ouvrirLien(url: string): Promise<void> {
+  if (!lienAutorise(url)) throw new Error('Ce lien ne peut pas être ouvert.');
   if (Platform.OS === 'web' && typeof window !== 'undefined' && /^https?:/i.test(url)) {
     window.open(url, '_blank', 'noopener');
     return;

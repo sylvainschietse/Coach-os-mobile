@@ -1,5 +1,7 @@
-// Le client connecté corrige lui-même son e-mail, son téléphone et son adresse postale (pour ses factures) depuis « Mon compte ».
-// Le nouvel e-mail devient aussi son identifiant de connexion, et la fiche contact du coach suit.
+// Le client connecté corrige lui-même son téléphone et son adresse postale (pour ses factures) depuis « Mon compte ».
+// Sécurité : l'e-mail (son identifiant de connexion) ne change plus ici. L'appli le change avec le lien de confirmation
+// de Supabase (auth.updateUser), et la fiche suit une fois le lien cliqué (migration 20261129000000). Sinon, quelqu'un
+// qui a le téléphone déverrouillé du client en main pourrait mettre son propre e-mail et garder le compte.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -43,8 +45,6 @@ Deno.serve(async (req) => {
   const { data: moi } = await utilisateur.auth.getUser();
   if (!moi.user) return repondre({ erreur: 'Reconnecte-toi puis réessaie.' }, 401);
 
-  const email = normaliserEmail(corps.email);
-  if (!email) return repondre({ erreur: 'Cette adresse e-mail n’est pas reconnue.' }, 400);
   const telephoneSaisi = typeof corps.telephone === 'string' && corps.telephone.trim() !== '';
   const telephone = normaliserTelephone(corps.telephone);
   if (telephoneSaisi && !telephone) return repondre({ erreur: 'Ce numéro de téléphone n’est pas reconnu.' }, 400);
@@ -55,22 +55,16 @@ Deno.serve(async (req) => {
   const { data: client } = await admin.from('clients').select('id, email').eq('user_id', moi.user.id).maybeSingle();
   if (!client) return repondre({ erreur: 'Seul un compte client peut modifier ses coordonnées ici.' }, 403);
 
-  // L'identifiant de connexion d'abord : s'il est refusé (adresse déjà prise), rien d'autre ne change.
-  const ancien = (moi.user.email ?? '').toLowerCase();
-  if (email !== ancien) {
-    const { error } = await admin.auth.admin.updateUserById(moi.user.id, { email, email_confirm: true });
-    if (error) {
-      const prise = /already|exists|registered/i.test(error.message ?? '');
-      return repondre({ erreur: prise ? 'Un autre compte utilise déjà cet e-mail.' : 'Impossible de changer ton e-mail pour le moment.' }, prise ? 409 : 500);
-    }
+  // Ancienne version de l'appli qui envoie un nouvel e-mail : refusé, il faut passer par le lien de confirmation.
+  const email = normaliserEmail(corps.email);
+  const actuels = [(moi.user.email ?? '').toLowerCase(), (client.email ?? '').toLowerCase()];
+  if (corps.email !== undefined && !actuels.includes(email ?? '')) {
+    return repondre({ erreur: 'Pour changer ton e-mail, mets à jour l’appli : un lien de confirmation te sera envoyé.' }, 409);
   }
 
-  const champs = { email, telephone: telephone ?? null, adresse: adresse || null };
+  const champs = { telephone: telephone ?? null, adresse: adresse || null };
   const { error: fiche } = await admin.from('clients').update(champs).eq('id', client.id);
-  if (fiche) {
-    if (email !== ancien) await admin.auth.admin.updateUserById(moi.user.id, { email: ancien, email_confirm: true });
-    return repondre({ erreur: 'Impossible d’enregistrer tes coordonnées pour le moment.' }, 500);
-  }
+  if (fiche) return repondre({ erreur: 'Impossible d’enregistrer tes coordonnées pour le moment.' }, 500);
   // Le carnet du coach suit, pour que ses messages et l'accès partent à la bonne adresse.
   await admin.from('contacts').update(champs).eq('client_id', client.id);
   return repondre(champs);
