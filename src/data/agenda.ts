@@ -71,6 +71,8 @@ export interface DepotAgenda {
   google(): Promise<EtatGoogle | null>;
   /** Adresse de la page de connexion Google ; `retour` : page de l'app où revenir ensuite. */
   connecterGoogle(retour: string): Promise<string>;
+  /** Termine la connexion avec le code renvoyé par Google : refusé si la demande vient d'un autre compte. */
+  terminerGoogle(etat: string, code: string): Promise<void>;
   synchroniserGoogle(): Promise<void>;
   deconnecterGoogle(): Promise<void>;
 }
@@ -214,6 +216,7 @@ const demo: DepotAgenda = {
   async connecterGoogle() {
     throw new Error('La connexion à Google Agenda se fait avec un compte en ligne, pas en démo.');
   },
+  async terminerGoogle() {},
   async synchroniserGoogle() {},
   async deconnecterGoogle() {},
 };
@@ -437,6 +440,14 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAgenda {
       const { data, error } = await db.functions.invoke<{ url?: string; erreur?: string }>('agenda-google', { body: { action: 'connecter', retour } });
       if (error || !data?.url) throw new Error(data?.erreur ?? 'La connexion à Google n’est pas disponible pour le moment.');
       return data.url;
+    },
+    async terminerGoogle(etat, code) {
+      const { data, error } = await db.functions.invoke<{ ok?: boolean; erreur?: string }>('agenda-google', { body: { action: 'terminer', etat, code } });
+      if (error) {
+        const corps = await (error as { context?: Response }).context?.json?.().catch(() => null);
+        throw new Error(corps?.erreur ?? 'Google n’a pas donné l’accès. Réessaie.');
+      }
+      if (!data?.ok) throw new Error(data?.erreur ?? 'Google n’a pas donné l’accès. Réessaie.');
     },
     async synchroniserGoogle() {
       const { data, error } = await db.functions.invoke<{ erreur?: string }>('agenda-google', { body: { action: 'synchroniser' } });
