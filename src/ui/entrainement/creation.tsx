@@ -510,7 +510,7 @@ const prescription = (l: Bloc['lignes'][number]) =>
     .join(' · ');
 
 /** Aperçu de la proposition : rien n'est enregistré tant que le coach ne l'a pas retenue. */
-function ApercuProposition({ p, blocs }: { p: PropositionSeance; blocs: Bloc[] }) {
+export function ApercuProposition({ p, blocs }: { p: PropositionSeance; blocs: Bloc[] }) {
   return (
     <View accessibilityLabel="Proposition de l’assistant" style={{ gap: 8, borderRadius: 8, padding: 12, backgroundColor: couleurs.discret }}>
       <Text style={ts.doux}>Proposition, pas encore enregistrée. Tu pourras tout modifier ensuite.</Text>
