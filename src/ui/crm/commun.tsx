@@ -29,11 +29,11 @@ export const jourLisible = (jour: string) => {
 };
 
 /**
- * Adresse du questionnaire à envoyer aux prospects : le formulaire Tally du coach quand il est renseigné
- * (ses réponses arrivent dans l'app par le webhook), sinon le questionnaire intégré à l'app.
+ * Adresse du questionnaire à envoyer aux prospects : toujours le questionnaire de l'app (aux couleurs du coach),
+ * dont les réponses arrivent sur la fiche du contact. L'ancien formulaire Tally n'est plus jamais envoyé.
  */
 export function adresseQuestionnaire(lien: string | null | undefined): string | undefined {
-  return process.env.EXPO_PUBLIC_QUESTIONNAIRE_TALLY || (lien ? adresseWeb(`/?questionnaire=${encodeURIComponent(lien)}`) : undefined);
+  return lien ? adresseWeb(`/?questionnaire=${encodeURIComponent(lien)}`) : undefined;
 }
 
 export function useCoachNom() {
@@ -124,7 +124,7 @@ export function useReglagesRelances(): ReglagesRelances {
   return charge.donnee ?? REGLAGES_RELANCES;
 }
 
-/** Message « questionnaire » prêt à partir, avec le bon lien (Tally ou questionnaire intégré). */
+/** Message « questionnaire » prêt à partir, avec le lien du questionnaire de l'app. */
 export function useMessageQuestionnaire(contact: Pick<Contact, 'prenom'>, lien: string | null | undefined): string | undefined {
   const coach = useCoachNom();
   const adresse = adresseQuestionnaire(lien);

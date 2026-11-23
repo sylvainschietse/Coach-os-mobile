@@ -822,7 +822,10 @@ export function rediger(
     ? new Date(infos.booster).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
     : 'bientôt';
   // Toutes les occurrences : un texte réécrit peut citer deux fois le prénom.
-  return (texte ?? MODELES[modele].texte)
+  let modeleTexte = texte ?? MODELES[modele].texte;
+  // Le message « questionnaire » porte toujours le lien, même si le texte réécrit par le coach l'a oublié.
+  if (modele === 'questionnaire' && infos.lienQuestionnaire && !modeleTexte.includes('{lien}')) modeleTexte = `${modeleTexte.trim()} {lien}`;
+  return modeleTexte
     .split('{prenom}').join(contact.prenom || 'à toi')
     .split('{coach}').join(infos.coach)
     .split('{lien}').join(infos.lienQuestionnaire ?? '')

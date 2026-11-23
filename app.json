@@ -120,6 +120,7 @@
     ],
     "experiments": {
       "typedRoutes": false,
+      "baseUrl": "/Coach-os-mobile",
       "reactCompiler": true
     },
     "runtimeVersion": {

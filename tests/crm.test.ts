@@ -209,6 +209,12 @@ describe('messages', () => {
     expect(lienEnvoi('email', { ...julie, email: undefined }, 'Salut')).toBeNull();
   });
 
+  it('met toujours le lien du questionnaire, même dans un texte réécrit qui l’a oublié', () => {
+    const texte = rediger('questionnaire', { ...julie }, { coach: 'Sylvain', lienQuestionnaire: 'https://exemple.fr/q' }, 'Coucou {prenom}, remplis mon questionnaire :');
+    expect(texte).toBe('Coucou Julie, remplis mon questionnaire : https://exemple.fr/q');
+    expect(rediger('questionnaire', { ...julie }, { coach: 'Sylvain', lienQuestionnaire: 'https://exemple.fr/q' }, 'Voici : {lien} merci')).toBe('Voici : https://exemple.fr/q merci');
+  });
+
   it('garde le numéro du client même saisi ou importé avec des espaces', () => {
     const saisi = { ...julie, telephone: '06 12 34 56 78' };
     expect(lienEnvoi('whatsapp', saisi, 'Salut')).toBe('https://wa.me/33612345678?text=Salut');
