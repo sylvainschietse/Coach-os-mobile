@@ -1,0 +1,23 @@
+# Parcours paiement : la page d'une offre s'ouvre depuis son lien. En démo, le paiement en ligne est fermé (pas de Stripe).
+# Le vrai paiement par carte (4242…, carte refusée) demande une base de test reliée à Stripe en mode test.
+appId: com.coachgo.app
+name: Paiement
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'Je suis Léa, client'
+    timeout: 60000
+- openLink: 'coachos://offre/offre-appli'
+- waitForAnimationToEnd
+# iPhone : Safari demande « Open in “CoachGo” ? » avant d'ouvrir l'appli.
+- runFlow:
+    when:
+      visible: 'Open'
+    commands:
+      - tapOn: 'Open'
+- extendedWaitUntil:
+    visible: '59 € / mois'
+    timeout: 30000
+- assertVisible: 'Le paiement en ligne n’est pas encore ouvert.*'
+- takeScreenshot: 4-paiement-a-offre

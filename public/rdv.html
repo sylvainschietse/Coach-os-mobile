@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Mon rendez-vous</title>
+<!--
+  Page de réponse au mail d'un rendez-vous (confirmer, refuser, annuler), sans compte.
+  Volontairement autonome et écrite en JavaScript ancien (ES5, sans bibliothèque ni police à télécharger) :
+  elle s'affiche tout de suite, même en 4G faible et sur un vieil iPhone, là où l'appli web complète
+  (plusieurs Mo de JavaScript récent) restait sur une page blanche.
+  Les anciens liens /rdv/<jeton> y sont redirigés par index.html (et donc 404.html).
+-->
+<style>
+  html, body { margin: 0; padding: 0; background: #F6F7F9; color: #16181D; }
+  body { font: 17px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-text-size-adjust: 100%; }
+  .entete { background: #18191D; background-image: linear-gradient(110deg, #111216, #202126); border-bottom: 2px solid #D71920; color: #fff; padding: 14px 16px; font-size: 20px; font-weight: 600; letter-spacing: .3px; }
+  .page { max-width: 480px; margin: 0 auto; padding: 16px; }
+  .carte { background: #fff; border: 1px solid #E1E4E8; border-radius: 14px; padding: 18px 16px; }
+  h1 { font-size: 21px; margin: 0 0 6px; line-height: 1.3; }
+  p { margin: 6px 0; }
+  .doux { color: #636A75; font-size: 15px; }
+  .statut { font-size: 15px; margin-top: 10px; }
+  .merci { color: #1E8E4E; font-size: 15px; font-weight: 600; margin-top: 12px; }
+  .erreur { color: #C3181E; font-size: 15px; margin-top: 12px; }
+  .boutons { margin-top: 16px; }
+  .bouton { display: block; box-sizing: border-box; width: 100%; margin: 0 0 10px; padding: 14px 16px; border-radius: 12px; border: 0; font: inherit; font-weight: 600; text-align: center; text-decoration: none; cursor: pointer; -webkit-appearance: none; }
+  .principal { background: #C3181E; color: #fff; }
+  .discret { background: #fff; color: #16181D; border: 1px solid #D5D9DF; }
+  .bouton[disabled] { opacity: .55; }
+  .chargement { text-align: center; color: #636A75; padding: 40px 0; }
+</style>
+</head>
+<body>
+<div class="entete">Mon rendez-vous</div>
+<div class="page"><div id="contenu" class="chargement">Chargement…</div></div>
+<noscript><div class="page"><p>Active JavaScript pour répondre, ou contacte ton coach.</p></div></noscript>
+<script>
+(function () {
+  var SUPABASE = 'https://rxkclcytevhtbpcdozdv.supabase.co';
+  var CLE = 'sb_publishable_VYSmGJYR2CbC18vZERjODg_rGjfa54g';
+  var TYPES = { seance: 'Séance', visio: 'Visio', appel: 'Appel' };
+  var STATUTS = { propose: 'En attente de réponse', confirme: 'Confirmé', refuse: 'Refusé', annule: 'Annulé', annule_tard: 'Annulé tardivement', absent: 'Absent', realise: 'Réalisé' };
+  var MERCI = {
+    confirme: 'C’est noté, ton coach sait que tu viens. À bientôt !',
+    refuse: 'C’est noté, ton coach est prévenu et te proposera un autre créneau.',
+    annule: 'Rendez-vous annulé, ton coach est prévenu.'
+  };
+  var JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  var MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+  var contenu = document.getElementById('contenu');
+  var etat = { r: null, fait: null, occupe: null, erreur: null, annulation: false };
+
+  function parametre(nom) {
+    var m = new RegExp('[?&#]' + nom + '=([^&#]*)').exec(window.location.search + window.location.hash);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+  var jeton = parametre('j');
+  if (!jeton) {
+    var chemin = /\/rdv\/([0-9a-fA-F-]{36})/.exec(window.location.pathname);
+    if (chemin) jeton = chemin[1];
+  }
+  etat.annulation = parametre('action') === 'annuler';
+
+  function echapper(t) {
+    return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  // Dates renvoyées par Supabase : « 2026-11-21T09:00:00+00:00 ». Safari ancien ne lit pas toujours les autres formes.
+  function lireDate(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}(?::?\d{2})?)?$/.exec(s || '');
+    if (!m) return new Date(s);
+    var ms = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+    var z = m[7];
+    if (z && z !== 'Z') {
+      var signe = z.charAt(0) === '-' ? -1 : 1;
+      var chiffres = z.slice(1).replace(':', '');
+      ms -= signe * (parseInt(chiffres.slice(0, 2), 10) * 60 + parseInt(chiffres.slice(2, 4) || '0', 10)) * 60000;
+    }
+    return new Date(ms);
+  }
+  function deux(n) { return n < 10 ? '0' + n : '' + n; }
+  function heure(d) { return deux(d.getHours()) + 'h' + deux(d.getMinutes()); }
+  function jour(d) {
+    var t = JOURS[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS[d.getMonth()];
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+  function telephone(brut) {
+    var c = String(brut || '').replace(/[^0-9+]/g, '');
+    if (!c) return '';
+    if (c.indexOf('+') === 0) return c;
+    if (c.indexOf('00') === 0) return '+' + c.slice(2);
+    if (c.charAt(0) === '0' && c.length === 10) return '+33' + c.slice(1);
+    return c;
+  }
+
+  function appeler(fonction, corps, fini) {
+    var x = new XMLHttpRequest();
+    x.open('POST', SUPABASE + '/rest/v1/rpc/' + fonction, true);
+    x.setRequestHeader('apikey', CLE);
+    x.setRequestHeader('Content-Type', 'application/json');
+    x.timeout = 20000;
+    x.onreadystatechange = function () {
+      if (x.readyState !== 4) return;
+      var donnees = null;
+      try { donnees = JSON.parse(x.responseText); } catch (e) { donnees = null; }
+      if (x.status >= 200 && x.status < 300) fini(null, donnees);
+      else fini((donnees && donnees.message) || (x.status ? 'Réponse non enregistrée. Réessaie.' : 'Pas de connexion internet. Réessaie dans un instant.'));
+    };
+    x.ontimeout = function () { fini('La connexion est trop lente. Réessaie dans un instant.'); };
+    x.send(JSON.stringify(corps));
+  }
+
+  function charger() {
+    if (!/^[0-9a-fA-F-]{36}$/.test(jeton)) {
+      contenu.className = 'carte';
+      contenu.innerHTML = '<p>Ce lien est incomplet. Rouvre le mail et touche à nouveau le bouton, ou contacte ton coach.</p>';
+      return;
+    }
+    appeler('rendez_vous_par_jeton', { p_jeton: jeton }, function (err, lignes) {
+      if (err) {
+        contenu.className = 'carte';
+        contenu.innerHTML = '<p class="erreur">' + echapper(err) + '</p><div class="boutons"><button class="bouton discret" id="reessayer">Réessayer</button></div>';
+        document.getElementById('reessayer').onclick = function () { contenu.className = 'chargement'; contenu.innerHTML = 'Chargement…'; charger(); };
+        return;
+      }
+      etat.r = lignes && lignes[0] ? lignes[0] : null;
+      afficher();
+    });
+  }
+
+  function agir(action) {
+    etat.occupe = action;
+    etat.erreur = null;
+    afficher();
+    appeler('repondre_par_jeton', { p_jeton: jeton, p_action: action }, function (err) {
+      etat.occupe = null;
+      if (err) { etat.erreur = err; afficher(); return; }
+      etat.fait = action;
+      etat.annulation = false;
+      charger();
+    });
+  }
+
+  function bouton(id, libelle, variante, enCours) {
+    return '<button class="bouton ' + variante + '" id="' + id + '"' + (etat.occupe ? ' disabled' : '') + '>' + (enCours ? 'Un instant…' : echapper(libelle)) + '</button>';
+  }
+
+  function afficher() {
+    var r = etat.r;
+    contenu.className = 'carte';
+    if (!r) {
+      contenu.innerHTML = '<p>Ce lien ne correspond à aucun rendez-vous. Il a peut-être été supprimé : contacte ton coach.</p>';
+      return;
+    }
+    var debut = lireDate(r.debut), fin = lireDate(r.fin), maintenant = new Date().getTime();
+    var avenir = debut.getTime() > maintenant;
+    var annulable = (r.statut === 'propose' || r.statut === 'confirme') && maintenant <= lireDate(r.annulable_jusqu_au).getTime();
+    var tel = telephone(r.telephone);
+    var h = '';
+    h += '<h1>' + echapper((TYPES[r.type] || 'Rendez-vous') + ' avec ' + (r.coach || 'ton coach')) + '</h1>';
+    h += '<p>' + echapper(jour(debut) + ' · ' + heure(debut) + '–' + heure(fin)) + '</p>';
+    h += '<p class="doux">' + echapper('Pour ' + (r.prenoms || '') + (r.lieu ? ' · ' + r.lieu : '')) + '</p>';
+    h += '<p class="statut">Statut : <strong>' + echapper(STATUTS[r.statut] || r.statut) + '</strong></p>';
+    if (etat.fait) h += '<p class="merci">' + echapper(MERCI[etat.fait]) + '</p>';
+    h += '<div class="boutons">';
+    if (r.lien_visio && avenir && /^https:\/\//.test(r.lien_visio)) h += '<a class="bouton discret" href="' + echapper(r.lien_visio) + '">Rejoindre la visio</a>';
+    if (avenir && (r.statut === 'propose' || r.statut === 'refuse')) {
+      h += bouton('confirme', 'Je confirme', 'principal', etat.occupe === 'confirme');
+      if (r.statut === 'propose') h += bouton('refuse', 'Je ne peux pas', 'discret', etat.occupe === 'refuse');
+    }
+    if (avenir && (r.statut === 'propose' || r.statut === 'confirme')) {
+      if (annulable) {
+        if (etat.annulation) {
+          h += '<p>Annuler ce rendez-vous ?</p>' + bouton('annule', 'Oui, annuler', 'principal', etat.occupe === 'annule') + bouton('garder', 'Non, garder', 'discret', false);
+        } else if (r.statut === 'confirme') {
+          h += bouton('demander', 'Annuler ce rendez-vous', 'discret', false);
+        }
+      } else {
+        h += '<p class="doux">Moins de 24 h avant : pour annuler, appelle ' + echapper(r.coach || 'ton coach') + '.</p>';
+        if (tel) h += '<a class="bouton discret" href="tel:' + echapper(tel) + '">' + echapper('Appeler ' + (r.coach || 'ton coach')) + '</a>';
+      }
+    }
+    h += '</div>';
+    if (etat.erreur) h += '<p class="erreur">' + echapper(etat.erreur) + '</p>';
+    contenu.innerHTML = h;
+
+    var lier = function (id, f) { var b = document.getElementById(id); if (b) b.onclick = f; };
+    lier('confirme', function () { agir('confirme'); });
+    lier('refuse', function () { agir('refuse'); });
+    lier('annule', function () { agir('annule'); });
+    lier('garder', function () { etat.annulation = false; afficher(); });
+    lier('demander', function () { etat.annulation = true; afficher(); });
+  }
+
+  charger();
+})();
+</script>
+</body>
+</html>

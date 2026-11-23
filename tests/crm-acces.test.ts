@@ -1,0 +1,201 @@
+/// <reference types="node" />
+// Questionnaire d'accueil et CRM dans un vrai Postgres (PGlite) : rapprochement et droits.
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { PGlite } from '@electric-sql/pglite';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+const ids = {
+  userCoach1: '10000000-0000-4000-8000-000000000001',
+  userCoach2: '10000000-0000-4000-8000-000000000002',
+  coach1: '20000000-0000-4000-8000-000000000001',
+  coach2: '20000000-0000-4000-8000-000000000002',
+};
+
+let db: PGlite;
+
+async function en(role: 'anon' | 'authenticated', userId: string | null, sql: string, params: unknown[] = []) {
+  await db.exec(`reset role; set role ${role}; select set_config('test.uid', '${userId ?? ''}', false);`);
+  try {
+    return await db.query<Record<string, unknown>>(sql, params);
+  } finally {
+    await db.exec('reset role;');
+  }
+}
+
+const soumettre = (lien: string, reponses: object) =>
+  en('anon', null, 'select public.soumettre_questionnaire($1, $2::jsonb)', [lien, JSON.stringify(reponses)]);
+
+beforeAll(async () => {
+  db = new PGlite();
+  await db.exec(`
+    create schema auth;
+    create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
+    create function auth.uid() returns uuid language sql stable as
+      $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
+    create role authenticated;
+    create role anon;
+  `);
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019000000_prototype.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019010000_crm.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019020000_booster_evaluation.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261019030000_booster_redaction.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261020000000_creer_coach.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261020010000_durcissement.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261020020000_rattacher_compte.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261020030000_taches.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261021000000_programmes_suivi.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261024000000_alimentation.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261024100000_alimentation_zite.sql'), 'utf8'));
+  await db.exec(readFileSync(join(__dirname, '../supabase/migrations/20261024300000_crm_champs_origine.sql'), 'utf8'));
+  await db.exec(`
+    grant usage on schema public to anon;
+    insert into auth.users (id) values ('${ids.userCoach1}'), ('${ids.userCoach2}');
+    insert into public.coachs (id, user_id, nom, lien_questionnaire) values
+      ('${ids.coach1}', '${ids.userCoach1}', 'Sylvain', 'sylvain'),
+      ('${ids.coach2}', '${ids.userCoach2}', 'Autre', 'autre-coach');
+  `);
+});
+
+afterAll(async () => {
+  await db.close();
+});
+
+describe('questionnaire d’accueil', () => {
+  it('le coach crée Julie avec son téléphone seul', async () => {
+    await en('authenticated', ids.userCoach1, `insert into public.contacts (coach_id, prenom, telephone) values ($1, 'Julie', '33612345678')`, [
+      ids.coach1,
+    ]);
+    await expect(
+      en('authenticated', ids.userCoach1, `insert into public.contacts (coach_id, prenom, telephone) values ($1, 'Jules', '33612345678')`, [
+        ids.coach1,
+      ]),
+    ).rejects.toThrow(/contacts_telephone_actif/);
+  });
+
+  it('les réponses sans compte arrivent sur la fiche de Julie, sans doublon, avec l’e-mail en plus', async () => {
+    await soumettre('sylvain', { prenom: 'Julie', nom: 'Moreau', telephone: '+33 6 12 34 56 78', email: 'Julie@Exemple.fr', objectif: 'Remise en forme' });
+    const { rows } = await en('authenticated', ids.userCoach1, 'select prenom, nom, email, telephone from public.contacts');
+    expect(rows).toEqual([{ prenom: 'Julie', nom: 'Moreau', email: 'julie@exemple.fr', telephone: '33612345678' }]);
+    const relances = await en('authenticated', ids.userCoach1, 'select modele from public.relances where faite_le is null');
+    expect(relances.rows).toEqual([{ modele: 'booster' }]);
+  });
+
+  it('une personne inconnue crée une nouvelle fiche ; un e-mail différent est signalé, pas écrasé', async () => {
+    await soumettre('sylvain', { prenom: 'Karim', telephone: '0611111111' });
+    await soumettre('sylvain', { prenom: 'Julie', telephone: '0612345678', email: 'autre@exemple.fr' });
+    const contacts = await en('authenticated', ids.userCoach1, 'select prenom, email from public.contacts order by prenom');
+    expect(contacts.rows).toEqual([
+      { prenom: 'Julie', email: 'julie@exemple.fr' },
+      { prenom: 'Karim', email: null },
+    ]);
+    const { rows } = await en('authenticated', ids.userCoach1, `select alertes from public.questionnaires order by recu_le desc, alertes desc limit 1`);
+    expect(rows[0].alertes).toEqual(['E-mail différent dans le questionnaire : autre@exemple.fr (fiche : julie@exemple.fr).']);
+  });
+
+  it('un lien inconnu, ou des réponses sans téléphone ni e-mail, sont refusés', async () => {
+    await expect(soumettre('inconnu', { telephone: '0612345678' })).rejects.toThrow(/introuvable/);
+    await expect(soumettre('sylvain', { prenom: 'Anonyme' })).rejects.toThrow(/requis/);
+  });
+
+  it('sans compte, on ne peut rien lire ; un autre coach ne voit pas les prospects de Sylvain', async () => {
+    await expect(en('anon', null, 'select * from public.contacts')).rejects.toThrow(/permission/);
+    const { rows } = await en('authenticated', ids.userCoach2, 'select * from public.contacts');
+    expect(rows).toEqual([]);
+    await soumettre('autre-coach', { prenom: 'Julie', telephone: '0612345678' });
+    const autre = await en('authenticated', ids.userCoach2, 'select prenom from public.contacts');
+    expect(autre.rows).toEqual([{ prenom: 'Julie' }]);
+  });
+});
+
+describe('évaluation du Booster', () => {
+  it('reste réservée au coach du contact', async () => {
+    const { rows } = await en(
+      'authenticated',
+      ids.userCoach1,
+      `insert into public.boosters (contact_id, date, evaluation, entretien)
+       select id, now(), '{"tests":{"jambes":{"resultat":"Correct","observations":[]}}}', '{"freins":"Horaires"}'
+       from public.contacts where prenom = 'Julie' limit 1 returning evaluation->'tests'->'jambes'->>'resultat' as jambes`,
+    );
+    expect(rows[0].jambes).toBe('Correct');
+    const autre = await en('authenticated', ids.userCoach2, `select count(*)::int as n from public.boosters where evaluation is not null`);
+    expect(autre.rows[0].n).toBe(0);
+  });
+});
+
+describe('champs d’origine du lot 2', () => {
+  it('le coach enregistre statut, objectif, priorités à leur place et conclusion ; un autre coach ne les voit pas', async () => {
+    await en('authenticated', ids.userCoach1, `update public.contacts set statut_crm = 'En réflexion', objectif_principal = 'Remise en forme' where prenom = 'Julie'`);
+    const { rows } = await en(
+      'authenticated',
+      ids.userCoach1,
+      `insert into public.boosters (contact_id, date, nom, statut_crm, priorites, offre_recommandee, resultat_commercial, date_relance, notes_internes)
+       select id, now(), 'Booster · Julie', 'En cours', array['', 'Mobilité', ''], 'Aucune', 'En réflexion', '2026-10-30', 'Budget serré'
+       from public.contacts where prenom = 'Julie' limit 1
+       returning priorites, date_relance::text as relance`,
+    );
+    expect(rows[0]).toEqual({ priorites: ['', 'Mobilité', ''], relance: '2026-10-30' });
+    const julie = await en('authenticated', ids.userCoach1, `select statut_crm, objectif_principal from public.contacts where prenom = 'Julie'`);
+    expect(julie.rows[0]).toEqual({ statut_crm: 'En réflexion', objectif_principal: 'Remise en forme' });
+    const autre = await en('authenticated', ids.userCoach2, `select count(*)::int as n from public.boosters where notes_internes is not null`);
+    expect(autre.rows[0].n).toBe(0);
+  });
+
+  it('refuse un statut qui n’existe pas dans la configuration d’origine', async () => {
+    await expect(en('authenticated', ids.userCoach1, `update public.contacts set statut_crm = 'Client' where prenom = 'Julie'`)).rejects.toThrow();
+    await expect(en('authenticated', ids.userCoach1, `update public.boosters set statut_crm = 'Fini'`)).rejects.toThrow();
+  });
+
+  it('supprimer un Booster laisse le contact et ses autres Boosters', async () => {
+    const avant = await en('authenticated', ids.userCoach1, `select count(*)::int as n from public.boosters`);
+    const { rows } = await en('authenticated', ids.userCoach1, `delete from public.boosters where nom = 'Booster · Julie' returning id`);
+    expect(rows).toHaveLength(1);
+    const apres = await en('authenticated', ids.userCoach1, `select (select count(*)::int from public.boosters) as b, (select count(*)::int from public.contacts where prenom = 'Julie') as c`);
+    expect(apres.rows[0]).toEqual({ b: (avant.rows[0].n as number) - 1, c: 1 });
+    const intrus = await en('authenticated', ids.userCoach2, `delete from public.boosters returning id`);
+    expect(intrus.rows).toHaveLength(0);
+  });
+});
+
+describe('ouverture d’un espace coach', () => {
+  it('relie un compte existant à un nouveau coach, réservé à l’administrateur', async () => {
+    const userId = '10000000-0000-4000-8000-000000000003';
+    await db.exec(`insert into auth.users (id, email) values ('${userId}', 'Nouveau@Coach.fr')`);
+    const r = await db.query<{ id: string }>(`select public.creer_coach(' nouveau@coach.fr ', 'Nina', 'Nina-Coach') as id`);
+    const coach = await db.query<{ nom: string; lien_questionnaire: string }>('select nom, lien_questionnaire from public.coachs where id = $1', [r.rows[0].id]);
+    expect(coach.rows[0]).toEqual({ nom: 'Nina', lien_questionnaire: 'nina-coach' });
+    await expect(db.query(`select public.creer_coach('inconnu@coach.fr', 'X', 'xxx')`)).rejects.toThrow(/Aucun compte/);
+    await expect(en('authenticated', ids.userCoach1, `select public.creer_coach('nouveau@coach.fr', 'Pirate', 'pirate')`)).rejects.toThrow(/permission/);
+  });
+});
+
+describe('connexion d’un client avec Google, Microsoft ou son e-mail', () => {
+  const marc = '10000000-0000-4000-8000-000000000010';
+  const pirate = '10000000-0000-4000-8000-000000000011';
+  const rattacher = (uid: string) => en('authenticated', uid, 'select public.rattacher_mon_compte() as id');
+
+  it('relie le compte vérifié à la fiche client du même e-mail, une seule fois', async () => {
+    const c = await db.query<{ id: string }>(
+      `insert into public.clients (coach_id, prenom, email) values ('${ids.coach1}', 'Marc', 'Marc@Exemple.fr') returning id`,
+    );
+    await db.exec(`insert into auth.users (id, email, email_confirmed_at) values ('${pirate}', 'marc@exemple.fr', null)`);
+    expect((await rattacher(pirate)).rows[0].id).toBeNull();
+    await db.exec(`insert into auth.users (id, email, email_confirmed_at) values ('${marc}', 'marc@exemple.fr', now())`);
+    expect((await rattacher(marc)).rows[0].id).toBe(c.rows[0].id);
+    expect((await rattacher(marc)).rows[0].id).toBe(c.rows[0].id);
+    await db.exec(`update auth.users set email_confirmed_at = now() where id = '${pirate}'`);
+    expect((await rattacher(pirate)).rows[0].id).toBeNull();
+  });
+
+  it('ne devine pas quand deux coachs ont un client avec le même e-mail, ni pour un coach', async () => {
+    const lea = '10000000-0000-4000-8000-000000000012';
+    await db.exec(`
+      insert into public.clients (coach_id, prenom, email) values ('${ids.coach1}', 'Léa', 'lea@exemple.fr'), ('${ids.coach2}', 'Léa', 'lea@exemple.fr');
+      insert into auth.users (id, email, email_confirmed_at) values ('${lea}', 'lea@exemple.fr', now());
+    `);
+    expect((await rattacher(lea)).rows[0].id).toBeNull();
+    expect((await rattacher(ids.userCoach1)).rows[0].id).toBeNull();
+    await expect(en('anon', null, 'select public.rattacher_mon_compte()')).rejects.toThrow(/permission/);
+  });
+});

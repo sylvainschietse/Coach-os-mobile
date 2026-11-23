@@ -1,0 +1,6 @@
+{
+  "name": "whatsapp-fichier",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ouvre WhatsApp sur la conversation d'un numéro, avec un fichier joint et un message déjà écrits (Android)."
+}

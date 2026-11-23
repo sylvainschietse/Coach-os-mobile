@@ -1,0 +1,45 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://rxkclcytevhtbpcdozdv.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_VYSmGJYR2CbC18vZERjODg_rGjfa54g",
+        "EXPO_PUBLIC_CONNEXIONS": "",
+        "EXPO_PUBLIC_ADRESSE_WEB": "https://sylvainschietse.github.io/Coach-os-mobile",
+        "EXPO_PUBLIC_LIEN_APPLI": "https://github.com/sylvainschietse/Coach-os-mobile/releases/download/android-test/coach-os-test.apk",
+        "EXPO_PUBLIC_LIEN_TUTO": "https://sylvainschietse.github.io/Coach-os-mobile/tuto-coachgo.mp4",
+        "EXPO_PUBLIC_QUESTIONNAIRE_TALLY": "https://tally.so/r/81Ye7r"
+      }
+    },
+    "production": {
+      "extends": "preview",
+      "distribution": "store",
+      "channel": "production",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_LIEN_APPLI": "https://sylvainschietse.github.io/Coach-os-mobile"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      },
+      "ios": {}
+    }
+  }
+}

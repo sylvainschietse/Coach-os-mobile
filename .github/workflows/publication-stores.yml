@@ -1,0 +1,37 @@
+# Fabrique la version « store » de CoachGo sur les serveurs d'Expo (EAS) et l'envoie au Play Store et/ou à l'App Store.
+# À lancer à la main depuis l'onglet Actions de GitHub (bouton « Run workflow »), en choisissant la plateforme.
+# Prérequis : un compte Expo et son jeton dans le secret EXPO_TOKEN du dépôt ; les accès Google Play et Apple
+# sont donnés une fois pour toutes à Expo (voir le guide de publication).
+name: Publication stores
+
+on:
+  workflow_dispatch:
+    inputs:
+      plateforme:
+        description: Plateforme
+        type: choice
+        options: [android, ios, all]
+        default: android
+      envoyer:
+        description: Envoyer automatiquement au store après la fabrication
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      # La fabrication se fait chez Expo : ce job ne fait que la lancer, le suivi est sur expo.dev.
+      - name: Fabrication (et envoi)
+        run: eas build --profile production --platform ${{ inputs.plateforme }} --non-interactive --no-wait ${{ inputs.envoyer && '--auto-submit' || '' }}

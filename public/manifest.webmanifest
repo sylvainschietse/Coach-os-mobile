@@ -1,0 +1,17 @@
+{
+  "name": "CoachGo",
+  "short_name": "CoachGo",
+  "description": "Ton coaching sportif dans ta poche : programme, séances guidées, nutrition et messagerie avec ton coach.",
+  "lang": "fr",
+  "start_url": "/Coach-os-mobile/",
+  "scope": "/Coach-os-mobile/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#111216",
+  "theme_color": "#111216",
+  "icons": [
+    { "src": "/Coach-os-mobile/icones/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/Coach-os-mobile/icones/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/Coach-os-mobile/icones/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
