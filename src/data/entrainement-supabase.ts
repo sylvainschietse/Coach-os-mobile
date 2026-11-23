@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { VarianteCycle } from '@/domain/cycles';
 import type { CycleClient, EnTeteProgramme, ModeLien, Planification, RealisationLue, SeanceStockee, Suivi } from '@/domain/entrainement-etat';
 import { espaceClient, type Etat } from '@/domain/entrainement-etat';
+import { lireElastique } from '@/domain/elastiques';
 import { lireMinuteur } from '@/domain/minuteur';
 import type { Exercice, LignePrescription, Mesure, Phase, Seance, Valeurs } from '@/domain/types';
 
@@ -40,6 +41,8 @@ type LigneBase = {
   phase: Phase | null;
   cycles: VarianteCycle[] | null;
   minuteur: unknown;
+  /** Absent tant que la base n'a pas la colonne. */
+  elastique?: unknown;
   retiree: boolean;
   exercices: { id: string; nom: string; mesures: Mesure[]; video_url: string | null; famille: string | null; materiel: string[] | null; muscles: string[] | null };
 };
@@ -89,6 +92,7 @@ const versLigne = (l: LigneBase): LignePrescription => ({
   phase: sansNull(l.phase),
   cycles: l.cycles ?? undefined,
   minuteur: lireMinuteur(l.minuteur) ?? undefined,
+  elastique: lireElastique(l.elastique),
 });
 
 function versSeance(s: SeanceBase): SeanceStockee {
@@ -184,7 +188,7 @@ const seanceJson = (s: Seance) => ({
     titre: b.titre,
     minuteur: b.minuteur ?? null,
     ...detailsBlocJson(b),
-    lignes: b.lignes.map(({ exercice, ...l }) => ({ ...l, exerciceId: exercice.id, minuteur: l.minuteur ?? null, cycles: l.cycles ?? null })),
+    lignes: b.lignes.map(({ exercice, ...l }) => ({ ...l, exerciceId: exercice.id, minuteur: l.minuteur ?? null, cycles: l.cycles ?? null, elastique: l.elastique ?? null })),
   })),
 });
 

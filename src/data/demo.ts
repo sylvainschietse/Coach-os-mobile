@@ -68,7 +68,17 @@ function seancePour(clientId: string): Seance {
         lignes: [
           { id: p('l4'), exercice: EXERCICES_DEMO.developpe, series: 4, repetitionsMin: 8, repetitionsMax: 12, chargeIndicative: 40, recuperationS: 120, rir: 2, tempo: '3-0-1' },
           { id: p('l5'), exercice: EXERCICES_DEMO.incline, series: 3, repetitionsMin: 10, repetitionsMax: 12, chargeIndicative: 14, recuperationS: 90, rir: 2 },
-          { id: p('l6'), exercice: EXERCICES_DEMO.dips, series: 3, repetitionsMin: 8, repetitionsMax: 12, chargeIndicative: 0, recuperationS: 90, rir: 1 },
+          {
+            id: p('l6'),
+            exercice: EXERCICES_DEMO.dips,
+            series: 3,
+            repetitionsMin: 8,
+            repetitionsMax: 12,
+            chargeIndicative: 0,
+            recuperationS: 90,
+            rir: 1,
+            elastique: { couleur: 'violet', nom: 'Violet', hex: '#7B3FA0', force: '16–36 kg', sens: 'aide' },
+          },
           { id: p('l7'), exercice: EXERCICES_DEMO.curl, series: 3, repetitionsMin: 10, repetitionsMax: 12, chargeIndicative: 20, recuperationS: 60, rir: 1 },
         ],
       },

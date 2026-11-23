@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { lireElastique } from '@/domain/elastiques';
 import { lireMinuteur } from '@/domain/minuteur';
 import type {
   Exercice,
@@ -35,6 +36,8 @@ type LigneBase = {
   tempo: string | null;
   consignes: string | null;
   minuteur: unknown;
+  /** Absent tant que la base n'a pas la colonne. */
+  elastique?: unknown;
   retiree: boolean;
   exercices: { id: string; nom: string; mesures: Mesure[]; video_url: string | null };
 };
@@ -120,7 +123,7 @@ function versJson(s: Seance) {
       titre: b.titre,
       minuteur: b.minuteur ?? null,
       ...detailsBlocJson(b),
-      lignes: b.lignes.map(({ exercice, ...l }) => ({ ...l, exerciceId: exercice.id, minuteur: l.minuteur ?? null })),
+      lignes: b.lignes.map(({ exercice, ...l }) => ({ ...l, exerciceId: exercice.id, minuteur: l.minuteur ?? null, elastique: l.elastique ?? null })),
     })),
   };
 }
@@ -263,6 +266,7 @@ export function creerDepotSupabase(db: SupabaseClient): Depot {
                 rir: sansNull(l.rir),
                 tempo: sansNull(l.tempo),
                 minuteur: lireMinuteur(l.minuteur) ?? undefined,
+                elastique: lireElastique(l.elastique),
                 consignes: sansNull(l.consignes),
               })),
           })),

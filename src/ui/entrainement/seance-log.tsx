@@ -23,6 +23,7 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 
 import { couleurs, polices } from '../theme';
 import { Action, Ligne, TexteLong, ts } from './commun';
+import { PastilleElastique } from './elastique';
 import { VideosExercice } from './videos-mouvement';
 import { VignetteVideo } from './vignette-video';
 import { etatA11y } from '@/lib/accessibilite';
@@ -520,6 +521,7 @@ function LigneSaisie({
         <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
           <Text style={[ts.titre, { fontSize: 15 }]}>{l.exercice.nom}</Text>
           <Text style={ts.mono}>{prescriptionClient(l)}</Text>
+          {l.elastique && <PastilleElastique e={l.elastique} />}
         </View>
         {l.exercice.videoUrl && <VignetteVideo url={l.exercice.videoUrl} nom={l.exercice.nom} largeur={96} />}
       </View>

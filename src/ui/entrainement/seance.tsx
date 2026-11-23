@@ -20,6 +20,7 @@ import { Action, Confirmation, Etat, Ligne, TexteLong, ts } from './commun';
 import { SuppressionEntrainement } from './corbeille';
 import { AttributionClient } from './attribution';
 import { CreationEntrainement, type DemandeCreation } from './creation';
+import { PastilleElastique } from './elastique';
 import { DialogueLigne, type ModeLigne } from './ligne';
 import { ouvrirLien } from '@/lib/ouvrir-lien';
 
@@ -313,6 +314,11 @@ export function EditeurSeance({
                         </View>
                       ))}
                     </View>
+                    {l.elastique && (
+                      <View style={{ marginTop: 8 }}>
+                        <PastilleElastique e={l.elastique} />
+                      </View>
+                    )}
                     <View style={{ marginTop: 8 }}>
                       <TexteLong texte={l.progression} libelle="Progression" style={{ fontSize: 13, color: couleurs.texteDoux }} />
                     </View>
