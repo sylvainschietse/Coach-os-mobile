@@ -75,7 +75,6 @@ function MesInformations({ infos, apercu, onModifie }: { infos: MesInfos | null;
   const [edition, setEdition] = useState<{ email: string; telephone: string; adresse: string } | null>(null);
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [emailEnAttente, setEmailEnAttente] = useState<string>();
 
   if (edition) {
     const probleme = verifierCoordonnees(edition.email, edition.telephone);
@@ -84,8 +83,7 @@ function MesInformations({ infos, apercu, onModifie }: { infos: MesInfos | null;
       setEnvoi(true);
       setErreur(null);
       try {
-        const resultat = await modifierMesCoordonnees(edition);
-        setEmailEnAttente(resultat.emailEnAttente);
+        await modifierMesCoordonnees(edition);
         setEdition(null);
         onModifie();
       } catch (e) {
@@ -97,7 +95,7 @@ function MesInformations({ infos, apercu, onModifie }: { infos: MesInfos | null;
     return (
       <Carte>
         <SousTitre>Mes informations</SousTitre>
-        <Saisie libelle="E-mail" type="email" valeur={edition.email} onChange={set('email')} aide="C’est aussi l’adresse avec laquelle tu te connectes. Si tu la changes, tu recevras un lien pour la confirmer." />
+        <Saisie libelle="E-mail" type="email" valeur={edition.email} onChange={set('email')} aide="C’est aussi l’adresse avec laquelle tu te connectes." />
         <Saisie libelle="Téléphone" type="telephone" valeur={edition.telephone} onChange={set('telephone')} placeholder="06 12 34 56 78" />
         <Saisie libelle="Adresse postale" long valeur={edition.adresse} onChange={set('adresse')} placeholder={'N° et rue\nCode postal et ville'} aide="Elle figure sur tes factures." />
         {(erreur || (probleme && edition.email.trim())) && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{erreur ?? probleme}</Texte>}
@@ -113,11 +111,6 @@ function MesInformations({ infos, apercu, onModifie }: { infos: MesInfos | null;
       <Ligne libelle="E-mail" valeur={infos?.email} />
       <Ligne libelle="Téléphone" valeur={formaterTelephone(infos?.telephone)} />
       <Ligne libelle="Adresse" valeur={infos?.adresse} />
-      {emailEnAttente && (
-        <Texte style={{ fontSize: 14 }}>
-          {`Un lien de confirmation est parti à ${emailEnAttente}. Ouvre-le pour valider ta nouvelle adresse : d’ici là, tu te connectes toujours avec l’ancienne.`}
-        </Texte>
-      )}
       {!apercu && infos && (
         <Bouton
           variante="discret"
