@@ -15,7 +15,10 @@ import { food, foodTotal, NOTE_PHOTO, recipeFood, type Entry, type PersonalRecip
 import { brouillonsOuverts, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { nouvelId } from '@/lib/identifiant';
 
+import { ajouterJours } from '@/domain/entrainement';
+
 import { BoutonContour, Selecteur } from '../coque';
+import { Puce, Puces } from '../composants';
 import { Cellule, Grille, Modale, Repliable, Saisie } from '../crm/dossier';
 import { Action, Confirmation, Etat, ts } from '../entrainement/commun';
 import { DicteeRecette } from '../alimentation/dictee-recette';
@@ -54,6 +57,9 @@ const BASES = [
   { cle: 'portion', libelle: 'Pour 1 portion' },
 ] as const;
 const num = (t: string) => Number(t.replace(',', '.'));
+/** « 2026-11-17 » → « lun. 17 nov. » */
+const jourLisible = (d: string) =>
+  new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`));
 const jourValide = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && new Date(`${s}T12:00:00Z`).toISOString().slice(0, 10) === s;
 
 type Brouillon = {
@@ -88,7 +94,7 @@ function LigneAliment({ e, desactive, onRetirer }: { e: Entry; desactive: boolea
   );
 }
 
-export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue: 'journal' | 'personnelles' }) {
+export function PersonnelNutrition({ data, vue, coach = false }: { data: DonneesNutrition; vue: 'journal' | 'personnelles'; coach?: boolean }) {
   const [foodOpen, setFoodOpen] = useState(false);
   // Photo de l'assiette : l'IA estime les aliments et les grammes, le client corrige, puis tout part dans le repas choisi.
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -116,6 +122,10 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
   const [dictee, setDictee] = useState<{ remarque?: string; aVerifier: string[] }>();
   const [confirmer, setConfirmer] = useState<{ titre: string; texte: string; action: string; suite: () => Promise<void> | void } | null>(null);
   const [jeton, setJeton] = useState(0);
+  // Côté coach : les jours que le client a remplis (90 derniers jours), du plus récent au plus ancien.
+  // Sans eux, le coach tombait sur la journée d'aujourd'hui, souvent vide, sans savoir quel jour chercher.
+  const [joursRemplis, setJoursRemplis] = useState<{ date: string; n: number }[] | null>(null);
+  const premiereOuverture = useRef(true);
   const versions = useRef({ recipes: 0, diary: 0 });
   const working = useRef(false);
   const lookup = useRef(0);
@@ -150,6 +160,37 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
       recherche.current++;
     };
   }, [data.profilId, date, jeton]);
+  useEffect(() => {
+    if (!coach || vue !== 'journal') return;
+    let actif = true;
+    nutrition
+      .journaux(data.profilId, ajouterJours(today(), -90))
+      .then((j) => {
+        if (!actif) return;
+        const jours = j
+          .filter((x) => x.entries.length)
+          .map((x) => ({ date: x.date, n: x.entries.length }))
+          .sort((a, b) => b.date.localeCompare(a.date));
+        setJoursRemplis(jours);
+        // À l'ouverture, aujourd'hui vide : on montre le dernier jour rempli.
+        if (premiereOuverture.current && jours.length && !jours.some((x) => x.date === today())) {
+          setLoading(true);
+          setDate(jours[0].date);
+          setSaisieDate(jours[0].date);
+        }
+        premiereOuverture.current = false;
+      })
+      .catch(() => actif && setJoursRemplis([]));
+    return () => {
+      actif = false;
+    };
+  }, [coach, vue, data.profilId, jeton]);
+  const choisirJour = (d: string) => {
+    if (d === date) return;
+    setLoading(true);
+    setDate(d);
+    setSaisieDate(d);
+  };
   const load = () => {
     setLoading(true);
     setError('');
@@ -378,9 +419,13 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
     <View style={{ gap: 20 }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <View style={{ flexShrink: 1 }}>
-          <Text accessibilityRole="header" style={titreSection}>{vue === 'journal' ? 'Mon journal alimentaire' : 'Mes recettes personnelles'}</Text>
+          <Text accessibilityRole="header" style={titreSection}>
+            {vue === 'journal' ? (coach ? 'Journal alimentaire' : 'Mon journal alimentaire') : coach ? 'Recettes personnelles' : 'Mes recettes personnelles'}
+          </Text>
           <Text style={[ts.texte, { marginTop: 4, color: couleurs.texteDoux }]}>
-            {vue === 'journal'
+            {vue === 'journal' && coach
+              ? 'Ce que ton client a noté, jour par jour. Touche un jour rempli pour l’ouvrir.'
+              : vue === 'journal'
               ? 'Note ce que tu as mangé et compare ta journée à tes objectifs.'
               : 'Ajoute tes ingrédients et le nombre de portions : les macros se calculent automatiquement.'}
           </Text>
@@ -388,6 +433,25 @@ export function PersonnelNutrition({ data, vue }: { data: DonneesNutrition; vue:
         <BoutonContour icone={RefreshCw} iconeAGauche libelle="Actualiser" nom="Actualiser" desactive={loading || busy} onPress={load} />
       </View>
       {!foodOpen && <Etat erreur={error || undefined} message={notice || undefined} />}
+      {vue === 'journal' && coach && joursRemplis && (
+        <View style={{ gap: 8 }}>
+          <Text style={ts.titreChamp}>Jours remplis</Text>
+          {joursRemplis.length ? (
+            <Puces>
+              {joursRemplis.slice(0, 21).map((j) => (
+                <Puce
+                  key={j.date}
+                  libelle={`${jourLisible(j.date)} · ${j.n} aliment${j.n > 1 ? 's' : ''}`}
+                  actif={j.date === date}
+                  onPress={() => choisirJour(j.date)}
+                />
+              ))}
+            </Puces>
+          ) : (
+            <Text style={doux}>Aucun repas noté ces 90 derniers jours.</Text>
+          )}
+        </View>
+      )}
       {vue === 'journal' && (
         <>
           <Saisie
