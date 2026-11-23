@@ -1,0 +1,5 @@
+-- Appliquée sur Supabase le 23/11/2026 (migrations automatisations_relances_rapport et impayes_stripe_cles).
+-- Tables : automatisations (interrupteurs), automatisations_envois (journal anti-doublon), impayes_stripe.
+-- Fonctions : _derniere_activite(client), rapport_hebdo(coach, lundi) en lecture seule.
+-- Tâche planifiée : cron « automatisations » à la minute 5 de chaque heure → fonction Edge automatisations { mode: 'normal' }.
+-- Couper une automatisation :  update public.automatisations set actif = false where flux = 'relance_factures';
