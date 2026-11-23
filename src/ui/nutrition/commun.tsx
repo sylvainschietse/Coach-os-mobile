@@ -1,6 +1,5 @@
 // Briques des écrans Nutrition repris de l'app d'origine : bloc de quatre valeurs (Numbers de RecipePlanner),
 // carte, lien externe et choix de portions par huitièmes.
-import * as Linking from 'expo-linking';
 import { ExternalLink } from '@/ui/icones';
 import type { ReactNode } from 'react';
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
@@ -9,6 +8,7 @@ import { round, type Nutrition } from '@/domain/nutrition/recettes';
 
 import { ts } from '../entrainement/commun';
 import { couleurs, polices } from '../theme';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
 
 /** Numbers d'origine : kcal, P, G, L en quatre cases, l'objectif dessous quand il existe. */
 export function Valeurs({ n, cible }: { n: Nutrition; cible?: Nutrition | null }) {
@@ -39,7 +39,7 @@ export function Bloc({ children, style }: { children: ReactNode; style?: StylePr
 /** Lien `target=_blank` d'origine, souligné. */
 export function Lien({ url, children, icone, petit }: { url: string; children: string; icone?: boolean; petit?: boolean }) {
   return (
-    <Pressable accessibilityRole="link" onPress={() => Linking.openURL(url)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 32 }}>
+    <Pressable accessibilityRole="link" onPress={() => ouvrirLien(url).catch(() => undefined)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 32 }}>
       {icone && <ExternalLink size={16} color={couleurs.rouge} />}
       <Text style={{ fontFamily: icone ? polices.texteMoyen : polices.texte, fontSize: icone ? 14 : 12, color: icone ? couleurs.rouge : couleurs.texte, textDecorationLine: 'underline' }}>
         {children}

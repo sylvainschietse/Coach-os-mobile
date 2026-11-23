@@ -31,7 +31,7 @@ describe('brochure des prix', () => {
   });
 
   it('met un QR code WhatsApp quand le coach a un numéro', () => {
-    expect(brochureHtml(OFFRES_DEMO, { nom: 'S', telephone: '06 48 64 08 45' })).toContain('<svg');
+    expect(brochureHtml(OFFRES_DEMO, { nom: 'S', telephone: '06 00 00 00 01' })).toContain('<svg');
     expect(brochureHtml(OFFRES_DEMO, { nom: 'S' })).not.toContain('<svg');
   });
 
@@ -41,7 +41,7 @@ describe('brochure des prix', () => {
   });
 
   it('écrit le lien WhatsApp au format international', () => {
-    expect(lienWhatsApp('06 48 64 08 45')).toBe('https://wa.me/33648640845');
+    expect(lienWhatsApp('06 00 00 00 01')).toBe('https://wa.me/33600000001');
     expect(lienWhatsApp('+32 470 12 34 56')).toBe('https://wa.me/32470123456');
     expect(lienWhatsApp('abc')).toBeUndefined();
   });
@@ -73,7 +73,7 @@ describe('brochure des prix', () => {
 
     it('reprend les textes, la couleur et les parties choisies, sans laisser passer de HTML', () => {
       const r = lireReglagesBrochure({ couleur: '#0e7c66', titre: 'Bouge <i>', intro: 'Mon intro', contact: false, atouts: false, liens: false });
-      const html = brochureHtml(offres, { nom: 'S', telephone: '06 48 64 08 45' }, { reglages: r, lien: (id) => `https://x.fr/${id}` });
+      const html = brochureHtml(offres, { nom: 'S', telephone: '06 00 00 00 01' }, { reglages: r, lien: (id) => `https://x.fr/${id}` });
       expect(html).toContain('#0E7C66');
       expect(html).toContain('Bouge &lt;i&gt;');
       expect(html).toContain('Mon intro');

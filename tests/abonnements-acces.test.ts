@@ -103,9 +103,9 @@ describe('accès appli et option nutrition', () => {
 describe('numéro du coach', () => {
   it('le client lit le prénom et le numéro de son coach, pas ceux des autres', async () => {
     await db.exec(
-      `update public.coachs set telephone = '33648640845' where id = '${ids.coach1}'; update public.coachs set telephone = '33600000000' where id = '${ids.coach2}';`,
+      `update public.coachs set telephone = '33600000001' where id = '${ids.coach1}'; update public.coachs set telephone = '33600000000' where id = '${ids.coach2}';`,
     );
-    expect((await en(ids.userClientA, `select * from public.mon_coach()`)).rows).toEqual([{ nom: 'Sylvain', telephone: '33648640845', photo: null }]);
+    expect((await en(ids.userClientA, `select * from public.mon_coach()`)).rows).toEqual([{ nom: 'Sylvain', telephone: '33600000001', photo: null }]);
     expect((await en(ids.userCoach2, `select * from public.mon_coach()`)).rows).toHaveLength(0);
   });
 });
@@ -113,7 +113,7 @@ describe('numéro du coach', () => {
 describe('profil du coach', () => {
   it('le coach modifie son prénom, son numéro et sa photo, pas ceux des autres coachs', async () => {
     const photo = 'data:image/jpeg;base64,AAAA';
-    const maj = await en(ids.userCoach1, `update public.coachs set nom = 'Sylvain', telephone = '33648640845', photo = $1 returning id`, [photo]);
+    const maj = await en(ids.userCoach1, `update public.coachs set nom = 'Sylvain', telephone = '33600000001', photo = $1 returning id`, [photo]);
     expect(maj.rows).toHaveLength(1);
     expect((await en(ids.userCoach1, `update public.coachs set nom = 'Pirate' where id = $1 returning id`, [ids.coach2])).rows).toHaveLength(0);
     expect((await en(ids.userClientA, `select photo from public.mon_coach()`)).rows).toEqual([{ photo }]);

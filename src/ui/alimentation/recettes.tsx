@@ -1,4 +1,3 @@
-import * as Linking from 'expo-linking';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -31,6 +30,7 @@ import { couleurs, espace } from '../theme';
 import { libelleRegime, LigneMacros, PhotoRecette } from './commun';
 import { EditeurRecette } from './editeur-recette';
 import { chargerProfil } from './profil';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
 
 const nouvelleRecette = (clientId?: string): Recette => ({
   id: nouvelId(),
@@ -212,7 +212,7 @@ function DetailRecette({
           {regimesDeLaRecette(choisie).map(libelleRegime).join(' · ') || 'Aucun régime particulier'}
         </Texte>
         {recette.origine && (
-          <Pressable accessibilityRole="link" onPress={() => Linking.openURL(recette.origine!.url).catch(() => undefined)}>
+          <Pressable accessibilityRole="link" onPress={() => ouvrirLien(recette.origine!.url).catch(() => undefined)}>
             <Texte doux style={{ fontSize: 12 }}>
               D’après {libelleOrigine(recette.origine)} ·{' '}
               <Texte style={{ fontSize: 12, textDecorationLine: 'underline' }}>voir la recette d’origine</Texte>

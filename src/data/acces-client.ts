@@ -1,3 +1,5 @@
+import * as Linking from 'expo-linking';
+
 import type { AccesClient } from '@/domain/acces-client';
 
 import { profilCoach } from './profil-coach';
@@ -47,15 +49,36 @@ export async function mesInfos(clientId: string): Promise<MesInfos> {
   return { prenom: data?.prenom ?? undefined, nom: data?.nom ?? undefined, email: data?.email ?? undefined, telephone: data?.telephone ?? undefined, adresse: data?.adresse ?? undefined };
 }
 
-/** Le client corrige son e-mail (qui devient son identifiant de connexion), son téléphone et son adresse postale. */
-export async function modifierMesCoordonnees(saisie: { email: string; telephone: string; adresse: string }): Promise<MesInfos> {
+/**
+ * Le client corrige son téléphone et son adresse postale, et demande à changer son e-mail (son identifiant de connexion).
+ * Sécurité : le nouvel e-mail ne remplace l'ancien qu'après un clic sur le lien de confirmation envoyé par Supabase ;
+ * sa fiche suit alors toute seule. `emailEnAttente` dit à quelle adresse le lien est parti.
+ */
+export async function modifierMesCoordonnees(
+  saisie: { email: string; telephone: string; adresse: string },
+  emailActuel?: string,
+): Promise<MesInfos & { emailEnAttente?: string }> {
   if (!supabase) return saisie;
-  const { data, error } = await supabase.functions.invoke('mes-coordonnees', { body: saisie });
+  const { data, error } = await supabase.functions.invoke('mes-coordonnees', { body: { telephone: saisie.telephone, adresse: saisie.adresse } });
   if (error) {
     const corps = await (error as { context?: Response }).context?.json?.().catch(() => null);
     throw new Error(corps?.erreur ?? 'Impossible d’enregistrer tes coordonnées pour le moment.');
   }
-  return { email: data?.email ?? saisie.email, telephone: data?.telephone ?? undefined, adresse: data?.adresse ?? undefined };
+  const resultat = { email: emailActuel, telephone: data?.telephone ?? undefined, adresse: data?.adresse ?? undefined };
+  const email = saisie.email.trim().toLowerCase();
+  const { data: moi } = await supabase.auth.getUser();
+  const connu = [moi.user?.email, emailActuel].filter(Boolean).map((e) => e!.toLowerCase());
+  if (!email || connu.includes(email)) return resultat;
+  const { error: changement } = await supabase.auth.updateUser({ email }, { emailRedirectTo: Linking.createURL('auth') });
+  if (changement) {
+    const pris = /already|exists|registered/i.test(changement.message ?? '');
+    throw new Error(
+      pris
+        ? 'Ton téléphone et ton adresse sont enregistrés. Un autre compte utilise déjà cet e-mail.'
+        : 'Ton téléphone et ton adresse sont enregistrés, mais l’e-mail n’a pas pu être changé. Réessaie plus tard.',
+    );
+  }
+  return { ...resultat, emailEnAttente: email };
 }
 
 export interface MonCoach {

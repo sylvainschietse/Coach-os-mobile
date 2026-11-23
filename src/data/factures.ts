@@ -54,10 +54,10 @@ const versFacture = (l: LigneBase): Facture => ({
 
 // ---------- Démo : tout reste en mémoire le temps de la visite ----------
 let enteteDemo: EnteteFacture = {
-  nom: 'SCHIETSE Sylvain',
-  adresse: '1763 rue Edouard Herriot\n01480 Jassans-Riottier',
-  telephone: '06 48 64 08 45',
-  siret: '51896650200016',
+  nom: 'DUPONT Sylvain',
+  adresse: '12 rue de l’Exemple\n75001 Paris',
+  telephone: '06 00 00 00 01',
+  siret: '12345678900012',
   mentions: MENTIONS_FACTURE,
   tarifBase: '60',
   iban: '',

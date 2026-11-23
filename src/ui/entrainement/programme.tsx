@@ -2,7 +2,7 @@
 // descriptif (répartition des séances, matériel, consignes) et « Séances type de la semaine ».
 import { ArrowLeft, ChevronRight } from '@/ui/icones';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { entrainement } from '@/data/entrainement';
 import { codeModele, sourceEntrainement, titreClient } from '@/domain/entrainement';
@@ -16,6 +16,7 @@ import { Action, CaseSelection, Etat, Ligne, Puce, TexteLong, ts, PhotoProgramme
 import { SuppressionEntrainement } from './corbeille';
 import { CreationEntrainement, type DemandeCreation } from './creation';
 import { RepriseSeance } from './reprise';
+import { ouvrirLien } from '@/lib/ouvrir-lien';
 
 export function DetailProgramme({
   coachId,
@@ -142,7 +143,7 @@ export function DetailProgramme({
         <View style={{ marginTop: 16, maxWidth: 768, borderWidth: 1, borderColor: 'rgba(195,24,30,0.2)', backgroundColor: 'rgba(195,24,30,0.05)', borderRadius: 12, padding: 16, gap: 8 }}>
           <Text style={[ts.texte, { fontFamily: polices.texteGras }]}>Adaptation CoachGo · {source.author}</Text>
           <Text style={[ts.texte, { color: couleurs.texteDoux }]}>{source.changes}</Text>
-          <Text accessibilityRole="link" onPress={() => Linking.openURL(source.url)} style={[ts.texte, { color: couleurs.rouge, fontFamily: polices.texteMoyen, textDecorationLine: 'underline' }]}>
+          <Text accessibilityRole="link" onPress={() => ouvrirLien(source.url).catch(() => undefined)} style={[ts.texte, { color: couleurs.rouge, fontFamily: polices.texteMoyen, textDecorationLine: 'underline' }]}>
             Voir la référence publique
           </Text>
           <Text style={ts.doux}>Séries, cycles et consignes adaptés par CoachGo. Modèle indépendant, sans affiliation au créateur.</Text>
