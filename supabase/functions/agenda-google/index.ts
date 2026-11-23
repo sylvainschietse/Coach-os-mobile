@@ -1,6 +1,9 @@
 // Synchronisation de l'agenda avec Google Agenda.
 //   · POST { action: 'connecter', retour } avec le jeton du coach : adresse de connexion Google ;
-//   · GET ?code&state : retour de Google, jeton enregistré puis renvoi vers l'app (retour?google=ok|erreur) ;
+//   · GET ?code&state : retour de Google, renvoi vers l'app avec le code (retour?google=valider&code&state) ;
+//   · POST { action: 'terminer', etat, code } avec le jeton du coach : le code est échangé et le jeton Google enregistré,
+//     seulement si ce coach est celui qui a demandé la connexion. Sécurité : un lien de connexion envoyé à quelqu'un
+//     d'autre ne peut donc pas relier son Google Agenda au compte de celui qui a créé le lien ;
 //   · POST { action: 'synchroniser' } avec le jeton du coach : synchro immédiate de son agenda ;
 //   · POST { action: 'deconnecter' } avec le jeton du coach : accès Google retiré ;
 //   · POST avec l'en-tête « x-agenda-cle » (tâche planifiée, toutes les 15 minutes) : synchro de tous les coachs.
@@ -164,32 +167,21 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: entetes });
   const db = service();
 
-  // Retour de Google après la connexion.
+  // Retour de Google après la connexion : rien n'est enregistré ici. Le code repart vers l'app, qui le valide avec la
+  // session du coach (action « terminer »). Ainsi seul le coach qui a demandé la connexion peut la terminer.
   if (req.method === 'GET') {
     const url = new URL(req.url);
     const etat = url.searchParams.get('state') ?? '';
     const code = url.searchParams.get('code');
     if (!/^[0-9a-f-]{36}$/i.test(etat)) return new Response('Lien de connexion invalide.', { status: 400 });
-    const { data: demande } = await db.from('google_connexions').select('coach_id, retour, cree_le').eq('etat', etat).maybeSingle();
-    await db.from('google_connexions').delete().eq('etat', etat);
+    const { data: demande } = await db.from('google_connexions').select('retour, cree_le').eq('etat', etat).maybeSingle();
     if (!demande || Date.now() - Date.parse(demande.cree_le) > 15 * 60_000) return new Response('Lien de connexion expiré : recommence depuis l’app.', { status: 400 });
-    const vers = (resultat: string) => new Response(null, { status: 302, headers: { Location: ajouterParam(demande.retour, 'google', resultat) } });
-    const ids = identifiants();
-    if (!code || !ids) return vers('refuse');
-    const t = await jetonGoogle({ client_id: ids.id, client_secret: ids.secret, code, grant_type: 'authorization_code', redirect_uri: redirection() });
-    if (!t.refresh_token) return vers('erreur');
-    await db.from('google_agenda').upsert({
-      coach_id: demande.coach_id,
-      email: emailDe(t.id_token),
-      refresh_token: t.refresh_token,
-      calendrier: 'primary',
-      connecte_le: new Date().toISOString(),
-      erreur: null,
-    });
-    // Premiers rendez-vous recopiés tout de suite.
-    await db.from('rendez_vous').update({ google_synchro_le: null }).eq('coach_id', demande.coach_id);
-    await synchroniser(db, demande.coach_id).catch(() => null);
-    return vers('ok');
+    if (!code || !identifiants()) {
+      await db.from('google_connexions').delete().eq('etat', etat);
+      return new Response(null, { status: 302, headers: { Location: ajouterParam(demande.retour, 'google', 'refuse') } });
+    }
+    const vers = ajouterParam(ajouterParam(ajouterParam(demande.retour, 'google', 'valider'), 'code', code), 'state', etat);
+    return new Response(null, { status: 302, headers: { Location: vers } });
   }
 
   if (req.method !== 'POST') return repondre({ erreur: 'Méthode non prise en charge.' }, 405);
@@ -205,7 +197,7 @@ Deno.serve(async (req) => {
     return repondre({ resultats });
   }
 
-  let corps: { action?: string; retour?: string };
+  let corps: { action?: string; retour?: string; etat?: unknown; code?: unknown };
   try {
     corps = await req.json();
   } catch {
@@ -233,6 +225,33 @@ Deno.serve(async (req) => {
       state: data.etat,
     }).toString();
     return repondre({ url: url.toString() });
+  }
+
+  if (corps.action === 'terminer') {
+    const etat = typeof corps.etat === 'string' ? corps.etat : '';
+    const code = typeof corps.code === 'string' ? corps.code : '';
+    if (!/^[0-9a-f-]{36}$/i.test(etat) || !code || code.length > 2000) return repondre({ erreur: 'Connexion Google incomplète : recommence.' }, 400);
+    const { data: demande } = await db.from('google_connexions').select('coach_id, cree_le').eq('etat', etat).maybeSingle();
+    // Un seul essai par demande.
+    await db.from('google_connexions').delete().eq('etat', etat);
+    if (!demande || Date.now() - Date.parse(demande.cree_le) > 15 * 60_000) return repondre({ erreur: 'Lien de connexion expiré : recommence.' }, 400);
+    if (demande.coach_id !== coachId) return repondre({ erreur: 'Ce lien de connexion a été créé par un autre compte : recommence depuis ton agenda.' }, 403);
+    const ids = identifiants();
+    if (!ids) return repondre({ erreur: 'La connexion Google n’est pas encore configurée.' }, 503);
+    const t = await jetonGoogle({ client_id: ids.id, client_secret: ids.secret, code, grant_type: 'authorization_code', redirect_uri: redirection() });
+    if (!t.refresh_token) return repondre({ erreur: 'Google n’a pas donné l’accès. Réessaie.' }, 400);
+    await db.from('google_agenda').upsert({
+      coach_id: coachId,
+      email: emailDe(t.id_token),
+      refresh_token: t.refresh_token,
+      calendrier: 'primary',
+      connecte_le: new Date().toISOString(),
+      erreur: null,
+    });
+    // Premiers rendez-vous recopiés tout de suite.
+    await db.from('rendez_vous').update({ google_synchro_le: null }).eq('coach_id', coachId);
+    await synchroniser(db, coachId).catch(() => null);
+    return repondre({ ok: true });
   }
 
   if (corps.action === 'synchroniser') {

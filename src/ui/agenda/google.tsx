@@ -43,8 +43,14 @@ export function GoogleAgenda({ onChange }: { onChange: () => void }) {
       const url = await agenda.connecterGoogle(retour);
       const r = await WebBrowser.openAuthSessionAsync(url, retour);
       if (r.type !== 'success') return;
-      const resultat = new URL(r.url).searchParams.get('google');
-      if (resultat === 'ok') return 'Google Agenda connecté : tes rendez-vous y sont copiés.';
+      const params = new URL(r.url).searchParams;
+      const resultat = params.get('google');
+      // Google renvoie un code : c'est ce compte, connecté ici, qui termine la connexion (le serveur vérifie que c'est lui
+      // qui l'a demandée).
+      if (resultat === 'valider' && params.get('state') && params.get('code')) {
+        await agenda.terminerGoogle(params.get('state')!, params.get('code')!);
+        return 'Google Agenda connecté : tes rendez-vous y sont copiés.';
+      }
       throw new Error(resultat === 'refuse' ? 'Connexion annulée.' : 'Google n’a pas donné l’accès. Réessaie.');
     });
 
