@@ -34,6 +34,7 @@ import { questionnairesATraiter, type Booster, type Contact } from '@/domain/crm
 import { aEncaisser, encaissementsDuMois } from '@/domain/gestion';
 import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { useRetourAndroid } from '@/lib/retour-android';
+import { ecranParentCoach } from '@/domain/retour-coach';
 import { AgendaCoach } from '@/ui/agenda/agenda-coach';
 import { DefilementClavier } from '@/ui/clavier';
 import { RecettesCoach } from '@/ui/alimentation/nutrition-coach';
@@ -196,7 +197,7 @@ export default function EspaceCoach() {
   const coachId = profil?.role === 'coach' ? profil.coachId : '';
   const clients = useCharger(() => depot.clientsDuCoach(coachId), coachId);
   useFocusEffect(clients.recharger);
-  useRetourAndroid(params);
+  useRetourAndroid(params, ecranParentCoach);
   // Le téléphone du coach reçoit une notification quand un client écrit.
   useEffect(() => {
     if (coachId) void inscrireMessages(true);
