@@ -12,10 +12,22 @@ export async function aUnAcces(clientId: string): Promise<boolean> {
   return !!data?.user_id;
 }
 
-/** Crée le compte du client, ou lui donne un nouveau mot de passe provisoire s'il en a déjà un. */
-export async function creerAccesClient(contactId: string, email: string): Promise<AccesClient> {
-  if (!supabase) return { email, motDePasse: 'demo-1234' };
-  const { data, error } = await supabase.functions.invoke('acces-client', { body: { contactId } });
+/** Adresse avec laquelle le client se connecte, quand elle diffère de l'e-mail de sa fiche (ex. un enfant). */
+export async function lireEmailConnexion(clientId: string): Promise<string | undefined> {
+  if (!supabase) return undefined;
+  const { data } = await supabase.from('clients').select('email_connexion').eq('id', clientId).maybeSingle();
+  return (data?.email_connexion as string | null) ?? undefined;
+}
+
+/**
+ * Crée le compte du client, ou lui donne un nouveau mot de passe provisoire s'il en a déjà un.
+ * `emailConnexion` : adresse de connexion à part (vide = l'e-mail de sa fiche) ; non fourni = on garde le choix déjà fait.
+ */
+export async function creerAccesClient(contactId: string, email: string, emailConnexion?: string): Promise<AccesClient> {
+  if (!supabase) return { email: emailConnexion?.trim() || email, motDePasse: 'demo-1234' };
+  const { data, error } = await supabase.functions.invoke('acces-client', {
+    body: emailConnexion === undefined ? { contactId } : { contactId, emailConnexion },
+  });
   if (error) {
     const corps = await (error as { context?: Response }).context?.json?.().catch(() => null);
     throw new Error(corps?.erreur ?? 'Impossible de créer son accès pour le moment.');
@@ -39,13 +51,22 @@ export interface MesInfos {
   email?: string;
   telephone?: string;
   adresse?: string;
+  /** Vrai quand le client se connecte avec une adresse à part : téléphone et adresse sont ceux du parent. */
+  connexionSeparee?: boolean;
 }
 
 /** Coordonnées du dossier, telles que le coach les a saisies. En démo, rien n'est enregistré. */
 export async function mesInfos(clientId: string): Promise<MesInfos> {
   if (!supabase) return {};
-  const { data, error } = await supabase.from('clients').select('prenom, nom, email, telephone, adresse').eq('id', clientId).maybeSingle();
+  const { data, error } = await supabase
+    .from('clients')
+    .select('prenom, nom, email, email_connexion, telephone, adresse')
+    .eq('id', clientId)
+    .maybeSingle();
   if (error) throw new Error('Impossible de lire tes informations. Vérifie ta connexion.');
+  // Adresse de connexion à part (ex. un enfant) : il voit l'adresse avec laquelle il se connecte, pas celle du parent.
+  if (data?.email_connexion)
+    return { prenom: data.prenom ?? undefined, nom: data.nom ?? undefined, email: data.email_connexion, connexionSeparee: true };
   return { prenom: data?.prenom ?? undefined, nom: data?.nom ?? undefined, email: data?.email ?? undefined, telephone: data?.telephone ?? undefined, adresse: data?.adresse ?? undefined };
 }
 

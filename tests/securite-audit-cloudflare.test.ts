@@ -13,8 +13,10 @@ import { lienAutorise } from '@/domain/liens';
 const ids = {
   userCoach: '10000000-0000-4000-8000-000000000001',
   userMarc: '10000000-0000-4000-8000-000000000002',
+  userTheo: '10000000-0000-4000-8000-000000000003',
   coach: '20000000-0000-4000-8000-000000000001',
   marc: '30000000-0000-4000-8000-000000000002',
+  theo: '30000000-0000-4000-8000-000000000003',
 };
 
 let db: PGlite;
@@ -61,6 +63,10 @@ beforeAll(async () => {
     insert into auth.users (id, email) values ('${ids.userMarc}', 'marc@exemple.fr');
     insert into public.clients (id, coach_id, prenom, email, user_id) values ('${ids.marc}', '${ids.coach}', 'Marc', 'marc@exemple.fr', '${ids.userMarc}');
     insert into public.contacts (coach_id, prenom, email, client_id) values ('${ids.coach}', 'Marc', 'marc@exemple.fr', '${ids.marc}');
+    insert into auth.users (id, email) values ('${ids.userTheo}', 'theo@exemple.fr');
+    insert into public.clients (id, coach_id, prenom, email, email_connexion, user_id)
+      values ('${ids.theo}', '${ids.coach}', 'Théo', 'papa@exemple.fr', 'theo@exemple.fr', '${ids.userTheo}');
+    insert into public.contacts (coach_id, prenom, email, client_id) values ('${ids.coach}', 'Théo', 'papa@exemple.fr', '${ids.theo}');
   `);
 });
 
@@ -70,6 +76,20 @@ afterAll(async () => {
 
 const soumettre = (reponses: Record<string, string>) =>
   en('anon', null, `select public.soumettre_questionnaire('sylvain', $1::jsonb)`, [JSON.stringify(reponses)]);
+
+describe('adresse de connexion à part (un enfant, factures au parent)', () => {
+  it('le changement d’e-mail du compte ne touche que l’adresse de connexion, pas celle du parent', async () => {
+    await db.exec(`update auth.users set email = 'Theo.Nouveau@exemple.fr' where id = '${ids.userTheo}'`);
+    expect((await db.query(`select email, email_connexion from public.clients where id = $1`, [ids.theo])).rows).toEqual([
+      { email: 'papa@exemple.fr', email_connexion: 'theo.nouveau@exemple.fr' },
+    ]);
+    expect((await db.query(`select email from public.contacts where client_id = $1`, [ids.theo])).rows).toEqual([{ email: 'papa@exemple.fr' }]);
+  });
+
+  it('refuse une adresse de connexion mal écrite', async () => {
+    await expect(db.exec(`update public.clients set email_connexion = 'pas une adresse' where id = '${ids.theo}'`)).rejects.toThrow();
+  });
+});
 
 describe('changement d’e-mail d’un client', () => {
   it('une fois le nouvel e-mail confirmé, la fiche client et la fiche contact suivent', async () => {

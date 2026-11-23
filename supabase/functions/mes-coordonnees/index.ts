@@ -52,15 +52,19 @@ Deno.serve(async (req) => {
   const adresse = typeof corps.adresse === 'string' ? corps.adresse.trim().slice(0, 300) : '';
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  const { data: client } = await admin.from('clients').select('id, email').eq('user_id', moi.user.id).maybeSingle();
+  const { data: client } = await admin.from('clients').select('id, email, email_connexion, telephone, adresse').eq('user_id', moi.user.id).maybeSingle();
   if (!client) return repondre({ erreur: 'Seul un compte client peut modifier ses coordonnées ici.' }, 403);
 
   // Ancienne version de l'appli qui envoie un nouvel e-mail : refusé, il faut passer par le lien de confirmation.
   const email = normaliserEmail(corps.email);
-  const actuels = [(moi.user.email ?? '').toLowerCase(), (client.email ?? '').toLowerCase()];
+  const actuels = [(moi.user.email ?? '').toLowerCase(), (client.email ?? '').toLowerCase(), (client.email_connexion ?? '').toLowerCase()];
   if (corps.email !== undefined && !actuels.includes(email ?? '')) {
     return repondre({ erreur: 'Pour changer ton e-mail, mets à jour l’appli : un lien de confirmation te sera envoyé.' }, 409);
   }
+
+  // Compte avec une adresse de connexion à part (ex. un enfant) : le téléphone et l'adresse sont ceux du parent,
+  // qui reçoit les factures. Ils restent tels que le coach les a saisis.
+  if (client.email_connexion) return repondre({ telephone: client.telephone ?? null, adresse: client.adresse ?? null });
 
   const champs = { telephone: telephone ?? null, adresse: adresse || null };
   const { error: fiche } = await admin.from('clients').update(champs).eq('id', client.id);
