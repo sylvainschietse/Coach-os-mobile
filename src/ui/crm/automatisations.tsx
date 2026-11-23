@@ -17,8 +17,6 @@ import { Carte, Chargement, Erreur } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { Badge, Repliable } from './dossier';
 
-const TALLY = 'https://tally.so/r/81Ye7r';
-
 /** Libellés distincts demandés par le cahier : transmission acceptée ≠ e-mail envoyé ; crédits épuisés = blocage. */
 export const ETATS_ENVOI: Record<EtatJournal, string> = {
   erreur: 'Traitement en erreur',
@@ -96,8 +94,7 @@ export function Automatisations() {
           </Text>
         ))}
         <View style={styles.ligne}>
-          <BoutonContour libelle="Ouvrir le questionnaire Tally" icone={ArrowUpRight} onPress={() => Linking.openURL(TALLY)} />
-          {lien && <BoutonContour libelle="Ouvrir le questionnaire de l’app" icone={ArrowUpRight} onPress={() => Linking.openURL(adresseWeb(`/questionnaire/${lien}`))} />}
+          {lien && <BoutonContour libelle="Ouvrir le questionnaire envoyé aux prospects" icone={ArrowUpRight} onPress={() => Linking.openURL(adresseWeb(`/?questionnaire=${encodeURIComponent(lien)}`))} />}
         </View>
         <Repliable resume="Raccorder Tally sans Make">
           {etat.webhookTally ? (
