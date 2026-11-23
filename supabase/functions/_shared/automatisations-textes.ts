@@ -36,7 +36,7 @@ export function mailRelanceFacture(etape: 1 | 2, prenom: string, coach: string, 
       deja,
     ], coach, bouton);
   return composer(`Facture ${f.numero} toujours en attente`, prenom, [
-    `Ta facture ${f.numero} de ${euros(f.total)} est toujours en attente (en pièce jointe). Pour que tes séances continuent sans souci, peux-tu la régler cette semaine ?`,
+    `Je reviens vers toi pour ta facture ${f.numero} de ${euros(f.total)} (en pièce jointe), juste pour être sûr qu’elle ne s’est pas perdue dans tes mails.`,
     'Un imprévu ? Réponds simplement à ce mail, on trouvera une solution ensemble.',
   ], coach, bouton);
 }
