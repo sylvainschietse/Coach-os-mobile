@@ -789,7 +789,7 @@ export function Planificateur({
             {preparationFor(selected, v, portion).map((step, index) => (
               <View key={index} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
                 <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: couleurs.rouge, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: '#FFFFFF' }}>{index + 1}</Text>
+                  <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: couleurs.blanc }}>{index + 1}</Text>
                 </View>
                 <Text style={[ts.texte, { flexShrink: 1, paddingTop: 4, lineHeight: 22 }]}>{step}</Text>
               </View>

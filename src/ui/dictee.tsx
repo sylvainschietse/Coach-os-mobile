@@ -98,8 +98,8 @@ export function BoutonDictee({ valeur, onChange, desactive }: { valeur: string; 
           opacity: desactive ? 0.5 : 1,
         }}
       >
-        <Icone size={15} color={ecoute ? '#FFFFFF' : couleurs.rouge} fill={ecoute ? '#FFFFFF' : 'none'} />
-        <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: ecoute ? '#FFFFFF' : couleurs.texte }}>
+        <Icone size={15} color={ecoute ? couleurs.blanc : couleurs.rouge} fill={ecoute ? couleurs.blanc : 'none'} />
+        <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: ecoute ? couleurs.blanc : couleurs.texte }}>
           {ecoute ? 'J’écoute… toucher pour arrêter' : 'Dicter'}
         </Text>
       </Pressable>

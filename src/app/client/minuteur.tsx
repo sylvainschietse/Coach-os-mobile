@@ -123,7 +123,7 @@ export default function Minuteur() {
                 }}
                 style={[styles.son, son.sonnerie === x && styles.sonChoisi]}
               >
-                <Text style={[styles.texteSon, son.sonnerie === x && { color: '#FFFFFF' }]}>{NOMS_SONNERIES[x]}</Text>
+                <Text style={[styles.texteSon, son.sonnerie === x && { color: couleurs.blanc }]}>{NOMS_SONNERIES[x]}</Text>
               </Pressable>
             ))}
           </View>
@@ -203,8 +203,8 @@ const styles = StyleSheet.create({
   pas: { width: 40, height: 40, borderRadius: 10, backgroundColor: couleurs.fond, alignItems: 'center', justifyContent: 'center' },
   pasTexte: { fontSize: 22, fontFamily: polices.texteGras, color: couleurs.texte },
   plein: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: espace(6), gap: espace(2) },
-  phase: { fontFamily: polices.titre, fontSize: 48, color: '#FFFFFF', letterSpacing: 2 },
-  compte: { fontFamily: polices.chiffres, fontSize: 112, lineHeight: 130, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
+  phase: { fontFamily: polices.titre, fontSize: 48, color: couleurs.blanc, letterSpacing: 2 },
+  compte: { fontFamily: polices.chiffres, fontSize: 112, lineHeight: 130, color: couleurs.blanc, fontVariant: ['tabular-nums'] },
   detail: { fontFamily: polices.texteMoyen, fontSize: 18, color: '#FFFFFFCC' },
   sons: { flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) },
   son: { borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 999, paddingHorizontal: espace(3), paddingVertical: espace(2) },

@@ -97,7 +97,7 @@ export function ReglerPlusieurs({ prenom, lignes, onFait }: { prenom: string; li
                 onPress={() => setMoyen(m)}
                 style={[styles.puce, actif && { backgroundColor: couleurs.rouge, borderColor: couleurs.rouge }]}
               >
-                <Text style={[styles.puceTexte, actif && { color: '#FFFFFF' }]}>{m}</Text>
+                <Text style={[styles.puceTexte, actif && { color: couleurs.blanc }]}>{m}</Text>
               </Pressable>
             );
           })}

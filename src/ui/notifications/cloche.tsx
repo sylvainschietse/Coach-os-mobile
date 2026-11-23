@@ -111,7 +111,7 @@ export function BoutonCloche(options: OptionsCloche = {}) {
         hitSlop={6}
         style={({ pressed }) => [styles.bouton, pressed && { opacity: 0.7 }]}
       >
-        <Bell size={20} color="#FFFFFF" />
+        <Bell size={20} color={couleurs.blanc} />
         {nonLues > 0 && (
           <View style={styles.pastille}>
             <Text style={styles.pastilleTexte}>{pastille(nonLues)}</Text>
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pastilleTexte: { fontFamily: polices.texteGras, fontSize: 12, color: '#FFFFFF' },
+  pastilleTexte: { fontFamily: polices.texteGras, fontSize: 12, color: couleurs.blanc },
   voile: { flex: 1, backgroundColor: 'rgba(17,18,22,0.45)', alignItems: 'flex-end', paddingHorizontal: espace(3) },
   panneau: {
     width: '100%',

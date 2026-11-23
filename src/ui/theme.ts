@@ -27,6 +27,41 @@ export const couleurs = {
   bleu: '#2563EB',
   orange: '#C2410C',
   orangeClair: '#FFF1E6',
+  /** Texte et icônes sur fond coloré ou sombre, fond des cartes blanches hors `carte`. */
+  blanc: '#FFFFFF',
+  /** Bien-être, habitudes, cycle. */
+  violet: '#6B4BC9',
+  violetClair: '#EFEAFF',
+};
+
+/** Couleurs du mode sombre (séance, badges, pages d'accueil sombres) : rouge vif pour l'action, vert pour ce qui est fait. */
+export const nuit = {
+  fond: '#0E0F13',
+  carte: '#181A20',
+  /** Fond des puces, boutons secondaires et pastilles posés sur une carte sombre. */
+  surface: '#2A2D36',
+  bordure: '#262932',
+  /** Contour plus marqué : cases à cocher, choix, poignée des feuilles. */
+  bordureForte: '#3A3E49',
+  champ: '#111318',
+  bordureChamp: '#333743',
+  texte: '#F2F3F5',
+  /** Paragraphes sur fond sombre. */
+  texteClair: '#E4E5E9',
+  /** Libellés et valeurs secondaires. */
+  texteSecondaire: '#D9DBE0',
+  /** Consignes, compteurs, mentions discrètes. */
+  texteTertiaire: '#C9CCD3',
+  /** En-têtes discrets et icônes inactives. */
+  texteDiscret: '#B7BAC3',
+  doux: '#9599A3',
+  propose: '#6B707B',
+  rouge: '#E5252C',
+  rougeDoux: '#FF7A7E',
+  /** Message d'erreur sur fond sombre. */
+  erreur: '#FF8A8E',
+  vert: '#2FBF6B',
+  orange: '#FFB07A',
 };
 
 export const polices = {

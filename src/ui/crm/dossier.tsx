@@ -236,7 +236,7 @@ export function ChoixMultiple({
                 },
               ]}
             >
-              <Text style={[styles.multiTexte, actif && { color: '#FFFFFF' }]}>{c}</Text>
+              <Text style={[styles.multiTexte, actif && { color: couleurs.blanc }]}>{c}</Text>
             </Pressable>
           );
         })}
@@ -278,7 +278,7 @@ export function CaseACocher({
           },
         ]}
       >
-        {valeur && <Check size={12} color="#FFFFFF" />}
+        {valeur && <Check size={12} color={couleurs.blanc} />}
       </View>
       <Text style={[styles.caseTexte, petite && { fontSize: 12, color: couleurs.texteDoux }]}>{libelle}</Text>
     </Pressable>
@@ -352,7 +352,7 @@ export function Badge({ libelle, variante = 'contour' }: { libelle: string; vari
         },
       ]}
     >
-      <Text style={[styles.badgeTexte, variante === 'primaire' && { color: '#FFFFFF' }]}>{libelle}</Text>
+      <Text style={[styles.badgeTexte, variante === 'primaire' && { color: couleurs.blanc }]}>{libelle}</Text>
     </View>
   );
 }

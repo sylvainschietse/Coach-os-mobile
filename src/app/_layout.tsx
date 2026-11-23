@@ -46,7 +46,7 @@ function Navigation() {
         screenOptions={{
           // En-tête d'origine : dégradé sombre et ligne rouge de 2px.
           headerBackground: () => <View style={enTete} />,
-          headerTintColor: '#FFFFFF',
+          headerTintColor: couleurs.blanc,
           headerTitleStyle: { fontFamily: polices.titre, fontSize: 24 },
           contentStyle: { backgroundColor: couleurs.fond },
           headerBackButtonDisplayMode: 'minimal',

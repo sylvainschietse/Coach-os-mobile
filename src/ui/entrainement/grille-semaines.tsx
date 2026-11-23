@@ -47,7 +47,7 @@ function Rond({ p, choisi, onPress }: { p: Pastille; choisi: boolean; onPress: (
           borderColor: choisi ? couleurs.noir : s.couleur,
         }}
       >
-        <s.Icone size={16} color={plein ? '#FFFFFF' : s.couleur} />
+        <s.Icone size={16} color={plein ? couleurs.blanc : s.couleur} />
       </View>
       <Text numberOfLines={1} style={{ fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux }}>
         {p.date ? jourMois(p.date) : '—'}

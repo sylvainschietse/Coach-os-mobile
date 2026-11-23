@@ -28,7 +28,7 @@ import { AVERTISSEMENT, constats, pistes, type BilanPostural, type Constat, type
 
 import { Bouton } from '../composants';
 import { Modale } from '../crm/dossier';
-import { couleurs, espace, polices, titreSection } from '../theme';
+import { couleurs, espace, nuit, polices, titreSection } from '../theme';
 import { etatA11y } from '@/lib/accessibilite';
 
 export const COULEUR_NIVEAU: Record<Niveau, { fond: string; texte: string; plein: string; libelle: string }> = {
@@ -603,7 +603,7 @@ function Phase({ titre, sous, couleur, children }: { titre: string; sous: string
     <View style={[styles.carte, { padding: 0, overflow: 'hidden' }]}>
       <View style={{ backgroundColor: couleur, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <Text style={styles.phaseTitre}>{titre}</Text>
-        <Text style={[styles.aide, { color: '#FFFFFF' }]}>{sous}</Text>
+        <Text style={[styles.aide, { color: couleurs.blanc }]}>{sous}</Text>
       </View>
       <View style={{ padding: 14, gap: espace(2) }}>{children}</View>
     </View>
@@ -620,13 +620,13 @@ function SyntheseClientModale({ bilan, prenom, onFermer }: { bilan: BilanPostura
     <Modale titre="Synthèse pour le client" onFermer={onFermer} pied={<Bouton libelle="Partager le texte…" onPress={() => void Share.share({ message: texteSyntheseClient(bilan, prenom) })} />}>
       <View style={{ gap: espace(4) }}>
         <View style={styles.bandeauSombre}>
-          <Text style={[styles.surtitre, { color: '#FF8A8E' }]}>Ton bilan mouvement</Text>
+          <Text style={[styles.surtitre, { color: nuit.erreur }]}>Ton bilan mouvement</Text>
           <Text style={styles.grandTitre}>{`${prenom ? `${prenom}, voici` : 'Voici'} ce que tes vidéos racontent`}</Text>
           {s.score !== undefined && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: espace(3) }}>
-              <Anneau valeur={s.score} taille={84} fond={couleurs.secondaire} texte="#FFFFFF" />
+              <Anneau valeur={s.score} taille={84} fond={couleurs.secondaire} texte={couleurs.blanc} />
               <View style={{ flex: 1, gap: 2 }}>
-                <Text style={[styles.gras, { color: '#FFFFFF' }]}>Score mouvement</Text>
+                <Text style={[styles.gras, { color: couleurs.blanc }]}>Score mouvement</Text>
                 <Text style={styles.texteClair}>{s.phrase}</Text>
               </View>
             </View>
@@ -659,7 +659,7 @@ function SyntheseClientModale({ bilan, prenom, onFermer }: { bilan: BilanPostura
                       return (
                         <View key={c} style={{ flexDirection: 'row', alignItems: 'center', gap: espace(2) }}>
                           <Text style={[styles.aide, { width: 48 }]}>{c === 'D' ? 'Droite' : 'Gauche'}</Text>
-                          <View style={[styles.rail, { flex: 1, backgroundColor: '#FFFFFF' }]}>
+                          <View style={[styles.rail, { flex: 1, backgroundColor: couleurs.blanc }]}>
                             <View style={[styles.railPlein, { width: `${Math.max(8, 100 - (Math.abs(v) / pire) * 60)}%`, backgroundColor: a.coteFaible === c ? couleurs.rouge : couleurs.bleu }]} />
                           </View>
                         </View>
@@ -693,7 +693,7 @@ function SyntheseClientModale({ bilan, prenom, onFermer }: { bilan: BilanPostura
           </View>
         )}
         <View style={[styles.bandeauSombre, { gap: espace(2) }]}>
-          <Text style={[styles.titreSection, { color: '#FFFFFF' }]}>Pourquoi un accompagnement</Text>
+          <Text style={[styles.titreSection, { color: couleurs.blanc }]}>Pourquoi un accompagnement</Text>
           {['Un programme construit sur tes mesures, pas un plan générique.', 'Chaque exercice corrigé en vidéo, dans l’appli.', 'Des progrès mesurés : mêmes tests, mêmes angles, avant et après.'].map((t) => (
             <Text key={t} style={styles.texteClair}>{`● ${t}`}</Text>
           ))}
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
   carteAxe: { borderRadius: 14, padding: 14, gap: espace(2) },
   gras: { fontFamily: polices.texteGras, fontSize: 14, color: couleurs.texte },
   texte: { fontFamily: polices.texte, fontSize: 13, lineHeight: 19, color: couleurs.texte },
-  texteClair: { fontFamily: polices.texte, fontSize: 13, lineHeight: 19, color: '#DFE2E7' },
+  texteClair: { fontFamily: polices.texte, fontSize: 13, lineHeight: 19, color: couleurs.bordure },
   doux: { fontFamily: polices.texte, fontSize: 13, lineHeight: 18, color: couleurs.texteDoux },
   aide: { fontFamily: polices.texte, fontSize: 12, lineHeight: 17, color: couleurs.texteDoux },
   surtitre: { fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 0.6, textTransform: 'uppercase', color: couleurs.texteDoux },
@@ -719,12 +719,12 @@ const styles = StyleSheet.create({
   valeur: { fontFamily: polices.chiffres, fontSize: 20 },
   badge: { fontFamily: polices.texteMoyen, fontSize: 12, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
   pastille: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  pastilleTexte: { fontFamily: polices.chiffres, fontSize: 14, color: '#FFFFFF' },
+  pastilleTexte: { fontFamily: polices.chiffres, fontSize: 14, color: couleurs.blanc },
   rail: { height: 12, borderRadius: 6, backgroundColor: couleurs.discret, overflow: 'hidden' },
   railPlein: { height: 12, borderRadius: 6 },
   jauge: { height: 10, borderRadius: 5, backgroundColor: couleurs.discret, position: 'relative', marginVertical: 4 },
   jaugeNorme: { position: 'absolute', top: 0, height: 10, backgroundColor: '#BFE5CD', borderRadius: 5 },
-  jaugeRepere: { position: 'absolute', top: -4, width: 6, height: 18, marginLeft: -3, borderRadius: 3, borderWidth: 1, borderColor: '#FFFFFF' },
+  jaugeRepere: { position: 'absolute', top: -4, width: 6, height: 18, marginLeft: -3, borderRadius: 3, borderWidth: 1, borderColor: couleurs.blanc },
   tuile: { flex: 1, backgroundColor: couleurs.fond, borderRadius: 12, padding: 10, alignItems: 'center', gap: 2 },
   tuileValeur: { fontFamily: polices.chiffres, fontSize: 18, color: couleurs.texte },
   tuileLibelle: { fontFamily: polices.texteMoyen, fontSize: 12, color: couleurs.texte },
@@ -736,7 +736,7 @@ const styles = StyleSheet.create({
   frise: { flexDirection: 'row', gap: 3 },
   semaine: { flex: 1, height: 10, borderRadius: 5 },
   objectif: { backgroundColor: couleurs.fond, borderRadius: 10, padding: 8, gap: 2, minWidth: 130, flexGrow: 1 },
-  phaseTitre: { fontFamily: polices.titre, fontSize: 20, letterSpacing: 0.7, color: '#FFFFFF' },
+  phaseTitre: { fontFamily: polices.titre, fontSize: 20, letterSpacing: 0.7, color: couleurs.blanc },
   bandeauSombre: { backgroundColor: couleurs.noir, borderRadius: 16, padding: 16, gap: espace(3) },
-  grandTitre: { fontFamily: polices.titre, fontSize: 34, letterSpacing: 1.2, lineHeight: 34, color: '#FFFFFF' },
+  grandTitre: { fontFamily: polices.titre, fontSize: 34, letterSpacing: 1.2, lineHeight: 34, color: couleurs.blanc },
 });

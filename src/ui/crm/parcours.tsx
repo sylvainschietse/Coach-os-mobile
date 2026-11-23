@@ -148,7 +148,7 @@ function Etape({
             borderColor: couleurs.bordure,
           }}
         >
-          {fait ? <Check size={16} color="#FFFFFF" /> : <Text style={{ fontFamily: polices.texteGras, fontSize: 13, color: couleurs.texte }}>{numero}</Text>}
+          {fait ? <Check size={16} color={couleurs.blanc} /> : <Text style={{ fontFamily: polices.texteGras, fontSize: 13, color: couleurs.texte }}>{numero}</Text>}
         </View>
         {!dernier && <View style={{ flex: 1, width: 2, marginTop: 4, backgroundColor: couleurs.bordure }} />}
       </View>

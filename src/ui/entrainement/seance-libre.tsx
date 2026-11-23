@@ -23,7 +23,7 @@ import { messageErreur } from '@/lib/useCharger';
 import { DefilementClavier } from '../clavier';
 import { useDictee } from '../dictee';
 import { Jauge, useProgression } from '../motivation/badges';
-import { polices } from '../theme';
+import { couleurs, polices } from '../theme';
 import { Lueur, nuit, Principal } from './seance-blocs';
 import { champsSaisie, invalide, seriesDuBrouillon, validerSeries, vide, type Brouillon, type Champ, type SaisieLibre } from './seance-log';
 import { etatA11y } from '@/lib/accessibilite';
@@ -63,8 +63,8 @@ type Statut = 'valide' | 'manque' | 'dicte' | 'prevu';
 const STATUTS: Record<Statut, { libelle: string; fond: string; texte: string; bord: string }> = {
   valide: { libelle: 'Validé', fond: nuit.vert, texte: '#06210F', bord: '#1F5135' },
   manque: { libelle: 'Il manque un chiffre', fond: '#F59E0B', texte: '#2A1A00', bord: '#F59E0B' },
-  dicte: { libelle: 'Dicté, à valider', fond: '#2F5BD8', texte: '#FFFFFF', bord: '#2F5BD8' },
-  prevu: { libelle: 'Comme prévu', fond: '#2A2D36', texte: '#D9DBE0', bord: nuit.bordure },
+  dicte: { libelle: 'Dicté, à valider', fond: '#2F5BD8', texte: couleurs.blanc, bord: '#2F5BD8' },
+  prevu: { libelle: 'Comme prévu', fond: nuit.surface, texte: nuit.texteSecondaire, bord: nuit.bordure },
 };
 
 export function SeanceSansTelephone({
@@ -246,7 +246,7 @@ function EnTete({ gauche, onGauche, droite, marges }: { gauche: string; onGauche
   return (
     <View style={{ paddingTop: marges.top + 10, paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
       <Pressable accessibilityRole="button" onPress={onGauche} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44 }}>
-        <Icone size={18} color="#B7BAC3" />
+        <Icone size={18} color={nuit.texteDiscret} />
         <Text style={styles.enTete}>{gauche}</Text>
       </Pressable>
       {!!droite && <Text style={[styles.kicker, { color: nuit.doux }]}>{droite}</Text>}
@@ -298,7 +298,7 @@ function Pendant({
             return (
               <View key={b.id} style={{ flexDirection: 'row', gap: 12, paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: nuit.bordure }}>
                 <View style={styles.numero}>
-                  <Text style={{ fontFamily: polices.texteGras, fontSize: 13, color: '#C9CBD3' }}>{i + 1}</Text>
+                  <Text style={{ fontFamily: polices.texteGras, fontSize: 13, color: nuit.texteTertiaire }}>{i + 1}</Text>
                 </View>
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={styles.nom}>{titreBloc(b.titre) || b.lignes.map((l) => l.exercice.nom).join(' + ')}</Text>
@@ -330,7 +330,7 @@ function GrandChrono({ debut }: { debut: string }) {
   const h = Math.floor(s / 3600);
   const texte = `${h ? `${h}:` : ''}${String(Math.floor((s % 3600) / 60)).padStart(h ? 2 : 1, '0')}:${String(s % 60).padStart(2, '0')}`;
   return (
-    <Text accessibilityLabel={`Temps écoulé ${texte}`} style={{ fontFamily: polices.titre, fontSize: 88, letterSpacing: 1, color: '#FFFFFF' }}>
+    <Text accessibilityLabel={`Temps écoulé ${texte}`} style={{ fontFamily: polices.titre, fontSize: 88, letterSpacing: 1, color: couleurs.blanc }}>
       {texte}
     </Text>
   );
@@ -377,7 +377,7 @@ function Raconter({
                 onPress={() => onNote(r.note)}
                 style={[styles.ressenti, d.note === r.note && { backgroundColor: nuit.rouge }]}
               >
-                <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: '#FFFFFF' }}>{r.libelle}</Text>
+                <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.blanc }}>{r.libelle}</Text>
               </Pressable>
             ))}
           </View>
@@ -395,7 +395,7 @@ function Raconter({
           titre="Je raconte à voix haute"
           detail="« Tirage 50 kilos, 10, 10, 8… » L’appli remplit les blocs."
           icone={Mic}
-          fond="#FFFFFF"
+          fond={couleurs.blanc}
           texte="#16181D"
           rond={nuit.rouge}
           onPress={onRaconter}
@@ -405,13 +405,13 @@ function Raconter({
           detail="Elle compte pour ta série. Ton coach verra qu’il manque le détail."
           icone={Flag}
           fond="transparent"
-          texte="#FFFFFF"
+          texte={couleurs.blanc}
           rond={nuit.carte}
           contour
           desactive={envoi}
           onPress={onFaite}
         />
-        {envoi && <ActivityIndicator color="#FFFFFF" />}
+        {envoi && <ActivityIndicator color={couleurs.blanc} />}
         {!!erreur && (
           <Text accessibilityRole="alert" style={{ fontFamily: polices.texte, fontSize: 13, color: nuit.rougeDoux }}>
             {erreur}
@@ -456,7 +456,7 @@ function Choix({
       ]}
     >
       <View style={{ width: 48, height: 48, borderRadius: 15, backgroundColor: rond, alignItems: 'center', justifyContent: 'center' }}>
-        <Icone size={22} color="#FFFFFF" />
+        <Icone size={22} color={couleurs.blanc} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: texte }}>{titre}</Text>
@@ -513,9 +513,9 @@ function Dictee({
               accessibilityRole="button"
               accessibilityLabel={dictee.ecoute ? 'Arrêter la dictée' : 'Raconter ma séance à voix haute'}
               onPress={dictee.basculer}
-              style={({ pressed }) => [styles.micro, dictee.ecoute && { backgroundColor: '#FFFFFF' }, pressed && { opacity: 0.85 }]}
+              style={({ pressed }) => [styles.micro, dictee.ecoute && { backgroundColor: couleurs.blanc }, pressed && { opacity: 0.85 }]}
             >
-              {dictee.ecoute ? <Square size={34} color={nuit.rouge} fill={nuit.rouge} /> : <Mic size={40} color="#FFFFFF" />}
+              {dictee.ecoute ? <Square size={34} color={nuit.rouge} fill={nuit.rouge} /> : <Mic size={40} color={couleurs.blanc} />}
             </Pressable>
             <Text style={styles.doux}>{dictee.ecoute ? 'Je t’écoute… touche pour arrêter' : 'Touche le micro et raconte ta séance'}</Text>
             {!!dictee.erreur && (
@@ -534,12 +534,12 @@ function Dictee({
             onChangeText={onTexte}
             placeholder="La mobilité c’était ok. Tirage 50 kilos, 10, 10, 9, 8. Les pompes 12, 10 et 8…"
             placeholderTextColor={nuit.propose}
-            style={{ minHeight: 140, fontFamily: polices.texte, fontSize: 15, lineHeight: 22, color: '#FFFFFF', textAlignVertical: 'top' }}
+            style={{ minHeight: 140, fontFamily: polices.texte, fontSize: 15, lineHeight: 22, color: couleurs.blanc, textAlignVertical: 'top' }}
           />
         </View>
-        <View style={{ borderWidth: 1, borderStyle: 'dashed', borderColor: '#3A3C45', borderRadius: 18, padding: 14, gap: 4 }}>
+        <View style={{ borderWidth: 1, borderStyle: 'dashed', borderColor: nuit.bordureForte, borderRadius: 18, padding: 14, gap: 4 }}>
           <Text style={[styles.kicker, { color: nuit.doux }]}>Pour t’aider</Text>
-          <Text style={[styles.doux, { color: '#C9CBD3' }]}>
+          <Text style={[styles.doux, { color: nuit.texteTertiaire }]}>
             Dis l’exercice, la charge, puis les répétitions de chaque série. Ce que tu ne dis pas reste comme prévu.
           </Text>
         </View>
@@ -549,7 +549,7 @@ function Dictee({
               {erreur}
             </Text>
             <Pressable accessibilityRole="button" onPress={onAlaMain} style={{ minHeight: 44, justifyContent: 'center' }}>
-              <Text style={{ fontFamily: polices.texteMoyen, fontSize: 14, color: '#FFFFFF', textDecorationLine: 'underline' }}>Valider mes blocs à la main</Text>
+              <Text style={{ fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.blanc, textDecorationLine: 'underline' }}>Valider mes blocs à la main</Text>
             </Pressable>
           </View>
         )}
@@ -557,7 +557,7 @@ function Dictee({
       <Pied marges={marges}>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <Pressable accessibilityRole="button" accessibilityLabel="Effacer et recommencer" onPress={() => onTexte('')} style={styles.carre}>
-            <RotateCcw size={20} color="#FFFFFF" />
+            <RotateCcw size={20} color={couleurs.blanc} />
           </Pressable>
           <Principal
             libelle={lecture ? 'Je range ta séance…' : 'J’ai fini, remplis mes blocs'}
@@ -620,7 +620,7 @@ function Valider({
         <Text style={styles.titre}>Ta séance, bloc par bloc</Text>
         <View accessibilityRole="progressbar" aria-valuemin={0} aria-valuemax={blocs.length} aria-valuenow={valides.length} style={{ flexDirection: 'row', gap: 6 }}>
           {blocs.map((b) => (
-            <View key={b.id} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: valides.includes(b.id) ? nuit.vert : '#3A3C45' }} />
+            <View key={b.id} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: valides.includes(b.id) ? nuit.vert : nuit.bordureForte }} />
           ))}
         </View>
         {blocs.map((b, i) => {
@@ -644,7 +644,7 @@ function Valider({
                 const remplies = series.filter((n) => ecritSerie(champs, d.vals[`${l.id}:${n}`]));
                 return (
                   <View key={l.id} style={{ gap: 6 }}>
-                    {b.lignes.length > 1 && <Text style={[styles.doux, { color: '#D9DBE0' }]}>{l.exercice.nom}</Text>}
+                    {b.lignes.length > 1 && <Text style={[styles.doux, { color: nuit.texteSecondaire }]}>{l.exercice.nom}</Text>}
                     {edition ? (
                       series.map((n) => {
                         const k = `${l.id}:${n}`;
@@ -686,7 +686,7 @@ function Valider({
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {s !== 'manque' && (
                     <Pressable accessibilityRole="button" onPress={() => setOuvert(ouvert === b.id ? null : b.id)} style={[styles.secondaire, { flex: 1 }]}>
-                      <PencilLine size={16} color="#FFFFFF" />
+                      <PencilLine size={16} color={couleurs.blanc} />
                       <Text style={styles.secondaireTexte}>{ouvert === b.id ? 'Fermer' : 'Corriger'}</Text>
                     </Pressable>
                   )}
@@ -696,7 +696,7 @@ function Valider({
                       setOuvert(null);
                       onValider(b);
                     }}
-                    style={[styles.secondaire, { flex: 1, backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' }]}
+                    style={[styles.secondaire, { flex: 1, backgroundColor: couleurs.blanc, borderColor: couleurs.blanc }]}
                   >
                     <Check size={16} color="#16181D" />
                     <Text style={[styles.secondaireTexte, { color: '#16181D' }]}>{s === 'manque' ? 'Valider, le reste comme prévu' : 'Valider le bloc'}</Text>
@@ -758,8 +758,8 @@ function Fin({
         </View>
         {carnet && (
           <View style={[styles.carte, { alignSelf: 'stretch', padding: 16, flexDirection: 'row', gap: 14, alignItems: 'center' }]}>
-            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#6B4BC9', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: polices.titre, fontSize: 20, color: '#FFFFFF' }}>{gagne ? '5/5' : `${carnet.fait}/5`}</Text>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: couleurs.violet, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: polices.titre, fontSize: 20, color: couleurs.blanc }}>{gagne ? '5/5' : `${carnet.fait}/5`}</Text>
             </View>
             <View style={{ flex: 1, gap: 6 }}>
               <Text style={styles.nom}>Badge « Carnet tenu »</Text>
@@ -773,7 +773,7 @@ function Fin({
           </View>
         )}
         <View style={[styles.carte, { alignSelf: 'stretch', padding: 14 }]}>
-          <Text style={[styles.doux, { color: '#C9CBD3' }]}>
+          <Text style={[styles.doux, { color: nuit.texteTertiaire }]}>
             {mention === 'faite'
               ? 'Ton coach voit que ta séance est faite, sans le détail. La prochaine fois, raconte-la en 30 secondes : il pourra ajuster tes charges.'
               : mention === 'dictee'
@@ -793,24 +793,24 @@ function Stat({ libelle, valeur }: { libelle: string; valeur: string }) {
   return (
     <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 16, padding: 12, alignItems: 'center', gap: 2 }}>
       <Text style={{ fontFamily: polices.texte, fontSize: 13, color: nuit.doux }}>{libelle}</Text>
-      <Text style={{ fontFamily: polices.texteGras, fontSize: 17, color: '#FFFFFF' }}>{valeur}</Text>
+      <Text style={{ fontFamily: polices.texteGras, fontSize: 17, color: couleurs.blanc }}>{valeur}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  enTete: { fontFamily: polices.texte, fontSize: 14, color: '#B7BAC3' },
-  kicker: { fontFamily: polices.texteGras, fontSize: 13, letterSpacing: 1.4, textTransform: 'uppercase', color: '#FF8A8E' },
-  titre: { fontFamily: polices.titre, fontSize: 40, lineHeight: 40, letterSpacing: 0.5, color: '#FFFFFF' },
+  enTete: { fontFamily: polices.texte, fontSize: 14, color: nuit.texteDiscret },
+  kicker: { fontFamily: polices.texteGras, fontSize: 13, letterSpacing: 1.4, textTransform: 'uppercase', color: nuit.erreur },
+  titre: { fontFamily: polices.titre, fontSize: 40, lineHeight: 40, letterSpacing: 0.5, color: couleurs.blanc },
   doux: { fontFamily: polices.texte, fontSize: 13, lineHeight: 18, color: nuit.doux },
-  nom: { fontFamily: polices.texteGras, fontSize: 15.5, color: '#FFFFFF' },
+  nom: { fontFamily: polices.texteGras, fontSize: 15.5, color: couleurs.blanc },
   carte: { backgroundColor: nuit.carte, borderWidth: 1, borderColor: nuit.bordure, borderRadius: 18 },
-  numero: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#2A2C34', alignItems: 'center', justifyContent: 'center' },
-  ressenti: { flex: 1, minHeight: 44, borderRadius: 12, backgroundColor: '#2A2C34', alignItems: 'center', justifyContent: 'center' },
+  numero: { width: 26, height: 26, borderRadius: 13, backgroundColor: nuit.surface, alignItems: 'center', justifyContent: 'center' },
+  ressenti: { flex: 1, minHeight: 44, borderRadius: 12, backgroundColor: nuit.surface, alignItems: 'center', justifyContent: 'center' },
   micro: { width: 104, height: 104, borderRadius: 52, backgroundColor: nuit.rouge, alignItems: 'center', justifyContent: 'center' },
-  carre: { width: 52, height: 52, borderRadius: 12, borderWidth: 1, borderColor: '#3A3C45', backgroundColor: nuit.carte, alignItems: 'center', justifyContent: 'center' },
+  carre: { width: 52, height: 52, borderRadius: 12, borderWidth: 1, borderColor: nuit.bordureForte, backgroundColor: nuit.carte, alignItems: 'center', justifyContent: 'center' },
   statut: { fontFamily: polices.texteGras, fontSize: 13, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: 'hidden' },
-  serie: { fontFamily: polices.texteMoyen, fontSize: 13, color: '#FFFFFF', backgroundColor: '#2A2C34', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, overflow: 'hidden' },
+  serie: { fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.blanc, backgroundColor: nuit.surface, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, overflow: 'hidden' },
   champ: {
     flex: 1,
     minWidth: 0,
@@ -822,9 +822,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     fontFamily: polices.texte,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: couleurs.blanc,
   },
-  secondaire: { minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: '#3A3C45', backgroundColor: '#2A2C34', flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
-  secondaireTexte: { fontFamily: polices.texteGras, fontSize: 14, color: '#FFFFFF' },
+  secondaire: { minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: nuit.bordureForte, backgroundColor: nuit.surface, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  secondaireTexte: { fontFamily: polices.texteGras, fontSize: 14, color: couleurs.blanc },
   pied: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 14, paddingTop: 12, gap: 8, backgroundColor: 'rgba(14,15,19,0.96)', borderTopWidth: 1, borderTopColor: '#1E2027' },
 });

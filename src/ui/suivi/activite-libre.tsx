@@ -419,7 +419,7 @@ export function FormulaireActiviteLibre({
                 backgroundColor: ressenti === n ? couleurs.rouge : couleurs.carte,
               }}
             >
-              <Texte style={{ fontSize: 14, color: ressenti === n ? '#FFFFFF' : couleurs.texte }}>{n}</Texte>
+              <Texte style={{ fontSize: 14, color: ressenti === n ? couleurs.blanc : couleurs.texte }}>{n}</Texte>
             </Pressable>
           ))}
         </View>

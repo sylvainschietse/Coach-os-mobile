@@ -63,7 +63,7 @@ const universDe = (o: OngletClient) => univers[UNIVERS_CLIENT[o]];
  * à faire, est pleine ; les autres sont blanches, avec l'icône en bleu (audit design, point 2).
  */
 const BLEU = univers.bleu;
-const PLEINE = { fond: BLEU.fonce, encre: '#FFFFFF', accent: '#FFFFFF' };
+const PLEINE = { fond: BLEU.fonce, encre: couleurs.blanc, accent: couleurs.blanc };
 const BLANCHE = { fond: couleurs.carte, encre: couleurs.texte, accent: BLEU.fonce };
 const RUBRIQUES: { cle: Exclude<RubriqueProgres, 'badges'>; titre: string; detail: string; icone: LucideIcon; fond: string; encre: string; accent: string }[] = [
   { cle: 'hebdo', titre: 'Ma semaine', detail: 'Le bilan à remplir pour ton coach', icone: CalendarCheck, ...PLEINE },
@@ -323,12 +323,12 @@ function CarteRubrique({
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
-      <View style={{ width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: encre === '#FFFFFF' ? 'rgba(255,255,255,0.15)' : univers.bleu.clair }}>
+      <View style={{ width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: encre === couleurs.blanc ? 'rgba(255,255,255,0.15)' : univers.bleu.clair }}>
         <Icone size={22} color={accent} />
       </View>
       <View style={{ flex: large ? 1 : undefined, gap: 2 }}>
         <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: encre }}>{titre}</Text>
-        <Text style={{ fontFamily: polices.texte, fontSize: 13, color: encre === '#FFFFFF' ? 'rgba(255,255,255,0.85)' : couleurs.texteDoux }}>{detail}</Text>
+        <Text style={{ fontFamily: polices.texte, fontSize: 13, color: encre === couleurs.blanc ? 'rgba(255,255,255,0.85)' : couleurs.texteDoux }}>{detail}</Text>
       </View>
       {large && <ChevronRight size={20} color={accent} />}
     </Pressable>

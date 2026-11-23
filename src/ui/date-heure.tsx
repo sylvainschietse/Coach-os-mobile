@@ -120,7 +120,7 @@ export function MiniCalendrier({ jour, onChoisir }: { jour?: string; onChoisir: 
                       styles.numero,
                       horsMois && { color: couleurs.suggestion },
                       cle === aujourdhui && { color: couleurs.rouge, fontFamily: polices.texteGras },
-                      choisi && { color: '#FFFFFF', fontFamily: polices.texteGras },
+                      choisi && { color: couleurs.blanc, fontFamily: polices.texteGras },
                     ]}
                   >
                     {d.getDate()}
@@ -228,7 +228,7 @@ function Pastille({ libelle, actif, desactive, onPress }: { libelle: string; act
       onPress={onPress}
       style={({ pressed }) => [styles.pastille, actif && styles.pastilleActive, pressed && !actif && { backgroundColor: couleurs.rougeClair }, desactive && { opacity: 0.4 }]}
     >
-      <Text style={[styles.pastilleTexte, actif && { color: '#FFFFFF' }]}>{libelle}</Text>
+      <Text style={[styles.pastilleTexte, actif && { color: couleurs.blanc }]}>{libelle}</Text>
     </Pressable>
   );
 }

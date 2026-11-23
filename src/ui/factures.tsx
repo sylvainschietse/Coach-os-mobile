@@ -800,7 +800,7 @@ function FormulaireEntete({ initial }: { initial: EnteteFacture }) {
             />
           ))}
           <View style={{ width: 130 }}>
-            <ChampTexte libelle="Ou ta couleur" valeur={e.couleur} onChange={(couleur) => modifier({ couleur: couleur.trim() })} placeholder="#D71920" />
+            <ChampTexte libelle="Ou ta couleur" valeur={e.couleur} onChange={(couleur) => modifier({ couleur: couleur.trim() })} placeholder={couleurs.rougeMarque} />
           </View>
           {estCouleur(e.couleur) && <View style={{ width: 24, height: 24, borderRadius: 4, backgroundColor: e.couleur }} />}
         </View>

@@ -405,7 +405,7 @@ export function SeanceLog({
                     }}
                     style={[styles.note, choisi && { backgroundColor: couleurs.rouge, borderColor: couleurs.rouge }]}
                   >
-                    <Text style={[styles.noteTexte, choisi && { color: '#FFFFFF' }]}>{n}</Text>
+                    <Text style={[styles.noteTexte, choisi && { color: couleurs.blanc }]}>{n}</Text>
                   </Pressable>
                 );
               })}

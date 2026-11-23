@@ -120,12 +120,12 @@ function Avatar({ prenom, actif, onPress }: { prenom: string; actif: boolean; on
           borderRadius: 16,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: actif ? '#FFFFFF' : couleurs.rouge,
+          backgroundColor: actif ? couleurs.blanc : couleurs.rouge,
           borderWidth: 2,
           borderColor: 'rgba(255,255,255,0.6)',
         }}
       >
-        <Text style={{ fontFamily: polices.texteGras, fontSize: 15, color: actif ? couleurs.rouge : '#FFFFFF' }}>{initiale}</Text>
+        <Text style={{ fontFamily: polices.texteGras, fontSize: 15, color: actif ? couleurs.rouge : couleurs.blanc }}>{initiale}</Text>
       </View>
     </Pressable>
   );

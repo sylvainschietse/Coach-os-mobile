@@ -75,8 +75,8 @@ export function PointeurReperes({
           const p = points[r.cle];
           if (!p) return null;
           return [
-            <Circle key={`c${r.cle}`} cx={p.x} cy={p.y} r={7} fill={i === actif ? '#FFD400' : '#C3181E'} stroke="#FFFFFF" strokeWidth={2} />,
-            <SvgText key={`t${r.cle}`} x={p.x + 10} y={p.y - 8} fill="#FFFFFF" stroke="#000000" strokeWidth={0.6} fontSize={13} fontWeight="bold">
+            <Circle key={`c${r.cle}`} cx={p.x} cy={p.y} r={7} fill={i === actif ? '#FFD400' : couleurs.rouge} stroke={couleurs.blanc} strokeWidth={2} />,
+            <SvgText key={`t${r.cle}`} x={p.x + 10} y={p.y - 8} fill={couleurs.blanc} stroke="#000000" strokeWidth={0.6} fontSize={13} fontWeight="bold">
               {String(i + 1)}
             </SvgText>,
           ];
@@ -222,11 +222,11 @@ export function ApercuAnnote({
           {traces.map(([a, b]) => {
             const p1 = pt(a);
             const p2 = pt(b);
-            return p1 && p2 ? <Line key={`${a}-${b}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" /> : null;
+            return p1 && p2 ? <Line key={`${a}-${b}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke={couleurs.blanc} strokeWidth={2.5} strokeLinecap="round" /> : null;
           })}
           {Object.keys(points).map((cle) => {
             const p = pt(cle)!;
-            return <Circle key={cle} cx={p.x} cy={p.y} r={6} fill="#C3181E" stroke="#FFFFFF" strokeWidth={2} />;
+            return <Circle key={cle} cx={p.x} cy={p.y} r={6} fill={couleurs.rouge} stroke={couleurs.blanc} strokeWidth={2} />;
           })}
           {etiquettes.map((e, i) => {
             const p = pt(e.cle);
@@ -236,7 +236,7 @@ export function ApercuAnnote({
             const y = Math.min(Math.max(4, p.y - 26 + (i % 2) * 4), hauteur - 26);
             return [
               <Rect key={`r${i}`} x={x} y={y} rx={8} width={l} height={22} fill={e.couleur} />,
-              <SvgText key={`t${i}`} x={x + 7} y={y + 15} fill="#FFFFFF" fontSize={12} fontFamily={polices.chiffres}>
+              <SvgText key={`t${i}`} x={x + 7} y={y + 15} fill={couleurs.blanc} fontSize={12} fontFamily={polices.chiffres}>
                 {e.texte}
               </SvgText>,
             ];

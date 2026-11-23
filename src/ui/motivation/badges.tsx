@@ -15,14 +15,14 @@ import { decalerJour } from '@/domain/quotidien';
 import { seanceDetaillee } from '@/domain/saisie-apres';
 import { useCharger } from '@/lib/useCharger';
 
-import { couleurs, polices } from '../theme';
+import { couleurs, nuit, polices } from '../theme';
 
 /** Une couleur par famille de badges. Le texte posé dessus garde un contraste suffisant. */
 export const TEINTE: Record<FamilleBadge, { fond: string; texte: string; clair: string }> = {
-  regularite: { fond: '#C91D23', texte: '#FFFFFF', clair: '#FFE6E7' },
+  regularite: { fond: '#C91D23', texte: couleurs.blanc, clair: '#FFE6E7' },
   progres: { fond: '#F2B630', texte: '#3D2700', clair: '#FFF3D6' },
-  programme: { fond: '#2F5BE0', texte: '#FFFFFF', clair: '#E6ECFF' },
-  habitudes: { fond: '#6B4BC9', texte: '#FFFFFF', clair: '#EFEAFF' },
+  programme: { fond: '#2F5BE0', texte: couleurs.blanc, clair: '#E6ECFF' },
+  habitudes: { fond: couleurs.violet, texte: couleurs.blanc, clair: couleurs.violetClair },
 };
 
 /** Une activité de moins d'un quart d'heure (une marche vers le bureau) ne compte pas comme une séance. */
@@ -144,12 +144,12 @@ export function CarteBadges({ clientId, onOuvrir }: { clientId: string; onOuvrir
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <View style={{ flexShrink: 1 }}>
           <Text style={{ fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', color: '#FFC85C' }}>Mon grade</Text>
-          <Text style={{ fontFamily: polices.titre, fontSize: 32, color: '#FFFFFF', marginTop: 2 }}>{p.grade.nom}</Text>
+          <Text style={{ fontFamily: polices.titre, fontSize: 32, color: couleurs.blanc, marginTop: 2 }}>{p.grade.nom}</Text>
         </View>
-        <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: '#C9CCD3' }}>{pluriel(p.gagnes.length, 'badge')} ›</Text>
+        <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: nuit.texteTertiaire }}>{pluriel(p.gagnes.length, 'badge')} ›</Text>
       </View>
       <Jauge part={part} couleur="#FFC85C" />
-      <Text style={{ fontFamily: polices.texte, fontSize: 13, color: '#C9CCD3' }}>
+      <Text style={{ fontFamily: polices.texte, fontSize: 13, color: nuit.texteTertiaire }}>
         {p.suivant ? `Encore ${pluriel(manque, 'badge')} pour passer ${p.suivant.nom}` : 'Tu as atteint le plus haut grade.'}
       </Text>
       {derniers.length > 0 && (
@@ -174,7 +174,7 @@ export function MesBadges({ clientId }: { clientId: string }) {
   return (
     <View style={{ gap: 14 }}>
       <View style={{ borderRadius: 22, padding: 16, gap: 10, backgroundColor: '#1B1D24' }}>
-        <Text style={{ fontFamily: polices.texte, fontSize: 14, lineHeight: 20, color: '#E3E5EA' }}>
+        <Text style={{ fontFamily: polices.texte, fontSize: 14, lineHeight: 20, color: nuit.texteClair }}>
           Chaque badge récompense un effort : une séance, une semaine tenue, un record. Plus tu en gagnes, plus ton grade monte. Un badge gagné reste à toi.
         </Text>
         {GRADES.map((g) => {
@@ -186,8 +186,8 @@ export function MesBadges({ clientId }: { clientId: string }) {
                 <Text style={{ fontFamily: polices.titre, fontSize: 18, color: atteint ? '#3D2700' : '#8D919B' }}>{g.seuil}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: polices.texteGras, fontSize: 15, color: atteint ? '#FFFFFF' : '#A4A8B1' }}>{g.nom}</Text>
-                <Text style={{ fontFamily: polices.texte, fontSize: 12.5, color: '#A4A8B1' }}>{g.detail}</Text>
+                <Text style={{ fontFamily: polices.texteGras, fontSize: 15, color: atteint ? couleurs.blanc : nuit.texteDiscret }}>{g.nom}</Text>
+                <Text style={{ fontFamily: polices.texte, fontSize: 12.5, color: nuit.texteDiscret }}>{g.detail}</Text>
               </View>
               {actuel && <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: '#FFC85C' }}>Toi</Text>}
             </View>
@@ -293,17 +293,17 @@ export function FeteBadges({ clientId }: { clientId: string }) {
           <Animated.View style={{ transform: [{ scale: echelle }] }}>
             <PastilleBadge def={def} gagne taille={128} />
           </Animated.View>
-          <Text accessibilityRole="header" style={{ fontFamily: polices.titre, fontSize: 36, color: '#FFFFFF', textAlign: 'center' }}>
+          <Text accessibilityRole="header" style={{ fontFamily: polices.titre, fontSize: 36, color: couleurs.blanc, textAlign: 'center' }}>
             {def.nom}
           </Text>
-          <Text style={{ fontFamily: polices.texte, fontSize: 16, lineHeight: 23, color: '#E3E5EA', textAlign: 'center' }}>{def.bravo}</Text>
-          <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: '#A4A8B1' }}>
+          <Text style={{ fontFamily: polices.texte, fontSize: 16, lineHeight: 23, color: nuit.texteClair, textAlign: 'center' }}>{def.bravo}</Text>
+          <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: nuit.texteDiscret }}>
             Grade : {p.grade.nom} · {pluriel(p.gagnes.length, 'badge')}
           </Text>
           <Pressable
             accessibilityRole="button"
             onPress={suivant}
-            style={{ alignSelf: 'stretch', minHeight: 52, borderRadius: 16, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', marginTop: 4 }}
+            style={{ alignSelf: 'stretch', minHeight: 52, borderRadius: 16, backgroundColor: couleurs.blanc, alignItems: 'center', justifyContent: 'center', marginTop: 4 }}
           >
             <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: '#B3161C' }}>{aFeter.length > 1 ? 'Badge suivant' : 'Super !'}</Text>
           </Pressable>

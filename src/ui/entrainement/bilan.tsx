@@ -394,7 +394,7 @@ function CarteSeance({ s, onOuvrirProgramme }: { s: SeanceBilan; onOuvrirProgram
                   style={{
                     borderRadius: 6,
                     backgroundColor: couleurs.secondaire,
-                    color: '#FFFFFF',
+                    color: couleurs.blanc,
                     paddingHorizontal: 8,
                     paddingVertical: 2,
                     fontSize: 12,

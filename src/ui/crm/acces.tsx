@@ -169,7 +169,7 @@ export function BoutonEtape({ libelle, onPress, desactive }: { libelle: string; 
         overflow: 'hidden',
         backgroundColor: couleurs.rouge,
         opacity: desactive ? 0.45 : 1,
-        color: '#FFFFFF',
+        color: couleurs.blanc,
         fontFamily: polices.texteMoyen,
         fontSize: 14,
         textAlign: 'center',

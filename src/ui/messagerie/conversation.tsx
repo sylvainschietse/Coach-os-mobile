@@ -102,9 +102,9 @@ function Bulle({ m, moi, maintenant, dernierLu, onRetirer }: { m: Message; moi: 
         {m.pieceChemin && genre === 'vocal' && (
           <LecteurVocal chemin={m.pieceChemin} dureeS={m.pieceDureeS} libelle={mien ? 'Ton vocal' : 'Message vocal'} lien={messagerie.lien} />
         )}
-        {m.pieceExpiree && <Text style={[styles.texteBulle, { fontStyle: 'italic', opacity: 0.75 }, mien && { color: '#FFFFFF' }]}>Vidéo effacée après 30 jours</Text>}
+        {m.pieceExpiree && <Text style={[styles.texteBulle, { fontStyle: 'italic', opacity: 0.75 }, mien && { color: couleurs.blanc }]}>Vidéo effacée après 30 jours</Text>}
         {!!m.texte && (
-          <Text selectable style={[styles.texteBulle, mien && { color: '#FFFFFF' }]}>
+          <Text selectable style={[styles.texteBulle, mien && { color: couleurs.blanc }]}>
             {m.texte}
           </Text>
         )}
@@ -235,7 +235,7 @@ function Saisie({ clientId, moi, onEnvoye }: { clientId: string; moi: Auteur; on
           disabled={envoi || (!texte.trim() && !fichier)}
           style={[styles.rond, { backgroundColor: couleurs.rouge }, (envoi || (!texte.trim() && !fichier)) && { opacity: 0.4 }]}
         >
-          {envoi ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Send size={18} color="#FFFFFF" />}
+          {envoi ? <ActivityIndicator size="small" color={couleurs.blanc} /> : <Send size={18} color={couleurs.blanc} />}
         </Pressable>
       </View>
       {!!erreur && (
@@ -366,7 +366,7 @@ export function BoutonMessages({ nonLus, onPress }: { nonLus: number; onPress: (
       hitSlop={6}
       style={({ pressed }) => [styles.boutonEntete, pressed && { opacity: 0.7 }]}
     >
-      <MessageCircle size={20} color="#FFFFFF" />
+      <MessageCircle size={20} color={couleurs.blanc} />
       {nonLus > 0 && (
         <View style={styles.pastille}>
           <Text style={styles.pastilleTexte}>{nonLus > 9 ? '9+' : nonLus}</Text>
@@ -408,7 +408,7 @@ export function CarteMessages({ clientId }: { clientId: string }) {
       style={({ pressed }) => [styles.carte, nonLus > 0 && { borderColor: couleurs.rouge }, pressed && { opacity: 0.85 }]}
     >
       <View style={[styles.rond, { backgroundColor: nonLus ? couleurs.rouge : couleurs.discret }]}>
-        <MessageCircle size={20} color={nonLus ? '#FFFFFF' : couleurs.texte} />
+        <MessageCircle size={20} color={nonLus ? couleurs.blanc : couleurs.texte} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ fontFamily: polices.texteGras, fontSize: 15, color: couleurs.texte }}>
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#18191D',
   },
-  pastilleTexte: { fontFamily: polices.texteGras, fontSize: 12, color: '#FFFFFF' },
+  pastilleTexte: { fontFamily: polices.texteGras, fontSize: 12, color: couleurs.blanc },
   carte: {
     flexDirection: 'row',
     alignItems: 'center',

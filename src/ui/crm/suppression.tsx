@@ -124,6 +124,6 @@ const styles = StyleSheet.create({
     lineHeight: 44,
     fontFamily: polices.texteMoyen,
     fontSize: 14,
-    color: '#FFFFFF',
+    color: couleurs.blanc,
   },
 });

@@ -127,13 +127,13 @@ function Mesureur({ uri, facon, onValider, onAutre }: { uri: string; facon: Faco
                 y1={points[0].y - (facon.mode === 'verticale' ? 60 : 0)}
                 x2={points[0].x + (facon.mode === 'horizontale' ? 60 : 0)}
                 y2={points[0].y + (facon.mode === 'verticale' ? 60 : 0)}
-                stroke="#FFFFFF"
+                stroke={couleurs.blanc}
                 strokeWidth={2}
                 strokeDasharray="6 4"
               />
             )}
             {points.map((p, i) => (
-              <Circle key={i} cx={p.x} cy={p.y} r={9} fill="#C3181E" stroke="#FFFFFF" strokeWidth={2} />
+              <Circle key={i} cx={p.x} cy={p.y} r={9} fill={couleurs.rouge} stroke={couleurs.blanc} strokeWidth={2} />
             ))}
           </Svg>
         </Pressable>
