@@ -19,7 +19,7 @@ import { useCharger } from '@/lib/useCharger';
 
 import { BoutonContour, Hero } from '../coque';
 import { Badge, Repliable } from '../crm/dossier';
-import { couleurs, polices } from '../theme';
+import { couleurs, nuit, polices } from '../theme';
 import { MonCalendrier } from './calendrier';
 import { Action, Confirmation, TexteLong, jourCourt, ts, PhotoProgramme } from './commun';
 import { Historique, nbSeries } from './historique';
@@ -478,8 +478,8 @@ function ProchaineSeance({
   return (
     // Carte forte de l'accueil : sombre avec une lueur rouge, un avant-goût de la séance plein écran.
     <View style={[ts.carte, styles.prochaine]}>
-      <Text style={[ts.kicker, { color: '#FF7A7E' }]}>{p.creneau ? `Prévue aujourd’hui${p.creneau.heure ? ` à ${p.creneau.heure}` : ''}` : 'Ma prochaine séance'}</Text>
-      <Text style={{ fontFamily: polices.titre, fontSize: 30, letterSpacing: 0.6, color: '#FFFFFF' }}>{titreClient(p.seance.titre)}</Text>
+      <Text style={[ts.kicker, { color: nuit.rougeDoux }]}>{p.creneau ? `Prévue aujourd’hui${p.creneau.heure ? ` à ${p.creneau.heure}` : ''}` : 'Ma prochaine séance'}</Text>
+      <Text style={{ fontFamily: polices.titre, fontSize: 30, letterSpacing: 0.6, color: couleurs.blanc }}>{titreClient(p.seance.titre)}</Text>
       <Text style={[ts.doux, { color: 'rgba(255,255,255,0.85)' }]}>{nbExercices ? `${nbExercices} exercice${nbExercices > 1 ? 's' : ''}` : 'Activité · à valider une fois faite'}</Text>
       {/* Audit de Léo : un seul bouton pour démarrer (le mode choisi la dernière fois), le reste derrière « Autres options ». */}
       {guideeEnPremier ? guidee : sansTelephone}
@@ -517,8 +517,8 @@ function ActionSurSombre({ libelle, icone: Icone, onPress, desactive }: { libell
       onPress={onPress}
       style={({ pressed }) => [styles.surSombre, { opacity: desactive ? 0.45 : pressed ? 0.7 : 1 }]}
     >
-      <Icone size={16} color="#FFFFFF" />
-      <Text style={{ fontFamily: polices.texteMoyen, fontSize: 15, color: '#FFFFFF' }}>{libelle}</Text>
+      <Icone size={16} color={couleurs.blanc} />
+      <Text style={{ fontFamily: polices.texteMoyen, fontSize: 15, color: couleurs.blanc }}>{libelle}</Text>
     </Pressable>
   );
 }

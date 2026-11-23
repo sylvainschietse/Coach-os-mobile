@@ -18,7 +18,7 @@ import { annulerAlertes, autoriserNotifications, programmerAlerte } from '@/lib/
 import { vibrer } from '@/lib/vibrer';
 import { Bouton, Carte, Chargement, ChampNombre, Ecran, Erreur, SousTitre, Texte, Titre } from '@/ui/composants';
 import { VignetteVideo } from '@/ui/entrainement/vignette-video';
-import { couleurs, espace, polices } from '@/ui/theme';
+import { couleurs, espace, nuit, polices } from '@/ui/theme';
 import { etatA11y } from '@/lib/accessibilite';
 
 type Repos = { finMs: number; libelle: string; alerte: string | null };
@@ -176,7 +176,7 @@ export default function RealiserSeance() {
                         }}
                         style={[styles.valider, serie.validee && styles.validee]}
                       >
-                        <Text style={[styles.validerTexte, serie.validee && { color: '#FFFFFF' }]}>✓</Text>
+                        <Text style={[styles.validerTexte, serie.validee && { color: couleurs.blanc }]}>✓</Text>
                       </Pressable>
                     </View>
                   ))}
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: espace(2),
     paddingVertical: espace(1),
-    backgroundColor: '#FFFFFF',
+    backgroundColor: couleurs.blanc,
   },
   bloc: { fontFamily: polices.texteGras, color: couleurs.rouge, textTransform: 'uppercase', letterSpacing: 1, marginTop: espace(2) },
   serie: { flexDirection: 'row', alignItems: 'flex-end', gap: espace(2) },
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     borderColor: couleurs.bordure,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: couleurs.blanc,
   },
   validee: { backgroundColor: couleurs.vert, borderColor: couleurs.vert },
   validerTexte: { fontSize: 22, color: couleurs.bordure, fontFamily: polices.texteGras },
@@ -305,9 +305,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: espace(4),
     paddingVertical: espace(3),
   },
-  chronoIcone: { fontSize: 22, color: '#FFFFFF' },
-  chronoTitre: { color: '#FFFFFF', fontFamily: polices.texteGras, fontSize: 15 },
-  chronoDetail: { color: '#C9C9CF', fontFamily: polices.texte, fontSize: 13 },
+  chronoIcone: { fontSize: 22, color: couleurs.blanc },
+  chronoTitre: { color: couleurs.blanc, fontFamily: polices.texteGras, fontSize: 15 },
+  chronoDetail: { color: nuit.texteTertiaire, fontFamily: polices.texte, fontSize: 13 },
   chronoFleche: { color: couleurs.rouge, fontFamily: polices.texteGras, fontSize: 26 },
   bandeau: {
     position: 'absolute',
@@ -321,8 +321,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: espace(3),
   },
-  bandeauLibelle: { color: '#C9C9CF', fontFamily: polices.texte, fontSize: 13 },
-  bandeauTemps: { color: '#FFFFFF', fontFamily: polices.titre, fontSize: 40, lineHeight: 42 },
+  bandeauLibelle: { color: nuit.texteTertiaire, fontFamily: polices.texte, fontSize: 13 },
+  bandeauTemps: { color: couleurs.blanc, fontFamily: polices.titre, fontSize: 40, lineHeight: 42 },
   passer: { backgroundColor: couleurs.rouge, borderRadius: 10, paddingHorizontal: espace(4), paddingVertical: espace(3) },
-  passerTexte: { color: '#FFFFFF', fontFamily: polices.texteGras },
+  passerTexte: { color: couleurs.blanc, fontFamily: polices.texteGras },
 });

@@ -265,7 +265,7 @@ function MediaRevu({ bilan, vue, largeur, reperes }: { bilan: BilanPostural; vue
 function Bascule({ libelle, actif, onPress }: { libelle: string; actif: boolean; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="switch" {...etatA11y({ checked: actif })} onPress={onPress} style={[styles.bascule, actif && styles.basculeActive]}>
-      <Text style={[styles.basculeTexte, actif && { color: '#FFFFFF' }]}>{`${actif ? '✓ ' : ''}${libelle}`}</Text>
+      <Text style={[styles.basculeTexte, actif && { color: couleurs.blanc }]}>{`${actif ? '✓ ' : ''}${libelle}`}</Text>
     </Pressable>
   );
 }
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   vueTitre: { fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.texte, flexShrink: 1 },
   vueEtat: { fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux },
   revoir: { minHeight: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: couleurs.secondaire, justifyContent: 'center' },
-  revoirTexte: { fontFamily: polices.texteMoyen, fontSize: 13, color: '#FFFFFF' },
+  revoirTexte: { fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.blanc },
   ligneMesure: { flexDirection: 'row', alignItems: 'center', gap: espace(2), paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: couleurs.bordure },
   chiffre: { fontFamily: polices.chiffres, fontSize: 15 },
   bascule: { minHeight: 40, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: couleurs.bordure, justifyContent: 'center' },

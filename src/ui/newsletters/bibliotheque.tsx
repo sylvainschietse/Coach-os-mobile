@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   voile: { backgroundColor: 'rgba(12,13,16,0.32)', backgroundImage: 'linear-gradient(180deg, rgba(12,13,16,0) 30%, rgba(12,13,16,0.78) 100%)' },
   tuileTexte: { position: 'absolute', left: 12, right: 12, bottom: 10, gap: 2 },
   pastille: { width: 18, height: 3, borderRadius: 2, marginBottom: 4 },
-  tuileNom: { fontFamily: polices.titre, fontSize: 24, lineHeight: 25, color: '#FFFFFF', letterSpacing: 0.4 },
+  tuileNom: { fontFamily: polices.titre, fontSize: 24, lineHeight: 25, color: couleurs.blanc, letterSpacing: 0.4 },
   tuileCompte: { fontFamily: polices.texteMoyen, fontSize: 12, color: 'rgba(255,255,255,0.82)' },
   enTete: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: espace(2) },
   filet: { width: 4, alignSelf: 'stretch', borderRadius: 2 },

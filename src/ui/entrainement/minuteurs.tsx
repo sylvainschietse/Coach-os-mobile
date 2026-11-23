@@ -36,7 +36,7 @@ import { annulerSonneries, ecouter, jouer, preparerSons, programmerAlertes, useS
 import { maintenantMs } from '@/lib/temps';
 
 import { BoutonIcone } from '../coque';
-import { couleurs, polices, univers } from '../theme';
+import { couleurs, nuit, polices, univers } from '../theme';
 import { Action, Confirmation, ts } from './commun';
 import { etatA11y } from '@/lib/accessibilite';
 
@@ -104,7 +104,7 @@ function relireMarche(brut: unknown, maintenant: number): Marche | null {
 const ecouleS = (m: Marche, maintenant: number) => (m.ecouleMs + (m.statut === 'running' ? Math.max(0, maintenant - m.departLe) : 0)) / 1000;
 
 const SCENE = { backgroundColor: '#121318', backgroundImage: univers.rouge.scene };
-const C = { carte: '#1F2027', carte2: '#272932', trait: '#33353F', texte: '#F4F4F6', doux: '#A1A4AF', rouge: '#D9252B', kicker: '#FF7A7E', vert: '#3BC17A' };
+const C = { carte: '#1F2027', carte2: '#272932', trait: '#33353F', texte: '#F4F4F6', doux: '#A1A4AF', rouge: '#D9252B', kicker: nuit.rougeDoux, vert: '#3BC17A' };
 const SONNERIES = Object.keys(NOMS_SONNERIES) as Sonnerie[];
 
 type Vue = { ecran: 'liste' } | { ecran: 'reglage'; edition?: FormatEnregistre };
@@ -516,7 +516,7 @@ function Liste({
                 <MoreHorizontal size={22} color={C.doux} />
               </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel={`Lancer ${f.nom}`} onPress={() => onLancer(f)} style={s.lancer}>
-                <Play size={18} color="#FFFFFF" fill="#FFFFFF" />
+                <Play size={18} color={couleurs.blanc} fill={couleurs.blanc} />
               </Pressable>
             </View>
           ))
@@ -595,7 +595,7 @@ function Reglages({
                 }}
                 style={[s.puceSon, choisi && { backgroundColor: C.rouge, borderColor: C.rouge }]}
               >
-                {x !== 'vibreur' && <Volume2 size={14} color="#FFFFFF" />}
+                {x !== 'vibreur' && <Volume2 size={14} color={couleurs.blanc} />}
                 <Text style={s.textePuce}>{NOMS_SONNERIES[x]}</Text>
               </Pressable>
             );
@@ -613,7 +613,7 @@ function Reglages({
                 onPress={() => onSon({ ...son, preparationS: v })}
                 style={[s.option, son.preparationS === v && { backgroundColor: C.texte }]}
               >
-                <Text style={[s.texteOption, son.preparationS === v && { color: '#111216', fontFamily: polices.texteGras }]}>{v ? `${v} s` : 'Non'}</Text>
+                <Text style={[s.texteOption, son.preparationS === v && { color: couleurs.noir, fontFamily: polices.texteGras }]}>{v ? `${v} s` : 'Non'}</Text>
               </Pressable>
             ))}
           </View>
@@ -710,7 +710,7 @@ function EnCours({
           </Text>
           <View style={{ flexDirection: 'row', gap: 10, height: 14 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             {[3, 2, 1].map((n) => (
-              <View key={n} style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: derniers && affiche <= n ? '#FFFFFF' : '#FFFFFF33' }} />
+              <View key={n} style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: derniers && affiche <= n ? couleurs.blanc : '#FFFFFF33' }} />
             ))}
           </View>
           <Text style={s.detail}>{detail}</Text>
@@ -722,7 +722,7 @@ function EnCours({
               <Text style={[s.detail, { minWidth: 110, textAlign: 'center' }]}>
                 {marche.tours} tour{marche.tours > 1 ? 's' : ''}
               </Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Ajouter un tour" onPress={() => onTour(1)} style={[s.rond, { backgroundColor: '#FFFFFF' }]}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Ajouter un tour" onPress={() => onTour(1)} style={[s.rond, { backgroundColor: couleurs.blanc }]}>
                 <Plus size={22} color="#B3161C" />
               </Pressable>
             </View>
@@ -765,7 +765,7 @@ function Interrupteur({ libelle, aide, valeur, onChange }: { libelle: string; ai
         {!!aide && <Text style={[s.doux, { fontSize: 13 }]}>{aide}</Text>}
       </View>
       <View style={[s.bascule, valeur && { backgroundColor: C.vert }]}>
-        <View style={[s.pastille, valeur && { transform: [{ translateX: 18 }], backgroundColor: '#FFFFFF' }]} />
+        <View style={[s.pastille, valeur && { transform: [{ translateX: 18 }], backgroundColor: couleurs.blanc }]} />
       </View>
     </Pressable>
   );
@@ -788,7 +788,7 @@ function Bouton({
   desactive?: boolean;
   icone?: typeof Play;
 }) {
-  const couleur = blanc ? '#B3161C' : danger ? '#FF7A7E' : '#FFFFFF';
+  const couleur = blanc ? '#B3161C' : danger ? nuit.rougeDoux : couleurs.blanc;
   return (
     <Pressable
       accessibilityRole="button"
@@ -797,7 +797,7 @@ function Bouton({
       onPress={onPress}
       style={({ pressed }) => [
         s.bouton,
-        contour || danger ? { borderWidth: 1, borderColor: blanc ? '#FFFFFF' : '#FFFFFF40' } : blanc ? { backgroundColor: '#FFFFFF' } : { backgroundColor: C.rouge, backgroundImage: univers.rouge.degrade },
+        contour || danger ? { borderWidth: 1, borderColor: blanc ? couleurs.blanc : '#FFFFFF40' } : blanc ? { backgroundColor: couleurs.blanc } : { backgroundColor: C.rouge, backgroundImage: univers.rouge.degrade },
         (pressed || desactive) && { opacity: 0.75 },
       ]}
     >
@@ -829,7 +829,7 @@ const s = StyleSheet.create({
   lien: { fontFamily: polices.texteMoyen, fontSize: 15, color: C.doux },
   kicker: { fontFamily: polices.texteGras, fontSize: 13, letterSpacing: 1.4, textTransform: 'uppercase', color: C.kicker, marginTop: 8 },
   doux: { fontFamily: polices.texte, fontSize: 13.5, color: C.doux, lineHeight: 19 },
-  erreur: { fontFamily: polices.texteMoyen, fontSize: 14, color: '#FF7A7E' },
+  erreur: { fontFamily: polices.texteMoyen, fontSize: 14, color: nuit.rougeDoux },
   perso: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.carte, borderWidth: 1, borderColor: C.trait, borderRadius: 14, padding: 12 },
   nomPerso: { fontFamily: polices.texteGras, fontSize: 16, color: C.texte },
   lancer: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.rouge, alignItems: 'center', justifyContent: 'center' },
@@ -853,9 +853,9 @@ const s = StyleSheet.create({
   texteBouton: { fontFamily: polices.texteGras, fontSize: 16 },
   feuille: { backgroundColor: '#15161B', borderTopLeftRadius: 22, borderTopRightRadius: 22, borderTopWidth: 1, borderColor: C.trait, padding: 18, gap: 10, width: '100%', maxWidth: 560, alignSelf: 'center' },
   champ: { backgroundColor: C.carte, borderWidth: 1, borderColor: C.rouge, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontFamily: polices.texte, fontSize: 16, color: C.texte },
-  phase: { fontFamily: polices.titre, fontSize: 52, letterSpacing: 2, color: '#FFFFFF' },
-  compte: { fontFamily: polices.chiffres, fontSize: 104, lineHeight: 124, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
+  phase: { fontFamily: polices.titre, fontSize: 52, letterSpacing: 2, color: couleurs.blanc },
+  compte: { fontFamily: polices.chiffres, fontSize: 104, lineHeight: 124, color: couleurs.blanc, fontVariant: ['tabular-nums'] },
   detail: { fontFamily: polices.texteMoyen, fontSize: 18, color: '#FFFFFFCC', textAlign: 'center' },
   rond: { width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: '#FFFFFF66', alignItems: 'center', justifyContent: 'center' },
-  texteRond: { fontSize: 26, color: '#FFFFFF', fontFamily: polices.texteGras },
+  texteRond: { fontSize: 26, color: couleurs.blanc, fontFamily: polices.texteGras },
 });

@@ -52,7 +52,7 @@ export function Action({
 }) {
   const u = useUnivers();
   const fond = variante === 'plein' ? (u.cle === 'rouge' ? couleurs.rouge : u.uni) : variante === 'danger' ? '#DC2626' : variante === 'contour' ? couleurs.carte : 'transparent';
-  const texte = variante === 'plein' || variante === 'danger' ? '#FFFFFF' : couleurs.texte;
+  const texte = variante === 'plein' || variante === 'danger' ? couleurs.blanc : couleurs.texte;
   const { enCours, presser } = usePression(onPress);
   const attente = chargement || enCours;
   return (
@@ -114,7 +114,7 @@ export function Puce({ libelle, variante = 'contour' }: { libelle: string; varia
         variante === 'primaire' && { backgroundColor: couleurs.rouge, borderColor: couleurs.rouge },
       ]}
     >
-      <Text style={[styles.puceTexte, variante === 'accent' && { color: couleurs.rougeTexte }, variante === 'primaire' && { color: '#FFFFFF' }]}>{libelle}</Text>
+      <Text style={[styles.puceTexte, variante === 'accent' && { color: couleurs.rougeTexte }, variante === 'primaire' && { color: couleurs.blanc }]}>{libelle}</Text>
     </View>
   );
 }
@@ -261,7 +261,7 @@ export const ts = StyleSheet.create({
   mono: { fontFamily: polices.chiffres, fontSize: 12, color: couleurs.texteDoux },
   kicker: { fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 0.8, textTransform: 'uppercase', color: couleurs.rouge },
   pastilleJour: { width: 40, height: 40, borderRadius: 8, backgroundColor: couleurs.secondaire, alignItems: 'center', justifyContent: 'center' },
-  pastilleJourTexte: { fontFamily: polices.texteGras, fontSize: 12, color: '#FFFFFF' },
+  pastilleJourTexte: { fontFamily: polices.texteGras, fontSize: 12, color: couleurs.blanc },
   erreur: { fontFamily: polices.texte, fontSize: 13, color: couleurs.rouge },
 });
 
@@ -307,7 +307,7 @@ export function CaseSelection({ nom, valeur, desactive, onChange }: { nom: strin
       onPress={() => onChange(!valeur)}
       style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', opacity: desactive ? 0.4 : 1 }}
     >
-      <View style={[styles.case, valeur && { backgroundColor: couleurs.rouge, borderColor: couleurs.rouge }]}>{valeur && <Check size={14} color="#FFFFFF" />}</View>
+      <View style={[styles.case, valeur && { backgroundColor: couleurs.rouge, borderColor: couleurs.rouge }]}>{valeur && <Check size={14} color={couleurs.blanc} />}</View>
     </Pressable>
   );
 }

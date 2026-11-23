@@ -81,5 +81,5 @@ const styles = StyleSheet.create({
   apercu: { fontFamily: polices.texte, fontSize: 14, color: couleurs.texteDoux },
   pastille: { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, backgroundColor: couleurs.rouge, alignItems: 'center', justifyContent: 'center' },
   aide: { fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux },
-  pastilleTexte: { fontFamily: polices.texteGras, fontSize: 12, color: '#FFFFFF' },
+  pastilleTexte: { fontFamily: polices.texteGras, fontSize: 12, color: couleurs.blanc },
 });

@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   },
   envois: { flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) },
   envoi: { backgroundColor: couleurs.noir, borderRadius: 10, paddingHorizontal: espace(4), paddingVertical: espace(2.5) },
-  envoiTexte: { color: '#FFFFFF', fontFamily: polices.texteGras, fontSize: 14 },
+  envoiTexte: { color: couleurs.blanc, fontFamily: polices.texteGras, fontSize: 14 },
   actions: { flexDirection: 'row', gap: espace(2) },
   action: { borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 10, paddingHorizontal: espace(3), paddingVertical: espace(2) },
   actionTexte: { fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.texte },

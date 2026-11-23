@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePression } from '@/lib/usePression';
 
 import { useHauteurClavier } from './clavier';
-import { arrondi, couleurs, espace, espacementTitre, polices, type Univers } from './theme';
+import { arrondi, couleurs, espace, espacementTitre, nuit, polices, type Univers } from './theme';
 import { useUnivers } from './univers';
 import { etatA11y } from '@/lib/accessibilite';
 
@@ -89,7 +89,7 @@ export function BoutonIcone({ icone: Icone, nom, onPress }: { icone: LucideIcon;
       onPress={presser}
       style={(e) => [styles.boutonIcone, (e.pressed || survol(e)) && { backgroundColor: '#3a3a3a' }]}
     >
-      {enCours ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Icone size={20} color="#FFFFFF" />}
+      {enCours ? <ActivityIndicator size="small" color={couleurs.blanc} /> : <Icone size={20} color={couleurs.blanc} />}
     </Pressable>
   );
 }
@@ -99,7 +99,7 @@ export function CommutateurApercu({ valeur, onChange }: { valeur: 'coach' | 'cli
   return (
     <View style={styles.apercu}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8 }}>
-        <Eye size={14} color="#C1C6CD" />
+        <Eye size={14} color={nuit.texteTertiaire} />
         <Text style={styles.apercuLibelle}>APERÇU</Text>
       </View>
       {(['coach', 'client'] as const).map((m) => (
@@ -110,7 +110,7 @@ export function CommutateurApercu({ valeur, onChange }: { valeur: 'coach' | 'cli
           onPress={() => m !== valeur && onChange(m)}
           style={[styles.apercuBouton, valeur === m && { backgroundColor: couleurs.secondaire }]}
         >
-          <Text style={[styles.apercuTexte, valeur === m && { color: '#FFFFFF' }]}>{m === 'coach' ? 'Coach' : 'Vue client'}</Text>
+          <Text style={[styles.apercuTexte, valeur === m && { color: couleurs.blanc }]}>{m === 'coach' ? 'Coach' : 'Vue client'}</Text>
         </Pressable>
       ))}
     </View>
@@ -152,7 +152,7 @@ export function OngletsCoach<T extends string>({
                 actif && { backgroundColor: universDe?.(o.cle).uni ?? couleurs.rouge, backgroundImage: universDe?.(o.cle).degrade },
               ]}
             >
-              <Text style={[styles.ongletTexte, { fontSize: petit ? 13 : 14 }, actif && { color: '#FFFFFF' }]}>{o.libelle}</Text>
+              <Text style={[styles.ongletTexte, { fontSize: petit ? 13 : 14 }, actif && { color: couleurs.blanc }]}>{o.libelle}</Text>
             </Pressable>
           );
         })}
@@ -257,8 +257,8 @@ export function MenuRubriques<T extends string>({
               onPress={() => onChange(r.cle)}
               style={[styles.puceRubrique, actif && styles.rubriqueActive, actif && active]}
             >
-              {Icone && <Icone size={15} color={actif ? '#FFFFFF' : couleurs.texteDoux} />}
-              <Text style={[styles.rubriqueTexte, actif && { color: '#FFFFFF' }]}>{r.libelle}</Text>
+              {Icone && <Icone size={15} color={actif ? couleurs.blanc : couleurs.texteDoux} />}
+              <Text style={[styles.rubriqueTexte, actif && { color: couleurs.blanc }]}>{r.libelle}</Text>
             </Pressable>
           );
         })}
@@ -281,8 +281,8 @@ export function MenuRubriques<T extends string>({
               actif ? [styles.rubriqueActive, active] : survol(e) && { backgroundColor: couleurs.discret },
             ]}
           >
-            {Icone && <Icone size={16} color={actif ? '#FFFFFF' : couleurs.texteDoux} />}
-            <Text style={[styles.rubriqueTexte, actif && { color: '#FFFFFF' }]}>{r.libelle}</Text>
+            {Icone && <Icone size={16} color={actif ? couleurs.blanc : couleurs.texteDoux} />}
+            <Text style={[styles.rubriqueTexte, actif && { color: couleurs.blanc }]}>{r.libelle}</Text>
           </Pressable>
         );
       })}
@@ -517,7 +517,7 @@ export function Hero({
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: espace(3) }}>
         <View style={{ flexShrink: 1, minWidth: 0 }}>
           <Text style={[styles.heroKicker, { color: u.kickerScene }]}>{kicker}</Text>
-          <TitreDisplay taille={t} style={{ marginTop: 6, color: '#FFFFFF' } as never}>{titre}</TitreDisplay>
+          <TitreDisplay taille={t} style={{ marginTop: 6, color: couleurs.blanc } as never}>{titre}</TitreDisplay>
           {sousTitre && !serre && <Text style={styles.heroSous}>{sousTitre}</Text>}
         </View>
         {droite}
@@ -629,11 +629,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: espace(4),
     paddingVertical: espace(3),
   },
-  marque: { fontFamily: polices.titre, color: '#FFFFFF', letterSpacing: espacementTitre(24) },
+  marque: { fontFamily: polices.titre, color: couleurs.blanc, letterSpacing: espacementTitre(24) },
   marqueSous: { fontFamily: polices.texte, fontSize: 12, letterSpacing: 1.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)' },
   badge: { borderWidth: 1, borderColor: '#687384', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2 },
   badgeTexte: { color: '#E0E5EB', fontSize: 12, fontFamily: polices.texteGras },
-  email: { width: '100%', alignSelf: 'center', paddingHorizontal: espace(4), paddingBottom: espace(2), fontSize: 12, fontFamily: polices.texte, color: '#C1C6CD' },
+  email: { width: '100%', alignSelf: 'center', paddingHorizontal: espace(4), paddingBottom: espace(2), fontSize: 12, fontFamily: polices.texte, color: nuit.texteTertiaire },
   boutonIcone: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   apercu: {
     flexDirection: 'row',
@@ -645,9 +645,9 @@ const styles = StyleSheet.create({
     borderColor: '#454545',
     backgroundColor: 'rgba(255,255,255,0.035)',
   },
-  apercuLibelle: { fontSize: 12, fontFamily: polices.texteGras, letterSpacing: 0.4, color: '#C1C6CD' },
+  apercuLibelle: { fontSize: 12, fontFamily: polices.texteGras, letterSpacing: 0.4, color: nuit.texteTertiaire },
   apercuBouton: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  apercuTexte: { fontSize: 14, fontFamily: polices.texteMoyen, color: '#C1C6CD' },
+  apercuTexte: { fontSize: 14, fontFamily: polices.texteMoyen, color: nuit.texteTertiaire },
   onglets: {
     backgroundColor: couleurs.carte,
     borderWidth: 1,

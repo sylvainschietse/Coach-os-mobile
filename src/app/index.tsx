@@ -11,7 +11,7 @@ import { verifierMotDePasse } from '@/domain/acces-client';
 import { DefilementClavier } from '@/ui/clavier';
 import { Bouton, Texte } from '@/ui/composants';
 import { LienPolitique } from '@/ui/consentement';
-import { couleurs, espace, polices } from '@/ui/theme';
+import { couleurs, espace, nuit, polices } from '@/ui/theme';
 
 /** Liens partagés (offre, questionnaire) : envoyés sous la forme « …/?offre=<id> » pour que la page réponde sans erreur
  * et que WhatsApp ou les SMS en affichent l'aperçu. On ouvre ensuite la vraie page. */
@@ -41,7 +41,7 @@ function Cadre({ children }: { children: ReactNode }) {
           <Text style={styles.marque}>
             COACH<Text style={{ color: couleurs.rouge }}>GO</Text>
           </Text>
-          <Texte style={{ color: '#C9C9CF' }}>Ton programme, ta séance, ta progression.</Texte>
+          <Texte style={{ color: nuit.texteTertiaire }}>Ton programme, ta séance, ta progression.</Texte>
         </View>
         <View style={{ gap: espace(4) }}>
           {children}
@@ -78,10 +78,10 @@ function SansDossier() {
   return (
     <View style={{ gap: espace(3) }}>
       <Text style={styles.libelle}>Bienvenue dans CoachGo</Text>
-      <Texte style={{ color: '#C9C9CF' }}>
+      <Texte style={{ color: nuit.texteTertiaire }}>
         Ton accès n’est pas encore relié à ton dossier. Vérifie que tu utilises l’adresse e-mail communiquée à ton coach.
       </Texte>
-      {email && <Texte style={{ color: '#FFFFFF' }}>{email}</Texte>}
+      {email && <Texte style={{ color: couleurs.blanc }}>{email}</Texte>}
       <Bouton libelle={verification ? 'Vérification…' : 'Actualiser mon accès'} onPress={verifier} chargement={verification} />
       {resultat && (
         <Text style={styles.resultat} accessibilityLiveRegion="polite" role="status">
@@ -112,10 +112,10 @@ function NouveauMotDePasse() {
   return (
     <View style={{ gap: espace(3) }}>
       <Text style={styles.libelle}>Choisis ton mot de passe</Text>
-      <Texte style={{ color: '#C9C9CF' }}>Remplace le mot de passe provisoire par le tien. Toi seul le connaîtras.</Texte>
+      <Texte style={{ color: nuit.texteTertiaire }}>Remplace le mot de passe provisoire par le tien. Toi seul le connaîtras.</Texte>
       <ChampMotDePasse placeholder="Nouveau mot de passe (8 caractères ou plus)" nouveau valeur={motDePasse} onChange={setMotDePasse} />
       <ChampMotDePasse placeholder="Le même, une seconde fois" nouveau valeur={confirmation} onChange={setConfirmation} onValider={valider} />
-      {erreur && <Texte style={{ color: '#FF8A8F' }}>{erreur}</Texte>}
+      {erreur && <Texte style={{ color: nuit.erreur }}>{erreur}</Texte>}
       <Bouton libelle="Enregistrer" onPress={valider} chargement={envoi} desactive={!motDePasse || !confirmation} />
       <Bouton variante="contour" libelle="Se déconnecter" onPress={deconnecter} />
     </View>
@@ -147,7 +147,7 @@ function ChampMotDePasse({ placeholder, nouveau, valeur, onChange, onValider }: 
         hitSlop={8}
         style={{ position: 'absolute', right: 6, padding: 10 }}
       >
-        <Icone size={20} color="#C9C9CF" />
+        <Icone size={20} color={nuit.texteTertiaire} />
       </Pressable>
     </View>
   );
@@ -240,8 +240,8 @@ function Connexion() {
         onChange={setMotDePasse}
         onValider={valider}
       />
-      {erreur && <Texte style={{ color: '#FF8A8F' }}>{erreur}</Texte>}
-      {info && <Texte style={{ color: '#C9C9CF' }}>{info}</Texte>}
+      {erreur && <Texte style={{ color: nuit.erreur }}>{erreur}</Texte>}
+      {info && <Texte style={{ color: nuit.texteTertiaire }}>{info}</Texte>}
       <Bouton
         libelle={mode === 'inscription' ? 'Créer mon compte' : 'Se connecter'}
         onPress={valider}
@@ -264,14 +264,14 @@ function Connexion() {
 }
 
 const styles = StyleSheet.create({
-  resultat: { fontFamily: polices.texte, fontSize: 15, lineHeight: 21, color: '#C9C9CF' },
+  resultat: { fontFamily: polices.texte, fontSize: 15, lineHeight: 21, color: nuit.texteTertiaire },
   fond: { flex: 1, backgroundColor: couleurs.noir },
   contenu: { flexGrow: 1, justifyContent: 'space-between', padding: espace(6), paddingTop: espace(20), width: '100%', maxWidth: 480, alignSelf: 'center' },
-  marque: { fontFamily: polices.titre, fontSize: 64, color: '#FFFFFF', letterSpacing: 1 },
+  marque: { fontFamily: polices.titre, fontSize: 64, color: couleurs.blanc, letterSpacing: 1 },
   libelle: { fontFamily: polices.texteMoyen, color: '#8A8A92', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 },
   saisie: {
     backgroundColor: '#1C1C20',
-    color: '#FFFFFF',
+    color: couleurs.blanc,
     borderRadius: 12,
     paddingHorizontal: espace(4),
     paddingVertical: espace(3.5),

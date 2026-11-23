@@ -42,7 +42,7 @@ import { ChampDate } from '../date-heure';
 import { couleurs, espace, polices } from '../theme';
 import { etatA11y } from '@/lib/accessibilite';
 
-const VIOLET = '#6B4BC9';
+const VIOLET = couleurs.violet;
 const fmtJour = (j: string) => new Date(`${j}T12:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 const fmtCourt = (j: string) => new Date(`${j}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 const virgule = (n: number) => String(n).replace('.', ',');
@@ -385,7 +385,7 @@ function Calendrier({ regles, reglages }: { regles: Regles[]; reglages: Reglages
                   opacity: j.prevu && !regles ? 0.75 : 1,
                 }}
               >
-                <Text style={{ fontFamily: estAujourdhui ? polices.texteGras : polices.texte, fontSize: 14, color: regles && !j.prevu ? '#FFFFFF' : couleurs.texte }}>
+                <Text style={{ fontFamily: estAujourdhui ? polices.texteGras : polices.texte, fontSize: 14, color: regles && !j.prevu ? couleurs.blanc : couleurs.texte }}>
                   {Number(j.jour.slice(8))}
                 </Text>
               </View>
@@ -446,7 +446,7 @@ function MaJourneeCycle({ clientId, notes, energie, onFait }: { clientId: string
               onPress={() => setNiveau(niveau === n ? undefined : n)}
               style={{ flex: 1, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: niveau === n ? VIOLET : couleurs.bordure, backgroundColor: niveau === n ? VIOLET : couleurs.carte }}
             >
-              <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: niveau === n ? '#FFFFFF' : couleurs.texte }}>{n}</Text>
+              <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: niveau === n ? couleurs.blanc : couleurs.texte }}>{n}</Text>
             </Pressable>
           ))}
         </View>

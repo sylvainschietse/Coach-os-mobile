@@ -708,7 +708,7 @@ function GrilleMois({
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                     {siens.length > 0 && (
                       <View style={{ minWidth: 20, paddingHorizontal: 5, borderRadius: 999, backgroundColor: couleurs.rouge }}>
-                        <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: '#FFFFFF', textAlign: 'center' }}>{siens.length}</Text>
+                        <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: couleurs.blanc, textAlign: 'center' }}>{siens.length}</Text>
                       </View>
                     )}
                     {sesBoosters.length > 0 && <Zap accessibilityLabel="Booster" size={12} color={couleurs.rouge} fill={couleurs.rouge} />}

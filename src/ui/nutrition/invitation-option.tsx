@@ -42,7 +42,7 @@ export function InvitationOptionNutrition({ compacte, onDecouvrir }: { compacte?
       <View style={{ borderRadius: 18, backgroundColor: couleurs.noir, padding: 18, gap: 14, overflow: 'hidden' }}>
         <View style={{ gap: 4 }}>
           <Text style={[ts.kicker, { fontSize: 12, letterSpacing: 1.6 }]}>Option nutrition</Text>
-          <Text style={{ fontFamily: polices.texteGras, fontSize: 18, color: '#FFFFFF' }}>Ta semaine de repas, prête à cuisiner</Text>
+          <Text style={{ fontFamily: polices.texteGras, fontSize: 18, color: couleurs.blanc }}>Ta semaine de repas, prête à cuisiner</Text>
           <Text style={{ fontFamily: polices.texte, fontSize: 13, color: '#B9BEC6' }}>Un plan construit sur tes macros, avec des recettes à ton goût.</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 6 }}>
@@ -55,7 +55,7 @@ export function InvitationOptionNutrition({ compacte, onDecouvrir }: { compacte?
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
           {ecrire && <Action petit icone={MessageCircle} libelle="J’en parle à mon coach" onPress={ecrire} />}
           {onDecouvrir && (
-            <Text accessibilityRole="button" onPress={onDecouvrir} style={{ fontFamily: polices.texteMoyen, fontSize: 14, color: '#FFFFFF', textDecorationLine: 'underline' }}>
+            <Text accessibilityRole="button" onPress={onDecouvrir} style={{ fontFamily: polices.texteMoyen, fontSize: 14, color: couleurs.blanc, textDecorationLine: 'underline' }}>
               Voir un exemple
             </Text>
           )}

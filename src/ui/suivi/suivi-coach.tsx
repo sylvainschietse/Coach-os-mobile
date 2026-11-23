@@ -48,9 +48,9 @@ const TEINTES: Record<Domaine, string> = {
   seances: '#B3141A',
   force: '#2F4CC0',
   corps: '#1B7A45',
-  'bien-etre': '#6B4BC9',
+  'bien-etre': couleurs.violet,
   nutrition: '#8A4B00',
-  pas: '#262931',
+  pas: couleurs.secondaire,
 };
 
 /** 7300 → « 7 300 » (espace fine insécable, comme en français). */

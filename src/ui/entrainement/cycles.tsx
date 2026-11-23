@@ -24,7 +24,7 @@ const STATUTS: StatutCycle[] = ['Brouillon', 'Prêt', 'Terminé'];
 
 function PastilleStatut({ statut }: { statut: StatutCycle }) {
   const fond = statut === 'Actif' ? couleurs.rouge : statut === 'Prêt' ? couleurs.rougeClair : statut === 'Terminé' ? couleurs.discret : couleurs.carte;
-  const texte = statut === 'Actif' ? '#FFFFFF' : statut === 'Prêt' ? couleurs.rougeTexte : statut === 'Terminé' ? couleurs.texteDoux : couleurs.texte;
+  const texte = statut === 'Actif' ? couleurs.blanc : statut === 'Prêt' ? couleurs.rougeTexte : statut === 'Terminé' ? couleurs.texteDoux : couleurs.texte;
   return (
     <View style={{ borderWidth: 1, borderColor: statut === 'Brouillon' ? couleurs.bordure : 'transparent', backgroundColor: fond, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2 }}>
       <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: texte }}>{statut}</Text>

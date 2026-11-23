@@ -9,14 +9,14 @@ import { ouvrirLien } from '@/lib/ouvrir-lien';
 
 import { Bouton, Carte, Erreur, Texte, Titre } from './composants';
 import { CaseACocher } from './crm/dossier';
-import { couleurs, espace, polices } from './theme';
+import { couleurs, espace, nuit, polices } from './theme';
 
 export function LienPolitique({ clair }: { clair?: boolean }) {
   return (
     <Text
       accessibilityRole="link"
       onPress={() => ouvrirLien(LIEN_POLITIQUE)}
-      style={{ fontFamily: polices.texte, fontSize: 14, textDecorationLine: 'underline', color: clair ? '#C9C9CF' : couleurs.texteDoux }}
+      style={{ fontFamily: polices.texte, fontSize: 14, textDecorationLine: 'underline', color: clair ? nuit.texteTertiaire : couleurs.texteDoux }}
     >
       Politique de confidentialité
     </Text>

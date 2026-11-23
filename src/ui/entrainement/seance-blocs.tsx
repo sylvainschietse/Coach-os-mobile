@@ -39,27 +39,14 @@ import { messageErreur, useCharger } from '@/lib/useCharger';
 import { vibrer } from '@/lib/vibrer';
 
 import { DefilementClavier } from '../clavier';
-import { polices } from '../theme';
+import { couleurs, nuit, polices } from '../theme';
 import { champsSaisie, DIFFICULTES, invalide, proposition, sale, seriesDuBrouillon, validerSeries, vide, type Brouillon, type Enregistrement } from './seance-log';
 import { PastilleElastique } from './elastique';
 import { VideoIntegree } from './video-integree';
 import { etatA11y } from '@/lib/accessibilite';
 
-/** Couleurs du mode séance : sombre, rouge vif pour l'action, vert pour ce qui est fait. */
-export const nuit = {
-  fond: '#0E0F13',
-  carte: '#181A20',
-  bordure: '#262932',
-  champ: '#111318',
-  bordureChamp: '#333743',
-  texte: '#F2F3F5',
-  doux: '#9599A3',
-  propose: '#6B707B',
-  rouge: '#E5252C',
-  rougeDoux: '#FF7A7E',
-  vert: '#2FBF6B',
-  orange: '#FFB07A',
-};
+/** Couleurs du mode séance : rangées dans le thème avec le reste du mode sombre. */
+export { nuit };
 
 type Repos = { finMs: number; libelle: string; alerte: string | null };
 
@@ -226,7 +213,7 @@ export function SeanceParBloc({
             hitSlop={8}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 36 }}
           >
-            {page > 0 && !termine && <ChevronLeft size={16} color="#B7BAC3" />}
+            {page > 0 && !termine && <ChevronLeft size={16} color={nuit.texteDiscret} />}
             <Text style={styles.enTeteDoux}>{fin ? (termine ? 'Enregistrée' : 'Terminé') : `Bloc ${page + 1} sur ${blocs.length}`}</Text>
           </Pressable>
           <Chrono debut={d.debut} arret={termine} />
@@ -242,7 +229,7 @@ export function SeanceParBloc({
               accessibilityLabel={`Aller au bloc ${i + 1}${valides.includes(x.id) ? ', validé' : ''}`}
               onPress={() => !termine && aller(i)}
               hitSlop={{ top: 10, bottom: 10 }}
-              style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: i === page ? nuit.rouge : valides.includes(x.id) ? nuit.vert : '#2A2D36' }}
+              style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: i === page ? nuit.rouge : valides.includes(x.id) ? nuit.vert : nuit.surface }}
             />
           ))}
         </View>
@@ -421,7 +408,7 @@ function Chrono({ debut, arret }: { debut: string; arret: boolean }) {
   const texte = `${h ? `${h}:` : ''}${String(Math.floor((s % 3600) / 60)).padStart(h ? 2 : 1, '0')}:${String(s % 60).padStart(2, '0')}`;
   return (
     <View accessibilityLabel={`Temps écoulé ${texte}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 64, justifyContent: 'flex-end' }}>
-      <Timer size={14} color="#B7BAC3" />
+      <Timer size={14} color={nuit.texteDiscret} />
       <Text style={[styles.enTeteDoux, { fontFamily: polices.chiffres }]}>{texte}</Text>
     </View>
   );
@@ -439,7 +426,7 @@ function Bouton({ icone: Icone, libelle, onPress, contour }: { icone: typeof X; 
         pressed && { opacity: 0.7 },
       ]}
     >
-      <Icone size={16} color={contour ? nuit.texte : '#B7BAC3'} />
+      <Icone size={16} color={contour ? nuit.texte : nuit.texteDiscret} />
       <Text style={[styles.enTeteDoux, contour && { color: nuit.texte }]}>{libelle}</Text>
     </Pressable>
   );
@@ -455,7 +442,7 @@ export function Principal({ libelle, onPress, desactive, couleur = nuit.rouge, f
       style={({ pressed }) => [styles.principal, { backgroundColor: couleur, shadowColor: couleur }, desactive && { opacity: 0.45 }, pressed && { opacity: 0.85 }]}
     >
       <Text style={[styles.principalTexte, couleur === nuit.vert && { color: nuit.fond }]}>{libelle}</Text>
-      {fleche && <ChevronRight size={18} color="#fff" />}
+      {fleche && <ChevronRight size={18} color={couleurs.blanc} />}
     </Pressable>
   );
 }
@@ -465,9 +452,9 @@ const Puce = ({ texte }: { texte: string }) => <Text style={styles.puce}>{texte}
 function Separateur({ texte }: { texte: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <View style={{ flex: 1, height: 1, backgroundColor: '#2A2D36' }} />
+      <View style={{ flex: 1, height: 1, backgroundColor: nuit.surface }} />
       <Text style={[styles.doux, { fontSize: 13 }]}>{texte}</Text>
-      <View style={{ flex: 1, height: 1, backgroundColor: '#2A2D36' }} />
+      <View style={{ flex: 1, height: 1, backgroundColor: nuit.surface }} />
     </View>
   );
 }
@@ -538,7 +525,7 @@ function CarteExercice({
           ))}
         </View>
         {l.elastique && <PastilleElastique e={l.elastique} sombre />}
-        {!!l.consignes?.trim() && <Text style={[styles.doux, { color: '#C9CCD3' }]}>{l.consignes.trim()}</Text>}
+        {!!l.consignes?.trim() && <Text style={[styles.doux, { color: nuit.texteTertiaire }]}>{l.consignes.trim()}</Text>}
         {l.minuteur && (
           <View style={{ alignSelf: 'flex-start' }}>
             <Bouton
@@ -551,7 +538,7 @@ function CarteExercice({
         )}
         {suggestion?.rm != null && suggestion.chargeMin !== null && (
           <Pressable accessibilityRole="button" onPress={() => onRemplir(suggestion.chargeMin!)} style={styles.suggestion}>
-            <Text style={{ fontFamily: polices.texte, fontSize: 13, color: '#D9DBE0', flex: 1 }}>
+            <Text style={{ fontFamily: polices.texte, fontSize: 13, color: nuit.texteSecondaire, flex: 1 }}>
               Suggestion : {suggestion.chargeMin}
               {suggestion.chargeMax !== suggestion.chargeMin ? `–${suggestion.chargeMax}` : ''} kg ({suggestion.pourcentMin} % de ton 1RM)
             </Text>
@@ -574,7 +561,7 @@ function CarteExercice({
           const ok = fait(n) && champs.some((c) => !!v[c.m]?.trim());
           return (
             <View key={n} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={{ width: 28, fontFamily: polices.texteGras, fontSize: 13, color: '#C9CCD3' }}>{tours ? `T${n}` : `S${n}`}</Text>
+              <Text style={{ width: 28, fontFamily: polices.texteGras, fontSize: 13, color: nuit.texteTertiaire }}>{tours ? `T${n}` : `S${n}`}</Text>
               {champs.map((c) => {
                 const p = proposition(l, c.m, precedentes[n]?.[c.m]);
                 return (
@@ -682,7 +669,7 @@ function Bilan({
           return (
             <View key={b.id} style={{ gap: 6 }}>
               <Pressable accessibilityRole="button" disabled={termine} onPress={() => onAller(i)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 28 }}>
-                <Text style={{ flex: 1, fontFamily: polices.texte, fontSize: 14, color: '#D9DBE0' }} numberOfLines={1}>
+                <Text style={{ flex: 1, fontFamily: polices.texte, fontSize: 14, color: nuit.texteSecondaire }} numberOfLines={1}>
                   {i + 1} · {titreBloc(b.titre) || b.lignes.map((l) => l.exercice.nom).join(' + ')}
                 </Text>
                 {ok ? <CheckCircle2 size={18} color={nuit.vert} /> : <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: nuit.rougeDoux }}>à faire</Text>}
@@ -714,7 +701,7 @@ function Bilan({
                 onPress={() => onNote(n)}
                 style={[styles.note, d.note === n && { backgroundColor: nuit.rouge, borderColor: nuit.rouge }]}
               >
-                <Text style={{ fontFamily: polices.texteMoyen, fontSize: 14, color: d.note === n ? '#fff' : '#D9DBE0' }}>{n}</Text>
+                <Text style={{ fontFamily: polices.texteMoyen, fontSize: 14, color: d.note === n ? couleurs.blanc : nuit.texteSecondaire }}>{n}</Text>
               </Pressable>
             ))}
           </View>
@@ -785,7 +772,7 @@ function FeuilleRemplacement({
     <Modal transparent animationType="slide" visible onRequestClose={onFermer}>
       <Pressable accessibilityLabel="Fermer" onPress={onFermer} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' }} />
       <View style={[styles.feuille, { paddingBottom: marges.bottom + 16 }]}>
-        <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#3A3E49', alignSelf: 'center' }} />
+        <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: nuit.bordureForte, alignSelf: 'center' }} />
         <Text style={[styles.nom, { fontSize: 17 }]}>Remplacer « {l.exercice.nom} »</Text>
         <View style={{ gap: 6 }}>
           <Text style={[styles.doux, { fontSize: 13 }]}>Pourquoi ?</Text>
@@ -798,7 +785,7 @@ function FeuilleRemplacement({
                 onPress={() => setRaison(x)}
                 style={[styles.choix, raison === x && { backgroundColor: nuit.rouge, borderColor: nuit.rouge }]}
               >
-                <Text style={[styles.choixTexte, raison === x && { color: '#fff' }]}>{x}</Text>
+                <Text style={[styles.choixTexte, raison === x && { color: couleurs.blanc }]}>{x}</Text>
               </Pressable>
             ))}
           </View>
@@ -878,16 +865,16 @@ function FeuilleRemplacement({
 }
 
 const styles = StyleSheet.create({
-  enTeteDoux: { fontFamily: polices.texte, fontSize: 13.5, color: '#B7BAC3' },
-  titreSeance: { fontFamily: polices.titre, fontSize: 20, letterSpacing: 0.8, color: '#FFFFFF' },
+  enTeteDoux: { fontFamily: polices.texte, fontSize: 13.5, color: nuit.texteDiscret },
+  titreSeance: { fontFamily: polices.titre, fontSize: 20, letterSpacing: 0.8, color: couleurs.blanc },
   kicker: { fontFamily: polices.texteGras, fontSize: 13, letterSpacing: 0.9, textTransform: 'uppercase', color: '#FF5A5F' },
-  titreBloc: { fontFamily: polices.titre, fontSize: 32, letterSpacing: 0.6, lineHeight: 34, color: '#FFFFFF' },
+  titreBloc: { fontFamily: polices.titre, fontSize: 32, letterSpacing: 0.6, lineHeight: 34, color: couleurs.blanc },
   doux: { fontFamily: polices.texte, fontSize: 13, color: nuit.doux },
   puces: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  puce: { fontFamily: polices.texteMoyen, fontSize: 13, color: '#D9DBE0', backgroundColor: '#262932', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, overflow: 'hidden' },
+  puce: { fontFamily: polices.texteMoyen, fontSize: 13, color: nuit.texteSecondaire, backgroundColor: nuit.bordure, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, overflow: 'hidden' },
   carte: { backgroundColor: nuit.carte, borderWidth: 1, borderColor: nuit.bordure, borderRadius: 14, overflow: 'hidden' },
-  tag: { fontFamily: polices.texteGras, fontSize: 13, color: '#fff', backgroundColor: nuit.rouge, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
-  nom: { fontFamily: polices.texteGras, fontSize: 15.5, color: '#FFFFFF' },
+  tag: { fontFamily: polices.texteGras, fontSize: 13, color: couleurs.blanc, backgroundColor: nuit.rouge, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
+  nom: { fontFamily: polices.texteGras, fontSize: 15.5, color: couleurs.blanc },
   remplacer: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: '#5A2427', borderRadius: 8, paddingHorizontal: 8, minHeight: 30 },
   champ: {
     flex: 1,
@@ -900,9 +887,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     fontFamily: polices.texte,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: couleurs.blanc,
   },
-  coche: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#3A3E49', alignItems: 'center', justifyContent: 'center' },
+  coche: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: nuit.bordureForte, alignItems: 'center', justifyContent: 'center' },
   suggestion: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, borderWidth: 1, borderColor: '#5A2427', backgroundColor: '#2A1416', padding: 10 },
   pied: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 14, paddingTop: 12, gap: 10, backgroundColor: 'rgba(14,15,19,0.96)', borderTopWidth: 1, borderTopColor: '#1E2027' },
   principal: {
@@ -918,16 +905,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
   },
-  principalTexte: { fontFamily: polices.texteGras, fontSize: 16, color: '#FFFFFF' },
+  principalTexte: { fontFamily: polices.texteGras, fontSize: 16, color: couleurs.blanc },
   secondaire: { flex: 0, minWidth: 96, height: 52, borderRadius: 12, borderWidth: 1, borderColor: nuit.bordureChamp, backgroundColor: '#1C1E25', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   secondaireTexte: { fontFamily: polices.texteGras, fontSize: 15, color: nuit.texte },
   repos: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: nuit.carte, borderWidth: 1, borderColor: nuit.bordure, borderRadius: 14, padding: 12 },
   note: { width: '18%', height: 38, borderRadius: 8, borderWidth: 1, borderColor: nuit.bordureChamp, alignItems: 'center', justifyContent: 'center' },
-  choix: { borderWidth: 1, borderColor: '#3A3E49', borderRadius: 18, paddingHorizontal: 12, minHeight: 44, justifyContent: 'center' },
-  choixTexte: { fontFamily: polices.texteMoyen, fontSize: 13, color: '#D9DBE0' },
+  choix: { borderWidth: 1, borderColor: nuit.bordureForte, borderRadius: 18, paddingHorizontal: 12, minHeight: 44, justifyContent: 'center' },
+  choixTexte: { fontFamily: polices.texteMoyen, fontSize: 13, color: nuit.texteSecondaire },
   changement: { fontFamily: polices.texte, fontSize: 13, color: nuit.orange, backgroundColor: '#2B1C10', borderRadius: 8, padding: 8, overflow: 'hidden' },
-  feuille: { backgroundColor: nuit.carte, borderTopWidth: 1, borderTopColor: '#2A2D36', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 16, gap: 12 },
-  recherche: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: '#3A3E49', backgroundColor: nuit.champ, borderRadius: 10, paddingHorizontal: 12 },
-  alternative: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#2A2D36', backgroundColor: nuit.champ, borderRadius: 12, padding: 10, minHeight: 52 },
+  feuille: { backgroundColor: nuit.carte, borderTopWidth: 1, borderTopColor: nuit.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 16, gap: 12 },
+  recherche: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: nuit.bordureForte, backgroundColor: nuit.champ, borderRadius: 10, paddingHorizontal: 12 },
+  alternative: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: nuit.surface, backgroundColor: nuit.champ, borderRadius: 12, padding: 10, minHeight: 52 },
   info: { fontFamily: polices.texte, fontSize: 13, color: '#7FDCA4', backgroundColor: '#11281B', borderRadius: 10, padding: 10, overflow: 'hidden' },
 });

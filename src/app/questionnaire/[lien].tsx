@@ -23,7 +23,7 @@ import { LienPolitique } from '@/ui/consentement';
 import { CaseACocher } from '@/ui/crm/dossier';
 import { Lock } from '@/ui/icones';
 import { Kicker, Marque, SCENE_PROSPECT, SUR_SCENE } from '@/ui/offres/page-prospect';
-import { couleurs, espace, espacementTitre, polices } from '@/ui/theme';
+import { couleurs, espace, espacementTitre, nuit, polices } from '@/ui/theme';
 import { etatA11y } from '@/lib/accessibilite';
 
 const normaliser = { telephone: normaliserTelephone, email: normaliserEmail };
@@ -104,7 +104,7 @@ export default function QuestionnaireAccueil() {
               <Text accessibilityRole="header" style={{ fontFamily: polices.titre, fontSize: 54, lineHeight: 52, letterSpacing: espacementTitre(54), color: SUR_SCENE.texte }}>
                 {TITRE_QUESTIONNAIRE}
               </Text>
-              <Text style={{ fontFamily: polices.texte, fontSize: 17, lineHeight: 25, color: '#E4E5E9' }}>{ACCUEIL}</Text>
+              <Text style={{ fontFamily: polices.texte, fontSize: 17, lineHeight: 25, color: nuit.texteClair }}>{ACCUEIL}</Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Lock size={18} color={SUR_SCENE.kicker} />
@@ -242,7 +242,7 @@ function ChampQuestion({ question: q, valeur, erreur, onChange }: { question: Qu
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontFamily: polices.texteGras, fontSize: 14, color: actif ? '#FFFFFF' : couleurs.texte }}>{n}</Text>
+                <Text style={{ fontFamily: polices.texteGras, fontSize: 14, color: actif ? couleurs.blanc : couleurs.texte }}>{n}</Text>
               </Pressable>
             );
           })}

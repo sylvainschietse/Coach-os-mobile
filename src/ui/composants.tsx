@@ -69,8 +69,8 @@ export function Bouton({
 }) {
   const u = useUnivers();
   const fond = variante === 'primaire' ? (u.cle === 'rouge' ? couleurs.rouge : u.uni) : variante === 'secondaire' ? couleurs.secondaire : variante === 'discret' ? couleurs.carte : 'transparent';
-  const texte = variante === 'discret' ? couleurs.texte : '#FFFFFF';
-  const bordure = variante === 'contour' ? '#FFFFFF' : couleurs.bordure;
+  const texte = variante === 'discret' ? couleurs.texte : couleurs.blanc;
+  const bordure = variante === 'contour' ? couleurs.blanc : couleurs.bordure;
   const { enCours, presser } = usePression(onPress);
   const attente = chargement || enCours;
   return (
@@ -201,7 +201,7 @@ export function Puce({ libelle, actif, onPress }: { libelle: string; actif?: boo
         pressed && { opacity: 0.8 },
       ]}
     >
-      <Text style={[styles.puceTexte, actif && { color: '#FFFFFF' }]}>{libelle}</Text>
+      <Text style={[styles.puceTexte, actif && { color: couleurs.blanc }]}>{libelle}</Text>
     </Pressable>
   );
 }
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   bouton: { minHeight: 44, borderRadius: arrondi.controle, alignItems: 'center', justifyContent: 'center', paddingHorizontal: espace(5) },
   boutonTexte: { fontFamily: polices.texteMoyen, fontSize: 15 },
   pastille: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: espace(2.5), paddingVertical: espace(0.5) },
-  pastilleTexte: { color: '#FFFFFF', fontFamily: polices.texteMoyen, fontSize: 12 },
+  pastilleTexte: { color: couleurs.blanc, fontFamily: polices.texteMoyen, fontSize: 12 },
   champ: { flex: 1, minWidth: 72, gap: espace(1) },
   champLibelle: { fontFamily: polices.texte, fontSize: 12, color: couleurs.texteDoux },
   champSaisie: {
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     fontFamily: polices.texteMoyen,
     fontSize: 18,
     color: couleurs.texte,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: couleurs.blanc,
   },
   champSuggestion: { fontStyle: 'italic' },
   champTexte: { fontSize: 16, fontFamily: polices.texte },
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   puce: {
     borderWidth: 1,
     borderColor: couleurs.bordure,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: couleurs.blanc,
     borderRadius: 999,
     paddingHorizontal: espace(3.5),
     paddingVertical: espace(2),

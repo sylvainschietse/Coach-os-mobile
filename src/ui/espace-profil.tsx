@@ -41,7 +41,7 @@ const GROUPES: { titre: string; entrees: Entree[] }[] = [
     titre: 'Mon organisation',
     entrees: [
       { cle: 'agenda', icone: CalendarDays, detail: 'Horaires, lieux, Google Agenda', fond: '#E2E8FF', teinte: '#1A2D73' },
-      { cle: 'relances', icone: RefreshCw, detail: 'Textes, relances coupées, mes propres relances', fond: '#F1ECFF', teinte: '#4A3699' },
+      { cle: 'relances', icone: RefreshCw, detail: 'Textes, relances coupées, mes propres relances', fond: couleurs.violetClair, teinte: '#4A3699' },
       { cle: 'notifications', icone: Bell, detail: 'Ce que mon téléphone m’envoie', fond: '#DDF3E5', teinte: '#0F4D2A' },
     ],
   },
@@ -132,7 +132,7 @@ export function EspaceProfil({
 
 const styles = StyleSheet.create({
   groupe: { fontFamily: polices.texteGras, fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase', color: couleurs.texteDoux, marginLeft: 4 },
-  carte: { backgroundColor: '#FFFFFF', borderRadius: 18, borderWidth: 1, borderColor: couleurs.bordure, overflow: 'hidden' },
+  carte: { backgroundColor: couleurs.blanc, borderRadius: 18, borderWidth: 1, borderColor: couleurs.bordure, overflow: 'hidden' },
   ligne: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12, minHeight: 56 },
   separee: { borderTopWidth: 1, borderTopColor: couleurs.bordure },
   pastille: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },

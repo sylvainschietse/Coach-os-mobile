@@ -396,7 +396,7 @@ function Champ({ def, texte, occupe, onTexte }: { def: DefinitionIndicateur; tex
               justifyContent: 'center',
             }}
           >
-            <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: choisie === n ? '#FFFFFF' : couleurs.texte }}>{n}</Text>
+            <Text style={{ fontFamily: polices.texteGras, fontSize: 16, color: choisie === n ? couleurs.blanc : couleurs.texte }}>{n}</Text>
           </Pressable>
         ))}
       </View>

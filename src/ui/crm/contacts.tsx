@@ -103,7 +103,7 @@ export function BoutonPrincipal({ libelle, onPress }: { libelle: string; onPress
       onPress={presser}
       style={({ pressed }) => [styles.principal, pressed && { opacity: 0.7 }]}
     >
-      {enCours ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Plus size={16} color="#FFFFFF" />}
+      {enCours ? <ActivityIndicator size="small" color={couleurs.blanc} /> : <Plus size={16} color={couleurs.blanc} />}
       <Text style={styles.principalTexte}>{libelle}</Text>
     </Pressable>
   );
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   principalTexte: {
     fontFamily: polices.texteMoyen,
     fontSize: 14,
-    color: '#FFFFFF',
+    color: couleurs.blanc,
   },
   entete: {
     flexDirection: 'row',

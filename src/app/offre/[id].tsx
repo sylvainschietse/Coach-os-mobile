@@ -14,7 +14,7 @@ import { Bouton, Carte, Chargement, Ecran, Erreur, Texte, Titre } from '@/ui/com
 import { Check, Clock, Dumbbell, MessageCircle, Users, Utensils, Video, type LucideIcon } from '@/ui/icones';
 import { Kicker, LigneAvantage, Marque, SCENE_PROSPECT, SUR_SCENE } from '@/ui/offres/page-prospect';
 import { PhotoCoach } from '@/ui/profil-coach';
-import { couleurs, espacementTitre, polices, titreSection } from '@/ui/theme';
+import { couleurs, espacementTitre, nuit, polices, titreSection } from '@/ui/theme';
 
 export default function OffreParLien() {
   const { id, paiement } = useLocalSearchParams<{
@@ -303,7 +303,7 @@ export default function OffreParLien() {
                       height: ((large ? 200 : 140) * 844) / 390,
                       borderRadius: 22,
                       borderWidth: 5,
-                      borderColor: '#111216',
+                      borderColor: couleurs.noir,
                     }}
                   />
                   <Text
@@ -391,7 +391,7 @@ function EnTeteOffre({ nom, accroche, taille }: { nom: string; accroche?: string
             fontFamily: polices.texte,
             fontSize: 17,
             lineHeight: 24,
-            color: '#E4E5E9',
+            color: nuit.texteClair,
           }}
         >
           {accroche}

@@ -121,9 +121,9 @@ export function LecteurVideo({
         style={({ pressed }) => [styles.vignette, { width: largeur, height: Math.round((largeur * 16) / 9), opacity: pressed || charge ? 0.75 : 1 }]}
       >
         <View style={styles.rondLecture}>
-          <Play size={24} color="#FFFFFF" fill="#FFFFFF" />
+          <Play size={24} color={couleurs.blanc} fill={couleurs.blanc} />
         </View>
-        <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: '#FFFFFF' }}>
+        <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.blanc }}>
           {charge ? 'Chargement…' : `Voir la vidéo${dureeS ? ` · ${dureeLisible(dureeS)}` : ''}`}
         </Text>
       </Pressable>
@@ -172,7 +172,7 @@ function BoutonAudio({ libelle, enLecture, detail, onPress, charge }: { libelle:
       style={({ pressed }) => [styles.audio, { opacity: pressed || charge ? 0.75 : 1 }]}
     >
       <View style={styles.rondAudio}>
-        <Icone size={14} color="#FFFFFF" fill="#FFFFFF" />
+        <Icone size={14} color={couleurs.blanc} fill={couleurs.blanc} />
       </View>
       <Text style={{ fontFamily: polices.texteMoyen, fontSize: 13, color: couleurs.texte }}>{charge ? 'Chargement…' : libelle}</Text>
       {!!detail && <Text style={ts.mono}>{detail}</Text>}
@@ -365,7 +365,7 @@ export function Camera({ visible, onFermer, onFilmee }: { visible: boolean; onFe
           />
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 }}>
-            <Text style={[ts.texte, { color: '#FFFFFF', textAlign: 'center' }]}>
+            <Text style={[ts.texte, { color: couleurs.blanc, textAlign: 'center' }]}>
               {refuse ? 'L’appareil photo est refusé pour CoachGo. Autorise-le dans les réglages du téléphone.' : 'Autorise l’appareil photo pour filmer ton mouvement.'}
             </Text>
             {!refuse && <Action libelle="Autoriser" onPress={() => void demanderCam()} />}
@@ -373,7 +373,7 @@ export function Camera({ visible, onFermer, onFilmee }: { visible: boolean; onFe
         )}
         <View style={styles.barreCamera}>
           <Pressable accessibilityRole="button" accessibilityLabel="Fermer" onPress={fermer} hitSlop={10} style={styles.boutonRondCamera}>
-            <X size={22} color="#FFFFFF" />
+            <X size={22} color={couleurs.blanc} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -392,14 +392,14 @@ export function Camera({ visible, onFermer, onFilmee }: { visible: boolean; onFe
             hitSlop={10}
             style={[styles.boutonRondCamera, enCours && { opacity: 0.4 }]}
           >
-            <RefreshCw size={20} color="#FFFFFF" />
+            <RefreshCw size={20} color={couleurs.blanc} />
           </Pressable>
         </View>
         <View style={styles.bandeauCamera} pointerEvents="none">
-          <Text style={{ fontFamily: polices.chiffres, fontSize: 16, color: '#FFFFFF' }}>
+          <Text style={{ fontFamily: polices.chiffres, fontSize: 16, color: couleurs.blanc }}>
             {enCours ? `● ${dureeLisible(Math.floor(ecoule))} / ${dureeLisible(DUREE_MAX_S)}` : `Une série, ${DUREE_MAX_S} s au plus`}
           </Text>
-          {!permMicro?.granted && permCam?.granted && <Text style={[ts.doux, { color: '#FFFFFF' }]}>Sans le micro, la vidéo sera muette.</Text>}
+          {!permMicro?.granted && permCam?.granted && <Text style={[ts.doux, { color: couleurs.blanc }]}>Sans le micro, la vidéo sera muette.</Text>}
           {!!erreur && <Text style={[ts.doux, { color: '#FFB4B4' }]}>{erreur}</Text>}
         </View>
       </View>
@@ -607,7 +607,7 @@ export function VideosMouvementCoach({ videos: liste, realisations, onChange }: 
         <Text style={ts.titreSection}>Vidéos de mouvement</Text>
         {attente > 0 && (
           <View style={{ backgroundColor: couleurs.rouge, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 1 }}>
-            <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: '#FFFFFF' }}>{attente} à regarder</Text>
+            <Text style={{ fontFamily: polices.texteGras, fontSize: 12, color: couleurs.blanc }}>{attente} à regarder</Text>
           </View>
         )}
       </View>
@@ -805,7 +805,7 @@ const styles = StyleSheet.create({
   },
   barreCamera: { position: 'absolute', left: 0, right: 0, bottom: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
   boutonRondCamera: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
-  declencheur: { width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  declencheur: { width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: couleurs.blanc, alignItems: 'center', justifyContent: 'center' },
   declencheurRond: { width: 58, height: 58, borderRadius: 29, backgroundColor: couleurs.rougeMarque },
   declencheurStop: { width: 30, height: 30, borderRadius: 6, backgroundColor: couleurs.rougeMarque },
   bandeauCamera: { position: 'absolute', top: 56, left: 0, right: 0, alignItems: 'center', gap: 4, paddingHorizontal: 16 },

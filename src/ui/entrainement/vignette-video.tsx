@@ -45,7 +45,7 @@ export function VignetteVideo({ url, nom, largeur = 128 }: { url: string; nom: s
       <Image source={{ uri: image }} onError={() => setEchec(true)} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
       <View style={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.18)' }}>
         <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}>
-          <PlayCircle size={22} color="#fff" />
+          <PlayCircle size={22} color={couleurs.blanc} />
         </View>
       </View>
     </Pressable>
