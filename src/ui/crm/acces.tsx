@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { abonnements } from '@/data/abonnements';
-import { aUnAcces, creerAccesClient } from '@/data/acces-client';
+import { aUnAcces, creerAccesClient, lireEmailConnexion } from '@/data/acces-client';
 import { crm } from '@/data/crm';
 import { messageAcces, type AccesClient, type PlateformeAcces } from '@/domain/acces-client';
 import type { Contact } from '@/domain/crm';
@@ -16,7 +16,7 @@ import { adresseWeb } from '@/lib/adresse-web';
 import { useCharger } from '@/lib/useCharger';
 
 import { BoutonContour } from '../coque';
-import { Puce, Puces, Texte } from '../composants';
+import { ChampTexte, Puce, Puces, Texte } from '../composants';
 import { couleurs, espace, polices } from '../theme';
 import { EnvoiMessage, useCoachNom } from './commun';
 import { etatA11y } from '@/lib/accessibilite';
@@ -76,6 +76,14 @@ export function EtapeAcces({
   const [choix, setChoix] = useState(false);
   const [plateforme, setPlateforme] = useState<PlateformeAcces>('android');
   const archive = contact.statut === 'archive';
+  // Adresse de connexion à part (ex. un enfant dont les factures vont au parent) : celle déjà retenue, ou en cours de saisie.
+  const { donnee: emailConnexionActuel, recharger: relireConnexion } = useCharger(
+    () => (contact.clientId ? lireEmailConnexion(contact.clientId) : Promise.resolve(undefined)),
+    `connexion-${contact.clientId ?? ''}`,
+  );
+  const [saisieConnexion, setSaisieConnexion] = useState<string | null>(null);
+  const emailConnexion = saisieConnexion ?? emailConnexionActuel ?? '';
+  const identifiant = emailConnexion.trim() || contact.email;
 
   async function creer(pour: PlateformeAcces) {
     setPlateforme(pour);
@@ -85,7 +93,9 @@ export function EtapeAcces({
     try {
       // Prospect : on ouvre d'abord son espace client (même règle que « Passer en client »).
       if (!contact.clientId) await crm.preparerAcces(contact.id);
-      setAcces(await creerAccesClient(contact.id, contact.email ?? ''));
+      setAcces(await creerAccesClient(contact.id, contact.email ?? '', saisieConnexion ?? undefined));
+      setSaisieConnexion(null);
+      relireConnexion();
       onCree();
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Impossible de créer son accès.');
@@ -133,19 +143,52 @@ export function EtapeAcces({
 
   return (
     <View style={{ gap: espace(2) }}>
-      {!contact.email && (
+      {!identifiant && (
         <Text style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux }}>
           Ajoute d’abord son e-mail dans les coordonnées ci-dessous : ce sera son identifiant.
         </Text>
       )}
+      {saisieConnexion !== null ? (
+        <ChampTexte
+          libelle="Adresse de connexion"
+          type="email"
+          valeur={saisieConnexion}
+          onChange={setSaisieConnexion}
+          placeholder="prenom@exemple.fr"
+          aide={
+            contact.email
+              ? `${contact.prenom || 'Ton client'} se connectera avec cette adresse. Factures et rendez-vous continuent d’aller à ${contact.email}. Laisse vide pour revenir à cette adresse.`
+              : `${contact.prenom || 'Ton client'} se connectera avec cette adresse.`
+          }
+        />
+      ) : (
+        identifiant && (
+          <Text style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux }}>
+            {emailConnexionActuel
+              ? `Se connecte avec ${emailConnexionActuel}. Factures et rendez-vous : ${contact.email ?? 'e-mail de sa fiche'}.`
+              : `Se connecte avec ${contact.email}.`}{' '}
+            <Text
+              accessibilityRole="button"
+              onPress={archive ? undefined : () => setSaisieConnexion(emailConnexionActuel ?? '')}
+              style={{ color: couleurs.texte, textDecorationLine: 'underline' }}
+            >
+              {emailConnexionActuel ? 'Changer' : 'Utiliser une autre adresse (ex. un enfant)'}
+            </Text>
+          </Text>
+        )
+      )}
       {erreur && <Text style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.rouge }}>{erreur}</Text>}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: espace(2) }}>
         {etat === 'pret' ? (
-          <BoutonContour libelle={envoi ? 'Création…' : 'Renvoyer un mot de passe provisoire'} desactive={envoi || archive} onPress={() => setChoix(true)} />
+          <BoutonContour
+            libelle={envoi ? 'Création…' : saisieConnexion !== null ? 'Enregistrer et renvoyer son accès' : 'Renvoyer un mot de passe provisoire'}
+            desactive={envoi || archive || !identifiant}
+            onPress={() => setChoix(true)}
+          />
         ) : (
           (() => {
             const Bouton = principal ? BoutonEtape : BoutonContour;
-            return <Bouton libelle={envoi ? 'Création…' : 'Créer et envoyer son accès'} desactive={envoi || archive || !contact.email} onPress={() => setChoix(true)} />;
+            return <Bouton libelle={envoi ? 'Création…' : 'Créer et envoyer son accès'} desactive={envoi || archive || !identifiant} onPress={() => setChoix(true)} />;
           })()
         )}
         {contact.clientId && onVoirAppli && <BoutonContour libelle="Voir son appli" onPress={() => onVoirAppli(contact.clientId!)} />}

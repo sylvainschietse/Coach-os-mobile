@@ -98,8 +98,12 @@ function MesInformations({ infos, apercu, onModifie }: { infos: MesInfos | null;
       <Carte>
         <SousTitre>Mes informations</SousTitre>
         <Saisie libelle="E-mail" type="email" valeur={edition.email} onChange={set('email')} aide="C’est aussi l’adresse avec laquelle tu te connectes. Pour la changer, tu recevras un lien de confirmation." />
-        <Saisie libelle="Téléphone" type="telephone" valeur={edition.telephone} onChange={set('telephone')} placeholder="06 12 34 56 78" />
-        <Saisie libelle="Adresse postale" long valeur={edition.adresse} onChange={set('adresse')} placeholder={'N° et rue\nCode postal et ville'} aide="Elle figure sur tes factures." />
+        {!infos?.connexionSeparee && (
+          <>
+            <Saisie libelle="Téléphone" type="telephone" valeur={edition.telephone} onChange={set('telephone')} placeholder="06 12 34 56 78" />
+            <Saisie libelle="Adresse postale" long valeur={edition.adresse} onChange={set('adresse')} placeholder={'N° et rue\nCode postal et ville'} aide="Elle figure sur tes factures." />
+          </>
+        )}
         {(erreur || (probleme && edition.email.trim())) && <Texte style={{ fontSize: 14, color: couleurs.rouge }}>{erreur ?? probleme}</Texte>}
         <Bouton libelle="Enregistrer" onPress={enregistrer} chargement={envoi} desactive={!!probleme} />
         <Bouton variante="discret" libelle="Annuler" onPress={() => setEdition(null)} desactive={envoi} />
@@ -111,8 +115,12 @@ function MesInformations({ infos, apercu, onModifie }: { infos: MesInfos | null;
     <Carte>
       <SousTitre>Mes informations</SousTitre>
       <Ligne libelle="E-mail" valeur={infos?.email} />
-      <Ligne libelle="Téléphone" valeur={formaterTelephone(infos?.telephone)} />
-      <Ligne libelle="Adresse" valeur={infos?.adresse} />
+      {!infos?.connexionSeparee && (
+        <>
+          <Ligne libelle="Téléphone" valeur={formaterTelephone(infos?.telephone)} />
+          <Ligne libelle="Adresse" valeur={infos?.adresse} />
+        </>
+      )}
       {emailEnAttente && (
         <Texte style={{ fontSize: 14 }}>
           Un lien de confirmation est parti à {emailEnAttente}. Ton e-mail changera quand tu auras cliqué dessus.
