@@ -1,0 +1,28 @@
+# Fabrique la version Play Store (.aab) de CoachGo chez Expo, sans rien envoyer à Google.
+# Se lance à chaque envoi sur la branche fabrication-play-store (le bouton manuel « Publication stores »
+# n'est utilisable que depuis la branche main). Le fichier est à télécharger sur expo.dev, page Builds.
+name: Fabrication Play Store
+
+on:
+  push:
+    branches: [fabrication-play-store]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Compte Expo utilisé
+        run: eas whoami
+      - name: Fabrication Android (.aab), sans envoi
+        run: eas build --profile production --platform android --non-interactive --wait
