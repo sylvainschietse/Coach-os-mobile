@@ -120,7 +120,7 @@ type Brouillon = { f: Form; m: Manuel; version: string; envoiId: string };
 const SECTIONS_MACROS: SectionNutrition[] = ['profil', 'journal'];
 
 export function NutritionProfil({ clientId, coach = false, optionNutrition = true }: { clientId: string; coach?: boolean; optionNutrition?: boolean }) {
-  const [sectionChoisie, setSection] = useState<SectionNutrition>(coach ? 'profil' : 'journal');
+  const [sectionChoisie, setSection] = useState<SectionNutrition>('journal');
   const section = sectionChoisie;
   // Sans l'option, Recettes, Ma semaine et Mes recettes restent visibles, avec un cadenas : elles montrent ce qu'elles apportent.
   const verrouillee = !optionNutrition && !SECTIONS_MACROS.includes(section);
@@ -334,7 +334,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
           {verrouillee ? (
             <InvitationOptionNutrition />
           ) : section === 'journal' || section === 'personnelles' ? (
-            <PersonnelNutrition key={`${clientId}:${section}`} data={data} vue={section} />
+            <PersonnelNutrition key={`${clientId}:${section}`} data={data} vue={section} coach={coach} />
           ) : section !== 'profil' ? (
             <Planificateur data={data} vue={section} onVue={setSection} />
           ) : (
