@@ -6625,3 +6625,69 @@ alter table public.coachs add column if not exists avis_auteur text
   check (avis_auteur is null or length(avis_auteur) <= 80);
 
 grant update (specialite, avis_client, avis_auteur) on public.coachs to authenticated;
+
+
+-- ===== 20261129000000_menage_chemin_fonctions.sql =====
+-- Ménage (plan d'amélioration, lot 8) : chemin de recherche fixe pour les 5 fonctions signalées par Supabase.
+--
+-- Sans chemin fixe, une fonction cherche les tables et fonctions qu'elle cite dans le « search_path » de la personne
+-- qui l'appelle. Ce n'est pas exploitable aujourd'hui (personne ne peut créer de schéma), mais Supabase le signale et le
+-- réglage est sans effet sur ce que font ces fonctions : elles ne citent que des objets du schéma public ou de base.
+-- Écrit pour fonctionner même si une fonction n'existe pas (encore) dans la base où on le colle.
+
+do $$
+declare
+  f text;
+begin
+  foreach f in array array[
+    'public._type_rdv(text)',
+    'public._apercu_message(text, text)',
+    'public.ecart_bilan(integer)',
+    'public.version_nutrition()',
+    'public.piliers_valides(jsonb)'
+  ] loop
+    if to_regprocedure(f) is not null then
+      execute format('alter function %s set search_path = public, pg_temp', f);
+    end if;
+  end loop;
+end $$;
+
+
+-- ===== 20261129000100_email_confirme.sql =====
+-- Ménage (plan d'amélioration, lot 8) : un client ne change plus son e-mail de connexion sans le confirmer.
+--
+-- Avant, « Mon compte » remplaçait tout de suite l'e-mail de connexion par n'importe quelle adresse tapée. Désormais
+-- l'appli demande le changement à Supabase, qui envoie un lien de confirmation à la nouvelle adresse : l'e-mail ne change
+-- qu'une fois ce lien ouvert. Ce déclencheur recopie alors le nouvel e-mail sur la fiche client et dans le carnet du
+-- coach, pour que factures, comptes rendus et messages partent à la bonne adresse.
+-- Une erreur ici ne bloque jamais la confirmation : elle est seulement notée dans les journaux de la base.
+
+create or replace function public._suivre_email_compte()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  c uuid;
+begin
+  if new.email is not null and new.email is distinct from old.email then
+    begin
+      update public.clients set email = lower(new.email) where user_id = new.id returning id into c;
+      if c is not null then
+        update public.contacts set email = lower(new.email) where client_id = c;
+      end if;
+    exception when others then
+      raise warning 'suivre_email_compte (%): %', new.id, sqlerrm;
+    end;
+  end if;
+  return new;
+end;
+$$;
+
+revoke execute on function public._suivre_email_compte() from public, anon, authenticated;
+
+drop trigger if exists suivre_email_compte on auth.users;
+create trigger suivre_email_compte
+  after update of email on auth.users
+  for each row execute function public._suivre_email_compte();
