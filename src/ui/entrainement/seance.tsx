@@ -1,7 +1,7 @@
 // AirtableSeance.tsx d'origine (C12) : blocs (ajout avec propositions, monter, descendre), exercices par bloc
 // (monter, descendre, Modifier, Remplacer, Retirer restaurable), cases de prescription et aperçu des cycles 2 à 4.
 // Chaque action enregistre la séance entière ; tant que l'enregistrement n'a pas réussi, rien ne change à l'écran.
-import { ArrowDown, ArrowLeft, ArrowUp, Pencil, PlayCircle, Plus, Replace, RotateCcw, Sparkles, Unlink } from '@/ui/icones';
+import { ArrowDown, ArrowLeft, ArrowUp, Mic, Pencil, PlayCircle, Plus, Replace, RotateCcw, Sparkles, Unlink } from '@/ui/icones';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Text, View, useWindowDimensions } from 'react-native';
 
@@ -19,6 +19,7 @@ import { couleurs, polices } from '../theme';
 import { Action, Confirmation, Etat, Ligne, TexteLong, ts } from './commun';
 import { SuppressionEntrainement } from './corbeille';
 import { AttributionClient } from './attribution';
+import { ModifierEnDictant } from './modifier-dictee';
 import { CreationEntrainement, type DemandeCreation } from './creation';
 import { PastilleElastique } from './elastique';
 import { DialogueLigne, type ModeLigne } from './ligne';
@@ -55,6 +56,7 @@ export function EditeurSeance({
   const [aRetirer, setARetirer] = useState<LignePrescription>();
   const [suppression, setSuppression] = useState(false);
   const [creation, setCreation] = useState<DemandeCreation>();
+  const [dictee, setDictee] = useState(false);
   const revision = useRef(0);
 
   useEffect(() => onOccupe?.(!!occupe), [occupe, onOccupe]);
@@ -168,7 +170,10 @@ export function EditeurSeance({
           <TitreDisplay taille={30}>{titreClient(seance.titre)}</TitreDisplay>
           <Text style={[ts.doux, { fontSize: 14, marginTop: 4 }]}>{[seance.dominante, seance.dureeMin ? `${seance.dureeMin} min` : '', seance.objectif].filter(Boolean).join(' · ')}</Text>
         </View>
-        <Action libelle="Ajouter un bloc" icone={Plus} desactive={!!occupe || verrouCycle} onPress={() => setDialogueBloc({})} />
+        <Ligne>
+          <Action variante="contour" icone={Mic} libelle="Modifier en dictant" desactive={!!occupe || verrouCycle} onPress={() => setDictee(true)} />
+          <Action libelle="Ajouter un bloc" icone={Plus} desactive={!!occupe || verrouCycle} onPress={() => setDialogueBloc({})} />
+        </Ligne>
       </View>
 
       {avecCycles && (
@@ -417,6 +422,14 @@ export function EditeurSeance({
         />
       )}
       {suppression && <SuppressionEntrainement items={[{ kind: 'seance', id, nom: seance.titre }]} onFermer={() => setSuppression(false)} onSupprime={onRetour} />}
+      {dictee && (
+        <ModifierEnDictant
+          titre={titreClient(seance.titre)}
+          blocs={blocs}
+          onFermer={() => setDictee(false)}
+          onAppliquer={(b) => enregistrer('blocs', avecBlocs(b), 'Séance modifiée')}
+        />
+      )}
       {creation && (
         <CreationEntrainement
           coachId={coachId}

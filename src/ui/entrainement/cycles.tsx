@@ -1,13 +1,13 @@
 // Suivis.tsx, CycleDialog.tsx et CycleProgrammeDialog.tsx d'origine (C13, C14) : un suivi de plusieurs mois par
 // client, découpé en cycles préparés puis activés par le coach. Un seul cycle actif ; activer termine le précédent.
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ExternalLink, Library, Pencil, Play, Plus, SlidersHorizontal } from '@/ui/icones';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { ecouterCrm } from '@/data/crm';
 import { attribuerAuClient, entrainement, lierProgramme } from '@/data/entrainement';
 import { ecrireJour, lireJour } from '@/domain/crm';
-import { ajouterJours, aujourdhuiParis, correspondRecherche, dansDates, LIBELLES_CYCLES, titreClient, type StatutCycle } from '@/domain/entrainement';
+import { ajouterJours, aujourdhuiParis, correspondRecherche, dansDates, LIBELLES_CYCLES, NIVEAUX, titreClient, type StatutCycle } from '@/domain/entrainement';
 import type { CycleClient, ModeLien, ModeleResume, SuiviClient } from '@/domain/entrainement-etat';
 import { FILTRES_SUIVIS, listeSuivis, TRIS_SUIVIS, type FiltreSuivis, type TriSuivis } from '@/domain/liste-suivis';
 import { nouvelId } from '@/lib/identifiant';
@@ -18,6 +18,7 @@ import { Puce, Puces } from '../composants';
 import { Choix, Modale, Recherche, Saisie } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
 import { Action, Confirmation, Etat, jourCourt, Ligne, ListeChoix, TexteLong, ts, PhotoProgramme } from './commun';
+import { CreationEntrainement } from './creation';
 import { etatA11y } from '@/lib/accessibilite';
 
 const STATUTS: StatutCycle[] = ['Brouillon', 'Prêt', 'Terminé'];
@@ -36,7 +37,19 @@ function PastilleStatut({ statut }: { statut: StatutCycle }) {
  * Le mot « suivi » ne parle pas : le coach ajoute un programme, le suivi (conteneur des cycles) se crée tout seul.
  * « Retirer ses programmes » efface les cycles prévus ; les séances déjà faites restent dans l'historique.
  */
-function SuiviForm({ coachId, p, modeles, onEnregistre }: { coachId: string; p: SuiviClient; modeles: ModeleResume[] | null; onEnregistre: () => void }) {
+function SuiviForm({
+  coachId,
+  p,
+  modeles,
+  onEnregistre,
+  onOuvrir,
+}: {
+  coachId: string;
+  p: SuiviClient;
+  modeles: ModeleResume[] | null;
+  onEnregistre: () => void;
+  onOuvrir: (programmeId: string) => void;
+}) {
   const [ajout, setAjout] = useState(false);
   const [retirer, setRetirer] = useState(false);
   const [etat, setEtat] = useState<{ message?: string; erreur?: string }>({});
@@ -46,7 +59,7 @@ function SuiviForm({ coachId, p, modeles, onEnregistre }: { coachId: string; p: 
       <Text style={[ts.texte, { fontFamily: polices.texteGras }]}>
         {vide ? 'Aucun programme pour l’instant' : `Programmes depuis le ${jourCourt(p.suivi!.debut)}`}
       </Text>
-      {vide && <Text style={ts.doux}>Choisis un programme de ta bibliothèque : {p.nom} le voit tout de suite dans son appli.</Text>}
+      {vide && <Text style={ts.doux}>Crée-lui un programme ou choisis-en un dans ta bibliothèque : {p.nom} le voit tout de suite dans son appli.</Text>}
       <Etat {...etat} />
       <Ligne>
         <Action libelle="Ajouter un programme" icone={Plus} onPress={() => setAjout(true)} />
@@ -62,6 +75,7 @@ function SuiviForm({ coachId, p, modeles, onEnregistre }: { coachId: string; p: 
             setEtat({ message: m });
             onEnregistre();
           }}
+          onOuvrir={onOuvrir}
         />
       )}
       {retirer && (
@@ -82,30 +96,66 @@ function SuiviForm({ coachId, p, modeles, onEnregistre }: { coachId: string; p: 
   );
 }
 
-/** Un programme de la bibliothèque, copié au nom du client dans un nouveau cycle, visible tout de suite. */
+const TOUS_CRITERES = '';
+
+/**
+ * Ajouter un programme depuis la fiche du client, avec les mêmes outils que l'onglet Programmes : créer un programme
+ * (dicté à l'assistant ou à la main, avec ses critères), créer une séance, ou trouver un modèle tout prêt par critères.
+ * Tout ce qui est retenu est copié au nom du client dans un nouveau cycle ; le modèle de la bibliothèque ne change pas.
+ */
 function DialogueAjoutProgramme({
   coachId,
   p,
   modeles,
   onFermer,
   onEnregistre,
+  onOuvrir,
 }: {
   coachId: string;
   p: SuiviClient;
   modeles: ModeleResume[] | null;
   onFermer: () => void;
   onEnregistre: (message: string) => void;
+  /** Ouvre un programme dans l'éditeur (onglet Programmes). */
+  onOuvrir: (programmeId: string) => void;
 }) {
   const [q, setQ] = useState('');
   const [modeleId, setModeleId] = useState('');
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState('');
+  const [creation, setCreation] = useState<'programme' | 'seance'>();
+  const [filtres, setFiltres] = useState(false);
+  const [niveau, setNiveau] = useState(TOUS_CRITERES);
+  const [objectif, setObjectif] = useState(TOUS_CRITERES);
+  const [frequence, setFrequence] = useState(TOUS_CRITERES);
+
+  const programmes = useMemo(() => (modeles ?? []).filter((m) => !m.seanceSeule), [modeles]);
+  const valeurs = (k: 'niveau' | 'objectif' | 'seancesParSemaine') => {
+    const v = [...new Set(programmes.map((m) => String(m[k] ?? '')).filter((x) => x && x !== '0'))];
+    return k === 'niveau' ? NIVEAUX.filter((n) => v.includes(n)) : k === 'seancesParSemaine' ? v.sort((a, b) => +a - +b) : v.sort();
+  };
+  const liste = modeles
+    ? programmes.filter(
+        (m) =>
+          (!niveau || m.niveau === niveau) &&
+          (!objectif || m.objectif === objectif) &&
+          (!frequence || String(m.seancesParSemaine ?? '') === frequence) &&
+          correspondRecherche(m.titre, q),
+      )
+    : null;
+  const actifs = [niveau, objectif, frequence].filter(Boolean).length;
+
+  const attribuer = (source: { programmeId: string } | { seanceId: string }) =>
+    attribuerAuClient(coachId, source, p, { nouveau: true, activer: true }, p.suivi ? undefined : { debut: aujourdhuiParis() });
+  const messageAjout = (r: { cycle: string; active: boolean }, quoi: string) =>
+    r.active ? `${quoi} ajouté${quoi === 'Séance' ? 'e' : ''} dans « ${r.cycle} », visible dans son appli.` : `${quoi} ajouté${quoi === 'Séance' ? 'e' : ''} dans « ${r.cycle} » ; il démarrera après le cycle en cours.`;
+
   const ajouter = async () => {
     setOccupe(true);
     setErreur('');
     try {
-      const r = await attribuerAuClient(coachId, { programmeId: modeleId }, p, { nouveau: true, activer: true }, p.suivi ? undefined : { debut: aujourdhuiParis() });
-      onEnregistre(r.active ? `Programme ajouté dans « ${r.cycle} », visible dans son appli.` : `Programme ajouté dans « ${r.cycle} » ; il démarrera après le cycle en cours.`);
+      const r = await attribuer({ programmeId: modeleId });
+      onEnregistre(messageAjout(r, 'Programme'));
       onFermer();
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Ajout impossible');
@@ -113,6 +163,48 @@ function DialogueAjoutProgramme({
       setOccupe(false);
     }
   };
+
+  // Ce qui vient d'être créé est donné tout de suite au client. Un programme créé à la main n'a pas encore de séance :
+  // sa copie au nom du client s'ouvre dans l'éditeur pour la remplir, et le modèle vide part à la corbeille.
+  const apresCreation = async (cree: { id: string; programmeId: string }) => {
+    setOccupe(true);
+    setErreur('');
+    try {
+      if (creation === 'seance') {
+        const r = await attribuer({ seanceId: cree.id });
+        onEnregistre(messageAjout(r, 'Séance'));
+        onFermer();
+        return;
+      }
+      const seances = await entrainement.seancesDuProgramme(cree.programmeId);
+      const r = await attribuer({ programmeId: cree.programmeId });
+      if (seances.length) {
+        onEnregistre(`${messageAjout(r, 'Programme')} Il reste aussi dans ta bibliothèque.`);
+        onFermer();
+        return;
+      }
+      await entrainement.supprimer([{ kind: 'programme', id: cree.programmeId }]).catch(() => undefined);
+      onEnregistre(`Programme ajouté dans « ${r.cycle} ». Ajoute ses séances dans l’éditeur.`);
+      onFermer();
+      onOuvrir(r.programmeId);
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Ajout impossible');
+    } finally {
+      setCreation(undefined);
+      setOccupe(false);
+    }
+  };
+
+  if (creation)
+    return (
+      <CreationEntrainement
+        coachId={coachId}
+        action={creation}
+        onFermer={() => setCreation((c) => (occupe ? c : undefined))}
+        onEnregistre={apresCreation}
+      />
+    );
+
   return (
     <Modale
       titre={`Ajouter un programme · ${p.nom}`}
@@ -126,20 +218,51 @@ function DialogueAjoutProgramme({
       }
     >
       <Text style={ts.doux}>{p.nom} reçoit une copie à son nom : tu peux l’adapter sans toucher au modèle.</Text>
-      <View style={{ flexDirection: 'row' }}>
+      <Text style={ts.titreChamp}>Créer pour {p.nom}</Text>
+      <Ligne>
+        <Action icone={Plus} libelle="Créer un programme" desactive={occupe} onPress={() => setCreation('programme')} />
+        <Action variante="contour" libelle="Créer une séance" desactive={occupe} onPress={() => setCreation('seance')} />
+      </Ligne>
+      <Text style={ts.doux}>Dicte-le à l’assistant ou compose-le toi-même, avec tes critères : il arrive directement dans son appli.</Text>
+
+      <Text style={[ts.titreChamp, { marginTop: 8 }]}>Ou choisis un programme tout prêt</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Recherche valeur={q} onChange={setQ} libelle="Rechercher un programme" placeholder="Rechercher un programme…" />
+        <Action variante="contour" icone={SlidersHorizontal} libelle={actifs ? `Critères (${actifs})` : 'Critères'} onPress={() => setFiltres((f) => !f)} />
       </View>
+      {filtres && (
+        <View style={{ gap: 10 }}>
+          <CriteresAjout libelle="Niveau" options={valeurs('niveau')} valeur={niveau} onChange={setNiveau} />
+          <CriteresAjout libelle="Objectif" options={valeurs('objectif')} valeur={objectif} onChange={setObjectif} />
+          <CriteresAjout libelle="Séances par semaine" options={valeurs('seancesParSemaine')} valeur={frequence} onChange={setFrequence} />
+        </View>
+      )}
+      {liste && <Text style={[ts.doux, { fontSize: 13 }]}>{liste.length} programme{liste.length > 1 ? 's' : ''}</Text>}
       <ListeChoix
-        elements={modeles ? modeles.filter((m) => !m.seanceSeule && correspondRecherche(m.titre, q)) : null}
+        elements={liste}
         cle={(m) => m.id}
         libelle={(m) => titreClient(m.titre)}
-        detail={(m) => [m.niveau, m.objectif].filter(Boolean).join(' · ') || undefined}
+        detail={(m) => [m.niveau, m.objectif, m.seancesParSemaine ? `${m.seancesParSemaine}×/sem.` : ''].filter(Boolean).join(' · ') || undefined}
         choisi={modeleId}
         onChoisir={(m) => setModeleId(m.id)}
-        vide="Aucun programme ne correspond."
+        vide="Aucun programme ne correspond. Élargis les critères ou crée-en un."
       />
       {erreur ? <Text style={ts.erreur}>{erreur}</Text> : null}
     </Modale>
+  );
+}
+
+function CriteresAjout({ libelle, options, valeur, onChange }: { libelle: string; options: string[]; valeur: string; onChange: (v: string) => void }) {
+  if (!options.length) return null;
+  return (
+    <View style={{ gap: 6 }}>
+      <Text style={[ts.doux, { fontSize: 13 }]}>{libelle}</Text>
+      <Puces>
+        {options.map((o) => (
+          <Puce key={o} libelle={o} actif={valeur === o} onPress={() => onChange(valeur === o ? TOUS_CRITERES : o)} />
+        ))}
+      </Puces>
+    </View>
   );
 }
 
@@ -518,7 +641,7 @@ function ProfilSuivi({
           <Ligne style={{ marginBottom: 12 }}>
             <Action petit variante="contour" icone={ExternalLink} libelle="Voir la fiche" onPress={onFiche} />
           </Ligne>
-          <SuiviForm coachId={coachId} p={p} modeles={modeles} onEnregistre={recharger} />
+          <SuiviForm coachId={coachId} p={p} modeles={modeles} onEnregistre={recharger} onOuvrir={onOuvrir} />
       <>
           <View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <Text style={ts.titreSection}>Programmes</Text>

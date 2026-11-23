@@ -179,7 +179,7 @@ export async function attribuerAuClient(
   client: SuiviClient,
   cible: CibleAttribution,
   nouveauSuivi?: { debut: string },
-): Promise<{ cycle: string; active: boolean }> {
+): Promise<{ cycle: string; active: boolean; programmeId: string }> {
   let suivi = client.suivi;
   if (!suivi) {
     if (!nouveauSuivi) throw new Error('Crée d’abord le suivi du client');
@@ -226,7 +226,7 @@ export async function attribuerAuClient(
   await entrainement.enregistrerCycle(coachId, cycle);
   const activer = 'nouveau' in cible && cible.activer && !actif && debut <= aujourdhuiParis();
   if (activer) await entrainement.activerCycle(cycle.id);
-  return { cycle: nomCycle, active: activer || existant?.statut === 'Actif' };
+  return { cycle: nomCycle, active: activer || existant?.statut === 'Actif', programmeId };
 }
 
 const sansCalculs = ({ programmeNom: _n, nbResultats: _r, ...c }: CycleClient): CycleStocke => c;
