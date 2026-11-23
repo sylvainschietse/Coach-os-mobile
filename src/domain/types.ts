@@ -1,6 +1,7 @@
 // Vocabulaire métier partagé par l'app client, l'espace coach et la base.
 import type { VarianteCycle } from './cycles';
 import type { ConfigMinuteur } from './minuteur';
+import type { ElastiqueLigne } from './elastiques';
 
 /** Ce qu'on mesure sur un exercice. Un développé couché n'a ni distance ni allure. */
 export type Mesure =
@@ -53,6 +54,8 @@ export interface LignePrescription {
   cycles?: VarianteCycle[];
   /** Chrono réglé par le coach pour cet exercice (fractionné, tabata…). */
   minuteur?: ConfigMinuteur;
+  /** Élastique choisi par le coach : couleur, force et sens (aide ou résistance). */
+  elastique?: ElastiqueLigne;
 }
 
 /** Façon d'enchaîner les exercices d'un bloc. */

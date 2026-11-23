@@ -1,4 +1,5 @@
 // Création des programmes et des séances par le coach : règles pures, sans écran ni base.
+import { usageElastique } from './elastiques';
 import type { Bloc, Exercice, LignePrescription, Programme, Seance, SeanceModele } from './types';
 
 type NouvelId = () => string;
@@ -17,7 +18,8 @@ export function rechercherExercices(catalogue: Exercice[], recherche: string, fa
   const mots = sansAccents(recherche).split(/\s+/).filter(Boolean);
   const resultats = catalogue.filter((e) => {
     if (famille && e.famille !== famille) return false;
-    const texte = sansAccents([e.nom, e.famille, ...(e.materiel ?? []), ...(e.muscles ?? [])].filter(Boolean).join(' '));
+    // Un exercice qui accepte un élastique (traction, dips…) sort aussi quand on cherche « élastique ».
+    const texte = sansAccents([e.nom, e.famille, ...(e.materiel ?? []), ...(e.muscles ?? []), usageElastique(e) && 'élastique'].filter(Boolean).join(' '));
     return mots.every((m) => texte.includes(m));
   });
   // D'abord les noms qui commencent par la recherche, puis par son premier mot, puis le reste.
@@ -214,6 +216,7 @@ export function resumeLigne(l: LignePrescription): string {
   if (l.rir !== undefined) morceaux.push(`RIR ${l.rir}`);
   if (l.tempo) morceaux.push(`tempo ${l.tempo}`);
   if (l.recuperationS) morceaux.push(`récup ${duree(l.recuperationS)}`);
+  if (l.elastique) morceaux.push(`élastique ${l.elastique.nom.toLowerCase()}`);
   return morceaux.join(' · ');
 }
 

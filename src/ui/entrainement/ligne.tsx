@@ -21,6 +21,7 @@ import {
   type Objectif,
   type TypeExercice,
 } from '@/domain/entrainement';
+import { usageElastique, type ElastiqueLigne } from '@/domain/elastiques';
 import { rechercherExercices } from '@/domain/programmes';
 import type { Exercice, LignePrescription } from '@/domain/types';
 import { nouvelId } from '@/lib/identifiant';
@@ -29,6 +30,7 @@ import { useCharger } from '@/lib/useCharger';
 import { Choix, Modale, Repliable, Recherche, Saisie } from '../crm/dossier';
 import { couleurs, polices } from '../theme';
 import { Action, Ligne, ListeChoix, ts } from './commun';
+import { ChoixElastique } from './elastique';
 
 export type ModeLigne = 'add' | 'edit' | 'replace';
 const TITRES: Record<ModeLigne, string> = { add: 'Ajouter un exercice', edit: 'Modifier la prescription', replace: 'Remplacer l’exercice' };
@@ -76,6 +78,7 @@ export function DialogueLigne({
   const [format, setFormat] = useState<Format>(() => (ligne ? formatDeLigne(ligne, typeInitial) : 'reps'));
   const [objectif, setObjectif] = useState<Objectif>(objectifInitial.type);
   const [valeurObjectif, setValeurObjectif] = useState(objectifInitial.valeur);
+  const [elastique, setElastique] = useState<ElastiqueLigne | undefined>(ligne?.elastique);
   const [q, setQ] = useState('');
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState('');
@@ -134,6 +137,7 @@ export function DialogueLigne({
       chargeIndicative: undefined,
       consignes: f.consignes.trim() || undefined,
       progression: f.progression.trim() || undefined,
+      elastique,
     };
     try {
       await onEnregistrer(suivante, f.bloc);
@@ -181,7 +185,7 @@ export function DialogueLigne({
               elements={catalogue.donnee ? liste : null}
               cle={(e) => e.id}
               libelle={(e) => e.nom}
-              detail={(e) => [e.famille, e.materiel?.join(', ')].filter(Boolean).join(' · ') || undefined}
+              detail={(e) => [e.famille, e.materiel?.join(', '), usageElastique(e) === 'aide' && 'élastique possible (aide)'].filter(Boolean).join(' · ') || undefined}
               choisi={exercice?.id}
               onChoisir={choisir}
               hauteur={192}
@@ -239,6 +243,13 @@ export function DialogueLigne({
         </View>
       )}
       {format !== 'objectif' && champ('charge', 'Charge / intensité', '70 % 1RM')}
+      {exercice && usageElastique(exercice) ? (
+        <ChoixElastique valeur={elastique} sensConseille={usageElastique(exercice)!} onChange={setElastique} />
+      ) : exercice ? (
+        <Repliable resume={elastique ? `Élastique ${elastique.nom.toLowerCase()}` : 'Ajouter un élastique'} ouvert={!!elastique}>
+          <ChoixElastique valeur={elastique} sensConseille="resistance" onChange={setElastique} />
+        </Repliable>
+      ) : null}
       {format === 'reps' && (
         <Repliable resume="Réglages avancés" style={{ borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 10, padding: 12 }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>

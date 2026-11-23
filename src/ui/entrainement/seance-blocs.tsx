@@ -41,6 +41,7 @@ import { vibrer } from '@/lib/vibrer';
 import { DefilementClavier } from '../clavier';
 import { polices } from '../theme';
 import { champsSaisie, DIFFICULTES, invalide, proposition, sale, seriesDuBrouillon, validerSeries, vide, type Brouillon, type Enregistrement } from './seance-log';
+import { PastilleElastique } from './elastique';
 import { VideoIntegree } from './video-integree';
 import { etatA11y } from '@/lib/accessibilite';
 
@@ -536,6 +537,7 @@ function CarteExercice({
             <Puce key={n} texte={n} />
           ))}
         </View>
+        {l.elastique && <PastilleElastique e={l.elastique} sombre />}
         {!!l.consignes?.trim() && <Text style={[styles.doux, { color: '#C9CCD3' }]}>{l.consignes.trim()}</Text>}
         {l.minuteur && (
           <View style={{ alignSelf: 'flex-start' }}>

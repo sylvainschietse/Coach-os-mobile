@@ -20577,5 +20577,162 @@
    "distance",
    "duree"
   ]
+ },
+ {
+  "ref": "EXO-0751",
+  "nom": "Squat — élastique",
+  "famille": "Squat et presse",
+  "pattern": "Squat",
+  "muscles": [
+   "Quadriceps",
+   "Fessiers"
+  ],
+  "musclesSecondaires": [],
+  "materiel": [
+   "Élastique"
+  ],
+  "modalite": "Musculation",
+  "niveau": "Débutant",
+  "position": "Debout",
+  "lateralite": "Bilatéral",
+  "actif": true,
+  "mesures": [
+   "charge",
+   "repetitions"
+  ]
+ },
+ {
+  "ref": "EXO-0752",
+  "nom": "Hip thrust — élastique",
+  "famille": "Hanche",
+  "pattern": "Extension ou abduction/adduction de hanche",
+  "muscles": [
+   "Grand fessier"
+  ],
+  "musclesSecondaires": [],
+  "materiel": [
+   "Élastique"
+  ],
+  "modalite": "Musculation",
+  "niveau": "Débutant",
+  "position": "Au sol",
+  "lateralite": "Bilatéral",
+  "actif": true,
+  "mesures": [
+   "charge",
+   "repetitions"
+  ]
+ },
+ {
+  "ref": "EXO-0753",
+  "nom": "Soulevé de terre — élastique",
+  "famille": "Charnière de hanche",
+  "pattern": "Charnière de hanche",
+  "muscles": [
+   "Ischio-jambiers",
+   "Grand fessier"
+  ],
+  "musclesSecondaires": [],
+  "materiel": [
+   "Élastique"
+  ],
+  "modalite": "Musculation",
+  "niveau": "Débutant",
+  "position": "Debout",
+  "lateralite": "Bilatéral",
+  "actif": true,
+  "mesures": [
+   "charge",
+   "repetitions"
+  ]
+ },
+ {
+  "ref": "EXO-0754",
+  "nom": "Dips assistés — élastique",
+  "famille": "Développés et pompes",
+  "pattern": "Poussée verticale",
+  "muscles": [
+   "Pectoraux",
+   "Triceps"
+  ],
+  "musclesSecondaires": [],
+  "materiel": [
+   "Barres parallèles",
+   "Élastique"
+  ],
+  "modalite": "Musculation",
+  "niveau": "Débutant",
+  "position": "Suspendu",
+  "lateralite": "Bilatéral",
+  "actif": true,
+  "mesures": [
+   "repetitions"
+  ]
+ },
+ {
+  "ref": "EXO-0755",
+  "nom": "Squat pistol assisté — élastique",
+  "famille": "Fentes et appuis unilatéraux",
+  "pattern": "Squat",
+  "muscles": [
+   "Quadriceps",
+   "Fessiers"
+  ],
+  "musclesSecondaires": [],
+  "materiel": [
+   "Élastique"
+  ],
+  "modalite": "Musculation",
+  "niveau": "Intermédiaire",
+  "position": "Debout",
+  "lateralite": "Unilatéral",
+  "actif": true,
+  "mesures": [
+   "repetitions"
+  ]
+ },
+ {
+  "ref": "EXO-0756",
+  "nom": "Nordic curl assisté — élastique",
+  "famille": "Isolation des jambes",
+  "pattern": "Flexion du genou",
+  "muscles": [
+   "Ischio-jambiers"
+  ],
+  "musclesSecondaires": [],
+  "materiel": [
+   "Élastique"
+  ],
+  "modalite": "Musculation",
+  "niveau": "Intermédiaire",
+  "position": "À genoux",
+  "lateralite": "Bilatéral",
+  "actif": true,
+  "mesures": [
+   "repetitions"
+  ]
+ },
+ {
+  "ref": "EXO-0757",
+  "nom": "Muscle-up assisté — élastique",
+  "famille": "Mouvements fonctionnels",
+  "pattern": "Tirage vertical",
+  "muscles": [
+   "Grand dorsal",
+   "Triceps"
+  ],
+  "musclesSecondaires": [],
+  "materiel": [
+   "Barre de traction",
+   "Élastique"
+  ],
+  "modalite": "Musculation",
+  "niveau": "Avancé",
+  "position": "Suspendu",
+  "lateralite": "Bilatéral",
+  "actif": true,
+  "mesures": [
+   "repetitions"
+  ]
  }
 ]
