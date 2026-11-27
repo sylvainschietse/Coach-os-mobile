@@ -6,7 +6,7 @@ import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { crm } from '@/data/crm';
 import { ajouterJours, jourLocal, MODELES, rediger, statutBooster, type BoosterDossier, type Carnet, type ContactResume, type QuestionnaireATraiter, type RelanceAFaire } from '@/domain/crm';
 import { decalerMois, moisDe, nomMois } from '@/domain/bilan-mois';
-import { aEncaisserDuMois, encaissementsDuMois, montantLisible } from '@/domain/gestion';
+import { aEncaisserAvant, aEncaisserDuMois, encaissementsDuMois, montantLisible } from '@/domain/gestion';
 
 import { useSession } from '@/data/session';
 import { suiviHebdo } from '@/data/suivi-hebdo';
@@ -79,8 +79,10 @@ export function VueEnsemble({
   const [mois, setMois] = useState(moisCourant);
   const [a, m] = mois.split('-').map(Number);
   const encaisse = mois === moisCourant ? donnees.encaissements : encaissementsDuMois(donnees.carnet, new Date(a, m - 1, 15));
-  // Mois en cours : tout ce qui reste « En attente » ; mois passé : ce qui était attendu ce mois-là et ne l'est toujours pas.
-  const attendu = mois === moisCourant ? donnees.aEncaisser : aEncaisserDuMois(donnees.carnet, mois);
+  // Ce qui était attendu ce mois-là et ne l'est toujours pas : le même chiffre que l'écran Activité.
+  const attendu = aEncaisserDuMois(donnees.carnet, mois);
+  // Les retards des mois d'avant ne disparaissent pas : rappelés sous les deux cases.
+  const enRetardAvant = aEncaisserAvant(donnees.carnet, mois);
   const coach = useCoachNom();
   // La relance « Proposer une séance Booster » d'un contact qui vient de répondre est dans la carte des nouvelles réponses :
   // pas deux fois à l'écran.
@@ -180,6 +182,13 @@ export function VueEnsemble({
             {/* Paiements « En attente » : abonnements du mois et packs vendus, à passer en « Payé » une fois reçus. */}
             <Chiffre teinte="ambre" libelle="À encaisser" valeur={montantLisible(attendu)} alerte={attendu > 0} onPress={() => onRubrique('Paiements')} />
           </View>
+          {enRetardAvant > 0 && (
+            <Pressable accessibilityRole="button" onPress={() => onRubrique('Paiements')}>
+              <Text style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.rouge }}>
+                + {montantLisible(enRetardAvant)} encore dus des mois précédents
+              </Text>
+            </Pressable>
+          )}
         </View>
       </Carte>
       <CeQuiSestPasse onOuvrirContact={onOuvrirContact} onAgenda={onAgenda} onPaiements={() => onRubrique('Paiements')} />

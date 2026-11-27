@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CARNET_VIDE, type Carnet } from '../src/domain/crm';
 import type { CycleClient, SuiviClient } from '../src/domain/entrainement-etat';
-import { aEncaisserDuMois, creerPaiement } from '../src/domain/gestion';
+import { aEncaisserAvant, aEncaisserDuMois, creerPaiement } from '../src/domain/gestion';
 import { listeSuivis } from '../src/domain/liste-suivis';
 
 const cycle = (fin: string, statut: CycleClient['statut'] = 'Actif'): CycleClient => ({
@@ -64,5 +64,8 @@ describe('à encaisser d’un mois', () => {
     expect(aEncaisserDuMois(c, '2026-10')).toBe(89);
     expect(aEncaisserDuMois(c, '2026-11')).toBe(89);
     expect(aEncaisserDuMois(c, '2026-09')).toBe(0);
+    // Retard des mois d'avant, rappelé à part sur l'accueil.
+    expect(aEncaisserAvant(c, '2026-11')).toBe(89);
+    expect(aEncaisserAvant(c, '2026-10')).toBe(0);
   });
 });
