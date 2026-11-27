@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { compteRenduHtml, construireCompteRendu, emailCompteRendu, messageCompteRenduEnvoye } from '../src/domain/compte-rendu';
+import { compteRenduHtml, construireCompteRendu, emailCompteRendu, messageCompteRenduEnvoye, messageCompteRenduWhatsApp } from '../src/domain/compte-rendu';
+import { lienWhatsAppNatif, lireLienWhatsApp } from '../src/domain/whatsapp';
 import { lienEnvoi } from '../src/domain/crm';
 import type { Booster, Contact } from '../src/domain/crm';
 
@@ -60,6 +61,20 @@ describe('envoi du compte rendu', () => {
     const message = messageCompteRenduEnvoye(cr);
     expect(message).toContain('Karim, c’est Sylvain');
     expect(lienEnvoi('whatsapp', { ...contact, telephone: '33612345678' }, message)).toMatch(/^https:\/\/wa\.me\/33612345678\?text=Bonjour%20Karim/);
+  });
+
+  it('WhatsApp sans e-mail : le numéro du client, le message et le lien vers le PDF', () => {
+    const cr = construireCompteRendu(contact, booster, undefined, 'Sylvain');
+    const pdf = 'https://exemple.supabase.co/storage/v1/object/sign/documents/cr.pdf?token=abc&x=1';
+    // Le contact n'a pas d'e-mail : le lien WhatsApp existe quand même.
+    const lien = lienEnvoi('whatsapp', { ...contact, email: undefined, telephone: '06 12 34 56 78' }, messageCompteRenduWhatsApp(cr, pdf));
+    expect(lien).toMatch(/^https:\/\/wa\.me\/33612345678\?text=/);
+    // Le numéro et le message (lien compris, « & » et « ? » intacts) arrivent jusqu'à WhatsApp.
+    expect(lireLienWhatsApp(lien!)).toEqual({ telephone: '33612345678', message: messageCompteRenduWhatsApp(cr, pdf) });
+    expect(lireLienWhatsApp(lien!)?.message).toContain(pdf);
+    expect(lienWhatsAppNatif(lien!)).toMatch(/^whatsapp:\/\/send\?phone=33612345678&text=Bonjour%20Karim/);
+    // PDF joint directement (Android) : pas de lien dans le message.
+    expect(messageCompteRenduWhatsApp(cr)).not.toContain('http');
   });
 });
 

@@ -25,8 +25,11 @@ export interface DepotDocuments {
   /** Appelé seulement quand l'envoi est confirmé (statut « envoyé » rendu par le téléphone). */
   marquerEnvoye(id: string, version: number): Promise<void>;
   supprimer(id: string): Promise<void>;
-  /** Lien de courte durée vers le fichier (coach : ses fichiers ; client : ceux partagés avec lui). */
-  lien(chemin: string): Promise<string>;
+  /**
+   * Lien vers le fichier (coach : ses fichiers ; client : ceux partagés avec lui). De courte durée par défaut ;
+   * `secondes` l'allonge pour un lien glissé dans un message (WhatsApp) que le client ouvrira plus tard.
+   */
+  lien(chemin: string, secondes?: number): Promise<string>;
   /** U11 Mes documents du client connecté. */
   mesDocuments(clientId: string): Promise<DocumentClient[]>;
 }
@@ -226,8 +229,8 @@ export function creerDocumentsSupabase(db: SupabaseClient): DepotDocuments {
       if (!data?.length) throw new Error('Suppression non confirmée par le serveur.');
       prevenir();
     },
-    async lien(chemin) {
-      const { data, error } = await db.storage.from('documents').createSignedUrl(chemin, 300);
+    async lien(chemin, secondes = 300) {
+      const { data, error } = await db.storage.from('documents').createSignedUrl(chemin, secondes);
       if (error || !data) throw new Error('Ce fichier n’est pas accessible avec ce compte.');
       return data.signedUrl;
     },
