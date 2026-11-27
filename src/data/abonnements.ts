@@ -167,7 +167,60 @@ const versPack = (l: Ligne, pour: string): PackSeances => ({
   titulaire: l.client_id !== pour ? { clientId: l.client_id, prenom: l.clients?.prenom ?? '' } : undefined,
 });
 
+type FicheEcheance = LigneRemise & {
+  id: string;
+  prenom: string;
+  option_nutrition: boolean;
+  offre_prix: number | string | null;
+  paiement: string;
+  contacts: { id: string }[];
+  offres: Parameters<typeof versOffre>[0] | null;
+};
+
+const CHAMPS_FICHE_ECHEANCE = `id, prenom, option_nutrition, offre_prix, remise_type, remise_valeur, remise_motif, remise_jusqu_au, paiement, contacts(id), offres(${CHAMPS_OFFRE})`;
+
+/** Ligne « Abonnement MM/AAAA » du mois en cours, avec l'offre et la remise du client à ce jour. */
+function ligneEcheance(c: FicheEcheance & { offre?: ReturnType<typeof versOffre> }, jour: string) {
+  const mois = jour.slice(0, 7);
+  const abo: Abonnement = {
+    accesAppli: true,
+    optionNutrition: c.option_nutrition,
+    offre: c.offre,
+    offrePrix: c.offre_prix == null ? undefined : Number(c.offre_prix),
+    remise: versRemise(c),
+  };
+  const p = prixAvecRemise(prixAbonnement(abo), abo.remise, jour);
+  const remise = remiseEnCours(abo.remise, jour) ? abo.remise : undefined;
+  return {
+    titre: `Abonnement ${mois.split('-').reverse().join('/')} · ${c.prenom}${p.offert ? ' · offert' : ''}`,
+    contact_id: c.contacts[0]?.id ?? null,
+    date: `${mois}-01`,
+    montant: mensualite(abo, jour),
+    // Offert : rien à encaisser, la ligne est réglée d'office.
+    statut: p.offert ? 'Payé' : 'En attente',
+    notes: remise ? `Prix ${p.prix} €, remise ${p.remise} €${remise.motif ? ` (${remise.motif})` : ''}` : null,
+    reference: `abonnement:${mois}:${c.id}`,
+  };
+}
+
 function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
+  /** Remet la ligne du mois encore « En attente » au prix du jour. Une ligne déjà réglée n'est jamais touchée. */
+  async function recalerEcheance(clientId: string) {
+    const jour = jourLocal(new Date());
+    const { data } = await db.from('clients').select(CHAMPS_FICHE_ECHEANCE).eq('id', clientId).maybeSingle();
+    if (!data) return;
+    const c = data as unknown as FicheEcheance;
+    const offre = c.offres ? versOffre(c.offres) : undefined;
+    if (c.paiement === 'stripe' || (offre && offre.periodicite !== 'mois')) return;
+    const l = ligneEcheance({ ...c, offre }, jour);
+    if (l.montant <= 0 && l.statut !== 'Payé') return;
+    await db
+      .from('paiements')
+      .update({ titre: l.titre, montant: l.montant, statut: l.statut, notes: l.notes })
+      .eq('reference', l.reference)
+      .eq('statut', 'En attente');
+  }
+
   const depot: DepotAbonnements = {
     async lire(clientId) {
       const { data, error } = await db
@@ -209,6 +262,8 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
       if (modif.paiement !== undefined) champs.paiement = modif.paiement;
       const { error } = await db.from('clients').update(champs).eq('id', clientId);
       if (error) throw new Error('L’abonnement n’a pas pu être enregistré. Réessaie.');
+      // Prix, offre ou remise changés : la ligne du mois encore « En attente » suit (une remise de 100 % la passe en offert).
+      if (['remise', 'offre', 'offrePrix', 'optionNutrition'].some((k) => k in modif)) await recalerEcheance(clientId).catch(() => undefined);
     },
     async packs(clientId) {
       // Ses packs, et ceux d'une autre personne partagés avec lui.
@@ -297,7 +352,7 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
       const [clients, deja, ecartees] = await Promise.all([
         db
           .from('clients')
-          .select(`id, prenom, option_nutrition, offre_prix, remise_type, remise_valeur, remise_motif, remise_jusqu_au, paiement, contacts(id), offres(${CHAMPS_OFFRE})`)
+          .select(CHAMPS_FICHE_ECHEANCE)
           .eq('acces_appli', true)
           .eq('actif', true),
         db.from('paiements').select('reference').like('reference', `abonnement:${mois}:%`),
@@ -306,40 +361,11 @@ function enLigne(db: NonNullable<typeof supabase>): DepotAbonnements {
       ]);
       if (clients.error || deja.error || ecartees.error) return;
       const faites = new Set([...(deja.data ?? []), ...(ecartees.data ?? [])].map((p) => p.reference as string));
-      type Fiche = LigneRemise & {
-        id: string;
-        prenom: string;
-        option_nutrition: boolean;
-        offre_prix: number | string | null;
-        paiement: string;
-        contacts: { id: string }[];
-        offres: Parameters<typeof versOffre>[0] | null;
-      };
-      const fiches = (clients.data as unknown as Fiche[]).map((c) => ({ ...c, offre: c.offres ? versOffre(c.offres) : undefined }));
+      const fiches = (clients.data as unknown as FicheEcheance[]).map((c) => ({ ...c, offre: c.offres ? versOffre(c.offres) : undefined }));
       const lignes = fiches
         // Stripe crée lui-même la ligne quand le prélèvement passe. Trimestre ou année payés à la main : le coach note le paiement lui-même.
         .filter((c) => c.paiement !== 'stripe' && (!c.offre || c.offre.periodicite === 'mois') && !faites.has(`abonnement:${mois}:${c.id}`))
-        .map((c) => {
-          const abo: Abonnement = {
-            accesAppli: true,
-            optionNutrition: c.option_nutrition,
-            offre: c.offre,
-            offrePrix: c.offre_prix == null ? undefined : Number(c.offre_prix),
-            remise: versRemise(c),
-          };
-          const p = prixAvecRemise(prixAbonnement(abo), abo.remise, jour);
-          const remise = remiseEnCours(abo.remise, jour) ? abo.remise : undefined;
-          return {
-            titre: `Abonnement ${mois.split('-').reverse().join('/')} · ${c.prenom}${p.offert ? ' · offert' : ''}`,
-            contact_id: c.contacts[0]?.id ?? null,
-            date: `${mois}-01`,
-            montant: mensualite(abo, jour),
-            // Offert : rien à encaisser, la ligne est réglée d'office.
-            statut: p.offert ? 'Payé' : 'En attente',
-            notes: remise ? `Prix ${p.prix} €, remise ${p.remise} €${remise.motif ? ` (${remise.motif})` : ''}` : null,
-            reference: `abonnement:${mois}:${c.id}`,
-          };
-        })
+        .map((c) => ligneEcheance(c, jour))
         // Sans prix (sur mesure non chiffré) : rien à encaisser chaque mois.
         .filter((l) => l.montant > 0 || l.statut === 'Payé');
       // Une ligne à la fois : si un autre chargement l'a déjà créée, la base refuse le doublon et on passe à la suivante.
