@@ -505,7 +505,7 @@ function ProchaineSeance({
         </Text>
       </View>
       {/* « Démarrer sans téléphone » est rangé derrière « Autres options » : une bulle le dit la première fois. */}
-      <BulleAstuce cle="sans-telephone" active={libre && guideeEnPremier && !options} pointe="aucune" style={{ backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }} />
+      <BulleAstuce cle="sans-telephone" apres="aide" active={libre && guideeEnPremier && !options} pointe="aucune" style={{ backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }} />
     </View>
   );
 }

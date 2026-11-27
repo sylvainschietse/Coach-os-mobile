@@ -13,11 +13,14 @@ import { couleurs, nuit, polices } from '../theme';
 export function BulleAstuce({
   cle,
   active = true,
+  apres,
   pointe = 'haut',
   decalagePointe = 32,
   style,
 }: {
   cle: CleAstuce;
+  /** Bulle du même écran à fermer d'abord : une seule à la fois. */
+  apres?: CleAstuce;
   /** Faux : jamais affichée (aperçu du coach, démo d'un écran vide…). */
   active?: boolean;
   /** Côté de la petite flèche : vers le bouton du dessus (haut) ou du dessous (bas). */
@@ -25,7 +28,7 @@ export function BulleAstuce({
   decalagePointe?: number;
   style?: StyleProp<ViewStyle>;
 }) {
-  const { visible, fermer } = useAstuce(cle, active);
+  const { visible, fermer } = useAstuce(cle, active, apres);
   if (!visible) return null;
   const astuce = ASTUCES[cle];
   const fleche = (sens: 'haut' | 'bas') => (

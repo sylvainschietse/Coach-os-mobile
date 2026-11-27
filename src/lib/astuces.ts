@@ -27,19 +27,24 @@ export async function marquerAstuceVue(cle: CleAstuce) {
   abonnes.forEach((f) => f());
 }
 
-/** Vrai tant que la bulle n'a pas été fermée sur ce téléphone (faux le temps de la lecture, pour ne pas clignoter). */
-export function useAstuce(cle: CleAstuce, active = true) {
-  const [visible, setVisible] = useState(() => !!vues && !vues.has(cle));
+const aMontrer = (s: Set<string>, cle: CleAstuce, apres?: CleAstuce) => !s.has(cle) && (!apres || s.has(apres));
+
+/**
+ * Vrai tant que la bulle n'a pas été fermée sur ce téléphone (faux le temps de la lecture, pour ne pas clignoter).
+ * `apres` : une autre bulle du même écran, qui doit être fermée d'abord (une seule bulle à la fois).
+ */
+export function useAstuce(cle: CleAstuce, active = true, apres?: CleAstuce) {
+  const [visible, setVisible] = useState(() => !!vues && aMontrer(vues, cle, apres));
   useEffect(() => {
     if (!active) return;
     let annule = false;
-    const maj = () => charger().then((s) => !annule && setVisible(!s.has(cle)));
+    const maj = () => charger().then((s) => !annule && setVisible(aMontrer(s, cle, apres)));
     maj();
     abonnes.add(maj);
     return () => {
       annule = true;
       abonnes.delete(maj);
     };
-  }, [cle, active]);
+  }, [cle, active, apres]);
   return { visible: active && visible, fermer: () => marquerAstuceVue(cle) };
 }

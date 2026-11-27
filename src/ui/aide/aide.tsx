@@ -17,7 +17,7 @@ export function AideTutos() {
   const liste = donnee ?? TUTOS_PAR_DEFAUT;
   return (
     <View style={{ gap: espace(3) }}>
-      <Hero kicker="Aide" titre="Les tutos en vidéo" sousTitre="Moins d’une minute chacun, avec les sous-titres. Touche une vidéo pour la lancer." compact />
+      <Hero kicker="Aide" titre="Les tutos en vidéo" sousTitre="Moins d’une minute chacun, avec les sous-titres. Touche une vidéo pour la lancer." />
       {liste.map((t, i) => (
         <CarteTuto key={t.id} tuto={t} numero={i + 1} />
       ))}
