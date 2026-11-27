@@ -2,7 +2,7 @@
 // « Inclure les dossiers archivés », cartes à initiales et, sous chaque contact, le bouton de la prochaine étape du parcours.
 import { useFocusEffect } from 'expo-router';
 import { Plus } from '@/ui/icones';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { crm, ecouterCrm } from '@/data/crm';
@@ -14,6 +14,8 @@ import { BoutonContour, Vide } from '../coque';
 import { Chargement, Erreur } from '../composants';
 import { arrondi, couleurs, espace, polices } from '../theme';
 import { BoutonEtape } from './acces';
+import { BoutonsEtape, RangeeEtapes } from './etapes';
+import { libelleEtape } from '@/domain/historique';
 import { EnvoiMessage, nomComplet, useMessageQuestionnaire } from './commun';
 import { Badge, CaseACocher, Choix, Initiales, Recherche, useBlocNomCarte } from './dossier';
 import { etatA11y } from '@/lib/accessibilite';
@@ -44,6 +46,13 @@ export function Contacts({
   const [recherche, setRecherche] = useState('');
   const [statut, setStatut] = useState<StatutContact>();
   const [archives, setArchives] = useState(false);
+  // Message après un changement d'étape : le dossier a quitté la liste affichée, on dit où il est allé.
+  const [passage, setPassage] = useState<string>();
+  useEffect(() => {
+    if (!passage) return;
+    const t = setTimeout(() => setPassage(undefined), 5000);
+    return () => clearTimeout(t);
+  }, [passage]);
 
   if (charge.erreur && !charge.donnee)
     return (
@@ -60,26 +69,43 @@ export function Contacts({
 
   return (
     <View style={{ gap: espace(4) }}>
+      {/* Onglet Prospects : le parcours remplace le menu des statuts, une étape à la fois. */}
+      {prospects && <RangeeEtapes contacts={charge.donnee.contacts} valeur={statut} onChange={setStatut} />}
       <View style={styles.outils}>
         <Recherche valeur={recherche} onChange={setRecherche} />
-        <View style={{ minWidth: 180, flexGrow: 0 }}>
-          <Choix
-            libelle="Filtrer le statut"
-            sansLibelle
-            vide="Tous les statuts"
-            choix={statuts}
-            valeur={statut}
-            onChange={(v) => setStatut(v as StatutContact | undefined)}
-          />
-        </View>
+        {!prospects && (
+          <View style={{ minWidth: 180, flexGrow: 0 }}>
+            <Choix
+              libelle="Filtrer le statut"
+              sansLibelle
+              vide="Tous les statuts"
+              choix={statuts}
+              valeur={statut}
+              onChange={(v) => setStatut(v as StatutContact | undefined)}
+            />
+          </View>
+        )}
         <BoutonPrincipal libelle={prospects ? 'Nouveau prospect' : 'Nouveau contact'} onPress={onNouveau} />
       </View>
+      {passage && (
+        <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.passage}>
+          {passage}
+        </Text>
+      )}
       <CaseACocher petite libelle="Inclure les dossiers archivés" valeur={archives} onChange={setArchives} />
       <View style={{ gap: espace(3) }}>
         {visibles.map((c) => (
           <CarteContact
             key={c.id}
             contact={c}
+            parcours={prospects}
+            onEtape={(vers) =>
+              setPassage(
+                vers === 'Client actif'
+                  ? `${c.prenom || 'Ce contact'} est maintenant dans tes clients actifs.`
+                  : `${c.prenom || 'Ce contact'} passe en « ${libelleEtape(vers)} ».`,
+              )
+            }
             lienQuestionnaire={charge.donnee!.lien}
             onOuvrir={() => onOuvrir(c.id)}
             onPlanifierBooster={() => onPlanifierBooster(c.id)}
@@ -122,12 +148,17 @@ export const carteDossier: ViewStyle = {
 
 function CarteContact({
   contact: c,
+  parcours,
+  onEtape,
   lienQuestionnaire,
   onOuvrir,
   onPlanifierBooster,
   onOuvrirBooster,
 }: {
   contact: ContactResume;
+  /** Onglet Prospects : boutons pour passer à l'étape suivante ou à n'importe quelle étape. */
+  parcours?: boolean;
+  onEtape: (vers: StatutContact) => void;
   lienQuestionnaire: string | null;
   onOuvrir: () => void;
   onPlanifierBooster: () => void;
@@ -159,6 +190,7 @@ function CarteContact({
         onPlanifierBooster={onPlanifierBooster}
         onOuvrirBooster={onOuvrirBooster}
       />
+      {parcours && <BoutonsEtape contact={c} onChange={onEtape} />}
     </View>
   );
 }
@@ -292,6 +324,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: couleurs.texteDoux,
     textDecorationLine: 'underline',
+  },
+  passage: {
+    padding: espace(3),
+    borderRadius: arrondi.controle,
+    backgroundColor: couleurs.noir,
+    color: couleurs.blanc,
+    fontFamily: polices.texteMoyen,
+    fontSize: 14,
   },
   retour: {
     marginTop: espace(2),

@@ -94,6 +94,23 @@ describe('cloisonnement entre coachs', () => {
     await coach2(`insert into public.relances (coach_id, contact_id, echeance, modele) values ($1, $2, current_date, 'libre')`, [ids.coach2, ids.contact2]);
   });
 
+  it('le journal du parcours (étapes et notes) reste dans le dossier du coach', async () => {
+    await expect(
+      coach2(`insert into public.journal_contacts (coach_id, contact_id, type, texte) values ($1, $2, 'note', 'Espion')`, [ids.coach2, ids.contact1]),
+    ).rejects.toThrow(refuse);
+    await expect(coach2(`insert into public.journal_contacts (coach_id, contact_id, type) values ($1, $2, 'etape')`, [ids.coach2, ids.contact2])).rejects.toThrow(
+      /check/,
+    );
+    await coach2(`insert into public.journal_contacts (coach_id, contact_id, type, vers, sautees) values ($1, $2, 'etape', 'Client actif', '{"Booster réalisé"}')`, [
+      ids.coach2,
+      ids.contact2,
+    ]);
+    await en('authenticated', ids.userCoach1, `insert into public.journal_contacts (contact_id, type, texte) values ($1, 'note', 'Genou sensible')`, [ids.contact1]);
+    const vus = await coach2('select contact_id from public.journal_contacts');
+    expect(vus.rows.map((r) => r.contact_id)).toEqual([ids.contact2]);
+    await expect(en('anon', null, 'select * from public.journal_contacts')).rejects.toThrow(/permission/);
+  });
+
   it('recettes et aliments ne visent que les clients du coach', async () => {
     await expect(coach2(`insert into public.recettes (coach_id, client_id, titre) values ($1, $2, 'Soupe')`, [ids.coach2, ids.client1])).rejects.toThrow(refuse);
     await coach2(`insert into public.recettes (coach_id, client_id, titre) values ($1, $2, 'Soupe')`, [ids.coach2, ids.client2]);

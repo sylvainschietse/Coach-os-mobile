@@ -131,6 +131,22 @@ export interface Carnet {
   coachings: Coaching[];
   paiements: Paiement[];
   bilans: BilanCoach[];
+  /** Changements d'étape et notes du coach, pour l'historique du dossier (voir domain/historique.ts). */
+  journal: EvenementContact[];
+}
+
+/** Une ligne du journal d'un contact : un changement d'étape (avec les étapes sautées) ou une note du coach. */
+export interface EvenementContact {
+  id: string;
+  contactId: string;
+  /** Date et heure ISO. */
+  quand: string;
+  type: 'etape' | 'note';
+  depuis?: StatutContact;
+  vers?: StatutContact;
+  /** Étapes du parcours passées sans avoir été faites (ex. Booster planifié → Client actif). */
+  sautees?: StatutContact[];
+  texte?: string;
 }
 
 export interface Contexte {
@@ -138,7 +154,7 @@ export interface Contexte {
   maintenant: Date;
 }
 
-export const CARNET_VIDE: Carnet = { contacts: [], questionnaires: [], boosters: [], relances: [], coachings: [], paiements: [], bilans: [] };
+export const CARNET_VIDE: Carnet = { contacts: [], questionnaires: [], boosters: [], relances: [], coachings: [], paiements: [], bilans: [], journal: [] };
 
 /** Carnet enregistré avant le lot 6 : les nouvelles collections partent vides. */
 export const completerCarnet = (c: Partial<Carnet>): Carnet => ({ ...CARNET_VIDE, ...c });
