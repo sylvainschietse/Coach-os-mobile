@@ -21,6 +21,10 @@ export const preferences = z.object({
   preparation: z.number().int().min(5).max(180),
   budget: z.enum(['libre', 'economique', 'modere']),
   specifique: z.boolean(),
+  /** Ajouts du questionnaire guidé : poids visé, lieu d'entraînement et matériel (anciens profils : valeurs vides). */
+  poidsVise: z.number().positive().max(500).nullable().default(null),
+  salle: z.string().max(60).default(''),
+  materiel: z.array(z.string().max(60)).max(30).default([]),
 });
 export const blankPreferences = () =>
   preferences.parse({
@@ -42,6 +46,9 @@ export const blankPreferences = () =>
     preparation: 30,
     budget: 'libre',
     specifique: false,
+    poidsVise: null,
+    salle: '',
+    materiel: [],
   });
 export const target = z
   .object({
