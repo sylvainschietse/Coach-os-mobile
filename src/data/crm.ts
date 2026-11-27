@@ -91,7 +91,7 @@ const prevenir = () => abonnes.forEach((fn) => fn());
  * Les deux sources partagent la même mécanique : on lit le carnet, on applique
  * la règle métier pure, puis on enregistre ce qui a changé.
  */
-function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apres: Carnet) => Promise<void>, extra: {
+function creerDepot(lireBrut: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apres: Carnet) => Promise<void>, extra: {
   soumettreQuestionnaire: DepotCrm['soumettreQuestionnaire'];
   lienQuestionnaire: DepotCrm['lienQuestionnaire'];
   ouvrirEspaceClient: (contact: Contact) => Promise<string>;
@@ -102,6 +102,23 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
   async function ecrire(avant: Carnet, apres: Carnet) {
     await ecrireBrut(avant, apres);
     prevenir();
+  }
+
+  // Chaque lecture clôt d'abord les Boosters passés : le coach n'a plus à les mettre « Terminée ».
+  let cloture: Promise<Carnet> | null = null;
+  async function lire(): Promise<Carnet> {
+    if (cloture) return cloture;
+    cloture = (async () => {
+      const avant = await lireBrut();
+      const apres = regles.cloturerBoostersPasses(avant, contexte());
+      if (apres !== avant) await ecrire(avant, apres);
+      return apres;
+    })();
+    try {
+      return await cloture;
+    } finally {
+      cloture = null;
+    }
   }
 
   async function appliquer(regle: (c: Carnet, ctx: regles.Contexte) => Carnet) {

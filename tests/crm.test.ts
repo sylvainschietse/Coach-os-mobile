@@ -5,6 +5,7 @@ import {
   annulerBooster,
   archiver,
   CARNET_VIDE,
+  cloturerBoostersPasses,
   creerContact,
   devenirClient,
   etapeSuivante,
@@ -401,5 +402,38 @@ describe('nouvelles réponses au questionnaire', () => {
     const ctx = contexte();
     const carnet = recevoirQuestionnaire(CARNET_VIDE, { prenom: 'Nora', email: 'nora@exemple.fr' }, ctx).carnet;
     expect(questionnairesATraiter(carnet).map((x) => x.contact.prenom)).toEqual(['Nora']);
+  });
+});
+
+describe('Boosters passés terminés tout seuls', () => {
+  function avecBooster(date: string) {
+    const ctx = contexte('2026-10-19T09:00:00');
+    const { carnet, contact } = avecJulie(ctx);
+    return { carnet: planifierBooster(carnet, contact.id, date, ctx), contact };
+  }
+
+  it('termine un Booster 2 h après son heure et lance les relances de suivi', () => {
+    const { carnet, contact } = avecBooster('2026-10-20T10:00:00');
+    const apres = cloturerBoostersPasses(carnet, contexte('2026-10-20T12:00:00'));
+    expect(apres.boosters[0].statut).toBe('fait');
+    expect(apres.contacts.find((c) => c.id === contact.id)?.statut).toBe('booster_fait');
+    expect(apres.relances.filter((r) => !r.faiteLe).map((r) => r.modele)).toEqual(
+      expect.arrayContaining(['suivi_booster', 'nouvelles_10j', 'nouvelles_1mois']),
+    );
+  });
+
+  it('laisse un Booster en cours ou à venir, et ne touche pas un Booster annulé', () => {
+    const { carnet } = avecBooster('2026-10-20T10:00:00');
+    expect(cloturerBoostersPasses(carnet, contexte('2026-10-20T11:30:00'))).toBe(carnet);
+    const annule = annulerBooster(carnet, carnet.boosters[0].id, contexte());
+    const apres = cloturerBoostersPasses(annule, contexte('2026-10-25T09:00:00'));
+    expect(apres).toBe(annule);
+    expect(apres.boosters[0].statut).toBe('annule');
+  });
+
+  it('ne refait rien sur un Booster déjà terminé', () => {
+    const { carnet } = avecBooster('2026-10-20T10:00:00');
+    const une = cloturerBoostersPasses(carnet, contexte('2026-10-21T09:00:00'));
+    expect(cloturerBoostersPasses(une, contexte('2026-10-22T09:00:00'))).toBe(une);
   });
 });

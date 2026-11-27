@@ -200,7 +200,7 @@ function CarteBooster({
       <View style={styles.ligne}>
         {prevu ? <BoutonEtape libelle="Préparer le Booster" onPress={onOuvrir} /> : <BoutonContour libelle="Ouvrir" onPress={onOuvrir} />}
         {aConclure && <BoutonEtape libelle="Client actif ou en veille ?" onPress={onConclure} />}
-        {b.statut === 'fait' && (aConclure ? <BoutonContour libelle="Compte rendu" onPress={compteRendu} /> : <BoutonEtape libelle="Compte rendu" onPress={compteRendu} />)}
+        {b.statut !== 'annule' && (aConclure || prevu ? <BoutonContour libelle="Compte rendu" onPress={compteRendu} /> : <BoutonEtape libelle="Compte rendu" onPress={compteRendu} />)}
         {prevu && !questionnaireRecu && !envoi && message && <BoutonContour libelle="Envoyer le questionnaire" onPress={() => setEnvoi(true)} />}
         <Text accessibilityRole="button" onPress={onSupprimer} style={styles.supprimer}>
           Supprimer

@@ -568,9 +568,9 @@ function BoostersDuContact({
               }}
             >
               <BoutonContour libelle="Modifier ce Booster" onPress={() => onBooster(b)} />
-              {b.statut === 'fait' && (
+              {b.statut !== 'annule' && (
                 <BoutonContour
-                  libelle="Voir le compte rendu"
+                  libelle="Compte rendu"
                   onPress={() =>
                     router.push({
                       pathname: '/coach/compte-rendu/[id]',
