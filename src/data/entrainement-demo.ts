@@ -28,6 +28,7 @@ import {
   type SeanceStockee,
 } from '@/domain/entrainement-etat';
 
+import { enregistrerDirect } from '@/domain/seance-direct';
 import type { SerieRealisee, Valeurs } from '@/domain/types';
 
 import { CLIENTS_DEMO, COACH_DEMO } from './demo';
@@ -309,6 +310,13 @@ export const entrainementDemo: Entrainement = {
     const e = await etat();
     const { etat: suite, resultat } = enregistrer(e, r);
     await sauver({ ...e.stocke, ...suite });
+    return resultat;
+  },
+
+  async enregistrerSeanceDirecte(p) {
+    const e = await etat();
+    const { etat: suite, resultat } = enregistrerDirect(e, p, COACH_DEMO.id);
+    await sauver({ ...e.stocke, realisations: suite.realisations, planifications: suite.planifications, seances: [...e.stocke.seances, ...suite.seances] });
     return resultat;
   },
 };

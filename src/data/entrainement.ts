@@ -19,6 +19,7 @@ import type {
   Suivi,
   SuiviClient,
 } from '@/domain/entrainement-etat';
+import type { EnvoiDirect } from '@/domain/seance-direct';
 import type { Seance } from '@/domain/types';
 import { nouvelId } from '@/lib/identifiant';
 
@@ -59,6 +60,8 @@ export interface Entrainement {
   annulerCreneau(clientId: string, id: string): Promise<void>;
   /** Idempotent : le même id renvoyé répond « doublon » sans rien créer. */
   enregistrerRealisation(r: RealisationCycle): Promise<'enregistree' | 'doublon'>;
+  /** Séance en direct notée par le coach pour son client. Idempotente comme la précédente. */
+  enregistrerSeanceDirecte(p: EnvoiDirect): Promise<'enregistree' | 'doublon'>;
 }
 
 export const entrainement: Entrainement = supabase ? creerEntrainementSupabase(supabase) : entrainementDemo;

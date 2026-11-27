@@ -10,6 +10,9 @@ import type { Exercice, LignePrescription, Mesure, Phase, Seance, Valeurs } from
 import { detailsBlocJson, lireDetailsBloc, type DetailsBlocBase } from './details-bloc';
 import type { Entrainement } from './entrainement';
 
+/** La mise à jour SQL de la séance en direct n'est pas encore passée sur le serveur. */
+export const DIRECT_PAS_ACTIVE = 'La séance en direct n’est pas encore activée sur le serveur : colle d’abord la mise à jour SQL dans Supabase.';
+
 const sansNull = <T>(v: T | null | undefined): T | undefined => (v === null ? undefined : v);
 const nombre = (v: unknown) => (v === null || v === undefined ? undefined : Number(v));
 
@@ -234,7 +237,7 @@ type RealisationBase = {
   programme_nom: string | null;
   cycle_nom: string | null;
   seances: { titre: string } | null;
-  series_realisees: { id: string; ligne_id: string; exercice_id: string; index: number; valeurs: Valeurs; suggestion: Valeurs; exercice_nom: string | null }[];
+  series_realisees: { id: string; ligne_id: string; exercice_id: string; index: number; valeurs: Valeurs; suggestion: Valeurs; exercice_nom: string | null; repos_s?: number | null }[];
 };
 const REALISATION =
   'id, seance_id, client_id, cycle_id, programme_id, planification_id, debut, fin, note, commentaire, seance_titre, programme_nom, cycle_nom, seances(titre), series_realisees(*)';
@@ -259,7 +262,7 @@ const versRealisation = (r: RealisationBase): RealisationLue => {
     noms,
     series: [...r.series_realisees]
       .sort((a, b) => a.index - b.index)
-      .map((s) => ({ id: s.id, ligneId: s.ligne_id, exerciceId: s.exercice_id, index: s.index, valeurs: s.valeurs, suggestion: s.suggestion })),
+      .map((s) => ({ id: s.id, ligneId: s.ligne_id, exerciceId: s.exercice_id, index: s.index, valeurs: s.valeurs, suggestion: s.suggestion, reposS: s.repos_s ?? undefined })),
   };
 };
 
@@ -560,6 +563,13 @@ export function creerEntrainementSupabase(db: SupabaseClient): Entrainement {
     async enregistrerRealisation(r) {
       const resultat = verifier(await db.rpc('enregistrer_realisation', { r })) as string;
       return resultat === 'doublon' ? 'doublon' : 'enregistree';
+    },
+
+    async enregistrerSeanceDirecte(p) {
+      const r = await db.rpc('enregistrer_seance_en_direct', { p });
+      // Fonction absente : la mise à jour SQL de la séance en direct n'est pas encore passée.
+      if (r.error && (['PGRST202', '42883'].includes(r.error.code ?? '') || /enregistrer_seance_en_direct/.test(r.error.message))) throw new Error(DIRECT_PAS_ACTIVE);
+      return (verifier(r) as string) === 'doublon' ? 'doublon' : 'enregistree';
     },
   };
 }

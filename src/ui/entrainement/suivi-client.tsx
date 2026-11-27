@@ -10,6 +10,7 @@ import { estLibre, SOURCES, titreActivite, type Activite } from '@/domain/activi
 import { ecouterVideos, videos } from '@/data/videos-mouvement';
 import { ajouterJours, aujourdhuiParis, avancementCycle, jourParis, titreClient } from '@/domain/entrainement';
 import type { CycleClient, RealisationLue } from '@/domain/entrainement-etat';
+import { ecrireDuree } from '@/domain/seance-direct';
 import { formaterNombre } from '@/domain/suivi';
 import { expiree, type VideoMouvement } from '@/domain/videos-mouvement';
 import {
@@ -426,6 +427,7 @@ export function DetailSeance({
               <View key={s.id} style={{ borderWidth: 1, borderColor: couleurs.bordure, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
                 <Text style={ts.mono}>
                   {i + 1}. {serieLisible(s.valeurs)}
+                  {s.reposS !== undefined ? ` · repos ${ecrireDuree(s.reposS)}` : ''}
                 </Text>
               </View>
             ))}
