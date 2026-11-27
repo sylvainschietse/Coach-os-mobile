@@ -7,18 +7,26 @@ import { alimentation } from '@/data/alimentation';
 import type { RecetteDictee } from '@/domain/alimentation';
 
 import { Bouton, Carte, ChampTexte, Erreur, SousTitre, Texte } from '../composants';
+import { BulleAstuce } from '../aide/astuce';
 import { BoutonDictee } from '../dictee';
 import { espace } from '../theme';
 import { useAccordIa } from './photo';
 
-export function DicteeRecette({ onRemplir }: { onRemplir: (lue: RecetteDictee) => Promise<void> }) {
+/** `astuce` : la bulle « raconte ta recette » sous le bouton, la première fois (côté client seulement). */
+export function DicteeRecette({ onRemplir, astuce = false }: { onRemplir: (lue: RecetteDictee) => Promise<void>; astuce?: boolean }) {
   const [ouverte, setOuverte] = useState(false);
   const [texte, setTexte] = useState('');
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string>();
   const accord = useAccordIa();
 
-  if (!ouverte) return <Bouton variante="secondaire" libelle="Dicter ma recette" onPress={() => setOuverte(true)} />;
+  if (!ouverte)
+    return (
+      <View>
+        <Bouton variante="secondaire" libelle="Dicter ma recette" onPress={() => setOuverte(true)} />
+        <BulleAstuce cle="dicter-recette" active={astuce} />
+      </View>
+    );
 
   async function remplir() {
     setEnCours(true);

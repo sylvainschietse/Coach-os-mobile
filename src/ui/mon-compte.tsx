@@ -3,8 +3,8 @@
 // jamais dans l'appli iPhone : sur iPhone, le client demande le lien à son coach.
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Check } from '@/ui/icones';
-import { Platform, View } from 'react-native';
+import { Check, ChevronRight, CircleHelp } from '@/ui/icones';
+import { Platform, Pressable, Text, View } from 'react-native';
 
 import { abonnements } from '@/data/abonnements';
 import { offres } from '@/data/offres';
@@ -34,7 +34,7 @@ import { MesDocuments } from './mes-documents';
 import { MesFactures } from './factures';
 import { CarteOffre } from './offres/carte-offre';
 import { PhotoCoach } from './profil-coach';
-import { couleurs, espace } from './theme';
+import { arrondi, couleurs, espace, polices } from './theme';
 
 function Ligne({ libelle, valeur }: { libelle: string; valeur?: string }) {
   return (
@@ -44,6 +44,34 @@ function Ligne({ libelle, valeur }: { libelle: string; valeur?: string }) {
       </Texte>
       <Texte style={{ fontSize: 14, flexShrink: 1, textAlign: 'right' }}>{valeur || '—'}</Texte>
     </View>
+  );
+}
+
+/** Vers la rubrique Aide : les tutos vidéo et « Contacte ton coach ». */
+function LigneAide() {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => router.push('/client/aide')}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: espace(3),
+        padding: espace(4),
+        borderRadius: arrondi.global,
+        borderWidth: 1,
+        borderColor: 'rgba(195,24,30,0.25)',
+        backgroundColor: couleurs.rougeClair,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <CircleHelp size={22} color={couleurs.rouge} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: polices.texteGras, fontSize: 15, color: couleurs.texte }}>Aide et tutos vidéo</Text>
+        <Text style={{ fontFamily: polices.texte, fontSize: 13, color: couleurs.texteDoux }}>Des vidéos courtes pour bien utiliser l’appli.</Text>
+      </View>
+      <ChevronRight size={20} color={couleurs.texteDoux} />
+    </Pressable>
   );
 }
 
@@ -294,6 +322,7 @@ export function MonCompte({
       <Hero kicker="Mon compte" titre={[i?.prenom || prenom, i?.nom].filter(Boolean).join(' ')} />
       {infos.erreur && <Erreur message={infos.erreur} onReessayer={infos.recharger} />}
       <MonCoach />
+      {!apercu && <LigneAide />}
       <MesInformations infos={i} apercu={apercu} onModifie={infos.recharger} />
       <Carte>
         <SousTitre>Mon offre</SousTitre>
