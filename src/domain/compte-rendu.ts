@@ -353,7 +353,16 @@ export function messageCompteRenduEnvoye(cr: CompteRendu): string {
   return `Bonjour ${cr.prenom}, c’est ${cr.coach} ! Je viens de t’envoyer par e-mail ton plan d’action personnalisé suite à notre séance Booster. Jette un œil (pense à regarder dans tes spams s’il n’arrive pas) et dis-moi si tu as des questions 💪`;
 }
 
-/** Le message qui accompagne le PDF envoyé directement dans la conversation WhatsApp du client. */
-export function messageCompteRenduWhatsApp(cr: CompteRendu): string {
-  return `Bonjour ${cr.prenom}, c’est ${cr.coach} ! Voici ton plan d’action personnalisé suite à notre séance Booster. Jette un œil et dis-moi si tu as des questions 💪`;
+/** Validité du lien vers le PDF glissé dans le message WhatsApp, en secondes : 30 jours. */
+export const VALIDITE_LIEN_COMPTE_RENDU = 30 * 24 * 3600;
+
+/**
+ * Le message qui accompagne le PDF dans la conversation WhatsApp du client. Avec `lien` (quand le PDF ne peut pas être
+ * joint : iPhone, ordinateur, WhatsApp non détecté), le message donne le lien vers le PDF.
+ */
+export function messageCompteRenduWhatsApp(cr: CompteRendu, lien?: string): string {
+  const debut = `Bonjour ${cr.prenom}, c’est ${cr.coach} ! Voici ton plan d’action personnalisé suite à notre séance Booster`;
+  return lien
+    ? `${debut} : ${lien}\nJette un œil et dis-moi si tu as des questions 💪`
+    : `${debut}. Jette un œil et dis-moi si tu as des questions 💪`;
 }

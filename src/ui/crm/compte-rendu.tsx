@@ -7,7 +7,14 @@ import { Platform, Text, View } from 'react-native';
 import { crm } from '@/data/crm';
 import { depuisBase64, documents, ecouterDocuments, type Fichier } from '@/data/documents';
 import { iaDisponible, redigerCompteRendu } from '@/data/redaction';
-import { compteRenduHtml, construireCompteRendu, emailCompteRendu, messageCompteRenduEnvoye, messageCompteRenduWhatsApp } from '@/domain/compte-rendu';
+import {
+  compteRenduHtml,
+  construireCompteRendu,
+  emailCompteRendu,
+  messageCompteRenduEnvoye,
+  messageCompteRenduWhatsApp,
+  VALIDITE_LIEN_COMPTE_RENDU,
+} from '@/domain/compte-rendu';
 import { lienEnvoi, normaliserTelephone, troisPriorites } from '@/domain/crm';
 import type { Booster, FicheContact } from '@/domain/crm';
 import { TESTS } from '@/domain/evaluation';
@@ -151,13 +158,27 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
     setErreur(undefined);
     setRetour(undefined);
     try {
-      const uri = await copieLocale(await documents.lien(doc.chemin), `compte-rendu-v${doc.version}.pdf`);
-      if (par === 'whatsapp' && telWhatsApp) {
-        // La conversation du client s'ouvre, PDF joint et message écrits : il ne reste qu'à appuyer sur la flèche.
-        // WhatsApp ne dit pas si c'est parti : rien n'est marqué, comme pour le partage.
-        const nom = `plan-action-booster-${cr.prenom.normalize('NFD').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'client'}-v${doc.version}.pdf`;
-        if (await envoyerFichierWhatsApp(uri, nom, telWhatsApp, messageCompteRenduWhatsApp(cr))) return;
+      if (par === 'whatsapp') {
+        // WhatsApp ne demande pas d'e-mail : seul le numéro du client compte. WhatsApp ne dit pas si c'est parti :
+        // rien n'est marqué, comme pour le partage.
+        if (!telClient) return;
+        if (pdfJointWhatsApp) {
+          // Android : la conversation du client s'ouvre, PDF joint et message écrits ; il reste à appuyer sur la flèche.
+          try {
+            const uri = await copieLocale(await documents.lien(doc.chemin), `compte-rendu-v${doc.version}.pdf`);
+            const nom = `plan-action-booster-${cr.prenom.normalize('NFD').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'client'}-v${doc.version}.pdf`;
+            if (await envoyerFichierWhatsApp(uri, nom, telClient, messageCompteRenduWhatsApp(cr))) return;
+          } catch {
+            // Le PDF n'a pas pu être joint : on ouvre quand même la conversation, avec le lien vers le PDF.
+          }
+        }
+        // iPhone, ordinateur, ancienne appli : la conversation du client s'ouvre avec le message et le lien vers le PDF.
+        const lienPdf = await documents.lien(doc.chemin, VALIDITE_LIEN_COMPTE_RENDU);
+        const lien = lienEnvoi('whatsapp', contact, messageCompteRenduWhatsApp(cr, /^https:/i.test(lienPdf) ? lienPdf : undefined));
+        if (lien) await ouvrirLien(lien);
+        return;
       }
+      const uri = await copieLocale(await documents.lien(doc.chemin), `compte-rendu-v${doc.version}.pdf`);
       if (par === 'email' && contact.email && (await MailComposer.isAvailableAsync())) {
         const mail = emailCompteRendu(cr);
         const r = await MailComposer.composeAsync({ recipients: [contact.email], subject: mail.sujet, body: mail.corps, attachments: [uri] });
@@ -179,10 +200,12 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
     }
   }
 
-  // Android avec WhatsApp : le PDF part directement dans la conversation du client.
-  const telWhatsApp = Platform.OS === 'android' && whatsAppAvecFichier() ? normaliserTelephone(contact.telephone) : undefined;
+  // Le numéro du client suffit pour WhatsApp, avec ou sans e-mail sur la fiche.
+  const telClient = normaliserTelephone(contact.telephone);
+  // Android avec WhatsApp : le PDF part joint dans la conversation ; ailleurs, le message donne le lien vers le PDF.
+  const pdfJointWhatsApp = Platform.OS === 'android' && whatsAppAvecFichier();
   // Numéro non reconnu : pas de lien, le bouton n'apparaît pas (avant, il ne faisait rien).
-  const lienPrevenir = lienEnvoi('whatsapp', contact, messageCompteRenduEnvoye(cr));
+  const lienPrevenir = contact.email ? lienEnvoi('whatsapp', contact, messageCompteRenduEnvoye(cr)) : null;
   const prevenir = () => lienPrevenir && ouvrirLien(lienPrevenir).catch(() => undefined);
 
   return (
@@ -344,51 +367,60 @@ function Apercu({ fiche, booster, onModifierSeance, recharger }: { fiche: FicheC
 
       <TitreSection>Envoyer au client</TitreSection>
       <Carte>
-        <SousTitre>1. Le compte rendu par e-mail</SousTitre>
+        <SousTitre>Par WhatsApp</SousTitre>
+        {!doc?.chemin ? (
+          <Texte style={{ fontSize: 14, color: couleurs.orange }}>Enregistre d’abord le PDF dans Documents : c’est cette version qui sera envoyée.</Texte>
+        ) : telClient ? (
+          <>
+            <Bouton
+              variante={contact.email ? 'discret' : undefined}
+              libelle={`Envoyer sur WhatsApp à ${contact.prenom}`}
+              onPress={() => envoyer('whatsapp')}
+              chargement={envoi === 'whatsapp'}
+            />
+            <Texte doux style={{ fontSize: 13 }}>
+              {pdfJointWhatsApp
+                ? 'La conversation s’ouvre avec le PDF joint et le message déjà écrits : il reste à appuyer sur envoyer.'
+                : 'La conversation s’ouvre avec le message et le lien vers le PDF déjà écrits : il reste à appuyer sur envoyer.'}
+            </Texte>
+          </>
+        ) : (
+          <Texte style={{ fontSize: 14, color: couleurs.orange }}>
+            {contact.telephone ? 'Le numéro de la fiche n’est pas reconnu : corrige-le dans ses coordonnées.' : 'Pas de numéro sur la fiche.'}
+          </Texte>
+        )}
+
+        <SousTitre>Par e-mail</SousTitre>
         {Platform.OS === 'web' ? (
           <Texte doux style={{ fontSize: 14 }}>
             Une fois le PDF déposé, envoie-le depuis Documents avec « Envoyer par e-mail » : le PDF exact et l’adresse du client s’affichent, et
             rien ne part avant ta confirmation.
           </Texte>
-        ) : !doc?.chemin ? (
-          <Texte style={{ fontSize: 14, color: couleurs.orange }}>Enregistre d’abord le PDF dans Documents : c’est cette version qui sera envoyée.</Texte>
-        ) : contact.email ? (
+        ) : !doc?.chemin ? null : contact.email ? (
           <Bouton
             libelle={`${booster.planEnvoyeLe ? 'Renvoyer' : 'Envoyer'} la version ${doc.version} à ${contact.email}`}
             onPress={() => envoyer('email')}
             chargement={envoi === 'email'}
           />
         ) : (
-          <Texte style={{ fontSize: 14, color: couleurs.orange }}>Pas d’e-mail sur la fiche : ajoute-le, ou envoie le PDF autrement.</Texte>
-        )}
-        {telWhatsApp && doc?.chemin && (
-          <Bouton
-            variante="discret"
-            libelle={`Envoyer le PDF sur WhatsApp à ${contact.prenom}`}
-            onPress={() => envoyer('whatsapp')}
-            chargement={envoi === 'whatsapp'}
-          />
+          <Texte doux style={{ fontSize: 14 }}>Pas d’e-mail sur la fiche : ce n’est pas nécessaire pour WhatsApp.</Texte>
         )}
         {Platform.OS !== 'web' && doc?.chemin && (
           <Bouton
             variante="discret"
-            libelle={telWhatsApp ? 'Envoyer le PDF autrement (Messages, Gmail…)' : 'Envoyer le PDF autrement (WhatsApp, Messages…)'}
+            libelle="Envoyer le PDF autrement (Messages, Gmail…)"
             onPress={() => envoyer('partage')}
             chargement={envoi === 'partage'}
           />
         )}
         {booster.planEnvoyeLe && <Texte doux style={{ fontSize: 13 }}>{`Envoi confirmé le ${dateCourte(booster.planEnvoyeLe)}`}</Texte>}
 
-        <SousTitre>2. Le prévenir sur WhatsApp</SousTitre>
-        {lienPrevenir ? (
+        {lienPrevenir && (
           <>
+            <SousTitre>Envoyé par e-mail ? Le prévenir sur WhatsApp</SousTitre>
             <Texte doux style={{ fontSize: 14 }}>{messageCompteRenduEnvoye(cr)}</Texte>
             <Bouton variante={booster.planEnvoyeLe ? undefined : 'discret'} libelle="Prévenir sur WhatsApp" onPress={prevenir} />
           </>
-        ) : (
-          <Texte style={{ fontSize: 14, color: couleurs.orange }}>
-            {contact.telephone ? 'Le numéro de la fiche n’est pas reconnu : corrige-le dans ses coordonnées.' : 'Pas de numéro sur la fiche.'}
-          </Texte>
         )}
       </Carte>
       {erreur && <Erreur message={erreur} />}
