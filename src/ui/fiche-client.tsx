@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Puce, Puces } from './composants';
+import { Bouton, Puce, Puces } from './composants';
 import { JournalRepas } from './alimentation/journal-repas';
 import { ProfilNutritionCarte } from './alimentation/profil';
 import { DetailClient } from './detail-client';
@@ -57,6 +57,16 @@ function Nutrition({ clientId, coachId }: { clientId: string; coachId: string })
   );
 }
 
+/** Pendant une séance en présentiel : le coach note lui-même ce que fait son client. */
+export function BoutonSeanceDirecte({ clientId, prenom }: { clientId: string; prenom?: string }) {
+  return (
+    <Bouton
+      libelle="Démarrer une séance en direct"
+      onPress={() => router.push({ pathname: '/coach/direct/[clientId]', params: prenom ? { clientId, prenom } : { clientId } })}
+    />
+  );
+}
+
 const PROGRAMME = [
   { cle: 'entrainement', libelle: 'Entraînement' },
   { cle: 'seances', libelle: 'Séances' },
@@ -67,6 +77,7 @@ export function ProgrammeClient({ clientId, coachId }: { clientId: string; coach
   const [onglet, setOnglet] = useState<(typeof PROGRAMME)[number]['cle']>('entrainement');
   return (
     <View style={{ gap: espace(4), marginTop: espace(4) }}>
+      <BoutonSeanceDirecte clientId={clientId} />
       <Puces>
         {PROGRAMME.map((o) => (
           <Puce key={o.cle} libelle={o.libelle} actif={onglet === o.cle} onPress={() => setOnglet(o.cle)} />
@@ -94,10 +105,11 @@ export function ProgrammeClient({ clientId, coachId }: { clientId: string; coach
 }
 
 /** Adresse de secours (client sans fiche contact) : tout le suivi d'un client sur une page. */
-export function FicheClient({ clientId, coachId }: { clientId: string; coachId: string }) {
+export function FicheClient({ clientId, coachId, prenom }: { clientId: string; coachId: string; prenom?: string }) {
   const [onglet, setOnglet] = useState<Onglet>('seances');
   return (
     <View style={{ gap: espace(4) }}>
+      <BoutonSeanceDirecte clientId={clientId} prenom={prenom} />
       <Puces>
         {ONGLETS.map((o) => (
           <Puce key={o.cle} libelle={o.libelle} actif={onglet === o.cle} onPress={() => setOnglet(o.cle)} />

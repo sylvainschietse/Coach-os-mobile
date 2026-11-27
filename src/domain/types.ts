@@ -149,6 +149,8 @@ export interface SerieRealisee {
   index: number;
   valeurs: Valeurs;
   suggestion: Valeurs;
+  /** Repos pris avant la série, en secondes (séance en direct notée par le coach). */
+  reposS?: number;
 }
 
 /** Ce qui part vers la base. L'id est créé sur le téléphone pour éviter les doublons. */
