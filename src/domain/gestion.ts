@@ -343,6 +343,14 @@ export function aEncaisserDuMois(c: Carnet, mois: string): number {
     .reduce((s, p) => s + (p.montant ?? 0), 0);
 }
 
+/** Encore « En attente » des mois avant celui-ci (« 2026-11 ») : un retard de paiement, rappelé à part. */
+export function aEncaisserAvant(c: Carnet, mois: string): number {
+  const actifs = new Set(c.contacts.filter((x) => x.statut !== 'archive').map((x) => x.id));
+  return c.paiements
+    .filter((p) => p.statut === 'En attente' && !!p.date && p.date.slice(0, 7) < mois && (!p.contactId || actifs.has(p.contactId)))
+    .reduce((s, p) => s + (p.montant ?? 0), 0);
+}
+
 export const montantLisible = (v: number | undefined) =>
   v === undefined ? '—' : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v);
 
