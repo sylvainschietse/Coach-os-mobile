@@ -11,7 +11,7 @@ export default function SuiviClient() {
   return (
     <Ecran largeurMax={760}>
       <Stack.Screen options={{ title: prenom ?? 'Suivi' }} />
-      <FicheClient clientId={id} coachId={profil.coachId} />
+      <FicheClient clientId={id} coachId={profil.coachId} prenom={prenom} />
     </Ecran>
   );
 }
