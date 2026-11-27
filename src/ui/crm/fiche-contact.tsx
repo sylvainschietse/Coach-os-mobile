@@ -44,6 +44,7 @@ import { Confirmation } from '../entrainement/commun';
 import { Conversation } from '../messagerie/conversation';
 import { couleurs, espace, polices } from '../theme';
 import { nomComplet } from './commun';
+import { HistoriqueContact, ResumeHistorique } from './historique';
 import { ParcoursContact } from './parcours';
 import { ReponsesQuestionnaire } from './reponses-questionnaire';
 import { Cellule, Choix, Grille, Initiales, Modale, PiedEditeur, Repliable, Saisie, Valeur } from './dossier';
@@ -213,6 +214,8 @@ function Editeur({
   const [doublon, setDoublon] = useState<Doublon>();
   const [sortie, setSortie] = useState<(() => void) | null>(null);
   const [versionAbo, setVersionAbo] = useState(0);
+  // La ligne de résumé sous le nom ouvre l'historique du dossier à la place du volet.
+  const [voirHistorique, setVoirHistorique] = useState(false);
   const modifies = CLES.filter((k) => brouillon[k] !== initial[k]);
   const modifie = modifies.length > 0;
   const demanderSortie = (suite: () => void) => (modifie ? setSortie(() => suite) : suite());
@@ -274,6 +277,7 @@ function Editeur({
                 </Text>
               </View>
             </View>
+            <ResumeHistorique contactId={contact.id} ouvert={voirHistorique} onPress={() => setVoirHistorique((v) => !v)} />
             <SousNav
               nom="Rubriques de la fiche client"
               onglets={volets}
@@ -282,6 +286,7 @@ function Editeur({
                 v !== volet &&
                 demanderSortie(() => {
                   setBrouillon(initial);
+                  setVoirHistorique(false);
                   onVolet(v);
                 })
               }
@@ -320,6 +325,10 @@ function Editeur({
         </View>
       }
     >
+      {voirHistorique && contact ? (
+        <HistoriqueContact contact={contact} onRetour={() => setVoirHistorique(false)} />
+      ) : (
+      <>
       {volet === 'fiche' && contact && contact.statutCrm === 'Client actif' && contact.statut !== 'client' && (
         <ClientAConfirmer contactId={contact.id} prenom={contact.prenom} />
       )}
@@ -380,6 +389,8 @@ function Editeur({
           <Bilans contactId={contact.id} onOuvrir={onBilan} onNouveau={() => onBilan('nouveau')} onSupprimer={onSupprimerBilan} />
           <Documents contactId={contact.id} onOuvrir={onDocument} onNouveau={() => onDocument('nouveau')} />
         </View>
+      )}
+      </>
       )}
     </Modale>
   );

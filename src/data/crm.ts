@@ -3,7 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import * as regles from '@/domain/crm';
 import * as gestion from '@/domain/gestion';
-import type { Booster, Carnet, Contact, ContactResume, Doublon, FicheContact, ModeleMessage, Questionnaire, Relance, RelanceAFaire } from '@/domain/crm';
+import * as parcours from '@/domain/historique';
+import type { Booster, Carnet, Contact, ContactResume, Doublon, EvenementContact, FicheContact, ModeleMessage, Questionnaire, Relance, RelanceAFaire, StatutContact } from '@/domain/crm';
 import type { BilanCoach, Coaching, Paiement } from '@/domain/gestion';
 import { nouvelId } from '@/lib/identifiant';
 
@@ -73,6 +74,13 @@ export interface DepotCrm {
   modifierBilan(id: string, s: gestion.SaisieBilan, envoye: boolean): Promise<void>;
   lierDocumentBilan(id: string, documentId: string): Promise<void>;
   supprimerBilan(id: string): Promise<void>;
+  // Parcours et historique (règles dans domain/historique.ts).
+  /** Tout ce qui s'est passé pour ce contact, et la ligne de résumé sous son nom. */
+  historique(contactId: string): Promise<{ lignes: parcours.LigneHistorique[]; resume: string | null }>;
+  /** « Changer d'étape » : n'importe quelle étape, les étapes du milieu sont notées sautées dans le journal. */
+  changerEtape(contactId: string, vers: StatutContact): Promise<void>;
+  ajouterNote(contactId: string, texte: string): Promise<void>;
+  supprimerNote(id: string): Promise<void>;
 }
 
 const contexte = (): regles.Contexte => ({ nouvelId, maintenant: new Date() });
@@ -99,8 +107,9 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
   /** Sort la fiche client des clients actifs (false) ou l'y remet (true). */
   activerEspaceClient: (clientId: string, actif: boolean) => Promise<void>;
 }): DepotCrm {
+  // Chaque changement d'étape, quelle que soit l'action qui le provoque, laisse une ligne dans l'historique.
   async function ecrire(avant: Carnet, apres: Carnet) {
-    await ecrireBrut(avant, apres);
+    await ecrireBrut(avant, parcours.journaliserEtapes(avant, apres, contexte()));
     prevenir();
   }
 
@@ -266,6 +275,20 @@ function creerDepot(lire: () => Promise<Carnet>, ecrireBrut: (avant: Carnet, apr
     modifierBilan: (id, saisie, envoye) => appliquer((c, ctx) => gestion.modifierBilan(c, id, saisie, ctx, envoye)),
     lierDocumentBilan: (id, documentId) => appliquer((c) => gestion.lierDocumentBilan(c, id, documentId)),
     supprimerBilan: (id) => appliquer((c) => gestion.supprimerBilan(c, id)),
+    async historique(contactId) {
+      const carnet = await lire();
+      return { lignes: parcours.historique(carnet, contactId), resume: parcours.resumeParcours(carnet, contactId, new Date()) };
+    },
+    async changerEtape(contactId, vers) {
+      const contact = (await lire()).contacts.find((x) => x.id === contactId);
+      if (!contact) throw new Error('Contact introuvable');
+      if (contact.statut === 'archive') throw new Error('Réactive d’abord ce dossier.');
+      if (regles.statutContact(contact) === vers) return;
+      // Même chemin que le statut de la fiche : « Client actif » ouvre l'espace client, « En veille » le ferme.
+      await this.modifierContact(contactId, { statutCrm: parcours.statutPourEtape(contact, vers) });
+    },
+    ajouterNote: (contactId, texte) => appliquer((c, ctx) => parcours.ajouterNote(c, contactId, texte, ctx)),
+    supprimerNote: (id) => appliquer((c) => parcours.supprimerNote(c, id)),
   };
 }
 
@@ -372,6 +395,9 @@ const versLigne = {
     tour_hanches: n(x.tourHanches), piliers: x.piliers, synthese: x.synthese, priorites: x.priorites, document_id: n(x.documentId), cree_le: x.creeLe,
     modifie_le: x.modifieLe,
   }),
+  journal: (x: EvenementContact): Ligne => ({
+    id: x.id, contact_id: x.contactId, quand: x.quand, type: x.type, depuis: n(x.depuis), vers: n(x.vers), sautees: x.sautees ?? [], texte: n(x.texte),
+  }),
 };
 
 const depuisLigne = {
@@ -407,11 +433,15 @@ const depuisLigne = {
     tourHanches: num(l.tour_hanches), piliers: l.piliers, synthese: l.synthese, priorites: l.priorites, documentId: u(l.document_id), creeLe: l.cree_le,
     modifieLe: l.modifie_le,
   }),
+  journal: (l: any): EvenementContact => ({
+    id: l.id, contactId: l.contact_id, quand: l.quand, type: l.type, depuis: u(l.depuis), vers: u(l.vers),
+    sautees: l.sautees?.length ? l.sautees : undefined, texte: u(l.texte),
+  }),
 };
 
-const TABLES = ['contacts', 'questionnaires', 'boosters', 'relances', 'coachings', 'paiements', 'bilans'] as const;
+const TABLES = ['contacts', 'questionnaires', 'boosters', 'relances', 'coachings', 'paiements', 'bilans', 'journal'] as const;
 /** Nom de la table en base quand il diffère de la collection du carnet. */
-const TABLE_BASE: Partial<Record<(typeof TABLES)[number], string>> = { bilans: 'bilans_coach' };
+const TABLE_BASE: Partial<Record<(typeof TABLES)[number], string>> = { bilans: 'bilans_coach', journal: 'journal_contacts' };
 const base = (t: (typeof TABLES)[number]) => TABLE_BASE[t] ?? t;
 
 export function creerCrmSupabase(db: SupabaseClient): DepotCrm {
@@ -419,7 +449,7 @@ export function creerCrmSupabase(db: SupabaseClient): DepotCrm {
     const resultats = await Promise.all(TABLES.map((t) => db.from(base(t)).select('*')));
     const erreur = resultats.find((r) => r.error)?.error;
     if (erreur) throw new Error(erreur.message);
-    const [contacts, questionnaires, boosters, relances, coachings, paiements, bilans] = resultats.map((r) => r.data ?? []);
+    const [contacts, questionnaires, boosters, relances, coachings, paiements, bilans, journal] = resultats.map((r) => r.data ?? []);
     return {
       contacts: contacts.map(depuisLigne.contacts),
       questionnaires: questionnaires.map(depuisLigne.questionnaires),
@@ -428,6 +458,7 @@ export function creerCrmSupabase(db: SupabaseClient): DepotCrm {
       coachings: coachings.map(depuisLigne.coachings),
       paiements: paiements.map(depuisLigne.paiements),
       bilans: bilans.map(depuisLigne.bilans),
+      journal: journal.map(depuisLigne.journal),
     };
   }
 

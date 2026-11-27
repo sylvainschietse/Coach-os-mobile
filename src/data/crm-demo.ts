@@ -113,6 +113,13 @@ export function carnetDemo(maintenant: Date): Carnet {
       ...historiqueDemo(maintenant),
     ],
     bilans: [],
+    // Parcours de Léa : Booster planifié puis cliente directement (Booster réalisé sauté), et une note du coach.
+    journal: [
+      { id: 'journal-lea-1', contactId: 'contact-lea', quand: ilYA(58), type: 'etape', depuis: 'Nouveau Prospect', vers: 'Booster planifié' },
+      { id: 'journal-lea-2', contactId: 'contact-lea', quand: ilYA(50), type: 'etape', depuis: 'Booster planifié', vers: 'Client actif', sautees: ['Booster réalisé'] },
+      { id: 'journal-lea-3', contactId: 'contact-lea', quand: ilYA(6, 19), type: 'note', texte: 'Genou droit sensible : éviter les fentes cette semaine.' },
+      { id: 'journal-karim-1', contactId: 'contact-karim', quand: ilYA(3), type: 'etape', depuis: 'Nouveau Prospect', vers: 'Booster planifié' },
+    ],
   };
 }
 
