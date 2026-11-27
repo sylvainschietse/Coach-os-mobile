@@ -62,6 +62,8 @@ function Navigation() {
         <Stack.Screen name="client/nutrition" options={{ title: 'Nutrition' }} />
         <Stack.Screen name="client/donnees" options={{ title: 'Mes données' }} />
         <Stack.Screen name="client/messages" options={{ title: 'Mon coach' }} />
+        <Stack.Screen name="client/aide" options={{ title: 'Aide' }} />
+        <Stack.Screen name="client/tuto" options={{ headerShown: false, title: 'Tuto' }} />
         <Stack.Screen name="client/notifications" options={{ title: 'Mes notifications' }} />
         <Stack.Screen name="coach/index" options={{ headerShown: false, title: 'CoachGo' }} />
         <Stack.Screen name="coach/client/[id]" options={{ title: 'Suivi' }} />

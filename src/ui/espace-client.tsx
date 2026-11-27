@@ -37,6 +37,7 @@ import { Sport } from './suivi/sport';
 import { AjoutActiviteLibre } from './suivi/activite-libre';
 import { couleurs, espace, LARGEUR_CLIENT, polices, titreSection, univers, type CleUnivers } from './theme';
 import { UniversPage } from './univers';
+import { BulleAstuce } from './aide/astuce';
 
 /** « moi » n'est plus dans la barre : c'est la page Mon compte, ouverte depuis l'avatar (ou un lien qui la demande). */
 export type OngletClient = 'accueil' | 'programme' | 'suivi' | 'nutrition' | 'moi';
@@ -201,6 +202,8 @@ export function EspaceClient({
             <>
               <EnAttente clientId={clientId} apercu={!!apercu} />
               {onglet === 'accueil' && !apercu && <FeteBadges clientId={clientId} />}
+              {/* Une fois : le « ? » de l'en-tête mène aux tutos vidéo et au contact du coach. */}
+              {onglet === 'accueil' && !apercu && <BulleAstuce cle="aide" pointe="aucune" />}
               <EntrainementClient
                 key={`${clientId}:${onglet}`}
                 clientId={clientId}
@@ -244,6 +247,8 @@ export function EspaceClient({
                   </View>
                 ))}
               </View>
+              {/* Mon cycle, pour les clientes : une bulle la première fois, sans rien activer. */}
+              <BulleAstuce cle="cycle" active={!apercu && profilNutrition.donnee?.sexe === 'femme'} pointe="aucune" />
             </>
           )}
           {onglet === 'suivi' && rubrique && (

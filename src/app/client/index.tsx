@@ -1,5 +1,5 @@
-import { Redirect, useLocalSearchParams } from 'expo-router';
-import { LogOut } from '@/ui/icones';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { CircleHelp, LogOut } from '@/ui/icones';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
@@ -82,6 +82,7 @@ export default function AccueilClient() {
           onLogo={() => setVersAccueil((n) => n + 1)}
           droite={
             <>
+              <BoutonIcone icone={CircleHelp} nom="Aide et tutos vidéo" onPress={() => router.push('/client/aide')} />
               <ClocheClient clientId={profil.clientId} prenom={profil.prenom} />
               <BoutonMessagesClient clientId={profil.clientId} />
               <Avatar prenom={profil.prenom} actif={ouvert === 'moi'} onPress={() => setVersCompte((n) => n + 1)} />

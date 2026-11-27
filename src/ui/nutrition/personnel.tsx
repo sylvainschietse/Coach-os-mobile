@@ -23,6 +23,7 @@ import { Cellule, Grille, Modale, Repliable, Saisie } from '../crm/dossier';
 import { Action, Confirmation, Etat, ts } from '../entrainement/commun';
 import { DicteeRecette } from '../alimentation/dictee-recette';
 import { PhotoRepas } from '../alimentation/photo';
+import { BulleAstuce } from '../aide/astuce';
 import { BoutonDictee } from '../dictee';
 import { couleurs, polices, titreSection, univers } from '../theme';
 import { Bloc, doux, Lien } from './commun';
@@ -503,6 +504,7 @@ export function PersonnelNutrition({ data, vue, coach = false }: { data: Donnees
       )}
       {vue === 'personnelles' && (
         <DicteeRecette
+          astuce={!coach}
           onRemplir={async (lue) => {
             const { ingredients: dictes, aVerifier } = ingredientsPersoDepuisDictee(lue, await alimentation.aliments(), nouvelId);
             const b = {
@@ -591,6 +593,8 @@ export function PersonnelNutrition({ data, vue, coach = false }: { data: Donnees
         {vue === 'journal' && (
           <View style={{ width: '100%', alignItems: 'flex-start' }}>
             <Action variante="contour" icone={Camera} libelle="Photo de mon assiette" desactive={busy || loading} onPress={() => setPhotoOpen(true)} />
+            {/* Le bouton est gros, mais des clients ne l'avaient pas vu : une bulle l'explique la première fois. */}
+            <BulleAstuce cle="photo-assiette" active={!coach} style={{ alignSelf: 'stretch' }} />
           </View>
         )}
       </View>

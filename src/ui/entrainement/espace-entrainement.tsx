@@ -28,6 +28,7 @@ import { useModeSeance } from './seance-libre';
 import { SeanceLog } from './seance-log';
 import { MesSeances } from '../suivi/mes-seances';
 import { etatA11y } from '@/lib/accessibilite';
+import { BulleAstuce } from '../aide/astuce';
 
 /** Garde des brouillons (GardeBrouillon d'origine), montée une fois dans l'espace client. */
 export function GardeBrouillon() {
@@ -503,6 +504,8 @@ function ProchaineSeance({
           Choisir une autre séance
         </Text>
       </View>
+      {/* « Démarrer sans téléphone » est rangé derrière « Autres options » : une bulle le dit la première fois. */}
+      <BulleAstuce cle="sans-telephone" active={libre && guideeEnPremier && !options} pointe="aucune" style={{ backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }} />
     </View>
   );
 }
