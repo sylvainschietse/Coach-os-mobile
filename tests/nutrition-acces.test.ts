@@ -188,3 +188,20 @@ describe('journal et recettes personnelles', () => {
     expect((await ecrire(ids.userCoach1, ids.clientA, 'recipes', null, [], 1, 'recettes-envoi-3')).rows[0].v).toBe(2);
   });
 });
+
+describe('matériel d’un club', () => {
+  it('un client du même coach et du même club retrouve le matériel, et rien d’autre', async () => {
+    const v = (await lireProfil(ids.clientA)).version;
+    await profil(ids.userClientA, ids.clientA, 'preferences', v, 'envoi-club-1', prefs({ salle: 'wellness', club: 'Lyon Part-Dieu', materiel: ['Haltères', 'Poulies'], marques: ['Technogym', 'Hammer Strength'] }));
+    const club = (user: string, salle: string, nom: string) => en(user, `select * from public.materiel_du_club($1, $2)`, [salle, nom]);
+    const r = await club(ids.userClientB, 'wellness', 'lyon  part dieu');
+    expect(r.rows).toEqual([{ materiel: ['Haltères', 'Poulies'], marques: ['Technogym', 'Hammer Strength'] }]);
+    expect((await club(ids.userClientB, 'wellness', 'Villeurbanne')).rows).toHaveLength(0);
+    expect((await club(ids.userClientB, 'basic-fit', 'Lyon Part-Dieu')).rows).toHaveLength(0);
+    expect((await club(ids.userClientB, 'wellness', '')).rows).toHaveLength(0);
+    // Son propre profil n'est pas une source ; un autre coach ne voit rien.
+    expect((await club(ids.userClientA, 'wellness', 'Lyon Part-Dieu')).rows).toHaveLength(0);
+    expect((await club(ids.userCoach2, 'wellness', 'Lyon Part-Dieu')).rows).toHaveLength(0);
+    expect((await club(ids.userCoach1, 'wellness', 'Lyon Part-Dieu')).rows).toHaveLength(1);
+  });
+});

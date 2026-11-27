@@ -25,6 +25,10 @@ export const preferences = z.object({
   poidsVise: z.number().positive().max(500).nullable().default(null),
   salle: z.string().max(60).default(''),
   materiel: z.array(z.string().max(60)).max(30).default([]),
+  /** Le club précis (ville, quartier) : sert à retrouver le matériel déjà corrigé par un client du même club. */
+  club: z.string().max(80).default(''),
+  /** Marques des machines du club (Technogym, Hammer Strength…). */
+  marques: z.array(z.string().max(40)).max(12).default([]),
   /** Objectif de coaching choisi dans le questionnaire (rééducation, préparation physique…) et sa précision. */
   objectifCoaching: z.string().max(40).default(''),
   objectifPrecision: z.string().max(300).default(''),
@@ -52,6 +56,8 @@ export const blankPreferences = () =>
     poidsVise: null,
     salle: '',
     materiel: [],
+    club: '',
+    marques: [],
     objectifCoaching: '',
     objectifPrecision: '',
   });

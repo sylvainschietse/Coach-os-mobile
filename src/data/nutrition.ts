@@ -11,6 +11,8 @@ import { nouvelId } from '@/lib/identifiant';
 
 import { CLIENTS_DEMO } from './demo';
 import { depot } from './index';
+import { normerClub } from '@/domain/salle-sport';
+
 import { supabase } from './supabase';
 
 /** nutritionOutput d'origine. */
@@ -37,6 +39,11 @@ export interface DepotNutrition {
     version: string,
     envoiId: string,
   ): Promise<DonneesNutrition>;
+  /**
+   * Le matériel et les marques déjà renseignés par un autre client du même coach dans le même club (le plus récent),
+   * pour pré-cocher le questionnaire. Rien d'autre de ce client n'est lu.
+   */
+  materielClub(clientId: string, salle: string, club: string): Promise<{ materiel: string[]; marques: string[] } | null>;
   semaine(clientId: string, semaine: string): Promise<{ plan: Plan; version: string }>;
   enregistrerSemaine(clientId: string, semaine: string, plan: Plan, version: string, envoiId: string): Promise<{ plan: Plan; version: string }>;
   personnel(clientId: string, kind: 'recipes' | 'diary', date: string): Promise<{ recipes: PersonalRecipe[]; entries: Entry[]; version: number }>;
@@ -141,6 +148,18 @@ export const nutritionDemo: DepotNutrition = {
     return this.profil(clientId);
   },
 
+  async materielClub(clientId, salle, club) {
+    const cle = normerClub(club);
+    if (!salle || !cle) return null;
+    const lignes = Object.entries((await lire()).profils)
+      .filter(([id, l]) => id !== clientId && l.preferences)
+      .map(([, l]) => ({ p: preferences.safeParse(l.preferences), maj: l.version }))
+      .filter((x) => x.p.success && x.p.data.salle === salle && normerClub(x.p.data.club) === cle)
+      .sort((a, b) => b.maj.localeCompare(a.maj));
+    const p = lignes[0]?.p.data;
+    return p ? { materiel: p.materiel, marques: p.marques } : null;
+  },
+
   async semaine(clientId, semaine) {
     const s = (await lire()).semaines[`${clientId}|${semaine}`];
     return { plan: s?.plan ?? planVide(), version: s?.version ?? '' };
@@ -238,6 +257,16 @@ export function creerNutritionSupabase(db: SupabaseClient): DepotNutrition {
       });
       erreur(error);
       return this.profil(clientId);
+    },
+
+    async materielClub(clientId, salle, club) {
+      if (!salle || !normerClub(club)) return null;
+      const { data, error } = await db.rpc('materiel_du_club', { p_salle: salle, p_club: club, p_client: clientId });
+      erreur(error);
+      const l = (Array.isArray(data) ? data[0] : data) as { materiel: unknown; marques: unknown } | undefined;
+      if (!l) return null;
+      const liste = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 30) : []);
+      return { materiel: liste(l.materiel), marques: liste(l.marques) };
     },
 
     async semaine(clientId, semaine) {

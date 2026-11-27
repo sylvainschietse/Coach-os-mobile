@@ -45,7 +45,8 @@ export function ReponsesQuestionnaire({ prefs, nom, enregistre }: { prefs: Prefe
       prefs.poidsVise ? `${kg(prefs.poidsVise)}${ecart ? ` (${ecart > 0 ? '+' : ''}${ecart.toLocaleString('fr-FR')} kg)` : ' (garder son poids)'}` : '—',
     ],
     ['Au quotidien', [ACTIVITE[prefs.activite] ?? '—', `${prefs.seances} séance${prefs.seances > 1 ? 's' : ''} par semaine`].join(' · ')],
-    ['S’entraîne', salleDe(prefs.salle)?.libelle ?? '—'],
+    ['S’entraîne', [salleDe(prefs.salle)?.libelle, prefs.club.trim()].filter(Boolean).join(' ') || '—'],
+    ...(prefs.marques.length ? ([['Machines', prefs.marques.join(', ')]] as [string, string][]) : []),
     ['Matériel', prefs.materiel.length ? prefs.materiel.join(', ') : '—'],
     ['Alimentation', `${REGIME[prefs.regime] ?? prefs.regime} · ${prefs.repas} repas par jour`],
   ];

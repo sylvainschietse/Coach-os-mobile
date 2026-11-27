@@ -1,12 +1,13 @@
 // Questionnaire guidé « Mes objectifs en 2 minutes » : une question par écran, de grandes cartes avec icônes, des
 // compteurs pour l'âge, la taille et le poids, et le poids visé. Il remplit le même profil alimentaire que le
 // formulaire complet (Mon profil alimentaire), plus le lieu d'entraînement et le matériel.
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';
 
+import { nutrition } from '@/data/nutrition';
 import type { Preferences } from '@/domain/nutrition/calcul';
 import { choisirObjectif, objectifCoachingDe, OBJECTIFS_COACHING } from '@/domain/objectifs-coaching';
-import { choisirSalle, MATERIELS, SALLES } from '@/domain/salle-sport';
+import { avecClub, choisirMarques, choisirSalle, MARQUES, MATERIELS, SALLES } from '@/domain/salle-sport';
 import { etatA11y } from '@/lib/accessibilite';
 import {
   Activity,
@@ -77,12 +78,14 @@ const nombre = (t: string) => Number(t.replace(',', '.').trim());
 const arrondi = (n: number, pas: number) => Math.round(n / pas) * pas;
 
 export function QuestionnaireGuide({
+  clientId,
   initial,
   ageConnu,
   occupe,
   onTerminer,
   onFermer,
 }: {
+  clientId: string;
   initial: Preferences;
   /** L'âge vient de la date de naissance du client : il n'est pas redemandé. */
   ageConnu: boolean;
@@ -116,6 +119,21 @@ export function QuestionnaireGuide({
     repas: true,
   };
   const derniere = i === etapes.length - 1;
+  // Matériel d'un club déjà renseigné par un autre client du même coach : repris dès que le club est saisi.
+  const [repris, setRepris] = useState('');
+  const demande = useRef(0);
+  const chercherClub = (salle: string, club: string) => {
+    const n = ++demande.current;
+    if (!avecClub(salle) || club.trim().length < 2) return;
+    nutrition
+      .materielClub(clientId, salle, club)
+      .then((r) => {
+        if (n !== demande.current || !r || !r.materiel.length) return;
+        maj({ materiel: MATERIELS.filter((m) => r.materiel.includes(m)), marques: MARQUES.filter((m) => r.marques.includes(m)) });
+        setRepris(club.trim());
+      })
+      .catch(() => {});
+  };
 
   return (
     <Modale
@@ -220,7 +238,10 @@ export function QuestionnaireGuide({
                   key={s.cle}
                   accessibilityRole="button"
                   {...etatA11y({ selected: actif })}
-                  onPress={() => maj({ salle: s.cle, materiel: choisirSalle(s.cle, p.materiel, p.salle) })}
+                  onPress={() => {
+                    setRepris('');
+                    maj({ salle: s.cle, materiel: choisirSalle(s.cle, p.materiel, p.salle), marques: choisirMarques(s.cle, p.marques, p.salle), club: s.cle === p.salle ? p.club : '' });
+                  }}
                   style={[styles.puce, actif && styles.puceActive]}
                 >
                   <Icone size={16} color={actif ? couleurs.blanc : couleurs.texte} />
@@ -229,10 +250,51 @@ export function QuestionnaireGuide({
               );
             })}
           </View>
+          {avecClub(p.salle) && (
+            <View style={{ gap: 6, marginTop: 8 }}>
+              <Text style={ts.titreChamp}>Ton club</Text>
+              <TextInput
+                accessibilityLabel="Ton club, ville ou quartier"
+                value={p.club}
+                maxLength={80}
+                onChangeText={(club) => {
+                  setRepris('');
+                  maj({ club });
+                }}
+                onBlur={() => chercherClub(p.salle, p.club)}
+                onSubmitEditing={() => chercherClub(p.salle, p.club)}
+                placeholder="Ville ou quartier (ex. Lyon Part-Dieu)"
+                placeholderTextColor={couleurs.suggestion}
+                style={{ minHeight: 46, borderRadius: 12, borderWidth: 1, borderColor: couleurs.saisie, backgroundColor: couleurs.carte, paddingHorizontal: 12, fontFamily: polices.texte, fontSize: 15, color: couleurs.texte }}
+              />
+              {!!repris && <Text style={[doux, { color: couleurs.vert }]}>Matériel repris de ton club {repris}, déjà renseigné par un autre membre. Corrige si besoin.</Text>}
+            </View>
+          )}
+          {avecClub(p.salle) && (
+            <>
+              <Text style={[ts.titreChamp, { marginTop: 8 }]}>Les marques des machines</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {MARQUES.map((m) => {
+                  const actif = p.marques.includes(m);
+                  return (
+                    <Pressable
+                      key={m}
+                      accessibilityRole="checkbox"
+                      {...etatA11y({ checked: actif })}
+                      onPress={() => maj({ marques: actif ? p.marques.filter((x) => x !== m) : MARQUES.filter((x) => x === m || p.marques.includes(x)) })}
+                      style={[styles.puce, styles.puceFine, actif && styles.puceCochee]}
+                    >
+                      <Text style={[styles.puceTexte, { fontSize: 13 }, actif && { color: couleurs.rouge }]}>{(actif ? '✓ ' : '') + m}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          )}
           {!!p.salle && (
             <>
               <Text style={[ts.titreChamp, { marginTop: 8 }]}>Le matériel à ta disposition</Text>
-              <Text style={doux}>Coché d’après ton lieu : décoche ce qui manque, ajoute ce que tu as en plus.</Text>
+              <Text style={doux}>{repris ? 'Décoche ce qui manque, ajoute ce que tu as en plus.' : 'Coché d’après ton lieu : décoche ce qui manque, ajoute ce que tu as en plus.'}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {MATERIELS.map((m) => {
                   const actif = p.materiel.includes(m);

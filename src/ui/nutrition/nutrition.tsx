@@ -511,6 +511,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
       )}
       {guide && data && (
         <QuestionnaireGuide
+          clientId={clientId}
           initial={toPreferences(erreurFormulaire(f) ? toForm(data.preferences) : f)}
           ageConnu={!!data.dateNaissance}
           occupe={occupe}

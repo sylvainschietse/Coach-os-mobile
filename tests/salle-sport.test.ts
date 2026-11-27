@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { blankPreferences, preferences } from '../src/domain/nutrition/calcul';
 import { choisirObjectif, libelleObjectif, OBJECTIFS_COACHING } from '../src/domain/objectifs-coaching';
-import { choisirSalle, materielPourProgramme } from '../src/domain/salle-sport';
+import { avecClub, choisirMarques, choisirSalle, materielPourProgramme, normerClub } from '../src/domain/salle-sport';
 
 describe('lieu et matériel', () => {
   it('coche le matériel habituel d’une salle', () => {
@@ -57,5 +57,21 @@ describe('objectifs du questionnaire', () => {
   it('lit un ancien profil sans objectif du questionnaire', () => {
     expect(libelleObjectif({ ...blankPreferences(), objectif: 'muscle' })).toBe('Prise de muscle');
     expect(OBJECTIFS_COACHING.length).toBeGreaterThanOrEqual(10);
+  });
+});
+
+describe('club et marques', () => {
+  it('Wellness Sport Club coche Technogym et Hammer Strength', () => {
+    expect(choisirMarques('wellness', [])).toEqual(['Technogym', 'Hammer Strength']);
+    expect(choisirMarques('basic-fit', ['Technogym', 'Matrix'], 'wellness')).toEqual(['Matrix']);
+    expect(avecClub('wellness')).toBe(true);
+    expect(avecClub('maison')).toBe(false);
+  });
+  it('reconnaît le même club malgré les accents et les espaces', () => {
+    expect(normerClub('  Lyon  Part-Dieu ')).toBe(normerClub('lyon part dieu'));
+    expect(normerClub('Écully')).toBe('ecully');
+  });
+  it('décrit le lieu pour le programme', () => {
+    expect(materielPourProgramme('wellness', ['Haltères'], 'Lyon', ['Technogym'])).toBe('Wellness Sport Club Lyon (Technogym) · Haltères');
   });
 });

@@ -33,7 +33,7 @@ export function ChoixProgrammeClient({ coachId, clientId }: { coachId: string; c
   const [attribution, setAttribution] = useState<{ id: string; titre: string }>();
   // Lieu et matériel du client (questionnaire guidé de Ma nutrition) : repris dans « Matériel disponible » du programme créé.
   const { donnee: profil } = useCharger(() => nutrition.profil(clientId).catch(() => null), `profil-nutrition-${clientId}`);
-  const materiel = profil ? materielPourProgramme(profil.preferences.salle, profil.preferences.materiel) : '';
+  const materiel = profil ? materielPourProgramme(profil.preferences.salle, profil.preferences.materiel, profil.preferences.club, profil.preferences.marques) : '';
   const objectifClient = profil?.enregistre && profil.preferences.objectifCoaching ? objectifCoachingDe(profil.preferences.objectifCoaching) : undefined;
   const initialCreation = { ...(materiel ? { materiel } : {}), ...(objectifClient?.programme ? { objectif: objectifClient.programme } : {}) };
 
