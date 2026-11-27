@@ -494,6 +494,20 @@ export function terminerBooster(
   return carnet;
 }
 
+/** Délai après l'heure prévue au-delà duquel un Booster non annulé est considéré comme fait. */
+export const DUREE_BOOSTER_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Boosters passés : terminés tout seuls, comme les rendez-vous de l'agenda.
+ * Le coach n'a plus à choisir « Terminée » ; « Annulée » reste un choix manuel.
+ * Renvoie le même carnet s'il n'y a rien à clore.
+ */
+export function cloturerBoostersPasses(c: Carnet, ctx: Contexte): Carnet {
+  const limite = ctx.maintenant.getTime() - DUREE_BOOSTER_MS;
+  const passes = c.boosters.filter((b) => b.statut === 'prevu' && new Date(b.date).getTime() <= limite);
+  return passes.reduce((carnet, b) => terminerBooster(carnet, b.id, { priorites: b.priorites }, ctx), c);
+}
+
 export function annulerBooster(c: Carnet, boosterId: string, ctx: Contexte): Carnet {
   const booster = c.boosters.find((b) => b.id === boosterId);
   if (!booster) return c;
