@@ -5,8 +5,11 @@ import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { entrainement } from '@/data/entrainement';
+import { nutrition } from '@/data/nutrition';
 import { correspondRecherche, NIVEAUX, OBJECTIFS, titreClient } from '@/domain/entrainement';
 import type { ModeleResume } from '@/domain/entrainement-etat';
+import { libelleObjectif, objectifCoachingDe } from '@/domain/objectifs-coaching';
+import { materielPourProgramme } from '@/domain/salle-sport';
 import { useCharger } from '@/lib/useCharger';
 
 import { Carte, Puce as Filtre, Puces, SousTitre } from '../composants';
@@ -28,6 +31,11 @@ export function ChoixProgrammeClient({ coachId, clientId }: { coachId: string; c
   const [creation, setCreation] = useState(false);
   const [cree, setCree] = useState<{ id: string; titre: string }>();
   const [attribution, setAttribution] = useState<{ id: string; titre: string }>();
+  // Lieu et matériel du client (questionnaire guidé de Ma nutrition) : repris dans « Matériel disponible » du programme créé.
+  const { donnee: profil } = useCharger(() => nutrition.profil(clientId).catch(() => null), `profil-nutrition-${clientId}`);
+  const materiel = profil ? materielPourProgramme(profil.preferences.salle, profil.preferences.materiel, profil.preferences.club, profil.preferences.marques) : '';
+  const objectifClient = profil?.enregistre && profil.preferences.objectifCoaching ? objectifCoachingDe(profil.preferences.objectifCoaching) : undefined;
+  const initialCreation = { ...(materiel ? { materiel } : {}), ...(objectifClient?.programme ? { objectif: objectifClient.programme } : {}) };
 
   const programmes = useMemo(() => (donnee ?? []).filter((p) => !p.seanceSeule), [donnee]);
   const frequences = useMemo(() => [...new Set(programmes.map((p) => p.seancesParSemaine ?? 0).filter(Boolean))].sort((a, b) => a - b), [programmes]);
@@ -49,6 +57,14 @@ export function ChoixProgrammeClient({ coachId, clientId }: { coachId: string; c
       <Ligne>
         <Action libelle="Créer un programme" onPress={() => setCreation(true)} />
       </Ligne>
+      {(!!objectifClient || !!materiel) && (
+        <Text style={ts.doux}>
+          {[objectifClient && profil ? `Son objectif : ${libelleObjectif(profil.preferences)}` : '', materiel ? `Son lieu et son matériel : ${materiel}` : '']
+            .filter(Boolean)
+            .join('. ')}
+          . Repris dans le programme créé.
+        </Text>
+      )}
       {cree && (
         <View style={{ gap: 8, borderRadius: 12, padding: 12, backgroundColor: couleurs.vertClair }}>
           <Text style={[ts.texte, { fontFamily: polices.texteMoyen }]}>« {titreClient(cree.titre)} » est créé dans ta bibliothèque.</Text>
@@ -100,6 +116,7 @@ export function ChoixProgrammeClient({ coachId, clientId }: { coachId: string; c
         <CreationEntrainement
           coachId={coachId}
           action="programme"
+          initial={initialCreation}
           onFermer={() => setCreation(false)}
           onEnregistre={async (r) => {
             recharger();

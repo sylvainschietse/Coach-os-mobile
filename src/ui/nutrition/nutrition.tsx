@@ -1,7 +1,7 @@
 // NutritionProfile.tsx d'origine (N01) : « Ma nutrition », sous-rubriques Mon profil / Recettes / Ma semaine / Journal /
 // Mes recettes, estimation Mifflin–St Jeor, profil alimentaire et, pour le coach, ajustement des objectifs.
 // Le brouillon du formulaire reste sur l'appareil ; Recettes et Ma semaine utilisent le dernier profil enregistré.
-import { FileText, Lock, RefreshCw, SlidersHorizontal } from '@/ui/icones';
+import { FileText, Lock, RefreshCw, SlidersHorizontal, Sparkles } from '@/ui/icones';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Text, View } from 'react-native';
 
@@ -10,6 +10,7 @@ import { blankPreferences, calculate, macros, preferences, target, type Preferen
 import { brouillonsOuverts, demanderSortie, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
 import { LIEN_GUIDE_MACROS } from '@/lib/guides';
 import { nouvelId } from '@/lib/identifiant';
+import { salleDe } from '@/domain/salle-sport';
 
 import { BoutonContour, Hero, Selecteur, SousNav, type OngletDef } from '../coque';
 import { CaseACocher, Cellule, Grille, Repliable, Saisie } from '../crm/dossier';
@@ -21,10 +22,12 @@ import { doux, Lien } from './commun';
 import { InvitationOptionNutrition } from './invitation-option';
 import { PersonnelNutrition } from './personnel';
 import { Planificateur } from './planificateur';
+import { QuestionnaireGuide } from './questionnaire-guide';
+import { ReponsesQuestionnaire } from './reponses-questionnaire';
 
 export type SectionNutrition = 'profil' | 'recettes' | 'semaine' | 'journal' | 'personnelles';
 const SECTIONS: OngletDef<SectionNutrition>[] = [
-  { cle: 'profil', libelle: 'Mon profil' },
+  { cle: 'profil', libelle: 'Questionnaire' },
   { cle: 'recettes', libelle: 'Recettes' },
   { cle: 'semaine', libelle: 'Ma semaine' },
   { cle: 'journal', libelle: 'Journal' },
@@ -134,6 +137,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
   const [erreur, setErreur] = useState('');
   const [message, setMessage] = useState('');
   const [jeton, setJeton] = useState(0);
+  const [guide, setGuide] = useState(false);
   const verrou = useRef(false);
   const envoi = useRef(nouvelId());
   const version = useRef('');
@@ -181,12 +185,14 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
     ecrireBrouillon(cle, { f: suivant, m: valeurs, version: version.current, envoiId: envoi.current });
   };
 
-  const enregistrer = async (action: ActionProfil) => {
+  const enregistrer = async (action: ActionProfil, duGuide?: Preferences) => {
     if (verrou.current) return;
     setErreur('');
     setMessage('');
     let valeurs: { preferences?: Preferences; objectif?: Target } = {};
-    if (action === 'preferences') {
+    if (action === 'preferences' && duGuide) {
+      valeurs = { preferences: preferences.parse(duGuide) };
+    } else if (action === 'preferences') {
       const e = erreurFormulaire(f);
       if (e) return setErreur(e);
       valeurs = { preferences: toPreferences(f) };
@@ -231,6 +237,11 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
       verrou.current = false;
       setOccupe(false);
     }
+  };
+  const terminerGuide = async (p: Preferences) => {
+    await enregistrer('preferences', p);
+    setGuide(false);
+    setSection('profil');
   };
 
   let calc = data?.calcul;
@@ -312,6 +323,9 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
             </Puces>
           )}
           {/* Ce qui est mangé, face à l'objectif et à la dépense du jour (métabolisme, pas, séances) : en tête de la journée. */}
+          {!coach && section === 'journal' && !data.enregistre && (
+            <CarteGuide onPress={() => setGuide(true)} />
+          )}
           {!coach && section === 'journal' && (
             <>
               <TuilesDuJour clientId={clientId} />
@@ -339,6 +353,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
             <Planificateur data={data} vue={section} onVue={setSection} />
           ) : (
             <>
+              {coach && <ReponsesQuestionnaire prefs={data.preferences} nom={data.nom || 'ton client'} enregistre={data.enregistre} />}
               <View style={{ borderRadius: 16, borderWidth: 1, borderColor: 'rgba(195,24,30,0.2)', backgroundColor: 'rgba(195,24,30,0.05)', padding: 16, gap: 12 }}>
                 <Text style={[ts.kicker, { fontSize: 12 }]}>
                   {data.objectifCoach ? 'Objectifs définis par ton coach' : 'Objectifs estimés automatiquement'}
@@ -393,6 +408,8 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
                 <BoutonContour libelle="Lire le guide : tes macros, mode d’emploi" icone={FileText} iconeAGauche onPress={() => Linking.openURL(LIEN_GUIDE_MACROS)} />
               </View>
 
+              {!coach && <CarteGuide refaire={data.enregistre} onPress={() => setGuide(true)} />}
+
               {!coach && !optionNutrition && <InvitationOptionNutrition compacte onDecouvrir={() => setSection('semaine')} />}
 
               {coach && (
@@ -435,6 +452,16 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
                       Le poids est partagé avec tes mensurations : sa modification est enregistrée dans Mon suivi. Ton âge déclaré est conservé avec sa
                       date de saisie.
                     </Text>
+                    {!coach && (!!f.poidsVise || !!f.salle) && (
+                      <Text style={[ts.texte, { color: couleurs.texte }]}>
+                        {[
+                          f.poidsVise ? `Poids visé : ${f.poidsVise.toLocaleString('fr-FR')} kg` : '',
+                          f.salle ? `Entraînement : ${salleDe(f.salle)?.libelle ?? f.salle}${f.materiel.length ? ` (${f.materiel.join(', ')})` : ''}` : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </Text>
+                    )}
                     {choix('activite', 'Activité globale, entraînements inclus', ACTIVITES)}
                     {choix('objectif', 'Mon objectif', OBJECTIFS)}
                     <Grille>
@@ -482,6 +509,33 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
           )}
         </>
       )}
+      {guide && data && (
+        <QuestionnaireGuide
+          clientId={clientId}
+          initial={toPreferences(erreurFormulaire(f) ? toForm(data.preferences) : f)}
+          ageConnu={!!data.dateNaissance}
+          occupe={occupe}
+          onTerminer={terminerGuide}
+          onFermer={() => setGuide(false)}
+        />
+      )}
+    </View>
+  );
+}
+
+/** Entrée du questionnaire guidé : en tête de la journée tant que le profil n'est pas rempli, puis dans Mes objectifs. */
+function CarteGuide({ refaire = false, onPress }: { refaire?: boolean; onPress: () => void }) {
+  return (
+    <View style={{ borderRadius: 16, backgroundColor: couleurs.noir, padding: 16, gap: 10 }}>
+      <Text style={{ fontFamily: polices.titre, fontSize: 26, lineHeight: 30, color: couleurs.blanc }}>
+        {refaire ? 'Refaire mon questionnaire' : 'Mes objectifs en 2 minutes'}
+      </Text>
+      <Text style={{ fontFamily: polices.texte, fontSize: 14, color: '#C9CBD2' }}>
+        Objectif, mensurations, poids visé, lieu d’entraînement et repas : une question par écran, et tes calories sont calculées.
+      </Text>
+      <View style={{ alignSelf: 'flex-start' }}>
+        <Action icone={Sparkles} libelle={refaire ? 'Mettre à jour' : 'Commencer'} onPress={onPress} />
+      </View>
     </View>
   );
 }

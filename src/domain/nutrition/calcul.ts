@@ -21,6 +21,17 @@ export const preferences = z.object({
   preparation: z.number().int().min(5).max(180),
   budget: z.enum(['libre', 'economique', 'modere']),
   specifique: z.boolean(),
+  /** Ajouts du questionnaire guidé : poids visé, lieu d'entraînement et matériel (anciens profils : valeurs vides). */
+  poidsVise: z.number().positive().max(500).nullable().default(null),
+  salle: z.string().max(60).default(''),
+  materiel: z.array(z.string().max(60)).max(30).default([]),
+  /** Le club précis (ville, quartier) : sert à retrouver le matériel déjà corrigé par un client du même club. */
+  club: z.string().max(80).default(''),
+  /** Marques des machines du club (Technogym, Hammer Strength…). */
+  marques: z.array(z.string().max(40)).max(12).default([]),
+  /** Objectif de coaching choisi dans le questionnaire (rééducation, préparation physique…) et sa précision. */
+  objectifCoaching: z.string().max(40).default(''),
+  objectifPrecision: z.string().max(300).default(''),
 });
 export const blankPreferences = () =>
   preferences.parse({
@@ -42,6 +53,13 @@ export const blankPreferences = () =>
     preparation: 30,
     budget: 'libre',
     specifique: false,
+    poidsVise: null,
+    salle: '',
+    materiel: [],
+    club: '',
+    marques: [],
+    objectifCoaching: '',
+    objectifPrecision: '',
   });
 export const target = z
   .object({

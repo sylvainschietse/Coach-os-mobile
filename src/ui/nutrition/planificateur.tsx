@@ -3,7 +3,7 @@
 // versionné) et la liste de courses. Ajout : quand le coach a composé la semaine (onglet Nutrition coach), elle
 // s'affiche en lecture seule et la liste de courses en est tirée.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ChefHat, ChevronLeft, ChevronRight, Flame, Leaf, Plus, RefreshCw, ShoppingBasket, Trash2 } from '@/ui/icones';
+import { ChefHat, ChevronLeft, ChevronRight, Flame, Leaf, Plus, RefreshCw, Replace, ShoppingBasket, Trash2 } from '@/ui/icones';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { ActivityIndicator, Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';
@@ -42,6 +42,7 @@ import {
   type Slot,
   type Swap,
 } from '@/domain/nutrition/recettes';
+import { alternativesRepas } from '@/domain/nutrition/remplacement';
 import { totalJour, type PlanRepas } from '@/domain/plan-repas';
 import type { MomentRepas } from '@/domain/types';
 import { brouillonsOuverts, demanderSortie, ecrireBrouillon, lireBrouillon } from '@/lib/brouillon';
@@ -167,6 +168,8 @@ export function Planificateur({
   const [ready, setReady] = useState(false);
   const [showList, setShowList] = useState(false);
   const [remplacer, setRemplacer] = useState(false);
+  // « Remplacer ce repas » : le repas du jour affiché, et les recettes déjà proposées (pour « D’autres idées »).
+  const [echange, setEchange] = useState<{ index: number; dejaVues: string[] } | null>(null);
   const [jeton, setJeton] = useState({ n: 0, restaurer: true });
   const version = useRef('');
   const envoi = useRef(nouvelId());
@@ -602,6 +605,17 @@ export function Planificateur({
                             </Pressable>
                             <Action variante="fantome" icone={Trash2} nom={'Retirer ' + r.name} desactive={busy || !ready} onPress={() => remove(index)} />
                           </View>
+                          <View style={{ alignSelf: 'flex-start' }}>
+                            <Action
+                              petit
+                              variante="contour"
+                              icone={Replace}
+                              libelle="Remplacer ce repas"
+                              nom={'Remplacer ' + r.name + ' par un repas aux macros proches'}
+                              desactive={busy || !ready}
+                              onPress={() => setEchange({ index, dejaVues: [] })}
+                            />
+                          </View>
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
                             <View style={{ minWidth: 120 }}>
                               <Selecteur libelle="Portions" options={choixPortions(m.portions)} valeur={String(m.portions)} onChange={(p) => update(index, Number(p))} />
@@ -646,6 +660,21 @@ export function Planificateur({
           action="Remplacer"
           onConfirmer={generate}
           onFermer={() => setRemplacer(false)}
+        />
+      )}
+      {echange && plan[day][echange.index] && (
+        <ChoixRemplacement
+          repas={plan[day][echange.index]}
+          exclues={[...plan[day].map((m) => m.recipeId), ...echange.dejaVues]}
+          prefs={prefs}
+          mois={mois}
+          onAutres={(ids) => setEchange({ ...echange, dejaVues: [...echange.dejaVues, ...ids] })}
+          onChoisir={(m, nom) => {
+            change(plan.map((d, i) => (i === day ? d.map((x, j) => (j === echange.index ? m : x)) : d)));
+            setNotice(`Repas du ${dateAt(week, day)} remplacé par « ${nom} ». Enregistre ta semaine.`);
+            setEchange(null);
+          }}
+          onFermer={() => setEchange(null)}
         />
       )}
       {selected && v && (
@@ -837,6 +866,57 @@ export function Planificateur({
         </Modale>
       )}
     </View>
+  );
+}
+
+/** Trois recettes du même moment de repas, aux macros proches, pour remplacer un repas de la semaine. */
+function ChoixRemplacement({
+  repas,
+  exclues,
+  prefs,
+  mois,
+  onAutres,
+  onChoisir,
+  onFermer,
+}: {
+  repas: Meal;
+  exclues: string[];
+  prefs: DonneesNutrition['preferences'];
+  mois: number;
+  onAutres: (ids: string[]) => void;
+  onChoisir: (m: Meal, nom: string) => void;
+  onFermer: () => void;
+}) {
+  const origine = recipes.find((r) => r.id === repas.recipeId);
+  const base = variantOf(repas);
+  const cle = exclues.join('|');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const liste = useMemo(() => alternativesRepas(repas, prefs, { exclues, mois }), [repas, prefs, mois, cle]);
+  return (
+    <Modale titre="Remplacer ce repas" onFermer={onFermer}>
+      {origine && base && (
+        <Text style={doux}>
+          À la place de « {origine.name} » ({Math.round(base.macros.kcal * repas.portions)} kcal) : des recettes du même moment de la journée, adaptées
+          à tes préférences, avec des portions ajustées pour garder des macros proches.
+        </Text>
+      )}
+      {liste.length === 0 && (
+        <Text style={ts.texte}>Plus d’autre recette compatible avec tes préférences pour ce repas. Tu peux en choisir une dans les 200 recettes.</Text>
+      )}
+      {liste.map((a) => (
+        <View key={a.recipe.id} style={{ borderRadius: 14, borderWidth: 1, borderColor: couleurs.bordure, backgroundColor: couleurs.carte, padding: 12, gap: 8 }}>
+          <Miniature source={photoDe(a.recipe.id)} />
+          <Text style={ts.titre}>{a.recipe.name}</Text>
+          <Text style={doux}>
+            {a.meal.portions.toLocaleString('fr-FR')} portion(s) · {a.recipe.minutes || '—'} min ·{' '}
+            {a.ecartKcal === 0 ? 'mêmes calories' : `${a.ecartKcal > 0 ? '+' : ''}${a.ecartKcal} kcal`}
+          </Text>
+          <Valeurs n={a.macros} />
+          <Action petit icone={Replace} libelle="Choisir ce repas" nom={'Choisir ' + a.recipe.name} onPress={() => onChoisir(a.meal, a.recipe.name)} />
+        </View>
+      ))}
+      {liste.length > 0 && <Action variante="contour" icone={RefreshCw} libelle="D’autres idées" onPress={() => onAutres(liste.map((a) => a.recipe.id))} />}
+    </Modale>
   );
 }
 
