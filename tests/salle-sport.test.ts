@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { blankPreferences, preferences } from '../src/domain/nutrition/calcul';
+import { choisirObjectif, libelleObjectif, OBJECTIFS_COACHING } from '../src/domain/objectifs-coaching';
 import { choisirSalle, materielPourProgramme } from '../src/domain/salle-sport';
 
 describe('lieu et matériel', () => {
@@ -33,5 +34,28 @@ describe('profil alimentaire', () => {
   it('garde le poids visé et le matériel', () => {
     const lu = preferences.parse({ ...blankPreferences(), poidsVise: 74, salle: 'basic-fit', materiel: ['Haltères'] });
     expect(lu).toMatchObject({ poidsVise: 74, salle: 'basic-fit', materiel: ['Haltères'] });
+  });
+});
+
+describe('objectifs du questionnaire', () => {
+  it('règle le sens des calories selon l’objectif', () => {
+    const p = blankPreferences();
+    expect(choisirObjectif(p, 'perte')).toMatchObject({ objectif: 'perte', objectifCoaching: 'perte' });
+    expect(choisirObjectif(p, 'reeducation')).toMatchObject({ objectif: 'maintien', objectifCoaching: 'reeducation' });
+    expect(choisirObjectif(p, 'muscle').objectif).toBe('muscle');
+  });
+  it('passe la grossesse en suivi spécifique, et l’enlève si on change d’avis', () => {
+    const g = choisirObjectif(blankPreferences(), 'grossesse');
+    expect(g.specifique).toBe(true);
+    expect(choisirObjectif(g, 'sante').specifique).toBe(false);
+  });
+  it('efface la précision en changeant d’objectif', () => {
+    const r = { ...choisirObjectif(blankPreferences(), 'reeducation'), objectifPrecision: 'genou' };
+    expect(libelleObjectif(r)).toBe('Rééducation (genou)');
+    expect(choisirObjectif(r, 'preparation').objectifPrecision).toBe('');
+  });
+  it('lit un ancien profil sans objectif du questionnaire', () => {
+    expect(libelleObjectif({ ...blankPreferences(), objectif: 'muscle' })).toBe('Prise de muscle');
+    expect(OBJECTIFS_COACHING.length).toBeGreaterThanOrEqual(10);
   });
 });

@@ -23,10 +23,11 @@ import { InvitationOptionNutrition } from './invitation-option';
 import { PersonnelNutrition } from './personnel';
 import { Planificateur } from './planificateur';
 import { QuestionnaireGuide } from './questionnaire-guide';
+import { ReponsesQuestionnaire } from './reponses-questionnaire';
 
 export type SectionNutrition = 'profil' | 'recettes' | 'semaine' | 'journal' | 'personnelles';
 const SECTIONS: OngletDef<SectionNutrition>[] = [
-  { cle: 'profil', libelle: 'Mon profil' },
+  { cle: 'profil', libelle: 'Questionnaire' },
   { cle: 'recettes', libelle: 'Recettes' },
   { cle: 'semaine', libelle: 'Ma semaine' },
   { cle: 'journal', libelle: 'Journal' },
@@ -352,6 +353,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
             <Planificateur data={data} vue={section} onVue={setSection} />
           ) : (
             <>
+              {coach && <ReponsesQuestionnaire prefs={data.preferences} nom={data.nom || 'ton client'} enregistre={data.enregistre} />}
               <View style={{ borderRadius: 16, borderWidth: 1, borderColor: 'rgba(195,24,30,0.2)', backgroundColor: 'rgba(195,24,30,0.05)', padding: 16, gap: 12 }}>
                 <Text style={[ts.kicker, { fontSize: 12 }]}>
                   {data.objectifCoach ? 'Objectifs définis par ton coach' : 'Objectifs estimés automatiquement'}
@@ -450,7 +452,7 @@ export function NutritionProfil({ clientId, coach = false, optionNutrition = tru
                       Le poids est partagé avec tes mensurations : sa modification est enregistrée dans Mon suivi. Ton âge déclaré est conservé avec sa
                       date de saisie.
                     </Text>
-                    {(!!f.poidsVise || !!f.salle) && (
+                    {!coach && (!!f.poidsVise || !!f.salle) && (
                       <Text style={[ts.texte, { color: couleurs.texte }]}>
                         {[
                           f.poidsVise ? `Poids visé : ${f.poidsVise.toLocaleString('fr-FR')} kg` : '',

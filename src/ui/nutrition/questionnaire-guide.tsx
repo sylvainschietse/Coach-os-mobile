@@ -5,26 +5,34 @@ import { useState } from 'react';
 import { Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';
 
 import type { Preferences } from '@/domain/nutrition/calcul';
+import { choisirObjectif, objectifCoachingDe, OBJECTIFS_COACHING } from '@/domain/objectifs-coaching';
 import { choisirSalle, MATERIELS, SALLES } from '@/domain/salle-sport';
 import { etatA11y } from '@/lib/accessibilite';
 import {
+  Activity,
   Armchair,
+  Baby,
+  Bandage,
   Beef,
+  BicepsFlexed,
   Dumbbell,
   Fish,
   Footprints,
   HardHat,
   HeartPulse,
   House,
+  Medal,
   MapPin,
   Mars,
   Minus,
+  PersonStanding,
   Plus,
   Salad,
   Scale,
   Sprout,
   Trees,
   TrendingDown,
+  Weight,
   UserRound,
   Venus,
   type LucideIcon,
@@ -37,11 +45,20 @@ import { doux } from './commun';
 
 type Etape = 'objectif' | 'sexe' | 'mesures' | 'poidsVise' | 'activite' | 'seances' | 'salle' | 'regime' | 'repas';
 
-const OBJECTIFS: { cle: Preferences['objectif']; libelle: string; detail: string; icone: LucideIcon }[] = [
-  { cle: 'perte', libelle: 'Perdre du poids', detail: 'Affiner la silhouette en gardant le muscle', icone: TrendingDown },
-  { cle: 'muscle', libelle: 'Prendre du muscle', detail: 'Gagner en force et en volume', icone: Dumbbell },
-  { cle: 'maintien', libelle: 'Rester en forme', detail: 'Garder mon poids et mon énergie', icone: HeartPulse },
-];
+const ICONE_OBJECTIF: Record<string, LucideIcon> = {
+  perte: TrendingDown,
+  muscle: BicepsFlexed,
+  force: Weight,
+  forme: Footprints,
+  tonifier: Dumbbell,
+  reeducation: Bandage,
+  preparation: Medal,
+  endurance: HeartPulse,
+  mobilite: PersonStanding,
+  dos: Activity,
+  grossesse: Baby,
+  sante: Sprout,
+};
 const ACTIVITES: { cle: Exclude<Preferences['activite'], ''>; libelle: string; detail: string; icone: LucideIcon }[] = [
   { cle: 'faible', libelle: 'Assis', detail: 'Bureau, voiture, peu de marche', icone: Armchair },
   { cle: 'legere', libelle: 'Je bouge un peu', detail: 'Marche, escaliers, quelques séances', icone: Footprints },
@@ -80,6 +97,8 @@ export function QuestionnaireGuide({
     poids: initial.poids ?? 70,
     poidsVise: initial.poidsVise ?? initial.poids ?? 70,
     sexe: initial.sexe,
+    // Ancien profil sans objectif du questionnaire : on part de l'objectif de calories déjà choisi.
+    objectifCoaching: initial.objectifCoaching || { perte: 'perte', muscle: 'muscle', maintien: 'forme' }[initial.objectif],
   }));
   const etapes: Etape[] = ['objectif', 'sexe', 'mesures', 'poidsVise', 'activite', 'seances', 'salle', 'regime', 'repas'];
   const [i, setI] = useState(0);
@@ -125,10 +144,37 @@ export function QuestionnaireGuide({
       }
     >
       {etape === 'objectif' && (
-        <Question titre="Quel objectif vises-tu ?" aide="On calcule tes calories et tes macros à partir de là.">
-          {OBJECTIFS.map((o) => (
-            <GrandeCarte key={o.cle} icone={o.icone} libelle={o.libelle} detail={o.detail} actif={p.objectif === o.cle} onPress={() => maj({ objectif: o.cle })} />
-          ))}
+        <Question titre="Quel est ton objectif principal ?" aide="Ton coach construit ton programme et tes calories à partir de là.">
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {OBJECTIFS_COACHING.map((o) => (
+              <Tuile
+                key={o.cle}
+                icone={ICONE_OBJECTIF[o.cle] ?? HeartPulse}
+                libelle={o.libelle}
+                detail={o.detail}
+                actif={p.objectifCoaching === o.cle}
+                onPress={() => setP((x) => choisirObjectif(x, o.cle))}
+              />
+            ))}
+          </View>
+          {!!objectifCoachingDe(p.objectifCoaching)?.precision && (
+            <View style={{ gap: 6 }}>
+              <Text style={ts.titreChamp}>{objectifCoachingDe(p.objectifCoaching)?.precision}</Text>
+              <TextInput
+                accessibilityLabel="Précision sur ton objectif"
+                value={p.objectifPrecision}
+                maxLength={300}
+                multiline
+                onChangeText={(objectifPrecision) => maj({ objectifPrecision })}
+                placeholder="Quelques mots pour ton coach"
+                placeholderTextColor={couleurs.suggestion}
+                style={{ minHeight: 64, borderRadius: 12, borderWidth: 1, borderColor: couleurs.saisie, backgroundColor: couleurs.carte, padding: 12, fontFamily: polices.texte, fontSize: 15, color: couleurs.texte, textAlignVertical: 'top' }}
+              />
+            </View>
+          )}
+          {objectifCoachingDe(p.objectifCoaching)?.specifique && (
+            <Text style={doux}>Pendant la grossesse et après l’accouchement, tes calories ne sont pas calculées automatiquement : ton coach les définit avec toi.</Text>
+          )}
         </Question>
       )}
       {etape === 'sexe' && (
@@ -273,6 +319,35 @@ function GrandeCarte({ icone: Icone, libelle, detail, actif, onPress }: { icone:
         <Text style={{ fontFamily: polices.texteGras, fontSize: 17, color: actif ? couleurs.blanc : couleurs.texte }}>{libelle}</Text>
         <Text style={{ fontFamily: polices.texte, fontSize: 13, color: actif ? '#C9CBD2' : couleurs.texteDoux }}>{detail}</Text>
       </View>
+    </Pressable>
+  );
+}
+
+/** Tuile d'objectif, deux par ligne sur téléphone : icône, libellé, détail. */
+function Tuile({ icone: Icone, libelle, detail, actif, onPress }: { icone: LucideIcon; libelle: string; detail: string; actif: boolean; onPress: () => void }) {
+  const { width } = useWindowDimensions();
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityLabel={`${libelle}. ${detail}`}
+      {...etatA11y({ checked: actif })}
+      onPress={onPress}
+      style={{
+        width: width < 520 ? '48.5%' : 170,
+        minHeight: 112,
+        borderRadius: 16,
+        borderWidth: 1.5,
+        borderColor: actif ? couleurs.noir : couleurs.bordure,
+        backgroundColor: actif ? couleurs.noir : couleurs.carte,
+        padding: 12,
+        gap: 6,
+      }}
+    >
+      <View style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: actif ? couleurs.rouge : couleurs.rougeClair }}>
+        <Icone size={19} color={actif ? couleurs.blanc : couleurs.rouge} />
+      </View>
+      <Text style={{ fontFamily: polices.texteGras, fontSize: 14, lineHeight: 18, color: actif ? couleurs.blanc : couleurs.texte }}>{libelle}</Text>
+      <Text style={{ fontFamily: polices.texte, fontSize: 12, lineHeight: 15, color: actif ? '#C9CBD2' : couleurs.texteDoux }}>{detail}</Text>
     </Pressable>
   );
 }

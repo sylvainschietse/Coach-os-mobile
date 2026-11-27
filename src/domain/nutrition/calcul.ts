@@ -25,6 +25,9 @@ export const preferences = z.object({
   poidsVise: z.number().positive().max(500).nullable().default(null),
   salle: z.string().max(60).default(''),
   materiel: z.array(z.string().max(60)).max(30).default([]),
+  /** Objectif de coaching choisi dans le questionnaire (rééducation, préparation physique…) et sa précision. */
+  objectifCoaching: z.string().max(40).default(''),
+  objectifPrecision: z.string().max(300).default(''),
 });
 export const blankPreferences = () =>
   preferences.parse({
@@ -49,6 +52,8 @@ export const blankPreferences = () =>
     poidsVise: null,
     salle: '',
     materiel: [],
+    objectifCoaching: '',
+    objectifPrecision: '',
   });
 export const target = z
   .object({
