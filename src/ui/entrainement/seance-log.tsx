@@ -24,6 +24,7 @@ import { useCharger, useRechargerSur } from '@/lib/useCharger';
 import { couleurs, polices } from '../theme';
 import { Action, Ligne, TexteLong, ts } from './commun';
 import { PastilleElastique } from './elastique';
+import { SurTaMachine, useMarquesClient } from './sur-ta-machine';
 import { VideosExercice } from './videos-mouvement';
 import { VignetteVideo } from './vignette-video';
 import { etatA11y } from '@/lib/accessibilite';
@@ -170,6 +171,7 @@ export function SeanceLog({
   const [d, setD] = useState<Brouillon>(vide);
   const [pret, setPret] = useState(false);
   const [ouvert, setOuvert] = useState(!!ouverteAuDepart);
+  const marques = useMarquesClient(clientId, ouvert);
   const [vu, setVu] = useState(ouverture);
   const [etat, setEtat] = useState<'repos' | 'envoi' | 'ok' | 'doublon' | 'erreur'>('repos');
   const [erreur, setErreur] = useState('');
@@ -345,6 +347,7 @@ export function SeanceLog({
             <LigneSaisie
               key={l.id}
               l={l}
+              marques={marques}
               d={d}
               precedentes={precedentes(l.id)}
               references={references}
@@ -486,8 +489,11 @@ function LigneSaisie({
   onRemplir,
   onValider,
   onRepos,
+  marques,
 }: {
   l: LignePrescription;
+  /** Marques des machines du club du client : « Sur ta machine Technogym ». */
+  marques: readonly string[];
   d: Brouillon;
   precedentes: Record<number, Valeurs>;
   references: Reference[];
@@ -526,6 +532,9 @@ function LigneSaisie({
         {l.exercice.videoUrl && <VignetteVideo url={l.exercice.videoUrl} nom={l.exercice.nom} largeur={96} />}
       </View>
       <TexteLong texte={l.consignes} style={{ fontSize: 13, color: couleurs.texteDoux }} />
+      <View style={{ marginTop: 6 }}>
+        <SurTaMachine exercice={l.exercice} marques={marques} />
+      </View>
       <Ligne style={{ marginTop: 8 }}>
         <Action
           petit

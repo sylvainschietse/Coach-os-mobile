@@ -42,6 +42,7 @@ import { DefilementClavier } from '../clavier';
 import { couleurs, nuit, polices } from '../theme';
 import { champsSaisie, DIFFICULTES, invalide, proposition, sale, seriesDuBrouillon, validerSeries, vide, type Brouillon, type Enregistrement } from './seance-log';
 import { PastilleElastique } from './elastique';
+import { SurTaMachine, useMarquesClient } from './sur-ta-machine';
 import { VideoIntegree } from './video-integree';
 import { etatA11y } from '@/lib/accessibilite';
 
@@ -72,6 +73,7 @@ export function SeanceParBloc({
   const cle = `coachos:brouillon:${clientId}:${cycleId}:${seance.id}`;
   const blocs = useMemo(() => seance.blocs.filter((b) => b.lignes.length), [seance]);
   const lignes = useMemo(() => blocs.flatMap((b) => b.lignes), [blocs]);
+  const marques = useMarquesClient(clientId);
   const [d, setD] = useState<Brouillon>(vide);
   const [pret, setPret] = useState(false);
   const [repos, setRepos] = useState<Repos | null>(null);
@@ -286,6 +288,7 @@ export function SeanceParBloc({
                   prevu={remplacements[l.id] ? l.exercice.nom : undefined}
                   tag={enchaine(b) ? lettre(i) : undefined}
                   tours={enchaine(b)}
+                  marques={marques}
                   d={d}
                   precedentes={precedentes(l)}
                   references={references}
@@ -464,6 +467,7 @@ function CarteExercice({
   prevu,
   tag,
   tours,
+  marques,
   d,
   precedentes,
   references,
@@ -473,6 +477,8 @@ function CarteExercice({
   onRemplacer,
 }: {
   l: LignePrescription;
+  /** Marques des machines du club du client : « Sur ta machine Technogym ». */
+  marques: readonly string[];
   /** Nom de l'exercice prévu par le coach, quand le client l'a remplacé. */
   prevu?: string;
   tag?: string;
@@ -524,6 +530,7 @@ function CarteExercice({
             <Puce key={n} texte={n} />
           ))}
         </View>
+        <SurTaMachine exercice={l.exercice} marques={marques} sombre />
         {l.elastique && <PastilleElastique e={l.elastique} sombre />}
         {!!l.consignes?.trim() && <Text style={[styles.doux, { color: nuit.texteTertiaire }]}>{l.consignes.trim()}</Text>}
         {l.minuteur && (
